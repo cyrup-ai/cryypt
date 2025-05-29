@@ -1,0 +1,69 @@
+[workspace]
+
+[package]
+name = "cryypt"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cyrup AI <dev@cyrup.ai>"]
+description = "encryption decryption, compression, hashing primitives in Rust"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/cyrup-ai/crypt"
+keywords = ["encryption", "cryptography", "aesgcm", "chacha", "security"]
+categories = ["cryptography", "authentication"]
+
+[dependencies]
+# Core dependencies
+rand = { version = "0.9.1", features = ["std", "std_rng"] }
+zeroize = { version = "1.8.1", features = ["derive"] }
+thiserror = "2.0.12"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+base64 = "0.22.1"
+hex = "0.4.3"
+once_cell = "1.21.3"
+tokio = { version = "1.45.1", features = ["sync", "rt", "macros", "fs", "io-util"] }
+tokio-stream = "0.1.17"
+futures = "0.3.31"
+
+
+# Time-based features
+chrono = { version = "0.4.41", features = ["serde"] }
+
+# Tracing
+tracing = "0.1.41"
+
+# Compression
+bzip2 = "0.5.2"
+aes-gcm = "0.10"
+chacha20poly1305 = "0.10"
+sha2 = "0.10"
+sha3 = "0.10"
+blake2 = "0.10"
+argon2 = "0.5.3"
+keyring = "3.6.2"
+flate2 = "1.1.1"
+zstd = "0.13.3"
+zip = "4.0.0"
+
+[dev-dependencies]
+tokio = { version = "1.45.1", features = ["full"] }
+criterion = "0.6.0"
+proptest = "1.6.0"
+hex-literal = "1.0.0"
+
+# No features - everything is included by default
+
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[lib]
+name = "cryypt"
+path = "src/lib.rs"
