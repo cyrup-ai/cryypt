@@ -60,6 +60,7 @@ pub mod error;
 pub mod hashing;
 pub mod jwt;
 pub mod key;
+pub mod pqcrypto;
 pub mod transport;
 
 // Re-export core types
@@ -73,6 +74,7 @@ pub use key::{KeyId, SimpleKeyId};
 pub use bits_macro::{BitSize, Bits};
 pub use cipher::api::Cipher;
 pub use key::api::Key;
+pub use pqcrypto::api::{KemBuilder, SignatureBuilder};
 
 pub use jwt::{
     Claims, ClaimsBuilder, Es256Key, Generator, Header, Hs256Key,
@@ -96,6 +98,7 @@ pub mod prelude {
             Hash,
         },
         key::store::{FileKeyStore, KeychainStore},
-        BitSize, Bits, Cipher, CryptError, EncodableResult, Key,
+        pqcrypto::prelude::*,
+        BitSize, Bits, Cipher, CryptError, EncodableResult, Key, KemBuilder, SignatureBuilder,
     };
 }

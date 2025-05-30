@@ -4,7 +4,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 use quiche::{accept, ConnectionId, Header};
 
-use super::error::{Result, CryptoTransportError};
+use super::error::Result;
 use super::builder::QuicCryptoConfig;
 use super::quic_conn::{
     QuicConnectionController, 
@@ -20,13 +20,15 @@ pub struct QuicServerConfig {
 
 /// Return an `impl Future` that never blocks the thread. We do `.await` on `bind` and `.await` on `recv_from`.
 pub fn run_quic_server(config: QuicServerConfig) -> impl Future<Output=Result<()>> + Send + 'static {
+    let listen_addr = config.listen_addr.clone();
+    let crypto = config.crypto;
     async move {
-        let socket = Arc::new(tokio::net::UdpSocket::bind(&config.listen_addr).await?);
+        let socket = Arc::new(tokio::net::UdpSocket::bind(&listen_addr).await?);
 
         let mut buf = vec![0u8; 65535];
         loop {
             let (len, from_addr) = socket.recv_from(&mut buf).await?;
-            let hdr = match Header::from_slice(&buf[..len], quiche::MAX_CONN_ID_LEN) {
+            let hdr = match Header::from_slice(&mut buf[..len], quiche::MAX_CONN_ID_LEN) {
                 Ok(h) => h,
                 Err(_) => {
                     continue;
@@ -34,11 +36,16 @@ pub fn run_quic_server(config: QuicServerConfig) -> impl Future<Output=Result<()
             };
 
             let scid = ConnectionId::from_ref(&hdr.scid);
+            let mut quic_config = match crypto.build_config() {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
             let mut quic_conn = match accept(
                 &scid,
                 None,
                 socket.local_addr()?,
-                &mut config.crypto.quiche_config.clone(),
+                from_addr,
+                &mut quic_config,
             ) {
                 Ok(c) => c,
                 Err(_) => {
@@ -50,7 +57,7 @@ pub fn run_quic_server(config: QuicServerConfig) -> impl Future<Output=Result<()
                 from: from_addr,
                 to: socket.local_addr()?,
             };
-            let _ = quic_conn.recv(&buf[..len], recv_info);
+            let _ = quic_conn.recv(&mut buf[..len], recv_info);
 
             let event_tx = server_event_reporter();
             let (_stop_tx, _stop_rx) = unbounded_channel::<()>();

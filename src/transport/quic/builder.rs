@@ -1,12 +1,62 @@
 //! QUIC crypto configuration builder
 use std::sync::Arc;
-use crate::error::{CryptoTransportError, Result};
+use super::error::{CryptoTransportError, Result};
 
 /// QUIC crypto configuration
 pub struct QuicCryptoConfig {
-    pub quiche_config: quiche::Config,
+    // Store builder params instead of built config
+    pub alpn_protocols: Vec<Vec<u8>>,
     pub cert_path: Option<String>,
     pub key_path: Option<String>,
+    pub verify_peer: bool,
+    pub max_idle_timeout: u64,
+    pub max_udp_payload_size: u64,
+    pub initial_max_data: u64,
+    pub initial_max_stream_data_bidi_local: u64,
+    pub initial_max_stream_data_bidi_remote: u64,
+    pub initial_max_streams_bidi: u64,
+    pub initial_max_streams_uni: u64,
+    pub ack_delay_exponent: u64,
+    pub max_ack_delay: u64,
+    pub disable_active_migration: bool,
+    pub cc_algorithm: quiche::CongestionControlAlgorithm,
+}
+
+impl QuicCryptoConfig {
+    /// Create a new quiche::Config
+    pub fn build_config(&self) -> Result<quiche::Config> {
+        let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)?;
+        
+        // Apply settings
+        config.set_max_idle_timeout(self.max_idle_timeout);
+        config.set_max_recv_udp_payload_size(self.max_udp_payload_size as usize);
+        config.set_initial_max_data(self.initial_max_data);
+        config.set_initial_max_stream_data_bidi_local(self.initial_max_stream_data_bidi_local);
+        config.set_initial_max_stream_data_bidi_remote(self.initial_max_stream_data_bidi_remote);
+        config.set_initial_max_streams_bidi(self.initial_max_streams_bidi);
+        config.set_initial_max_streams_uni(self.initial_max_streams_uni);
+        config.set_ack_delay_exponent(self.ack_delay_exponent);
+        config.set_max_ack_delay(self.max_ack_delay);
+        config.set_disable_active_migration(self.disable_active_migration);
+        config.set_cc_algorithm(self.cc_algorithm);
+        let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
+        config.set_application_protos(&alpn_refs)?;
+        
+        // Server-specific
+        if let (Some(cert), Some(key)) = (&self.cert_path, &self.key_path) {
+            config.load_cert_chain_from_pem_file(cert)
+                .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+            config.load_priv_key_from_pem_file(key)
+                .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+        }
+        
+        // Client-specific
+        if !self.verify_peer {
+            config.verify_peer(false);
+        }
+        
+        Ok(config)
+    }
 }
 
 /// Builder for QUIC crypto configuration
@@ -100,12 +150,25 @@ impl QuicCryptoBuilder {
         
         // Apply all settings
         self.apply_settings(&mut config);
-        config.set_application_protos(&self.alpn_protocols)?;
+        let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
+        config.set_application_protos(&alpn_refs)?;
         
         Ok(Arc::new(QuicCryptoConfig {
-            quiche_config: config,
+            alpn_protocols: self.alpn_protocols,
             cert_path: Some(cert_path.to_string()),
             key_path: Some(key_path.to_string()),
+            verify_peer: self.verify_peer,
+            max_idle_timeout: self.max_idle_timeout,
+            max_udp_payload_size: self.max_udp_payload_size,
+            initial_max_data: self.initial_max_data,
+            initial_max_stream_data_bidi_local: self.initial_max_stream_data_bidi_local,
+            initial_max_stream_data_bidi_remote: self.initial_max_stream_data_bidi_remote,
+            initial_max_streams_bidi: self.initial_max_streams_bidi,
+            initial_max_streams_uni: self.initial_max_streams_uni,
+            ack_delay_exponent: self.ack_delay_exponent,
+            max_ack_delay: self.max_ack_delay,
+            disable_active_migration: self.disable_active_migration,
+            cc_algorithm: self.cc_algorithm,
         }))
     }
 
@@ -115,7 +178,8 @@ impl QuicCryptoBuilder {
         
         // Apply all settings
         self.apply_settings(&mut config);
-        config.set_application_protos(&self.alpn_protocols)?;
+        let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
+        config.set_application_protos(&alpn_refs)?;
         
         // Client-specific settings
         if !self.verify_peer {
@@ -123,16 +187,28 @@ impl QuicCryptoBuilder {
         }
         
         Ok(Arc::new(QuicCryptoConfig {
-            quiche_config: config,
+            alpn_protocols: self.alpn_protocols,
             cert_path: None,
             key_path: None,
+            verify_peer: self.verify_peer,
+            max_idle_timeout: self.max_idle_timeout,
+            max_udp_payload_size: self.max_udp_payload_size,
+            initial_max_data: self.initial_max_data,
+            initial_max_stream_data_bidi_local: self.initial_max_stream_data_bidi_local,
+            initial_max_stream_data_bidi_remote: self.initial_max_stream_data_bidi_remote,
+            initial_max_streams_bidi: self.initial_max_streams_bidi,
+            initial_max_streams_uni: self.initial_max_streams_uni,
+            ack_delay_exponent: self.ack_delay_exponent,
+            max_ack_delay: self.max_ack_delay,
+            disable_active_migration: self.disable_active_migration,
+            cc_algorithm: self.cc_algorithm,
         }))
     }
 
     /// Apply common settings to configuration
     fn apply_settings(&self, config: &mut quiche::Config) {
         config.set_max_idle_timeout(self.max_idle_timeout);
-        config.set_max_recv_udp_payload_size(self.max_udp_payload_size);
+        config.set_max_recv_udp_payload_size(self.max_udp_payload_size as usize);
         config.set_initial_max_data(self.initial_max_data);
         config.set_initial_max_stream_data_bidi_local(self.initial_max_stream_data_bidi_local);
         config.set_initial_max_stream_data_bidi_remote(self.initial_max_stream_data_bidi_remote);

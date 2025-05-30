@@ -39,7 +39,7 @@ impl EphemeralKeyMaterial {
     /// Rotate the PSK material
     pub fn rotate(&mut self, new_psk: Vec<u8>) -> Result<(), CryptError> {
         if self.is_expired() {
-            return Err(CryptError::KeyExpired);
+            return Err(CryptError::internal("Key material has expired"));
         }
         self.psk = Zeroizing::new(new_psk);
         self.created_at = Instant::now();
@@ -49,11 +49,11 @@ impl EphemeralKeyMaterial {
 
 /// Generate ephemeral key material using quantum-resistant KDF
 pub fn generate_ephemeral_keys(session_id: &str) -> Result<EphemeralKeyMaterial, CryptError> {
-    use rand::{RngCore, rngs::OsRng};
+    use rand::Rng;
     
     // Generate 512-bit PSK for post-quantum resistance
     let mut psk = vec![0u8; 64];
-    OsRng.fill_bytes(&mut psk);
+    rand::rng().fill(&mut psk);
     
     // 15-minute TTL for ephemeral keys
     let ttl = Duration::from_secs(15 * 60);

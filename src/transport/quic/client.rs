@@ -23,10 +23,11 @@ pub fn connect_quic_client(
         let socket = Arc::new(tokio::net::UdpSocket::bind(&local_addr).await?);
         socket.connect(&remote_addr).await?;
 
-        let scid = ConnectionId::from_ref(&random_16_bytes());
+        let scid_bytes = random_16_bytes();
+        let scid = ConnectionId::from_ref(&scid_bytes);
         let remote_addr_parsed = remote_addr.parse()
             .map_err(|e| CryptoTransportError::Internal(format!("Invalid remote address: {}", e)))?;
-        let mut config = crypto.quiche_config.clone();
+        let mut config = crypto.build_config()?;
         let conn = connect(
             None,
             &scid,
@@ -80,8 +81,8 @@ fn client_event_reporter() -> UnboundedSender<QuicConnectionEvent> {
 }
 
 fn random_16_bytes() -> [u8; 16] {
-    use rand::{RngCore, rngs::OsRng};
+    use rand::Rng;
     let mut buf = [0u8; 16];
-    OsRng.fill_bytes(&mut buf);
+    rand::rng().fill(&mut buf);
     buf
 }
