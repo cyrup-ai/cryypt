@@ -32,11 +32,13 @@ impl KeyResult {
 
 impl Future for KeyResult {
     type Output = Result<Vec<u8>>;
-    
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptError::internal("Key resolution task dropped"))),
+            Poll::Ready(Err(_)) => {
+                Poll::Ready(Err(CryptError::internal("Key resolution task dropped")))
+            }
             Poll::Pending => Poll::Pending,
         }
     }

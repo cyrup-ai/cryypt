@@ -11,7 +11,7 @@ use cyrup_crypt::{Cipher, Key, FileKeyStore};
 
 // Simple encryption with key
 let ciphertext = Cipher::aes()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
         .with_namespace("my-app")
         .version(1))
@@ -21,7 +21,7 @@ let ciphertext = Cipher::aes()
 
 // Decrypt
 let plaintext = Cipher::aes()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
         .with_namespace("my-app")
         .version(1))
@@ -36,7 +36,7 @@ use cyrup_crypt::{Cipher, Key, KeychainStore};
 
 // Encrypt with ChaCha20-Poly1305
 let ciphertext = Cipher::chachapoly()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(KeychainStore::for_app("MyApp"))
         .with_namespace("secure-app")
         .version(1))
@@ -46,7 +46,7 @@ let ciphertext = Cipher::chachapoly()
 
 // Decrypt
 let plaintext = Cipher::chachapoly()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(KeychainStore::for_app("MyApp"))
         .with_namespace("secure-app")
         .version(1))
@@ -61,13 +61,13 @@ use cyrup_crypt::{Cipher, Key, FileKeyStore};
 
 // Double encryption: AES-GCM followed by ChaCha20-Poly1305
 let ciphertext = Cipher::aes()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
         .with_namespace("app")
         .version(1))
     .with_data(b"Top secret")
     .second_pass(Cipher::chachapoly()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256.bits())
             .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
             .with_namespace("app")
             .version(2)))
@@ -76,13 +76,13 @@ let ciphertext = Cipher::aes()
 
 // Decrypt in reverse order (ChaCha first, then AES)
 let plaintext = Cipher::chachapoly()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
         .with_namespace("app")
         .version(2))
     .with_ciphertext(ciphertext)
     .second_pass(Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256.bits())
             .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
             .with_namespace("app")
             .version(1)))
@@ -184,7 +184,7 @@ let master_key = [0u8; 32]; // In practice: derive from secure source
 
 // Generate key and encrypt data in one beautiful chain
 let ciphertext = Cipher::aes()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
         .with_namespace("production")
         .version(1))
@@ -194,7 +194,7 @@ let ciphertext = Cipher::aes()
 
 // Later: decrypt (key automatically retrieved)
 let plaintext = Cipher::aes()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
         .with_namespace("production")
         .version(1))
@@ -209,7 +209,7 @@ use cyrup_crypt::{Cipher, Key, AwsKmsDataKeyStore, AwsSecretsManagerStore};
 
 // Encrypt with KMS-managed key (generates on first use)
 let ciphertext = Cipher::chachapoly()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(AwsKms::with_cmk("alias/production-cmk")
             .using_secrets_manager("prod/keys"))
         .with_namespace("api-service")
@@ -225,7 +225,7 @@ use cyrup_crypt::{Cipher, Key, KeychainStore};
 
 // Encrypt user data (key generated/retrieved automatically)
 let encrypted = Cipher::aes()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(KeychainStore::for_app("MyApp"))
         .with_namespace("user-keys")
         .version(1))
@@ -259,7 +259,7 @@ use cyrup_crypt::{compression::Compress, Cipher, Key, FileKeyStore};
 
 // Compress then encrypt in the cipher builder
 let result = Cipher::aes()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
         .with_namespace("app")
         .version(1))
@@ -270,7 +270,7 @@ let result = Cipher::aes()
 
 // Decrypt then decompress automatically
 let original = Cipher::aes()
-    .with_key(Key::size(256.bits)
+    .with_key(Key::size(256.bits())
         .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
         .with_namespace("app")
         .version(1))
@@ -285,6 +285,164 @@ let compressed = Compress::bzip2()
     .balanced_compression() // Level 6
     .compress()
     .await?;
+```
+
+## Encoding & File Operations
+
+### Base64 and Hex Encoding
+```rust
+use cryypt::{Cipher, Key, FileKeyStore};
+
+// Encrypt and get base64 result
+let base64_result = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_text("Hello, World!")
+    .encrypt()
+    .await?
+    .to_base64();
+
+// Decrypt from base64
+let plaintext = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_ciphertext_base64(&base64_result)?
+    .decrypt()
+    .await?;
+
+// Hex encoding
+let hex_result = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_data(b"Binary data")
+    .encrypt()
+    .await?
+    .to_hex();
+
+// Decrypt from hex
+let plaintext = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_ciphertext_hex(&hex_result)?
+    .decrypt()
+    .await?;
+```
+
+### File Encryption
+```rust
+use cryypt::{Cipher, Key, FileKeyStore};
+
+// Encrypt file contents and save to another file
+Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_file("secret.txt")
+    .await?
+    .encrypt()
+    .await?
+    .to_file("secret.enc")
+    .await?;
+
+// Decrypt from file
+let plaintext = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_ciphertext_file("secret.enc")
+    .await?
+    .decrypt()
+    .await?;
+
+// Convert decrypted result to string
+let text = String::from_utf8(plaintext)?;
+```
+
+### Data Input from Encoded Sources
+```rust
+use cryypt::{Cipher, Key, FileKeyStore};
+
+// Encrypt data from base64 input
+let ciphertext = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_data_base64("SGVsbG8gV29ybGQ=")?  // "Hello World" in base64
+    .encrypt()
+    .await?;
+
+// Encrypt data from hex input
+let ciphertext = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_data_hex("48656c6c6f20576f726c64")?  // "Hello World" in hex
+    .encrypt()
+    .await?;
+```
+
+### Multiple Output Formats
+```rust
+use cryypt::{Cipher, Key, FileKeyStore};
+
+let encrypted_result = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_text("Secret message")
+    .encrypt()
+    .await?;
+
+// Get in different formats
+let base64 = encrypted_result.to_base64();
+let hex = encrypted_result.to_hex();
+let bytes = encrypted_result.to_bytes();
+
+// Or save directly to file
+encrypted_result.to_file("output.enc").await?;
+```
+
+### Compression with Encoding
+```rust
+use cryypt::{compression::Compress, Cipher, Key, FileKeyStore};
+
+// Compress, encrypt, and encode in one chain
+let base64_result = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_compression(Compress::zstd())
+    .with_text("Large text that will be compressed then encrypted...")
+    .encrypt()
+    .await?
+    .to_base64();
+
+// Decrypt and decompress automatically
+let original_text = Cipher::aes()
+    .with_key(Key::size(256.bits())
+        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
+        .with_namespace("app")
+        .version(1))
+    .with_compression(Compress::zstd())
+    .with_ciphertext_base64(&base64_result)?
+    .decrypt()
+    .await?;
+
+let text = String::from_utf8(original_text)?;
 ```
 
 ## Features

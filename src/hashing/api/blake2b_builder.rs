@@ -1,6 +1,6 @@
 //! Blake2b hash builder
 
-use super::{DataBuilder, SaltBuilder, PassesBuilder, HashExecutor, AsyncHashResult};
+use super::{AsyncHashResult, DataBuilder, HashExecutor, PassesBuilder, SaltBuilder};
 
 /// Initial Blake2b builder
 pub struct Blake2bBuilder;
@@ -32,13 +32,11 @@ pub struct Blake2bComplete {
 // Initial builder
 impl DataBuilder for Blake2bBuilder {
     type Output = Blake2bWithData;
-    
+
     fn with_data<T: Into<Vec<u8>>>(self, data: T) -> Self::Output {
-        Blake2bWithData {
-            data: data.into(),
-        }
+        Blake2bWithData { data: data.into() }
     }
-    
+
     fn with_text<T: Into<String>>(self, text: T) -> Self::Output {
         Blake2bWithData {
             data: text.into().into_bytes(),
@@ -49,7 +47,7 @@ impl DataBuilder for Blake2bBuilder {
 // With data
 impl SaltBuilder for Blake2bWithData {
     type Output = Blake2bWithDataAndSalt;
-    
+
     fn with_salt<T: Into<Vec<u8>>>(self, salt: T) -> Self::Output {
         Blake2bWithDataAndSalt {
             data: self.data,
@@ -60,7 +58,7 @@ impl SaltBuilder for Blake2bWithData {
 
 impl PassesBuilder for Blake2bWithData {
     type Output = Blake2bWithDataAndPasses;
-    
+
     fn with_passes(self, passes: u32) -> Self::Output {
         Blake2bWithDataAndPasses {
             data: self.data,
@@ -73,7 +71,7 @@ impl HashExecutor for Blake2bWithData {
     fn hash(self) -> impl AsyncHashResult {
         async move {
             use blake2::{Blake2b512, Digest};
-            
+
             tokio::task::spawn_blocking(move || {
                 let mut hasher = Blake2b512::new();
                 hasher.update(&self.data);
@@ -88,7 +86,7 @@ impl HashExecutor for Blake2bWithData {
 // With data and salt
 impl PassesBuilder for Blake2bWithDataAndSalt {
     type Output = Blake2bComplete;
-    
+
     fn with_passes(self, passes: u32) -> Self::Output {
         Blake2bComplete {
             data: self.data,
@@ -102,11 +100,11 @@ impl HashExecutor for Blake2bWithDataAndSalt {
     fn hash(self) -> impl AsyncHashResult {
         async move {
             use blake2::{Blake2b512, Digest};
-            
+
             tokio::task::spawn_blocking(move || {
                 let mut input = self.data;
                 input.extend_from_slice(&self.salt);
-                
+
                 let mut hasher = Blake2b512::new();
                 hasher.update(&input);
                 Ok(hasher.finalize().to_vec())
@@ -120,7 +118,7 @@ impl HashExecutor for Blake2bWithDataAndSalt {
 // With data and passes
 impl SaltBuilder for Blake2bWithDataAndPasses {
     type Output = Blake2bComplete;
-    
+
     fn with_salt<T: Into<Vec<u8>>>(self, salt: T) -> Self::Output {
         Blake2bComplete {
             data: self.data,
@@ -134,7 +132,7 @@ impl HashExecutor for Blake2bWithDataAndPasses {
     fn hash(self) -> impl AsyncHashResult {
         async move {
             use blake2::{Blake2b512, Digest};
-            
+
             tokio::task::spawn_blocking(move || {
                 let mut result = self.data;
                 for _ in 0..self.passes {
@@ -155,11 +153,11 @@ impl HashExecutor for Blake2bComplete {
     fn hash(self) -> impl AsyncHashResult {
         async move {
             use blake2::{Blake2b512, Digest};
-            
+
             tokio::task::spawn_blocking(move || {
                 let mut input = self.data;
                 input.extend_from_slice(&self.salt);
-                
+
                 let mut result = input;
                 for _ in 0..self.passes {
                     let mut hasher = Blake2b512::new();

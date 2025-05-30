@@ -1,17 +1,19 @@
 [workspace]
+edition = "2024"
 
 [package]
 name = "cryypt"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Cyrup AI <dev@cyrup.ai>"]
-description = "encryption decryption, compression, hashing primitives in Rust"
+description = "typesafe builder for encryption decryption, compression, hashing primitives in Rust"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/cyrup-ai/crypt"
 keywords = ["encryption", "cryptography", "aesgcm", "chacha", "security"]
 categories = ["cryptography", "authentication"]
 
 [dependencies]
+arc-swap = "1.7"
 # Core dependencies
 rand = { version = "0.9.1", features = ["std", "std_rng"] }
 zeroize = { version = "1.8.1", features = ["derive"] }
@@ -25,6 +27,17 @@ tokio = { version = "1.45.1", features = ["sync", "rt", "macros", "fs", "io-util
 tokio-stream = "0.1.17"
 futures = "0.3.31"
 
+# JWT dependencies
+dashmap = "6.1"
+p256 = { version = "0.13", features = ["ecdsa", "pkcs8"] }
+hmac = "0.12"
+base64-url = "3.0"
+getrandom = "0.2"
+twox-hash = "2.0"
+
+# Nonce security dependencies
+hkdf = "0.12"
+subtle = "2.6"
 
 # Time-based features
 chrono = { version = "0.4.41", features = ["serde"] }
@@ -44,6 +57,8 @@ keyring = "3.6.2"
 flate2 = "1.1.1"
 zstd = "0.13.3"
 zip = "4.0.0"
+rand_core = "0.9.3"
+quiche = "0.24.2"
 
 [dev-dependencies]
 tokio = { version = "1.45.1", features = ["full"] }

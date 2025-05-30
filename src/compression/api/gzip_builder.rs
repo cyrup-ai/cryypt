@@ -1,6 +1,9 @@
 //! Gzip compression builder
 
-use super::{DataBuilder, LevelBuilder, CompressExecutor, DecompressExecutor, AsyncCompressResult, AsyncDecompressResult};
+use super::{
+    AsyncCompressResult, AsyncDecompressResult, CompressExecutor, DataBuilder, DecompressExecutor,
+    LevelBuilder,
+};
 
 /// Initial Gzip builder
 pub struct GzipBuilder;
@@ -19,13 +22,11 @@ pub struct GzipWithDataAndLevel {
 // Initial builder
 impl DataBuilder for GzipBuilder {
     type Output = GzipWithData;
-    
+
     fn with_data<T: Into<Vec<u8>>>(self, data: T) -> Self::Output {
-        GzipWithData {
-            data: data.into(),
-        }
+        GzipWithData { data: data.into() }
     }
-    
+
     fn with_text<T: Into<String>>(self, text: T) -> Self::Output {
         GzipWithData {
             data: text.into().into_bytes(),
@@ -36,7 +37,7 @@ impl DataBuilder for GzipBuilder {
 // With data
 impl LevelBuilder for GzipWithData {
     type Output = GzipWithDataAndLevel;
-    
+
     fn with_level(self, level: u32) -> Self::Output {
         GzipWithDataAndLevel {
             data: self.data,
@@ -58,18 +59,17 @@ impl CompressExecutor for GzipWithData {
         GzipWithDataAndLevel {
             data: self.data,
             level: 9,
-        }.compress()
+        }
+        .compress()
     }
 }
 
 impl DecompressExecutor for GzipWithData {
     fn decompress(self) -> impl AsyncDecompressResult {
         async move {
-            tokio::task::spawn_blocking(move || {
-                crate::compression::gzip::decompress(&self.data)
-            })
-            .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            tokio::task::spawn_blocking(move || crate::compression::gzip::decompress(&self.data))
+                .await
+                .map_err(|e| crate::CryptError::internal(e.to_string()))?
         }
     }
 }

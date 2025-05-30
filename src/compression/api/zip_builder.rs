@@ -1,6 +1,9 @@
 //! Zip compression builder
 
-use super::{DataBuilder, LevelBuilder, CompressExecutor, DecompressExecutor, AsyncCompressResult, AsyncDecompressResult};
+use super::{
+    AsyncCompressResult, AsyncDecompressResult, CompressExecutor, DataBuilder, DecompressExecutor,
+    LevelBuilder,
+};
 
 /// Initial Zip builder
 pub struct ZipBuilder;
@@ -19,13 +22,11 @@ pub struct ZipWithDataAndLevel {
 // Initial builder
 impl DataBuilder for ZipBuilder {
     type Output = ZipWithData;
-    
+
     fn with_data<T: Into<Vec<u8>>>(self, data: T) -> Self::Output {
-        ZipWithData {
-            data: data.into(),
-        }
+        ZipWithData { data: data.into() }
     }
-    
+
     fn with_text<T: Into<String>>(self, text: T) -> Self::Output {
         ZipWithData {
             data: text.into().into_bytes(),
@@ -36,7 +37,7 @@ impl DataBuilder for ZipBuilder {
 // With data
 impl LevelBuilder for ZipWithData {
     type Output = ZipWithDataAndLevel;
-    
+
     fn with_level(self, level: u32) -> Self::Output {
         ZipWithDataAndLevel {
             data: self.data,
@@ -55,11 +56,9 @@ impl ZipWithData {
 impl CompressExecutor for ZipWithData {
     fn compress(self) -> impl AsyncCompressResult {
         async move {
-            tokio::task::spawn_blocking(move || {
-                crate::compression::zip::compress(&self.data)
-            })
-            .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            tokio::task::spawn_blocking(move || crate::compression::zip::compress(&self.data))
+                .await
+                .map_err(|e| crate::CryptError::internal(e.to_string()))?
         }
     }
 }
@@ -67,11 +66,9 @@ impl CompressExecutor for ZipWithData {
 impl DecompressExecutor for ZipWithData {
     fn decompress(self) -> impl AsyncDecompressResult {
         async move {
-            tokio::task::spawn_blocking(move || {
-                crate::compression::zip::decompress(&self.data)
-            })
-            .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            tokio::task::spawn_blocking(move || crate::compression::zip::decompress(&self.data))
+                .await
+                .map_err(|e| crate::CryptError::internal(e.to_string()))?
         }
     }
 }

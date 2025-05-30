@@ -1,6 +1,9 @@
 //! Zstd compression builder
 
-use super::{DataBuilder, LevelBuilder, CompressExecutor, DecompressExecutor, AsyncCompressResult, AsyncDecompressResult};
+use super::{
+    AsyncCompressResult, AsyncDecompressResult, CompressExecutor, DataBuilder, DecompressExecutor,
+    LevelBuilder,
+};
 
 /// Initial Zstd builder
 pub struct ZstdBuilder;
@@ -19,13 +22,11 @@ pub struct ZstdWithDataAndLevel {
 // Initial builder
 impl DataBuilder for ZstdBuilder {
     type Output = ZstdWithData;
-    
+
     fn with_data<T: Into<Vec<u8>>>(self, data: T) -> Self::Output {
-        ZstdWithData {
-            data: data.into(),
-        }
+        ZstdWithData { data: data.into() }
     }
-    
+
     fn with_text<T: Into<String>>(self, text: T) -> Self::Output {
         ZstdWithData {
             data: text.into().into_bytes(),
@@ -36,7 +37,7 @@ impl DataBuilder for ZstdBuilder {
 // With data
 impl LevelBuilder for ZstdWithData {
     type Output = ZstdWithDataAndLevel;
-    
+
     fn with_level(self, level: u32) -> Self::Output {
         ZstdWithDataAndLevel {
             data: self.data,
@@ -62,18 +63,17 @@ impl CompressExecutor for ZstdWithData {
         ZstdWithDataAndLevel {
             data: self.data,
             level: 19,
-        }.compress()
+        }
+        .compress()
     }
 }
 
 impl DecompressExecutor for ZstdWithData {
     fn decompress(self) -> impl AsyncDecompressResult {
         async move {
-            tokio::task::spawn_blocking(move || {
-                crate::compression::zstd::decompress(&self.data)
-            })
-            .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            tokio::task::spawn_blocking(move || crate::compression::zstd::decompress(&self.data))
+                .await
+                .map_err(|e| crate::CryptError::internal(e.to_string()))?
         }
     }
 }

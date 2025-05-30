@@ -1,7 +1,7 @@
 //! Key store builders
 
-use crate::key::{KeyStorage, KeyRetrieval, KeyImport, KeyGeneration, KeyEnumeration};
-use crate::key::stores::{FileKeyStore, KeychainStore, AwsKmsDataKeyStore, AwsSecretsManagerStore};
+use crate::key::KeyStorage;
+use crate::key::store::{FileKeyStore, KeychainStore};
 
 /// Builder for file-based key store
 pub struct FileKeyStoreBuilder {

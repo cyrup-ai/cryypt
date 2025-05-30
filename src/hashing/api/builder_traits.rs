@@ -10,10 +10,10 @@ impl<T> AsyncHashResult for T where T: Future<Output = Result<Vec<u8>>> + Send {
 /// Trait for setting data to hash
 pub trait DataBuilder {
     type Output;
-    
+
     /// Set the data to hash (as bytes)
     fn with_data<T: Into<Vec<u8>>>(self, data: T) -> Self::Output;
-    
+
     /// Set the data to hash (as text)
     fn with_text<T: Into<String>>(self, text: T) -> Self::Output;
 }
@@ -21,7 +21,7 @@ pub trait DataBuilder {
 /// Trait for setting salt
 pub trait SaltBuilder {
     type Output;
-    
+
     /// Set the salt for hashing
     fn with_salt<T: Into<Vec<u8>>>(self, salt: T) -> Self::Output;
 }
@@ -29,7 +29,7 @@ pub trait SaltBuilder {
 /// Trait for setting number of passes
 pub trait PassesBuilder {
     type Output;
-    
+
     /// Set the number of passes for iterative hashing
     fn with_passes(self, passes: u32) -> Self::Output;
 }

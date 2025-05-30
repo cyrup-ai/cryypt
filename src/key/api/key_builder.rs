@@ -1,7 +1,7 @@
 //! Minimal key builder implementation
 
 use crate::cipher::api::builder_traits::KeyProviderBuilder;
-use crate::key::{KeyResult, KeyStorage, KeyRetrieval, KeyImport, SimpleKeyId};
+use crate::key::{KeyImport, KeyResult, KeyRetrieval, KeyStorage, SimpleKeyId};
 
 /// 256-bit key builder
 pub struct Key256Builder;
@@ -31,7 +31,10 @@ impl Key256Builder {
 }
 
 impl<S: KeyStorage> Key256BuilderWithStore<S> {
-    pub fn with_namespace(self, namespace: impl Into<String>) -> Key256BuilderWithStoreAndNamespace<S> {
+    pub fn with_namespace(
+        self,
+        namespace: impl Into<String>,
+    ) -> Key256BuilderWithStoreAndNamespace<S> {
         Key256BuilderWithStoreAndNamespace {
             store: self.store,
             namespace: namespace.into(),
@@ -52,35 +55,41 @@ impl<S: KeyStorage> Key256BuilderWithStoreAndNamespace<S> {
 impl KeyProviderBuilder for Key256Builder {
     fn resolve(&self) -> KeyResult {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
                 use rand::RngCore;
                 let mut key = vec![0u8; 32];
                 rand::rng().fill_bytes(&mut key);
                 Ok(key)
-            }).await;
-            
-            let _ = tx.send(result.unwrap_or_else(|e| 
-                Err(crate::CryptError::internal(format!("Key generation task failed: {}", e)))
-            ));
+            })
+            .await;
+
+            let _ = tx.send(result.unwrap_or_else(|e| {
+                Err(crate::CryptError::internal(format!(
+                    "Key generation task failed: {}",
+                    e
+                )))
+            }));
         });
-        
+
         KeyResult::new(rx)
     }
 }
 
-impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> KeyProviderBuilder for Key256BuilderWithStoreNamespaceAndVersion<S> {
+impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> KeyProviderBuilder
+    for Key256BuilderWithStoreNamespaceAndVersion<S>
+{
     fn resolve(&self) -> KeyResult {
         let store = self.store.clone();
         let namespace = self.namespace.clone();
         let version = self.version;
-        
+
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         // Key generation/retrieval from store logic here
         let key_id = SimpleKeyId::new(format!("{}:v{}", namespace, version));
-        
+
         tokio::spawn(async move {
             // Try to retrieve existing key first
             match store.retrieve(&key_id).await {
@@ -94,13 +103,17 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> K
                         let mut key = vec![0u8; 32];
                         rand::rng().fill_bytes(&mut key);
                         Ok(key)
-                    }).await;
-                    
+                    })
+                    .await;
+
                     match result {
                         Ok(Ok(new_key)) => {
                             // Store the key
                             if let Err(e) = store.store(&key_id, &new_key).await {
-                                let _ = tx.send(Err(crate::CryptError::internal(format!("Failed to store key: {}", e))));
+                                let _ = tx.send(Err(crate::CryptError::internal(format!(
+                                    "Failed to store key: {}",
+                                    e
+                                ))));
                             } else {
                                 let _ = tx.send(Ok(new_key));
                             }
@@ -109,13 +122,16 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> K
                             let _ = tx.send(Err(e));
                         }
                         Err(e) => {
-                            let _ = tx.send(Err(crate::CryptError::internal(format!("Key generation task failed: {}", e))));
+                            let _ = tx.send(Err(crate::CryptError::internal(format!(
+                                "Key generation task failed: {}",
+                                e
+                            ))));
                         }
                     }
                 }
             }
         });
-        
+
         KeyResult::new(rx)
     }
 }

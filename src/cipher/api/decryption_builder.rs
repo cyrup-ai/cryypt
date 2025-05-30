@@ -1,10 +1,7 @@
 //! Simplified decryption builder for raw bytes
 
-use crate::{
-    CryptError,
-    cipher::encryption_result::DecryptionResultImpl,
-};
-use super::{HasData, AsyncDecryptionResult};
+use super::{AsyncDecryptionResult, HasData};
+use crate::{cipher::encryption_result::DecryptionResultImpl, CryptError};
 use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
@@ -23,36 +20,41 @@ impl DecryptionBuilder<(), HasData<Vec<u8>>> {
         let encrypted = self.data.0;
         let key = key.to_vec();
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || {
-                decrypt_aes_gcm(&encrypted, &key)
-            }).await;
-            
-            let _ = tx.send(result.unwrap_or_else(|e| 
-                Err(CryptError::internal(format!("Decryption task panicked: {}", e)))
-            ));
+            let result =
+                tokio::task::spawn_blocking(move || decrypt_aes_gcm(&encrypted, &key)).await;
+
+            let _ = tx.send(result.unwrap_or_else(|e| {
+                Err(CryptError::internal(format!(
+                    "Decryption task panicked: {}",
+                    e
+                )))
+            }));
         });
-        
+
         DecryptionResultImpl::new(rx)
     }
-    
+
     /// Decrypt with ChaCha20-Poly1305 using provided key
     pub fn with_chacha_key(self, key: &[u8]) -> impl AsyncDecryptionResult {
         let encrypted = self.data.0;
         let key = key.to_vec();
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || {
-                decrypt_chacha20_poly1305(&encrypted, &key)
-            }).await;
-            
-            let _ = tx.send(result.unwrap_or_else(|e| 
-                Err(CryptError::internal(format!("Decryption task panicked: {}", e)))
-            ));
+            let result =
+                tokio::task::spawn_blocking(move || decrypt_chacha20_poly1305(&encrypted, &key))
+                    .await;
+
+            let _ = tx.send(result.unwrap_or_else(|e| {
+                Err(CryptError::internal(format!(
+                    "Decryption task panicked: {}",
+                    e
+                )))
+            }));
         });
-        
+
         DecryptionResultImpl::new(rx)
     }
 }
@@ -60,30 +62,36 @@ impl DecryptionBuilder<(), HasData<Vec<u8>>> {
 // Helper functions
 fn decrypt_aes_gcm(encrypted: &[u8], key: &[u8]) -> crate::Result<Vec<u8>> {
     if encrypted.len() < 12 {
-        return Err(CryptError::DecryptionFailed("Invalid ciphertext length".into()));
+        return Err(CryptError::DecryptionFailed(
+            "Invalid ciphertext length".into(),
+        ));
     }
-    
+
     let (nonce_bytes, ciphertext_with_tag) = encrypted.split_at(12);
     let nonce = Nonce::from_slice(nonce_bytes);
-    
+
     let cipher = Aes256Gcm::new_from_slice(key)
         .map_err(|e| CryptError::InvalidKey(format!("Invalid AES key: {}", e)))?;
-    
-    cipher.decrypt(nonce, ciphertext_with_tag)
+
+    cipher
+        .decrypt(nonce, ciphertext_with_tag)
         .map_err(|e| CryptError::DecryptionFailed(format!("AES decryption failed: {}", e)))
 }
 
 fn decrypt_chacha20_poly1305(encrypted: &[u8], key: &[u8]) -> crate::Result<Vec<u8>> {
     if encrypted.len() < 12 {
-        return Err(CryptError::DecryptionFailed("Invalid ciphertext length".into()));
+        return Err(CryptError::DecryptionFailed(
+            "Invalid ciphertext length".into(),
+        ));
     }
-    
+
     let (nonce_bytes, ciphertext_with_tag) = encrypted.split_at(12);
     let nonce = Nonce::from_slice(nonce_bytes);
-    
+
     let cipher = ChaCha20Poly1305::new_from_slice(key)
         .map_err(|e| CryptError::InvalidKey(format!("Invalid ChaCha20 key: {}", e)))?;
-    
-    cipher.decrypt(nonce, ciphertext_with_tag)
+
+    cipher
+        .decrypt(nonce, ciphertext_with_tag)
         .map_err(|e| CryptError::DecryptionFailed(format!("ChaCha20 decryption failed: {}", e)))
 }

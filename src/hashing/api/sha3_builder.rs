@@ -1,6 +1,6 @@
 //! SHA3-256 hash builder
 
-use super::{DataBuilder, SaltBuilder, PassesBuilder, HashExecutor, AsyncHashResult};
+use super::{AsyncHashResult, DataBuilder, HashExecutor, PassesBuilder, SaltBuilder};
 
 /// Initial SHA3 builder
 pub struct Sha3Builder;
@@ -32,13 +32,11 @@ pub struct Sha3Complete {
 // Initial builder
 impl DataBuilder for Sha3Builder {
     type Output = Sha3WithData;
-    
+
     fn with_data<T: Into<Vec<u8>>>(self, data: T) -> Self::Output {
-        Sha3WithData {
-            data: data.into(),
-        }
+        Sha3WithData { data: data.into() }
     }
-    
+
     fn with_text<T: Into<String>>(self, text: T) -> Self::Output {
         Sha3WithData {
             data: text.into().into_bytes(),
@@ -49,7 +47,7 @@ impl DataBuilder for Sha3Builder {
 // With data
 impl SaltBuilder for Sha3WithData {
     type Output = Sha3WithDataAndSalt;
-    
+
     fn with_salt<T: Into<Vec<u8>>>(self, salt: T) -> Self::Output {
         Sha3WithDataAndSalt {
             data: self.data,
@@ -60,7 +58,7 @@ impl SaltBuilder for Sha3WithData {
 
 impl PassesBuilder for Sha3WithData {
     type Output = Sha3WithDataAndPasses;
-    
+
     fn with_passes(self, passes: u32) -> Self::Output {
         Sha3WithDataAndPasses {
             data: self.data,
@@ -72,8 +70,8 @@ impl PassesBuilder for Sha3WithData {
 impl HashExecutor for Sha3WithData {
     fn hash(self) -> impl AsyncHashResult {
         async move {
-            use sha3::{Sha3_256, Digest};
-            
+            use sha3::{Digest, Sha3_256};
+
             tokio::task::spawn_blocking(move || {
                 let mut hasher = Sha3_256::new();
                 hasher.update(&self.data);
@@ -88,7 +86,7 @@ impl HashExecutor for Sha3WithData {
 // With data and salt
 impl PassesBuilder for Sha3WithDataAndSalt {
     type Output = Sha3Complete;
-    
+
     fn with_passes(self, passes: u32) -> Self::Output {
         Sha3Complete {
             data: self.data,
@@ -101,12 +99,12 @@ impl PassesBuilder for Sha3WithDataAndSalt {
 impl HashExecutor for Sha3WithDataAndSalt {
     fn hash(self) -> impl AsyncHashResult {
         async move {
-            use sha3::{Sha3_256, Digest};
-            
+            use sha3::{Digest, Sha3_256};
+
             tokio::task::spawn_blocking(move || {
                 let mut input = self.data;
                 input.extend_from_slice(&self.salt);
-                
+
                 let mut hasher = Sha3_256::new();
                 hasher.update(&input);
                 Ok(hasher.finalize().to_vec())
@@ -120,7 +118,7 @@ impl HashExecutor for Sha3WithDataAndSalt {
 // With data and passes
 impl SaltBuilder for Sha3WithDataAndPasses {
     type Output = Sha3Complete;
-    
+
     fn with_salt<T: Into<Vec<u8>>>(self, salt: T) -> Self::Output {
         Sha3Complete {
             data: self.data,
@@ -133,8 +131,8 @@ impl SaltBuilder for Sha3WithDataAndPasses {
 impl HashExecutor for Sha3WithDataAndPasses {
     fn hash(self) -> impl AsyncHashResult {
         async move {
-            use sha3::{Sha3_256, Digest};
-            
+            use sha3::{Digest, Sha3_256};
+
             tokio::task::spawn_blocking(move || {
                 let mut result = self.data;
                 for _ in 0..self.passes {
@@ -154,12 +152,12 @@ impl HashExecutor for Sha3WithDataAndPasses {
 impl HashExecutor for Sha3Complete {
     fn hash(self) -> impl AsyncHashResult {
         async move {
-            use sha3::{Sha3_256, Digest};
-            
+            use sha3::{Digest, Sha3_256};
+
             tokio::task::spawn_blocking(move || {
                 let mut input = self.data;
                 input.extend_from_slice(&self.salt);
-                
+
                 let mut result = input;
                 for _ in 0..self.passes {
                     let mut hasher = Sha3_256::new();

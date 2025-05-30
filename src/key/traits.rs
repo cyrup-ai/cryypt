@@ -1,6 +1,6 @@
 //! Traits for key storage backends
 
-use crate::{Result, KeyId};
+use crate::{KeyId, Result};
 use std::future::Future;
 
 /// Async result for key existence check
@@ -31,7 +31,7 @@ impl<T> AsyncListResult for T where T: Future<Output = Result<Vec<String>>> + Se
 pub trait KeyStorage: Send + Sync {
     /// Check if a key exists
     fn exists(&self, key_id: &dyn KeyId) -> impl AsyncExistsResult;
-    
+
     /// Delete a key by ID
     fn delete(&self, key_id: &dyn KeyId) -> impl AsyncDeleteResult;
 }
@@ -61,15 +61,25 @@ pub trait KeyEnumeration: KeyStorage {
 }
 
 /// Full-featured key store (convenience trait)
-pub trait FullKeyStore: KeyStorage + KeyRetrieval + KeyImport + KeyGeneration + KeyEnumeration {}
+pub trait FullKeyStore:
+    KeyStorage + KeyRetrieval + KeyImport + KeyGeneration + KeyEnumeration
+{
+}
 
 /// Automatically implement FullKeyStore for types that implement all components
-impl<T> FullKeyStore for T where T: KeyStorage + KeyRetrieval + KeyImport + KeyGeneration + KeyEnumeration {}
+impl<T> FullKeyStore for T where
+    T: KeyStorage + KeyRetrieval + KeyImport + KeyGeneration + KeyEnumeration
+{
+}
 
 /// Legacy trait for backwards compatibility - DO NOT USE IN NEW CODE
 #[deprecated(note = "Use capability-specific traits instead")]
 pub trait KeyStore: KeyStorage {
-    fn store(&self, key_id: &dyn KeyId, key_material: &[u8]) -> impl Future<Output = Result<()>> + Send;
+    fn store(
+        &self,
+        key_id: &dyn KeyId,
+        key_material: &[u8],
+    ) -> impl Future<Output = Result<()>> + Send;
     fn retrieve(&self, key_id: &dyn KeyId) -> impl Future<Output = Result<Vec<u8>>> + Send;
     fn delete(&self, key_id: &dyn KeyId) -> impl Future<Output = Result<()>> + Send;
     fn exists(&self, key_id: &dyn KeyId) -> impl Future<Output = Result<bool>> + Send;

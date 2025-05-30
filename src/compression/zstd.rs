@@ -1,6 +1,6 @@
 //! Zstd compression implementation
 
-use crate::{Result, CryptError};
+use crate::{CryptError, Result};
 
 pub fn compress(data: &[u8], level: i32) -> Result<Vec<u8>> {
     zstd::encode_all(data, level)

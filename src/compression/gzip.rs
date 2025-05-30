@@ -1,9 +1,9 @@
 //! Gzip compression implementation
 
-use flate2::Compression;
+use crate::{CryptError, Result};
 use flate2::read::{GzDecoder, GzEncoder};
+use flate2::Compression;
 use std::io::Read;
-use crate::{Result, CryptError};
 
 pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {
     let compression = match level {
@@ -12,21 +12,23 @@ pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {
         7..=9 => Compression::best(),
         _ => Compression::best(),
     };
-    
+
     let mut encoder = GzEncoder::new(data, compression);
     let mut compressed = Vec::new();
-    encoder.read_to_end(&mut compressed)
+    encoder
+        .read_to_end(&mut compressed)
         .map_err(|e| CryptError::compression(format!("Gzip compression failed: {}", e)))?;
-    
+
     Ok(compressed)
 }
 
 pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
     let mut decoder = GzDecoder::new(data);
     let mut decompressed = Vec::new();
-    decoder.read_to_end(&mut decompressed)
+    decoder
+        .read_to_end(&mut decompressed)
         .map_err(|e| CryptError::decompression(format!("Gzip decompression failed: {}", e)))?;
-    
+
     Ok(decompressed)
 }
 

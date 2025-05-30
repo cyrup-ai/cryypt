@@ -13,52 +13,89 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust
-//! use cyrup_crypt::{Cipher, KeyId, CipherAlgorithm, factory::CipherFactory};
+//! ```rust,no_run
+//! use cryypt::prelude::*;
 //!
-//! // Create a cipher
-//! let factory = CipherFactory::new();
-//! let cipher = factory.create_cipher(CipherAlgorithm::Aes256Gcm)?;
-//!
-//! // Create a key
-//! let key_id = KeyId::new("my-app", 1);
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let master_key = [1u8; 32]; // In production, generate this securely
 //!
 //! // Encrypt data
-//! let plaintext = b"Hello, World!";
-//! let encrypted = cipher.encrypt(plaintext, Some(&key_id))?;
+//! let ciphertext = Cipher::aes()
+//!     .with_key(
+//!         Key::size(256u32.bits())
+//!             .with_store(FileKeyStore::at("./keys").with_master_key(master_key))
+//!             .with_namespace("my-app")
+//!             .version(1),
+//!     )
+//!     .with_data(b"Hello, World!")
+//!     .encrypt()
+//!     .await?;
 //!
 //! // Decrypt data
-//! let decrypted = cipher.decrypt(&encrypted, Some(&key_id))?;
-//! assert_eq!(plaintext, &decrypted[..]);
+//! let decrypted = Cipher::aes()
+//!     .with_key(
+//!         Key::size(256u32.bits())
+//!             .with_store(FileKeyStore::at("./keys").with_master_key(master_key))
+//!             .with_namespace("my-app")
+//!             .version(1),
+//!     )
+//!     .with_ciphertext(ciphertext)
+//!     .decrypt()
+//!     .await?;
+//!
+//! assert_eq!(decrypted, b"Hello, World!");
+//! # Ok(())
+//! # }
 //! ```
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_docs)]
 #![forbid(unsafe_code)]
 
+pub mod bits_macro;
 pub mod cipher;
 pub mod compression;
 pub mod error;
 pub mod hashing;
+pub mod jwt;
 pub mod key;
-pub mod bits_macro;
+pub mod transport;
 
 // Re-export core types
-pub use cipher::{CipherAlgorithm, EncryptionResultImpl, DecryptionResultImpl};
+pub use cipher::{
+    encryption_result::EncodableResult, CipherAlgorithm, DecryptionResultImpl, EncryptionResultImpl,
+};
 pub use error::{CryptError, Result};
 pub use key::{KeyId, SimpleKeyId};
 
 // Re-export the fluent API
+pub use bits_macro::{BitSize, Bits};
 pub use cipher::api::Cipher;
 pub use key::api::Key;
-pub use bits_macro::{Bits, BitSize};
+
+pub use jwt::{
+    Claims, ClaimsBuilder, Es256Key, Generator, Header, Hs256Key,
+    JwtError, JwtResult, Revocation, Rotator, Signer, ValidationOptions,
+    TokenGenerationFuture, TokenVerificationFuture
+};
 
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        Cipher, Key, CryptError, Bits, BitSize,
+        cipher::api::builder_traits::{
+            CiphertextBuilder, DataBuilder as CipherDataBuilder, DecryptBuilder, DecryptSecondPass,
+            EncryptBuilder, EncryptSecondPass, KeyBuilder, WithCompression,
+        },
+        compression::{
+            api::{CompressExecutor, DataBuilder as CompressDataBuilder, DecompressExecutor},
+            Compress,
+        },
+        hashing::{
+            api::{DataBuilder as HashDataBuilder, HashExecutor, PassesBuilder, SaltBuilder},
+            Hash,
+        },
         key::store::{FileKeyStore, KeychainStore},
-        hashing::Hash,
-        compression::Compress,
+        BitSize, Bits, Cipher, CryptError, EncodableResult, Key,
     };
 }

@@ -6,17 +6,17 @@ use std::fmt;
 pub trait KeyId: Send + Sync + fmt::Debug + fmt::Display {
     /// Get the unique identifier for this key
     fn id(&self) -> &str;
-    
+
     /// Get the version of this key
     fn version(&self) -> u32 {
         1
     }
-    
+
     /// Get the optional namespace for this key
     fn namespace(&self) -> Option<&str> {
         None
     }
-    
+
     /// Get a full identifier string including namespace and version
     fn full_id(&self) -> String {
         match self.namespace() {
@@ -47,4 +47,3 @@ impl fmt::Display for SimpleKeyId {
         write!(f, "{}", self.0)
     }
 }
-

@@ -20,13 +20,17 @@ impl BitSize {
 
 impl Bits for i32 {
     fn bits(self) -> BitSize {
-        BitSize { bits: self as usize }
+        BitSize {
+            bits: self as usize,
+        }
     }
 }
 
 impl Bits for u32 {
     fn bits(self) -> BitSize {
-        BitSize { bits: self as usize }
+        BitSize {
+            bits: self as usize,
+        }
     }
 }
 
@@ -39,13 +43,17 @@ impl Bits for usize {
 // Support for integer literals
 impl Bits for i64 {
     fn bits(self) -> BitSize {
-        BitSize { bits: self as usize }
+        BitSize {
+            bits: self as usize,
+        }
     }
 }
 
 impl Bits for u64 {
     fn bits(self) -> BitSize {
-        BitSize { bits: self as usize }
+        BitSize {
+            bits: self as usize,
+        }
     }
 }
 

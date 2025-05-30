@@ -11,15 +11,18 @@ impl Key {
     pub fn size(size: BitSize) -> Key256Builder {
         match size.bits {
             256 => Key256Builder,
-            _ => panic!("Unsupported key size: {} bits. Only 256-bit keys are currently supported.", size.bits),
+            _ => panic!(
+                "Unsupported key size: {} bits. Only 256-bit keys are currently supported.",
+                size.bits
+            ),
         }
     }
-    
+
     /// Create a 256-bit (32-byte) key suitable for AES-256-GCM, ChaCha20-Poly1305, etc.
     pub fn bits_256() -> Key256Builder {
         Key256Builder
     }
-    
+
     /// Use an existing key from raw bytes
     pub fn from_bytes(key: Vec<u8>) -> RawKeyBuilder {
         RawKeyBuilder::from_bytes(key)

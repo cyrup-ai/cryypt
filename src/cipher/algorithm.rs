@@ -8,34 +8,34 @@ use std::str::FromStr;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CipherAlgorithm {
     /// AES-256-GCM (Advanced Encryption Standard with Galois/Counter Mode)
-    /// 
+    ///
     /// - 256-bit key size
     /// - 96-bit nonce
     /// - 128-bit authentication tag
     /// - Hardware acceleration on modern CPUs
     #[serde(rename = "aes256gcm")]
     Aes256Gcm,
-    
+
     /// ChaCha20-Poly1305 (ChaCha20 stream cipher with Poly1305 MAC)
-    /// 
+    ///
     /// - 256-bit key size
     /// - 96-bit nonce
     /// - 128-bit authentication tag
     /// - Constant-time implementation
     #[serde(rename = "chacha20poly1305")]
     ChaCha20Poly1305,
-    
+
     /// Cascade cipher construction
-    /// 
+    ///
     /// Applies multiple ciphers in sequence for defense-in-depth:
     /// 1. First layer: AES-256-GCM encryption
     /// 2. Second layer: ChaCha20-Poly1305 encryption
     /// 3. HMAC-SHA3-512 for additional integrity verification
     #[serde(rename = "cascade")]
     Cascade,
-    
+
     /// Custom cipher chain
-    /// 
+    ///
     /// Used when ciphers are chained with the builder API
     #[serde(rename = "custom")]
     Custom(String),
@@ -51,58 +51,54 @@ impl CipherAlgorithm {
             Self::Custom(chain) => chain.clone(),
         }
     }
-    
+
     /// Get the key size in bytes required for this algorithm
     pub fn key_size(&self) -> usize {
         match self {
-            Self::Aes256Gcm => 32,           // 256 bits
-            Self::ChaCha20Poly1305 => 32,    // 256 bits
-            Self::Cascade => 64,             // 2x 256 bits
-            Self::Custom(_) => 32,           // Varies, default to 32
+            Self::Aes256Gcm => 32,        // 256 bits
+            Self::ChaCha20Poly1305 => 32, // 256 bits
+            Self::Cascade => 64,          // 2x 256 bits
+            Self::Custom(_) => 32,        // Varies, default to 32
         }
     }
-    
+
     /// Get the nonce size in bytes required for this algorithm
     pub fn nonce_size(&self) -> usize {
         match self {
-            Self::Aes256Gcm => 12,           // 96 bits
-            Self::ChaCha20Poly1305 => 12,    // 96 bits
-            Self::Cascade => 24,             // 2x 96 bits
-            Self::Custom(_) => 12,           // Varies, default to 12
+            Self::Aes256Gcm => 12,        // 96 bits
+            Self::ChaCha20Poly1305 => 12, // 96 bits
+            Self::Cascade => 24,          // 2x 96 bits
+            Self::Custom(_) => 12,        // Varies, default to 12
         }
     }
-    
+
     /// Get the authentication tag size in bytes
     pub fn tag_size(&self) -> usize {
         match self {
-            Self::Aes256Gcm => 16,           // 128 bits
-            Self::ChaCha20Poly1305 => 16,    // 128 bits
-            Self::Cascade => 16,             // 128 bits (from final layer)
-            Self::Custom(_) => 16,           // Default to 16
+            Self::Aes256Gcm => 16,        // 128 bits
+            Self::ChaCha20Poly1305 => 16, // 128 bits
+            Self::Cascade => 16,          // 128 bits (from final layer)
+            Self::Custom(_) => 16,        // Default to 16
         }
     }
-    
+
     /// Check if this algorithm is available
     pub fn is_available(&self) -> bool {
         // All algorithms are available now that features are removed
         true
     }
-    
+
     /// Get all available algorithms
     pub fn available_algorithms() -> Vec<Self> {
-        vec![
-            Self::Aes256Gcm,
-            Self::ChaCha20Poly1305,
-            Self::Cascade,
-        ]
+        vec![Self::Aes256Gcm, Self::ChaCha20Poly1305, Self::Cascade]
     }
-    
+
     /// Get the recommended algorithm
     pub fn recommended() -> Option<Self> {
         // Prefer cascade for defense in depth
         Some(Self::Cascade)
     }
-    
+
     /// Get all standard algorithm variants (excludes Custom)
     pub fn all_standard() -> &'static [Self] {
         &[Self::Aes256Gcm, Self::ChaCha20Poly1305, Self::Cascade]
@@ -117,11 +113,13 @@ impl fmt::Display for CipherAlgorithm {
 
 impl FromStr for CipherAlgorithm {
     type Err = crate::CryptError;
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "aes" | "aes256" | "aes256gcm" | "aes-256-gcm" => Ok(Self::Aes256Gcm),
-            "chacha" | "chacha20" | "chacha20poly1305" | "chacha20-poly1305" => Ok(Self::ChaCha20Poly1305),
+            "chacha" | "chacha20" | "chacha20poly1305" | "chacha20-poly1305" => {
+                Ok(Self::ChaCha20Poly1305)
+            }
             "cascade" | "dual" | "dual-layer" => Ok(Self::Cascade),
             _ => Err(crate::CryptError::UnsupportedAlgorithm(s.to_string())),
         }
