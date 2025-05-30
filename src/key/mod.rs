@@ -1,6 +1,6 @@
 pub mod api;
 pub mod traits;
-pub mod stores;
+pub mod store;
 pub mod key_id;
 pub mod key_result;
 

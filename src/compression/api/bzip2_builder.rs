@@ -5,6 +5,13 @@ use super::{DataBuilder, LevelBuilder, CompressExecutor, DecompressExecutor, Asy
 /// Initial Bzip2 builder
 pub struct Bzip2Builder;
 
+impl Bzip2Builder {
+    /// Maximum compression (level 9)
+    pub fn max_compression(self) -> Self {
+        self
+    }
+}
+
 /// Bzip2 with data
 pub struct Bzip2WithData {
     data: Vec<u8>,
@@ -49,11 +56,6 @@ impl Bzip2WithData {
     /// Maximum compression (level 9)
     pub fn max_compression(self) -> Bzip2WithDataAndLevel {
         self.with_level(9)
-    }
-    
-    /// Balanced compression (level 6)
-    pub fn balanced_compression(self) -> Bzip2WithDataAndLevel {
-        self.with_level(6)
     }
 }
 

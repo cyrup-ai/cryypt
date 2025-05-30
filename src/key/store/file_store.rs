@@ -138,14 +138,14 @@ impl KeyRetrieval for FileKeyStore {
 impl KeyGeneration for FileKeyStore {
     fn generate(&self, key_id: &dyn KeyId, key_size_bytes: usize) -> impl AsyncGenerateResult {
         let path = self.key_path(key_id);
-        let master_key = self.master_key.clone();
+        let _master_key = self.master_key.clone();
         
         async move {
             use rand::RngCore;
             
             // Generate random key material
             let mut key_material = vec![0u8; key_size_bytes];
-            rand::thread_rng().fill_bytes(&mut key_material);
+            rand::rng().fill_bytes(&mut key_material);
             
             // Encrypt and store the key
             // TODO: Implement encryption with master key

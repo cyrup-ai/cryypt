@@ -5,8 +5,8 @@ use crate::{
     cipher::encryption_result::EncryptionResultImpl,
 };
 use super::{
-    AsyncEncryptionResult,
-    builder_traits::{KeyBuilder, DataBuilder, EncryptBuilder, KeyProviderBuilder},
+    AsyncEncryptionResult, AsyncDecryptionResult,
+    builder_traits::{KeyBuilder, DataBuilder, EncryptBuilder, CiphertextBuilder, DecryptBuilder, KeyProviderBuilder},
 };
 use tokio::sync::oneshot;
 use chacha20poly1305::{
@@ -28,6 +28,12 @@ pub struct ChaChaWithKey {
 pub struct ChaChaWithKeyAndData {
     key_builder: Box<dyn KeyProviderBuilder>,
     data: Vec<u8>,
+}
+
+/// ChaCha builder with key and ciphertext - ready to decrypt
+pub struct ChaChaWithKeyAndCiphertext {
+    key_builder: Box<dyn KeyProviderBuilder>,
+    ciphertext: Vec<u8>,
 }
 
 impl ChaChaBuilder {
@@ -81,7 +87,7 @@ impl EncryptBuilder for ChaChaWithKeyAndData {
                 let nonce_array = GenericArray::from_slice(&nonce);
                 
                 // Use resolved key
-                let mut key_bytes = Zeroizing::new(key_vec);
+                let key_bytes = Zeroizing::new(key_vec);
                 
                 // Create cipher
                 let cipher = ChaCha20Poly1305::new_from_slice(&key_bytes)
@@ -106,5 +112,66 @@ impl EncryptBuilder for ChaChaWithKeyAndData {
         });
         
         EncryptionResultImpl::new(rx)
+    }
+}
+
+impl CiphertextBuilder for ChaChaWithKey {
+    type Output = ChaChaWithKeyAndCiphertext;
+    
+    fn with_ciphertext<T: Into<Vec<u8>>>(self, ciphertext: T) -> Self::Output {
+        ChaChaWithKeyAndCiphertext {
+            key_builder: self.key_builder,
+            ciphertext: ciphertext.into(),
+        }
+    }
+}
+
+impl DecryptBuilder for ChaChaWithKeyAndCiphertext {
+    fn decrypt(self) -> impl AsyncDecryptionResult {
+        let (tx, rx) = oneshot::channel();
+        
+        tokio::spawn(async move {
+            // First resolve the key
+            let key_result = self.key_builder.resolve().await;
+            let key_vec = match key_result {
+                Ok(k) => k,
+                Err(e) => {
+                    let _ = tx.send(Err(e));
+                    return;
+                }
+            };
+            
+            let result = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
+                // Extract nonce (first 12 bytes) and ciphertext
+                if self.ciphertext.len() < 12 {
+                    return Err(CryptError::DecryptionFailed("Ciphertext too short".into()));
+                }
+                
+                let nonce = &self.ciphertext[..12];
+                let ciphertext = &self.ciphertext[12..];
+                let nonce_array = GenericArray::from_slice(nonce);
+                
+                // Use resolved key
+                let key_bytes = Zeroizing::new(key_vec);
+                
+                // Create cipher
+                let cipher = ChaCha20Poly1305::new_from_slice(&key_bytes)
+                    .map_err(|e| CryptError::InvalidKey(format!("Invalid ChaCha key: {}", e)))?;
+                
+                // Decrypt
+                let plaintext = cipher
+                    .decrypt(nonce_array, ciphertext)
+                    .map_err(|_| CryptError::DecryptionFailed("ChaCha20-Poly1305 decryption failed".into()))?;
+                
+                Ok(plaintext)
+            }).await;
+            
+            let _ = tx.send(match result {
+                Ok(plaintext_result) => plaintext_result,
+                Err(e) => Err(CryptError::internal(format!("Decryption task failed: {}", e))),
+            });
+        });
+        
+        crate::cipher::encryption_result::DecryptionResultImpl::new(rx)
     }
 }

@@ -36,6 +36,19 @@ impl Bits for usize {
     }
 }
 
+// Support for integer literals
+impl Bits for i64 {
+    fn bits(self) -> BitSize {
+        BitSize { bits: self as usize }
+    }
+}
+
+impl Bits for u64 {
+    fn bits(self) -> BitSize {
+        BitSize { bits: self as usize }
+    }
+}
+
 // Convenience constants
 impl BitSize {
     pub const BITS_128: BitSize = BitSize { bits: 128 };

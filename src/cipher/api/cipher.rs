@@ -24,7 +24,7 @@ impl Cipher {
     /// Decrypt data
     pub fn decrypt(encrypted: Vec<u8>) -> DecryptionBuilder<(), HasData<Vec<u8>>> {
         DecryptionBuilder {
-            cipher: (),
+            _cipher: (),
             data: HasData(encrypted),
         }
     }

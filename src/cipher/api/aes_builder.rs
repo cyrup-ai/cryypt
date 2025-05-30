@@ -87,7 +87,7 @@ impl EncryptBuilder for AesWithKeyAndData {
                 let nonce_array = GenericArray::from_slice(&nonce);
                 
                 // Use resolved key
-                let mut key_bytes = Zeroizing::new(key_vec);
+                let key_bytes = Zeroizing::new(key_vec);
                 
                 // Create cipher
                 let cipher = Aes256Gcm::new_from_slice(&key_bytes)

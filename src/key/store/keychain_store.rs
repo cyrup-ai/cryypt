@@ -2,11 +2,11 @@
 
 use crate::key::{KeyStorage, KeyRetrieval, KeyImport, KeyEnumeration, KeyId, 
                 AsyncStoreResult, AsyncRetrieveResult, AsyncExistsResult, AsyncDeleteResult, AsyncListResult};
-use crate::{Result, CryptError};
-use std::future::Future;
+use crate::CryptError;
 use base64::{engine::general_purpose::STANDARD, Engine};
 
 /// OS Keychain store
+#[derive(Clone)]
 pub struct KeychainStore {
     service_name: String,
 }

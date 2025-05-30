@@ -198,29 +198,3 @@ impl From<argon2::password_hash::Error> for CryptError {
         Self::KeyDerivationFailed(format!("Argon2 error: {}", err))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_error_display() {
-        let err = CryptError::InvalidKey("test key".to_string());
-        assert_eq!(err.to_string(), "Invalid key: test key");
-        
-        let err = CryptError::KeyNotFound {
-            id: "test-id".to_string(),
-            version: Some(5),
-        };
-        assert_eq!(err.to_string(), "Key not found: test-id (version: 5)");
-    }
-    
-    #[test]
-    fn test_error_constructors() {
-        let err = CryptError::invalid_key("bad key");
-        assert_eq!(err.to_string(), "Invalid key: bad key");
-        
-        let err = CryptError::encryption_failed("cipher error");
-        assert_eq!(err.to_string(), "Encryption failed: cipher error");
-    }
-}

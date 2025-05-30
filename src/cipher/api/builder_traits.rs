@@ -37,3 +37,21 @@ pub trait EncryptBuilder {
 pub trait DecryptBuilder {
     fn decrypt(self) -> impl AsyncDecryptionResult;
 }
+
+/// Builder that can chain a second encryption pass
+pub trait SecondPassBuilder {
+    type Output;
+    fn second_pass<C>(self, second_cipher: C) -> Self::Output;
+}
+
+/// Builder that can chain multiple data chunks
+pub trait ChainBuilder {
+    type Output;
+    fn chain<T: Into<Vec<u8>>>(self, data: T) -> Self::Output;
+}
+
+/// Builder that can add compression
+pub trait CompressionBuilder {
+    type Output;
+    fn with_compression<C>(self, compression: C) -> Self::Output;
+}

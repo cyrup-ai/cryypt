@@ -1,7 +1,13 @@
 //! Integration tests for all README examples
 //! These tests verify that every example in README.md actually compiles and works
 
-use cyrup_crypt::{Cipher, Key, FileKeyStore, KeychainStore, hashing::Hash, compression::Compress, Bits};
+use cryypt::prelude::*;
+
+// Import traits needed for builder methods
+use cryypt::cipher::api::builder_traits::{KeyBuilder, DataBuilder as CipherDataBuilder, 
+    CiphertextBuilder, EncryptBuilder, DecryptBuilder};
+use cryypt::hashing::api::{DataBuilder as HashDataBuilder, SaltBuilder, PassesBuilder, HashExecutor};
+use cryypt::compression::api::{DataBuilder as CompressDataBuilder, CompressExecutor, DecompressExecutor};
 
 #[tokio::test]
 async fn test_aes_gcm_encryption() -> Result<(), Box<dyn std::error::Error>> {
@@ -9,7 +15,7 @@ async fn test_aes_gcm_encryption() -> Result<(), Box<dyn std::error::Error>> {
     
     // Simple encryption with key
     let ciphertext = Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(FileKeyStore::at("/tmp/test_keys").with_master_key(master_key))
             .with_namespace("my-app")
             .version(1))
@@ -19,7 +25,7 @@ async fn test_aes_gcm_encryption() -> Result<(), Box<dyn std::error::Error>> {
 
     // Decrypt
     let plaintext = Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(FileKeyStore::at("/tmp/test_keys").with_master_key(master_key))
             .with_namespace("my-app")
             .version(1))
@@ -35,7 +41,7 @@ async fn test_aes_gcm_encryption() -> Result<(), Box<dyn std::error::Error>> {
 async fn test_chacha20_poly1305_encryption() -> Result<(), Box<dyn std::error::Error>> {
     // Encrypt with ChaCha20-Poly1305
     let ciphertext = Cipher::chachapoly()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(KeychainStore::for_app("MyApp"))
             .with_namespace("secure-app")
             .version(1))
@@ -45,7 +51,7 @@ async fn test_chacha20_poly1305_encryption() -> Result<(), Box<dyn std::error::E
 
     // Decrypt
     let plaintext = Cipher::chachapoly()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(KeychainStore::for_app("MyApp"))
             .with_namespace("secure-app")
             .version(1))
@@ -63,13 +69,13 @@ async fn test_two_pass_encryption() -> Result<(), Box<dyn std::error::Error>> {
     
     // Double encryption: AES-GCM followed by ChaCha20-Poly1305
     let ciphertext = Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(FileKeyStore::at("/tmp/test_keys_2pass").with_master_key(master_key))
             .with_namespace("app")
             .version(1))
         .with_data(b"Top secret")
         .second_pass(Cipher::chachapoly()
-            .with_key(Key::size(256.bits)
+            .with_key(Key::size(256u32.bits())
                 .with_store(FileKeyStore::at("/tmp/test_keys_2pass").with_master_key(master_key))
                 .with_namespace("app")
                 .version(2)))
@@ -78,13 +84,13 @@ async fn test_two_pass_encryption() -> Result<(), Box<dyn std::error::Error>> {
 
     // Decrypt in reverse order (ChaCha first, then AES)
     let plaintext = Cipher::chachapoly()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(FileKeyStore::at("/tmp/test_keys_2pass").with_master_key(master_key))
             .with_namespace("app")
             .version(2))
         .with_ciphertext(ciphertext)
         .second_pass(Cipher::aes()
-            .with_key(Key::size(256.bits)
+            .with_key(Key::size(256u32.bits())
                 .with_store(FileKeyStore::at("/tmp/test_keys_2pass").with_master_key(master_key))
                 .with_namespace("app")
                 .version(1)))
@@ -101,7 +107,7 @@ async fn test_chained_operations() -> Result<(), Box<dyn std::error::Error>> {
     
     // Process multiple independent data chunks in sequence
     let results = Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(FileKeyStore::at("/tmp/test_keys_batch").with_master_key(master_key))
             .with_namespace("batch")
             .version(1))
@@ -220,7 +226,7 @@ async fn test_integrated_key_generation() -> Result<(), Box<dyn std::error::Erro
     
     // Generate key and encrypt data in one beautiful chain
     let ciphertext = Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(FileKeyStore::at("/tmp/test_keys_integrated").with_master_key(master_key))
             .with_namespace("production")
             .version(1))
@@ -230,7 +236,7 @@ async fn test_integrated_key_generation() -> Result<(), Box<dyn std::error::Erro
 
     // Later: decrypt (key automatically retrieved)
     let plaintext = Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(FileKeyStore::at("/tmp/test_keys_integrated").with_master_key(master_key))
             .with_namespace("production")
             .version(1))
@@ -255,7 +261,7 @@ async fn test_aws_kms_integration() -> Result<(), Box<dyn std::error::Error>> {
     
     // Encrypt with KMS-managed key (generates on first use)
     let ciphertext = Cipher::chachapoly()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(AwsKmsDataKeyStore::new(
                 "alias/production-cmk",
                 AwsSecretsManagerStore::new("prod/keys")
@@ -274,7 +280,7 @@ async fn test_aws_kms_integration() -> Result<(), Box<dyn std::error::Error>> {
 async fn test_os_keychain_storage() -> Result<(), Box<dyn std::error::Error>> {
     // Encrypt user data (key generated/retrieved automatically)
     let encrypted = Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(KeychainStore::for_app("MyTestApp"))
             .with_namespace("user-keys")
             .version(1))
@@ -330,7 +336,7 @@ async fn test_compression_with_encryption() -> Result<(), Box<dyn std::error::Er
     
     // Compress then encrypt in the cipher builder
     let result = Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(FileKeyStore::at("/tmp/test_keys_compress").with_master_key(master_key))
             .with_namespace("app")
             .version(1))
@@ -341,7 +347,7 @@ async fn test_compression_with_encryption() -> Result<(), Box<dyn std::error::Er
 
     // Decrypt then decompress automatically
     let original = Cipher::aes()
-        .with_key(Key::size(256.bits)
+        .with_key(Key::size(256u32.bits())
             .with_store(FileKeyStore::at("/tmp/test_keys_compress").with_master_key(master_key))
             .with_namespace("app")
             .version(1))

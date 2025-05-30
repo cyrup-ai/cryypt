@@ -50,11 +50,6 @@ impl ZipWithData {
     pub fn max_compression(self) -> ZipWithDataAndLevel {
         self.with_level(9)
     }
-    
-    /// Balanced compression (level 6)
-    pub fn balanced_compression(self) -> ZipWithDataAndLevel {
-        self.with_level(6)
-    }
 }
 
 impl CompressExecutor for ZipWithData {

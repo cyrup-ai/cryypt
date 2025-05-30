@@ -56,16 +56,9 @@ pub use bits_macro::{Bits, BitSize};
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        Cipher, CipherAlgorithm, CryptError, Result,
+        Cipher, Key, CryptError, Bits, BitSize,
+        key::store::{FileKeyStore, KeychainStore},
+        hashing::Hash,
+        compression::Compress,
     };
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_basic_encryption() {
-        // Basic test to ensure the crate compiles
-    }
 }

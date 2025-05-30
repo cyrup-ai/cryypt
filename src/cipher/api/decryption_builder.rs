@@ -13,7 +13,7 @@ use chacha20poly1305::ChaCha20Poly1305;
 
 /// Decryption builder
 pub struct DecryptionBuilder<C, D> {
-    pub(super) cipher: C,
+    pub(super) _cipher: C,
     pub(super) data: D,
 }
 

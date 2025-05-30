@@ -53,14 +53,6 @@ impl ZstdWithData {
             level: 22,
         }
     }
-    
-    /// Balanced compression (level 3)
-    pub fn balanced_compression(self) -> ZstdWithDataAndLevel {
-        ZstdWithDataAndLevel {
-            data: self.data,
-            level: 3,
-        }
-    }
 }
 
 impl CompressExecutor for ZstdWithData {

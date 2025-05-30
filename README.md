@@ -90,23 +90,6 @@ let plaintext = Cipher::chachapoly()
     .await?;
 ```
 
-### Chained Operations (Different Use Case)
-```rust
-use cyrup_crypt::{Cipher, Key, FileKeyStore};
-
-// Process multiple independent data chunks in sequence
-let results = Cipher::aes()
-    .with_key(Key::size(256.bits)
-        .with_store(FileKeyStore::at("/secure/keys").with_master_key(master_key))
-        .with_namespace("batch")
-        .version(1))
-    .with_data(b"First chunk")
-    .chain(b"Second chunk")
-    .chain(b"Third chunk")
-    .encrypt_batch()
-    .await?;
-```
-
 ## Hashing API Examples
 
 ### SHA-256 Hashing
@@ -260,13 +243,6 @@ use cyrup_crypt::compression::Compress;
 // Simple compression (defaults to high compression)
 let compressed = Compress::zstd()
     .with_data(b"Large text that compresses well...")
-    .compress()
-    .await?;
-
-// With balanced compression for faster speed
-let balanced = Compress::zstd()
-    .with_data(large_file_bytes)
-    .balanced_compression()
     .compress()
     .await?;
 
