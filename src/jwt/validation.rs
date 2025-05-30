@@ -37,7 +37,7 @@ impl Default for ValidationOptions {
 
 impl ValidationOptions {
     /// Create validation options that skip all validation.
-    /// 
+    ///
     /// # Safety
     /// This should only be used for testing or when you're certain
     /// about the token's validity.
@@ -52,7 +52,7 @@ impl ValidationOptions {
             expected_audience: None,
         }
     }
-    
+
     /// Create strict validation options with no leeway.
     pub fn strict() -> Self {
         Self {
@@ -65,43 +65,43 @@ impl ValidationOptions {
             expected_audience: None,
         }
     }
-    
+
     /// Set the time leeway for validation.
     pub fn with_leeway(mut self, leeway: Duration) -> Self {
         self.leeway = leeway;
         self
     }
-    
+
     /// Set whether to validate expiration.
     pub fn validate_expiration(mut self, validate: bool) -> Self {
         self.validate_exp = validate;
         self
     }
-    
+
     /// Set whether to validate not-before.
     pub fn validate_not_before(mut self, validate: bool) -> Self {
         self.validate_nbf = validate;
         self
     }
-    
+
     /// Add a required claim.
     pub fn require_claim(mut self, claim: impl Into<String>) -> Self {
         self.required_claims.push(claim.into());
         self
     }
-    
+
     /// Set allowed algorithms.
     pub fn allowed_algorithms(mut self, algorithms: Vec<&'static str>) -> Self {
         self.allowed_algorithms = algorithms;
         self
     }
-    
+
     /// Set expected issuer.
     pub fn expect_issuer(mut self, issuer: impl Into<String>) -> Self {
         self.expected_issuer = Some(issuer.into());
         self
     }
-    
+
     /// Set expected audience.
     pub fn expect_audience(mut self, audience: Vec<String>) -> Self {
         self.expected_audience = Some(audience);

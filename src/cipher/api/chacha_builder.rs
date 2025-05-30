@@ -1,16 +1,16 @@
 //! ChaCha20-Poly1305 encryption builders
 
 use super::{
+    AsyncDecryptionResult, AsyncEncryptionResult,
     builder_traits::{
         CiphertextBuilder, DataBuilder, DecryptBuilder, EncryptBuilder, KeyBuilder,
         KeyProviderBuilder,
     },
-    AsyncDecryptionResult, AsyncEncryptionResult,
 };
-use crate::{cipher::encryption_result::EncryptionResultImpl, CryptError, Result};
+use crate::{CryptError, Result, cipher::encryption_result::EncryptionResultImpl};
 use chacha20poly1305::{
-    aead::{generic_array::GenericArray, Aead, KeyInit},
     ChaCha20Poly1305,
+    aead::{Aead, KeyInit, generic_array::GenericArray},
 };
 use rand::RngCore;
 use tokio::sync::oneshot;

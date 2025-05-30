@@ -58,9 +58,9 @@ async fn demo_sexy_encoding_api() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n📁 File Encryption Workflow:");
     let input_file = "/tmp/sexy_demo/secret.txt";
     let encrypted_file = "/tmp/sexy_demo/secret.enc";
-    
+
     std::fs::write(input_file, "Super secret file contents! 🔒")?;
-    
+
     // Encrypt file → save to file
     Cipher::aes()
         .with_key(
@@ -75,7 +75,7 @@ async fn demo_sexy_encoding_api() -> Result<(), Box<dyn std::error::Error>> {
         .await?
         .to_file(encrypted_file)
         .await?;
-    
+
     println!("   ✅ File encrypted and saved!");
 
     // Decrypt file → get as string
@@ -90,7 +90,7 @@ async fn demo_sexy_encoding_api() -> Result<(), Box<dyn std::error::Error>> {
         .await?
         .decrypt()
         .await?;
-    
+
     let content = String::from_utf8(decrypted_content)?;
     println!("   Decrypted content: {}", content);
 
@@ -107,8 +107,11 @@ async fn demo_sexy_encoding_api() -> Result<(), Box<dyn std::error::Error>> {
         .with_data_hex(&hex_data)?
         .encrypt()
         .await?;
-    
-    println!("   ✅ Encrypted data from hex input, size: {} bytes", encrypted_result.len());
+
+    println!(
+        "   ✅ Encrypted data from hex input, size: {} bytes",
+        encrypted_result.len()
+    );
 
     // 6. Compression + Encoding combo
     println!("\n🗜️ Compression + Encoding Combo:");
@@ -124,12 +127,15 @@ async fn demo_sexy_encoding_api() -> Result<(), Box<dyn std::error::Error>> {
         .encrypt()
         .await?
         .to_base64();
-    
-    println!("   Compressed+Encrypted+Base64 size: {}", compressed_base64.len());
+
+    println!(
+        "   Compressed+Encrypted+Base64 size: {}",
+        compressed_base64.len()
+    );
 
     // Cleanup
     std::fs::remove_dir_all("/tmp/sexy_demo").ok();
-    
+
     println!("\n🎉 All sexy encoding features working perfectly!");
     Ok(())
 }

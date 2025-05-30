@@ -4,8 +4,8 @@
 //! uniquely developed for this project. It provides triple-layer key storage with
 //! atomic rotation counters and comprehensive audit logging.
 
-use crate::{CryptError, Result};
 use super::entropy::EntropySource;
+use crate::{CryptError, Result};
 use std::sync::atomic::{AtomicU64, Ordering};
 use zeroize::Zeroizing;
 
@@ -152,8 +152,8 @@ impl MultiLayerKey {
     /// Stretch key using Argon2id with quantum-resistant parameters
     fn stretch_key(key: &[u8], salt: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
         use argon2::{
-            password_hash::{PasswordHasher, SaltString},
             Argon2, Params, Version,
+            password_hash::{PasswordHasher, SaltString},
         };
 
         // Create Argon2id with quantum-resistant parameters
@@ -165,11 +165,7 @@ impl MultiLayerKey {
         )
         .map_err(|e| CryptError::KeyDerivationFailed(e.to_string()))?;
 
-        let argon2 = Argon2::new(
-            argon2::Algorithm::Argon2id,
-            Version::V0x13,
-            params,
-        );
+        let argon2 = Argon2::new(argon2::Algorithm::Argon2id, Version::V0x13, params);
 
         // Convert salt to valid format
         use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -193,29 +189,29 @@ impl MultiLayerKey {
     /// Compute key check value using our Hash builder
     fn compute_key_check(key1: &[u8], key2: &[u8], key3: &[u8]) -> Result<[u8; 64]> {
         use sha3::{Digest, Sha3_512};
-        
+
         let mut combined = Vec::new();
         combined.extend_from_slice(key1);
         combined.extend_from_slice(key2);
         combined.extend_from_slice(key3);
-        
+
         let mut hasher = Sha3_512::new();
         hasher.update(&combined);
         let hash = hasher.finalize();
         let check: [u8; 64] = hash.into();
-        
+
         Ok(check)
     }
 
     /// Log cryptographic operation with atomic versioning
     fn log_operation(&mut self, op: &str, validation: &[u8]) -> Result<()> {
         use sha3::{Digest, Sha3_512};
-        
+
         let mut combined = Vec::new();
         combined.extend_from_slice(validation);
         combined.extend_from_slice(op.as_bytes());
         combined.extend_from_slice(&self.rotation_counter.load(Ordering::SeqCst).to_le_bytes());
-        
+
         let mut hasher = Sha3_512::new();
         hasher.update(&combined);
         let hash = hasher.finalize();
@@ -264,4 +260,3 @@ impl Drop for MultiLayerKey {
         self.audit_log.clear();
     }
 }
-

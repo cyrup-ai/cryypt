@@ -5,7 +5,10 @@ use crate::key::{
     KeyGeneration, KeyId, KeyImport, KeyRetrieval, KeyStorage,
 };
 use crate::{CryptError, Result};
-use aes_gcm::{aead::{Aead, KeyInit, generic_array::GenericArray}, Aes256Gcm};
+use aes_gcm::{
+    Aes256Gcm,
+    aead::{Aead, KeyInit, generic_array::GenericArray},
+};
 use rand::RngCore;
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -101,9 +104,10 @@ impl KeyImport for FileKeyStore {
                 // Combine nonce + ciphertext
                 let mut encrypted_data = nonce;
                 encrypted_data.extend_from_slice(&ciphertext);
-                
+
                 Ok(encrypted_data)
-            }).await
+            })
+            .await
             .map_err(|e| CryptError::internal(format!("Encryption task failed: {}", e)))??;
 
             // Ensure directory exists
@@ -150,7 +154,9 @@ impl KeyRetrieval for FileKeyStore {
             tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
                 // Validate minimum size (12 bytes nonce + at least 16 bytes ciphertext)
                 if encrypted_data.len() < 28 {
-                    return Err(CryptError::DecryptionFailed("Invalid encrypted key format".into()));
+                    return Err(CryptError::DecryptionFailed(
+                        "Invalid encrypted key format".into(),
+                    ));
                 }
 
                 // Extract nonce and ciphertext
@@ -168,7 +174,8 @@ impl KeyRetrieval for FileKeyStore {
                     .map_err(|_| CryptError::DecryptionFailed("Key decryption failed".into()))?;
 
                 Ok(decrypted)
-            }).await
+            })
+            .await
             .map_err(|e| CryptError::internal(format!("Decryption task failed: {}", e)))?
         }
     }
@@ -180,34 +187,42 @@ impl KeyGeneration for FileKeyStore {
         let master_key = self.master_key.clone();
 
         async move {
-            let (key_material, encrypted_data) = tokio::task::spawn_blocking(move || -> Result<(Vec<u8>, Vec<u8>)> {
-                use rand::RngCore;
+            let (key_material, encrypted_data) =
+                tokio::task::spawn_blocking(move || -> Result<(Vec<u8>, Vec<u8>)> {
+                    use rand::RngCore;
 
-                // Generate random key material
-                let mut key_material = Zeroizing::new(vec![0u8; key_size_bytes]);
-                rand::rng().fill_bytes(&mut key_material);
+                    // Generate random key material
+                    let mut key_material = Zeroizing::new(vec![0u8; key_size_bytes]);
+                    rand::rng().fill_bytes(&mut key_material);
 
-                // Generate random nonce
-                let mut nonce = vec![0u8; 12];
-                rand::rng().fill_bytes(&mut nonce);
-                let nonce_array = GenericArray::from_slice(&nonce);
+                    // Generate random nonce
+                    let mut nonce = vec![0u8; 12];
+                    rand::rng().fill_bytes(&mut nonce);
+                    let nonce_array = GenericArray::from_slice(&nonce);
 
-                // Create cipher with master key
-                let cipher = Aes256Gcm::new_from_slice(master_key.as_ref())
-                    .map_err(|e| CryptError::InvalidKey(format!("Invalid master key: {}", e)))?;
+                    // Create cipher with master key
+                    let cipher = Aes256Gcm::new_from_slice(master_key.as_ref()).map_err(|e| {
+                        CryptError::InvalidKey(format!("Invalid master key: {}", e))
+                    })?;
 
-                // Encrypt key material
-                let ciphertext = cipher
-                    .encrypt(nonce_array, key_material.as_ref())
-                    .map_err(|_| CryptError::EncryptionFailed("Key encryption failed".into()))?;
+                    // Encrypt key material
+                    let ciphertext =
+                        cipher
+                            .encrypt(nonce_array, key_material.as_ref())
+                            .map_err(|_| {
+                                CryptError::EncryptionFailed("Key encryption failed".into())
+                            })?;
 
-                // Combine nonce + ciphertext
-                let mut encrypted_data = nonce;
-                encrypted_data.extend_from_slice(&ciphertext);
+                    // Combine nonce + ciphertext
+                    let mut encrypted_data = nonce;
+                    encrypted_data.extend_from_slice(&ciphertext);
 
-                Ok((key_material.to_vec(), encrypted_data))
-            }).await
-            .map_err(|e| CryptError::internal(format!("Key generation task failed: {}", e)))??;
+                    Ok((key_material.to_vec(), encrypted_data))
+                })
+                .await
+                .map_err(|e| {
+                    CryptError::internal(format!("Key generation task failed: {}", e))
+                })??;
 
             // Ensure directory exists
             if let Some(parent) = path.parent() {

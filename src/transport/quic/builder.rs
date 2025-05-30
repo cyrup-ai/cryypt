@@ -1,6 +1,6 @@
 //! QUIC crypto configuration builder
-use std::sync::Arc;
 use super::error::{CryptoTransportError, Result};
+use std::sync::Arc;
 
 /// QUIC crypto configuration
 pub struct QuicCryptoConfig {
@@ -26,7 +26,7 @@ impl QuicCryptoConfig {
     /// Create a new quiche::Config
     pub fn build_config(&self) -> Result<quiche::Config> {
         let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)?;
-        
+
         // Apply settings
         config.set_max_idle_timeout(self.max_idle_timeout);
         config.set_max_recv_udp_payload_size(self.max_udp_payload_size as usize);
@@ -41,20 +41,22 @@ impl QuicCryptoConfig {
         config.set_cc_algorithm(self.cc_algorithm);
         let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
         config.set_application_protos(&alpn_refs)?;
-        
+
         // Server-specific
         if let (Some(cert), Some(key)) = (&self.cert_path, &self.key_path) {
-            config.load_cert_chain_from_pem_file(cert)
+            config
+                .load_cert_chain_from_pem_file(cert)
                 .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
-            config.load_priv_key_from_pem_file(key)
+            config
+                .load_priv_key_from_pem_file(key)
                 .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
         }
-        
+
         // Client-specific
         if !self.verify_peer {
             config.verify_peer(false);
         }
-        
+
         Ok(config)
     }
 }
@@ -141,18 +143,20 @@ impl QuicCryptoBuilder {
     /// Build server configuration
     pub fn build_server(self, cert_path: &str, key_path: &str) -> Result<Arc<QuicCryptoConfig>> {
         let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)?;
-        
+
         // Load certificate and key
-        config.load_cert_chain_from_pem_file(cert_path)
+        config
+            .load_cert_chain_from_pem_file(cert_path)
             .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
-        config.load_priv_key_from_pem_file(key_path)
+        config
+            .load_priv_key_from_pem_file(key_path)
             .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
-        
+
         // Apply all settings
         self.apply_settings(&mut config);
         let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
         config.set_application_protos(&alpn_refs)?;
-        
+
         Ok(Arc::new(QuicCryptoConfig {
             alpn_protocols: self.alpn_protocols,
             cert_path: Some(cert_path.to_string()),
@@ -175,17 +179,17 @@ impl QuicCryptoBuilder {
     /// Build client configuration
     pub fn build_client(self) -> Result<Arc<QuicCryptoConfig>> {
         let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)?;
-        
+
         // Apply all settings
         self.apply_settings(&mut config);
         let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
         config.set_application_protos(&alpn_refs)?;
-        
+
         // Client-specific settings
         if !self.verify_peer {
             config.verify_peer(false);
         }
-        
+
         Ok(Arc::new(QuicCryptoConfig {
             alpn_protocols: self.alpn_protocols,
             cert_path: None,

@@ -1,6 +1,6 @@
 //! SHA3-256 hash builder
 
-use super::{AsyncHashResult, DataBuilder, HashExecutor, PassesBuilder, SaltBuilder};
+use super::{AsyncHashResult, DataBuilder, HashExecutor, PassesBuilder, SaltBuilder, HashPasses};
 
 /// Initial SHA3 builder
 pub struct Sha3Builder;
@@ -59,10 +59,10 @@ impl SaltBuilder for Sha3WithData {
 impl PassesBuilder for Sha3WithData {
     type Output = Sha3WithDataAndPasses;
 
-    fn with_passes(self, passes: u32) -> Self::Output {
+    fn with_passes(self, passes: HashPasses) -> Self::Output {
         Sha3WithDataAndPasses {
             data: self.data,
-            passes,
+            passes: passes.iterations(),
         }
     }
 }
@@ -87,11 +87,11 @@ impl HashExecutor for Sha3WithData {
 impl PassesBuilder for Sha3WithDataAndSalt {
     type Output = Sha3Complete;
 
-    fn with_passes(self, passes: u32) -> Self::Output {
+    fn with_passes(self, passes: HashPasses) -> Self::Output {
         Sha3Complete {
             data: self.data,
             salt: self.salt,
-            passes,
+            passes: passes.iterations(),
         }
     }
 }

@@ -1,16 +1,13 @@
-use std::sync::Arc;
 use futures::Future;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use std::sync::Arc;
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
-use quiche::{accept, ConnectionId, Header};
+use quiche::{ConnectionId, Header, accept};
 
-use super::error::Result;
 use super::builder::QuicCryptoConfig;
+use super::error::Result;
 use super::quic_conn::{
-    QuicConnectionController, 
-    QuicConnectionEvent, 
-    QuicConnectionHandle,
-    quic_connection_main_loop
+    QuicConnectionController, QuicConnectionEvent, QuicConnectionHandle, quic_connection_main_loop,
 };
 
 pub struct QuicServerConfig {
@@ -19,7 +16,9 @@ pub struct QuicServerConfig {
 }
 
 /// Return an `impl Future` that never blocks the thread. We do `.await` on `bind` and `.await` on `recv_from`.
-pub fn run_quic_server(config: QuicServerConfig) -> impl Future<Output=Result<()>> + Send + 'static {
+pub fn run_quic_server(
+    config: QuicServerConfig,
+) -> impl Future<Output = Result<()>> + Send + 'static {
     let listen_addr = config.listen_addr.clone();
     let crypto = config.crypto;
     async move {
@@ -72,7 +71,7 @@ pub fn run_quic_server(config: QuicServerConfig) -> impl Future<Output=Result<()
 
             let conn_loop = quic_connection_main_loop(controller.clone());
             tokio::spawn(async move {
-                let _ = conn_loop.await; 
+                let _ = conn_loop.await;
             });
 
             let _handle = QuicConnectionHandle::new(controller);

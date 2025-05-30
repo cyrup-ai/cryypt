@@ -49,20 +49,16 @@ impl EphemeralKeyMaterial {
 
 /// Generate ephemeral key material using quantum-resistant KDF
 pub fn generate_ephemeral_keys(session_id: &str) -> Result<EphemeralKeyMaterial, CryptError> {
-    use rand::Rng;
-    
+    use rand::RngCore;
+
     // Generate 512-bit PSK for post-quantum resistance
     let mut psk = vec![0u8; 64];
-    rand::rng().fill(&mut psk);
-    
+    rand::rng().fill_bytes(&mut psk);
+
     // 15-minute TTL for ephemeral keys
     let ttl = Duration::from_secs(15 * 60);
-    
-    Ok(EphemeralKeyMaterial::new(
-        psk,
-        session_id.to_string(),
-        ttl
-    ))
+
+    Ok(EphemeralKeyMaterial::new(psk, session_id.to_string(), ttl))
 }
 
 #[cfg(test)]
@@ -73,12 +69,9 @@ mod tests {
     #[test]
     fn test_ephemeral_key_expiration() {
         let psk = vec![0u8; 64];
-        let key = EphemeralKeyMaterial::new(
-            psk,
-            "test-session".to_string(),
-            Duration::from_millis(50)
-        );
-        
+        let key =
+            EphemeralKeyMaterial::new(psk, "test-session".to_string(), Duration::from_millis(50));
+
         assert!(!key.is_expired());
         thread::sleep(Duration::from_millis(60));
         assert!(key.is_expired());
@@ -90,9 +83,9 @@ mod tests {
         let mut key = EphemeralKeyMaterial::new(
             psk.clone(),
             "test-session".to_string(),
-            Duration::from_secs(60)
+            Duration::from_secs(60),
         );
-        
+
         let new_psk = vec![1u8; 64];
         assert!(key.rotate(new_psk).is_ok());
         assert_ne!(&*key.psk, &psk);

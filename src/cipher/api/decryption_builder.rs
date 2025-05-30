@@ -1,10 +1,10 @@
 //! Simplified decryption builder for raw bytes
 
 use super::{AsyncDecryptionResult, HasData};
-use crate::{cipher::encryption_result::DecryptionResultImpl, CryptError};
+use crate::{CryptError, cipher::encryption_result::DecryptionResultImpl};
 use aes_gcm::{
-    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
+    aead::{Aead, KeyInit},
 };
 use chacha20poly1305::ChaCha20Poly1305;
 

@@ -46,4 +46,22 @@ impl From<quiche::Error> for CryptoTransportError {
     }
 }
 
+impl From<String> for CryptoTransportError {
+    fn from(e: String) -> Self {
+        Self::Internal(e)
+    }
+}
+
+impl From<&str> for CryptoTransportError {
+    fn from(e: &str) -> Self {
+        Self::Internal(e.to_string())
+    }
+}
+
+impl From<tokio::time::error::Elapsed> for CryptoTransportError {
+    fn from(e: tokio::time::error::Elapsed) -> Self {
+        Self::Internal(format!("Timeout: {}", e))
+    }
+}
+
 pub type Result<T> = std::result::Result<T, CryptoTransportError>;

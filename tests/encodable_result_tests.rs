@@ -30,10 +30,12 @@ async fn test_to_base64() {
     let data = b"Hello, World!";
     let result = EncodableResult::new(data.to_vec());
     let base64 = result.to_base64();
-    
+
     // Verify it's valid base64 and can be decoded back
     use base64::Engine;
-    let decoded = base64::engine::general_purpose::STANDARD.decode(&base64).unwrap();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&base64)
+        .unwrap();
     assert_eq!(decoded, data);
 }
 
@@ -42,7 +44,7 @@ async fn test_to_hex() {
     let data = b"Hello, World!";
     let result = EncodableResult::new(data.to_vec());
     let hex_string = result.to_hex();
-    
+
     // Verify it's valid hex and can be decoded back
     let decoded = hex::decode(&hex_string).unwrap();
     assert_eq!(decoded, data);
@@ -86,17 +88,17 @@ async fn test_to_string_lossy() {
 async fn test_to_file() -> Result<(), Box<dyn std::error::Error>> {
     let test_dir = "/tmp/encodable_result_test";
     fs::create_dir_all(test_dir)?;
-    
+
     let data = b"Test file content";
     let result = EncodableResult::new(data.to_vec());
     let file_path = format!("{}/test_output.bin", test_dir);
-    
+
     result.to_file(&file_path).await?;
-    
+
     // Verify file was written correctly
     let read_data = fs::read(&file_path)?;
     assert_eq!(read_data, data);
-    
+
     // Cleanup
     fs::remove_dir_all(test_dir).ok();
     Ok(())
@@ -106,7 +108,7 @@ async fn test_to_file() -> Result<(), Box<dyn std::error::Error>> {
 async fn test_to_file_io_error() {
     let invalid_path = "/nonexistent/directory/file.txt";
     let result = EncodableResult::new(vec![1, 2, 3]);
-    
+
     let error = result.to_file(invalid_path).await.unwrap_err();
     assert!(matches!(error, cryypt::CryptError::Io(_)));
 }
@@ -128,7 +130,7 @@ async fn test_len_empty() {
 async fn test_is_empty() {
     let empty_result = EncodableResult::new(Vec::new());
     assert!(empty_result.is_empty());
-    
+
     let non_empty_result = EncodableResult::new(vec![1]);
     assert!(!non_empty_result.is_empty());
 }
@@ -146,9 +148,11 @@ async fn test_base64_roundtrip() {
     let original = "This is a test message with various characters: 123 !@# 世界".as_bytes();
     let result = EncodableResult::new(original.to_vec());
     let base64 = result.to_base64();
-    
+
     use base64::Engine;
-    let decoded = base64::engine::general_purpose::STANDARD.decode(&base64).unwrap();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&base64)
+        .unwrap();
     assert_eq!(decoded, original);
 }
 
@@ -157,7 +161,7 @@ async fn test_hex_roundtrip() {
     let original = b"Binary data \x00\x01\x02\xFF\xAB\xCD\xEF";
     let result = EncodableResult::new(original.to_vec());
     let hex_string = result.to_hex();
-    
+
     let decoded = hex::decode(&hex_string).unwrap();
     assert_eq!(decoded, original);
 }
@@ -167,21 +171,23 @@ async fn test_large_data() {
     // Test with larger data to ensure no memory issues
     let large_data: Vec<u8> = (0..10000).map(|i| (i % 256) as u8).collect();
     let result = EncodableResult::new(large_data.clone());
-    
+
     assert_eq!(result.len(), 10000);
     assert_eq!(result.to_bytes(), large_data);
-    
+
     // Test encoding/decoding large data
     let base64 = result.to_base64();
     use base64::Engine;
-    let decoded = base64::engine::general_purpose::STANDARD.decode(&base64).unwrap();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&base64)
+        .unwrap();
     assert_eq!(decoded, large_data);
 }
 
 #[tokio::test]
 async fn test_zero_length_data() {
     let result = EncodableResult::new(Vec::new());
-    
+
     assert_eq!(result.len(), 0);
     assert!(result.is_empty());
     assert_eq!(result.to_bytes(), Vec::<u8>::new());

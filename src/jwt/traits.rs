@@ -27,19 +27,19 @@ impl Header {
 }
 
 /// Signing algorithm interface.
-/// 
+///
 /// This trait defines the contract for JWT signing algorithms.
 /// Implementations must be thread-safe (Send + Sync).
 pub trait Signer: Send + Sync + 'static {
     /// Sign opaque payload → token (base64url header.payload.signature).
     fn sign(&self, header: &Header, payload: &str) -> JwtResult<String>;
-    
+
     /// Verify token & return payload.
     fn verify(&self, token: &str) -> JwtResult<String>;
-    
+
     /// Header `alg` value.
     fn alg(&self) -> &'static str;
-    
+
     /// Key ID.
     fn kid(&self) -> Option<String>;
 }
@@ -49,15 +49,15 @@ impl<T: Signer> Signer for std::sync::Arc<T> {
     fn sign(&self, header: &Header, payload: &str) -> JwtResult<String> {
         (**self).sign(header, payload)
     }
-    
+
     fn verify(&self, token: &str) -> JwtResult<String> {
         (**self).verify(token)
     }
-    
+
     fn alg(&self) -> &'static str {
         (**self).alg()
     }
-    
+
     fn kid(&self) -> Option<String> {
         (**self).kid()
     }

@@ -25,7 +25,7 @@ pub struct QuicConnectionController {
 }
 
 #[derive(Debug)]
-struct OutboundMessage {
+pub struct OutboundMessage {
     data: Vec<u8>,
     fin: bool,
 }
@@ -51,9 +51,11 @@ impl QuicConnectionHandle {
         Ok(())
     }
 
-    /// Provide a future that completes once handshake is done. 
+    /// Provide a future that completes once handshake is done.
     /// We do a small async loop checking a shared bool, no blocking calls.
-    pub fn wait_for_handshake(&self) -> impl std::future::Future<Output=Result<()>> + Send + 'static {
+    pub fn wait_for_handshake(
+        &self,
+    ) -> impl std::future::Future<Output = Result<()>> + Send + 'static {
         let ctrl = self.controller.clone();
         async move {
             loop {
@@ -70,10 +72,10 @@ impl QuicConnectionHandle {
     }
 }
 
-/// Main QUIC connection loop: fully non-blocking, no "WouldBlock," no partial blocking calls. 
+/// Main QUIC connection loop: fully non-blocking, no "WouldBlock," no partial blocking calls.
 /// We define it as a normal function returning `impl Future<Output=Result<()>>`.
 pub fn quic_connection_main_loop(
-    controller: Arc<QuicConnectionController>
+    controller: Arc<QuicConnectionController>,
 ) -> impl std::future::Future<Output = Result<()>> + Send + 'static {
     async move {
         let mut recv_buf = vec![0u8; 65535];
@@ -112,10 +114,13 @@ pub fn quic_connection_main_loop(
                     let mut conn_guard = controller.conn.lock().unwrap();
                     conn_guard.send(&mut out_buf)
                 };
-                
+
                 match send_result {
                     Ok((written, send_info)) => {
-                        controller.socket.send_to(&out_buf[..written], send_info.to).await?;
+                        controller
+                            .socket
+                            .send_to(&out_buf[..written], send_info.to)
+                            .await?;
                     }
                     Err(quiche::Error::Done) => {
                         break;
@@ -131,7 +136,9 @@ pub fn quic_connection_main_loop(
                 let conn_guard = controller.conn.lock().unwrap();
                 if conn_guard.is_closed() {
                     drop(conn_guard);
-                    let _ = controller.event_tx.send(QuicConnectionEvent::ConnectionClosed);
+                    let _ = controller
+                        .event_tx
+                        .send(QuicConnectionEvent::ConnectionClosed);
                     break;
                 }
             }
@@ -146,11 +153,11 @@ fn check_handshake_complete(controller: &Arc<QuicConnectionController>) -> Resul
         let conn_guard = controller.conn.lock().unwrap();
         conn_guard.is_established()
     };
-    
+
     if !is_established {
         return Ok(());
     }
-    
+
     let should_send_event = {
         let mut done = controller.handshake_done.lock().unwrap();
         if !*done {
@@ -160,11 +167,13 @@ fn check_handshake_complete(controller: &Arc<QuicConnectionController>) -> Resul
             false
         }
     };
-    
+
     if should_send_event {
-        let _ = controller.event_tx.send(QuicConnectionEvent::HandshakeCompleted);
+        let _ = controller
+            .event_tx
+            .send(QuicConnectionEvent::HandshakeCompleted);
     }
-    
+
     Ok(())
 }
 
@@ -173,7 +182,7 @@ fn process_readable_streams(controller: &Arc<QuicConnectionController>) -> Resul
         let conn_guard = controller.conn.lock().unwrap();
         conn_guard.readable().collect()
     };
-    
+
     for stream_id in readable_streams {
         loop {
             let mut buf = vec![0u8; 65535];
@@ -181,17 +190,17 @@ fn process_readable_streams(controller: &Arc<QuicConnectionController>) -> Resul
                 let mut conn_guard = controller.conn.lock().unwrap();
                 conn_guard.stream_recv(stream_id, &mut buf)
             };
-            
+
             match result {
                 Ok((bytes_read, fin)) => {
                     let data = buf[..bytes_read].to_vec();
-                    let _ = controller.event_tx.send(
-                        QuicConnectionEvent::InboundStreamData(stream_id, data)
-                    );
+                    let _ = controller
+                        .event_tx
+                        .send(QuicConnectionEvent::InboundStreamData(stream_id, data));
                     if fin {
-                        let _ = controller.event_tx.send(
-                            QuicConnectionEvent::StreamFinished(stream_id)
-                        );
+                        let _ = controller
+                            .event_tx
+                            .send(QuicConnectionEvent::StreamFinished(stream_id));
                     }
                 }
                 Err(quiche::Error::Done) => {
@@ -210,7 +219,7 @@ fn flush_outbound(controller: &Arc<QuicConnectionController>) -> Result<()> {
     let mut conn_guard = controller.conn.lock().unwrap();
     let mut queue = controller.outbound_queue.lock().unwrap();
 
-    let mut i = 0;
+    let i = 0;
     while i < queue.len() {
         let msg = &mut queue[i];
         // Use a deterministic stream ID for now (proper stream management would be more complex)

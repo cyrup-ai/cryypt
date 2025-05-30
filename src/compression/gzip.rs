@@ -1,8 +1,8 @@
 //! Gzip compression implementation
 
 use crate::{CryptError, Result};
-use flate2::read::{GzDecoder, GzEncoder};
 use flate2::Compression;
+use flate2::read::{GzDecoder, GzEncoder};
 use std::io::Read;
 
 pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {

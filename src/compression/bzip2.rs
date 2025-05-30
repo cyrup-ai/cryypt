@@ -1,8 +1,8 @@
 //! Bzip2 compression implementation
 
 use crate::{CryptError, Result};
-use bzip2::read::{BzDecoder, BzEncoder};
 use bzip2::Compression;
+use bzip2::read::{BzDecoder, BzEncoder};
 use std::io::Read;
 
 pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {

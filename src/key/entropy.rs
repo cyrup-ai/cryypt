@@ -25,12 +25,12 @@ impl EntropySource {
             entropy_samples: Vec::new(),
             quality_verified: false,
         };
-        
+
         // Verify entropy quality on initialization
         if !source.verify_min_entropy(MIN_ENTROPY_THRESHOLD) {
             return Err(CryptError::InsufficientEntropy);
         }
-        
+
         source.quality_verified = true;
         Ok(source)
     }
@@ -40,13 +40,13 @@ impl EntropySource {
         // Generate test samples for entropy assessment
         let mut test_samples = vec![0u8; 1000];
         rand::rng().fill_bytes(&mut test_samples);
-        
+
         // Simple entropy estimation (real implementation would use NIST SP 800-90B)
         let entropy = self.estimate_entropy(&test_samples);
-        
+
         // Store samples for quality tracking
         self.entropy_samples = test_samples;
-        
+
         entropy >= min_bits_per_byte
     }
 
@@ -58,7 +58,7 @@ impl EntropySource {
 
         let mut bytes = Zeroizing::new(vec![0u8; len]);
         rand::rng().fill_bytes(&mut bytes);
-        
+
         Ok(bytes)
     }
 
@@ -92,7 +92,7 @@ impl EntropySource {
         // Calculate Shannon entropy
         let len = samples.len() as f64;
         let mut entropy = 0.0;
-        
+
         for &count in &freq {
             if count > 0 {
                 let p = count as f64 / len;

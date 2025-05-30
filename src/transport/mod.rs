@@ -5,11 +5,6 @@
 pub mod quic;
 
 pub use quic::{
-    QuicCryptoBuilder,
-    QuicCryptoConfig,
-    QuicConnectionEvent,
-    QuicConnectionHandle,
-    QuicServerConfig,
-    run_quic_server,
-    connect_quic_client,
+    QuicConnectionEvent, QuicConnectionHandle, QuicCryptoBuilder, QuicCryptoConfig,
+    QuicServerConfig, connect_quic_client, run_quic_server,
 };

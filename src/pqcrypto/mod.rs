@@ -1,16 +1,16 @@
 //! Post-quantum cryptography module
-//! 
+//!
 //! This module provides builders and APIs for post-quantum key encapsulation mechanisms (KEMs)
 //! and digital signature algorithms that are resistant to attacks by quantum computers.
-//! 
+//!
 //! # Supported Algorithms
-//! 
+//!
 //! ## Key Encapsulation Mechanisms (KEMs)
 //! - ML-KEM (Module-Lattice-based KEM, formerly CRYSTALS-Kyber)
 //!   - ML-KEM-512 (NIST security level 1)
 //!   - ML-KEM-768 (NIST security level 3)
 //!   - ML-KEM-1024 (NIST security level 5)
-//! 
+//!
 //! ## Digital Signature Algorithms
 //! - ML-DSA (Module-Lattice-based Digital Signature Algorithm, formerly CRYSTALS-Dilithium)
 //!   - ML-DSA-44 (NIST security level 2)
@@ -36,17 +36,11 @@ pub use self::shared_secret::SharedSecret;
 
 // Re-export builder traits
 pub use self::api::{
-    KemBuilder, SignatureBuilder,
-    KemKeyPairBuilder, SignatureKeyPairBuilder,
-    EncapsulateBuilder, DecapsulateBuilder,
-    SignBuilder, VerifyBuilder,
+    DecapsulateBuilder, EncapsulateBuilder, KemBuilder, KemKeyPairBuilder, SignBuilder,
+    SignatureBuilder, SignatureKeyPairBuilder, VerifyBuilder,
 };
 
 /// Prelude for post-quantum cryptography
 pub mod prelude {
-    pub use super::{
-        KemAlgorithm, SignatureAlgorithm,
-        KemBuilder, SignatureBuilder,
-        SharedSecret,
-    };
+    pub use super::{KemAlgorithm, KemBuilder, SharedSecret, SignatureAlgorithm, SignatureBuilder};
 }

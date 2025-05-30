@@ -77,7 +77,9 @@ async fn test_two_pass_encryption_readme_syntax() -> Result<(), Box<dyn std::err
     let ciphertext = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/readme_test_twopass").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/readme_test_twopass").with_master_key(master_key),
+                )
                 .with_namespace("app")
                 .version(1),
         )
@@ -85,7 +87,9 @@ async fn test_two_pass_encryption_readme_syntax() -> Result<(), Box<dyn std::err
         .second_pass(
             Cipher::chachapoly().with_key(
                 Key::size(256.bits())
-                    .with_store(FileKeyStore::at("/tmp/readme_test_twopass").with_master_key(master_key))
+                    .with_store(
+                        FileKeyStore::at("/tmp/readme_test_twopass").with_master_key(master_key),
+                    )
                     .with_namespace("app")
                     .version(2),
             ),
@@ -97,7 +101,9 @@ async fn test_two_pass_encryption_readme_syntax() -> Result<(), Box<dyn std::err
     let plaintext = Cipher::chachapoly()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/readme_test_twopass").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/readme_test_twopass").with_master_key(master_key),
+                )
                 .with_namespace("app")
                 .version(2),
         )
@@ -105,7 +111,9 @@ async fn test_two_pass_encryption_readme_syntax() -> Result<(), Box<dyn std::err
         .second_pass(
             Cipher::aes().with_key(
                 Key::size(256.bits())
-                    .with_store(FileKeyStore::at("/tmp/readme_test_twopass").with_master_key(master_key))
+                    .with_store(
+                        FileKeyStore::at("/tmp/readme_test_twopass").with_master_key(master_key),
+                    )
                     .with_namespace("app")
                     .version(1),
             ),
@@ -120,10 +128,7 @@ async fn test_two_pass_encryption_readme_syntax() -> Result<(), Box<dyn std::err
 #[tokio::test]
 async fn test_sha256_hashing_readme_syntax() -> Result<(), Box<dyn std::error::Error>> {
     // Exact syntax from README.md lines 100-103
-    let hash = Hash::sha256()
-        .with_data(b"Hello, World!")
-        .hash()
-        .await?;
+    let hash = Hash::sha256().with_data(b"Hello, World!").hash().await?;
     assert!(!hash.is_empty());
 
     // Exact syntax from README.md lines 106-110
@@ -149,10 +154,7 @@ async fn test_sha256_hashing_readme_syntax() -> Result<(), Box<dyn std::error::E
 #[tokio::test]
 async fn test_blake2b_hashing_readme_syntax() -> Result<(), Box<dyn std::error::Error>> {
     // Exact syntax from README.md lines 126-129
-    let hash = Hash::blake2b()
-        .with_data(b"Hello, World!")
-        .hash()
-        .await?;
+    let hash = Hash::blake2b().with_data(b"Hello, World!").hash().await?;
     assert!(!hash.is_empty());
 
     // Exact syntax from README.md lines 132-136
@@ -169,10 +171,7 @@ async fn test_blake2b_hashing_readme_syntax() -> Result<(), Box<dyn std::error::
 #[tokio::test]
 async fn test_sha3_hashing_readme_syntax() -> Result<(), Box<dyn std::error::Error>> {
     // Exact syntax from README.md lines 144-147
-    let hash = Hash::sha3()
-        .with_data(b"data")
-        .hash()
-        .await?;
+    let hash = Hash::sha3().with_data(b"data").hash().await?;
     assert!(!hash.is_empty());
 
     // Exact syntax from README.md lines 150-155
@@ -190,10 +189,7 @@ async fn test_sha3_hashing_readme_syntax() -> Result<(), Box<dyn std::error::Err
 #[tokio::test]
 async fn test_text_input_hashing_readme_syntax() -> Result<(), Box<dyn std::error::Error>> {
     // Exact syntax from README.md lines 163-166
-    let hash = Hash::sha256()
-        .with_text("Hello, World!")
-        .hash()
-        .await?;
+    let hash = Hash::sha256().with_text("Hello, World!").hash().await?;
     assert!(!hash.is_empty());
 
     // Exact syntax from README.md lines 169-173
@@ -217,7 +213,9 @@ async fn test_integrated_key_generation_readme_syntax() -> Result<(), Box<dyn st
     let ciphertext = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/readme_syntax_integrated").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/readme_syntax_integrated").with_master_key(master_key),
+                )
                 .with_namespace("production")
                 .version(1),
         )
@@ -229,7 +227,9 @@ async fn test_integrated_key_generation_readme_syntax() -> Result<(), Box<dyn st
     let plaintext = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/readme_syntax_integrated").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/readme_syntax_integrated").with_master_key(master_key),
+                )
                 .with_namespace("production")
                 .version(1),
         )
@@ -249,7 +249,9 @@ async fn test_os_keychain_storage_readme_syntax() -> Result<(), Box<dyn std::err
     let encrypted = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/readme_test_keychain").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/readme_test_keychain").with_master_key(master_key),
+                )
                 .with_namespace("user-keys")
                 .version(1),
         )
@@ -270,24 +272,24 @@ async fn test_zstd_compression_readme_syntax() -> Result<(), Box<dyn std::error:
         .await?;
 
     // Exact syntax from README.md lines 250-253
-    let original = Compress::zstd()
-        .with_data(compressed)
-        .decompress()
-        .await?;
+    let original = Compress::zstd().with_data(compressed).decompress().await?;
 
     assert_eq!(original, b"Large text that compresses well...");
     Ok(())
 }
 
 #[tokio::test]
-async fn test_compression_with_encryption_readme_syntax() -> Result<(), Box<dyn std::error::Error>> {
+async fn test_compression_with_encryption_readme_syntax() -> Result<(), Box<dyn std::error::Error>>
+{
     let master_key = [6u8; 32];
 
     // Exact syntax from README.md lines 261-269
     let result = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/readme_test_compress").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/readme_test_compress").with_master_key(master_key),
+                )
                 .with_namespace("app")
                 .version(1),
         )
@@ -300,7 +302,9 @@ async fn test_compression_with_encryption_readme_syntax() -> Result<(), Box<dyn 
     let original = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/readme_test_compress").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/readme_test_compress").with_master_key(master_key),
+                )
                 .with_namespace("app")
                 .version(1),
         )

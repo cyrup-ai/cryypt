@@ -16,32 +16,27 @@ This document provides comprehensive API documentation for the `cryypt` library,
 
 ## Quick Start
 
-```rust
-use cryypt::prelude::*;
+### Generate a MasterKey
 
-// First time: Generate master key
-fn setup() -> Result<String, Box<dyn std::error::Error>> {
+```rust
     let master_key_hex = MasterKey::size(256.bits())
         .with_store(KeychainStore::for_app("MyApp"))
         .with_namespace("master")
         .version(1)
         .generate()?;
-    
-    println!("Master key: {}", master_key_hex);
-    Ok(master_key_hex)
-}
+```
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load master key from hex (after initial setup)
     let master_key = MasterKey::from_hex("your-master-key-hex")?;
-    
+
     // Use it for your encryption keys
     let key = Key::size(256.bits())
         .with_store(FileKeyStore::at("/keys").with_master_key(master_key))
         .with_namespace("data")
         .version(1);
-    
+
     // Encrypt
     let ciphertext = Cipher::aes()
         .with_key(key.clone())
@@ -50,14 +45,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     println!("Encrypted: {}", ciphertext.to_base64());
-    
+
     // Decrypt
     let plaintext = Cipher::aes()
         .with_key(key)
         .with_ciphertext(ciphertext.to_bytes())
         .decrypt()
         .await?;
-    
+
     println!("Decrypted: {}", plaintext.to_string()?);
     Ok(())
 }
@@ -205,7 +200,7 @@ let key = Key::size(256.bits())  // ← Generates NEW secure key automatically
     .version(1);
 
 // The key is:
-// - Generated using rand::rng().fill_bytes() 
+// - Generated using rand::rng().fill_bytes()
 // - Stored encrypted with your master key
 // - Retrieved by namespace + version
 // - Automatically rotated when you increment version

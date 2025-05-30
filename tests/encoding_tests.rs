@@ -10,7 +10,9 @@ async fn test_base64_encoding() -> Result<(), Box<dyn std::error::Error>> {
     let base64_result = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/encoding_test_base64").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/encoding_test_base64").with_master_key(master_key),
+                )
                 .with_namespace("test")
                 .version(1),
         )
@@ -23,7 +25,9 @@ async fn test_base64_encoding() -> Result<(), Box<dyn std::error::Error>> {
     let plaintext = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/encoding_test_base64").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/encoding_test_base64").with_master_key(master_key),
+                )
                 .with_namespace("test")
                 .version(1),
         )
@@ -78,7 +82,9 @@ async fn test_string_methods() -> Result<(), Box<dyn std::error::Error>> {
     let result = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/encoding_test_string").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/encoding_test_string").with_master_key(master_key),
+                )
                 .with_namespace("test")
                 .version(1),
         )
@@ -90,7 +96,9 @@ async fn test_string_methods() -> Result<(), Box<dyn std::error::Error>> {
     let decrypted_text = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/encoding_test_string").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/encoding_test_string").with_master_key(master_key),
+                )
                 .with_namespace("test")
                 .version(1),
         )
@@ -112,10 +120,10 @@ async fn test_file_operations() -> Result<(), Box<dyn std::error::Error>> {
 
     let master_key = [4u8; 32];
     let test_data = b"This is test file content for encryption!";
-    
+
     // Create test directories
     fs::create_dir_all("/tmp/encoding_test_files")?;
-    
+
     // Write test data to file
     let input_file = "/tmp/encoding_test_files/input.txt";
     let encrypted_file = "/tmp/encoding_test_files/encrypted.bin";
@@ -125,7 +133,9 @@ async fn test_file_operations() -> Result<(), Box<dyn std::error::Error>> {
     let encrypted_result = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/encoding_test_files").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/encoding_test_files").with_master_key(master_key),
+                )
                 .with_namespace("test")
                 .version(1),
         )
@@ -141,7 +151,9 @@ async fn test_file_operations() -> Result<(), Box<dyn std::error::Error>> {
     let plaintext = Cipher::aes()
         .with_key(
             Key::size(256.bits())
-                .with_store(FileKeyStore::at("/tmp/encoding_test_files").with_master_key(master_key))
+                .with_store(
+                    FileKeyStore::at("/tmp/encoding_test_files").with_master_key(master_key),
+                )
                 .with_namespace("test")
                 .version(1),
         )
@@ -163,7 +175,8 @@ async fn test_data_encoding_methods() -> Result<(), Box<dyn std::error::Error>> 
 
     // Test data from base64
     let original_data = b"Hello from base64!";
-    let base64_data = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, original_data);
+    let base64_data =
+        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, original_data);
 
     let ciphertext = Cipher::aes()
         .with_key(

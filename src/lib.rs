@@ -65,7 +65,7 @@ pub mod transport;
 
 // Re-export core types
 pub use cipher::{
-    encryption_result::EncodableResult, CipherAlgorithm, DecryptionResultImpl, EncryptionResultImpl,
+    CipherAlgorithm, DecryptionResultImpl, EncryptionResultImpl, encryption_result::EncodableResult,
 };
 pub use error::{CryptError, Result};
 pub use key::{KeyId, SimpleKeyId};
@@ -77,28 +77,27 @@ pub use key::api::Key;
 pub use pqcrypto::api::{KemBuilder, SignatureBuilder};
 
 pub use jwt::{
-    Claims, ClaimsBuilder, Es256Key, Generator, Header, Hs256Key,
-    JwtError, JwtResult, Revocation, Rotator, Signer, ValidationOptions,
-    TokenGenerationFuture, TokenVerificationFuture
+    Claims, ClaimsBuilder, Es256Key, Generator, Header, Hs256Key, JwtError, JwtResult, Revocation,
+    Rotator, Signer, TokenGenerationFuture, TokenVerificationFuture, ValidationOptions,
 };
 
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
+        BitSize, Bits, Cipher, CryptError, EncodableResult, KemBuilder, Key, SignatureBuilder,
         cipher::api::builder_traits::{
             CiphertextBuilder, DataBuilder as CipherDataBuilder, DecryptBuilder, DecryptSecondPass,
             EncryptBuilder, EncryptSecondPass, KeyBuilder, WithCompression,
         },
         compression::{
-            api::{CompressExecutor, DataBuilder as CompressDataBuilder, DecompressExecutor},
             Compress,
+            api::{CompressExecutor, DataBuilder as CompressDataBuilder, DecompressExecutor},
         },
         hashing::{
-            api::{DataBuilder as HashDataBuilder, HashExecutor, PassesBuilder, SaltBuilder},
             Hash,
+            api::{DataBuilder as HashDataBuilder, HashExecutor, PassesBuilder, SaltBuilder},
         },
         key::store::{FileKeyStore, KeychainStore},
         pqcrypto::prelude::*,
-        BitSize, Bits, Cipher, CryptError, EncodableResult, Key, KemBuilder, SignatureBuilder,
     };
 }

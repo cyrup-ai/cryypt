@@ -10,8 +10,7 @@ mod raw_key_builder;
 pub use builder_traits::*;
 pub use key_builder::*;
 pub use key_entry::Key;
-pub use raw_key_builder::RawKeyBuilder;
 pub use master_key_builder::{
-    MasterKey, MasterKeyBuilder, MasterKeyProvider, 
-    PassphraseMasterKey, RawMasterKey, EnvMasterKey
+    EnvMasterKey, MasterKey, MasterKeyBuilder, MasterKeyProvider, PassphraseMasterKey, RawMasterKey,
 };
+pub use raw_key_builder::RawKeyBuilder;

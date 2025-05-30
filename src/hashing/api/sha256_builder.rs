@@ -1,6 +1,6 @@
 //! SHA-256 hash builder
 
-use super::{AsyncHashResult, DataBuilder, HashExecutor, PassesBuilder, SaltBuilder};
+use super::{AsyncHashResult, DataBuilder, HashExecutor, PassesBuilder, SaltBuilder, HashPasses};
 
 /// Initial SHA-256 builder
 pub struct Sha256Builder;
@@ -59,10 +59,10 @@ impl SaltBuilder for Sha256WithData {
 impl PassesBuilder for Sha256WithData {
     type Output = Sha256WithDataAndPasses;
 
-    fn with_passes(self, passes: u32) -> Self::Output {
+    fn with_passes(self, passes: HashPasses) -> Self::Output {
         Sha256WithDataAndPasses {
             data: self.data,
-            passes,
+            passes: passes.iterations(),
         }
     }
 }
@@ -87,11 +87,11 @@ impl HashExecutor for Sha256WithData {
 impl PassesBuilder for Sha256WithDataAndSalt {
     type Output = Sha256Complete;
 
-    fn with_passes(self, passes: u32) -> Self::Output {
+    fn with_passes(self, passes: HashPasses) -> Self::Output {
         Sha256Complete {
             data: self.data,
             salt: self.salt,
-            passes,
+            passes: passes.iterations(),
         }
     }
 }

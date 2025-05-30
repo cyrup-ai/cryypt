@@ -6,28 +6,16 @@ mod blake2b_builder;
 mod builder_traits;
 mod sha256_builder;
 mod sha3_builder;
+mod passes;
+mod states;
+mod hash_builder;
+mod hash;
 
 pub use blake2b_builder::Blake2bBuilder;
-pub use builder_traits::*;
-pub use sha256_builder::Sha256Builder;
+pub use builder_traits::{DataBuilder, SaltBuilder, PassesBuilder, HashExecutor, AsyncHashResult};
 pub use sha3_builder::Sha3Builder;
-
-/// Entry point for hashing operations
-pub struct Hash;
-
-impl Hash {
-    /// Create a SHA-256 hasher
-    pub fn sha256() -> Sha256Builder {
-        Sha256Builder
-    }
-
-    /// Create a SHA3-256 hasher
-    pub fn sha3() -> Sha3Builder {
-        Sha3Builder
-    }
-
-    /// Create a Blake2b hasher
-    pub fn blake2b() -> Blake2bBuilder {
-        Blake2bBuilder
-    }
-}
+pub use sha256_builder::Sha256Builder;
+pub use passes::HashPasses;
+pub use states::{NoData, HasData, NoSalt, HasSalt, NoPasses, HasPasses};
+pub use hash_builder::HashBuilder;
+pub use hash::{Hash, Sha256Hash, Sha3_256Hash, Sha3_384Hash, Sha3_512Hash, Blake2bHash};

@@ -19,7 +19,7 @@ pub trait KeyProviderBuilder: Send + Sync {
 /// Builder that can accept AAD (Additional Authenticated Data) for AEAD ciphers
 pub trait AadBuilder {
     type Output;
-    
+
     /// Add multiple AAD key-value pairs from a map
     fn with_aad(self, aad_map: std::collections::HashMap<String, String>) -> Self::Output;
 }
@@ -28,10 +28,13 @@ pub trait AadBuilder {
 pub trait DataBuilder {
     type Output;
     fn with_data<T: Into<Vec<u8>>>(self, data: T) -> Self::Output;
-    
+
     /// Accept data from a file
-    fn with_file<P: AsRef<std::path::Path> + Send>(self, path: P) -> impl std::future::Future<Output = crate::Result<Self::Output>> + Send
-    where 
+    fn with_file<P: AsRef<std::path::Path> + Send>(
+        self,
+        path: P,
+    ) -> impl std::future::Future<Output = crate::Result<Self::Output>> + Send
+    where
         Self: Sized + Send,
     {
         async move {
@@ -41,29 +44,28 @@ pub trait DataBuilder {
             Ok(self.with_data(data))
         }
     }
-    
+
     /// Accept data from a string (UTF-8)
     fn with_text(self, text: &str) -> Self::Output
-    where 
+    where
         Self: Sized,
     {
         self.with_data(text.as_bytes())
     }
-    
+
     /// Accept data from base64 encoded string
     fn with_data_base64(self, data: &str) -> crate::Result<Self::Output>
-    where 
+    where
         Self: Sized,
     {
         use base64::Engine;
-        let decoded = base64::engine::general_purpose::STANDARD
-            .decode(data)?;
+        let decoded = base64::engine::general_purpose::STANDARD.decode(data)?;
         Ok(self.with_data(decoded))
     }
-    
+
     /// Accept data from hex encoded string
     fn with_data_hex(self, data: &str) -> crate::Result<Self::Output>
-    where 
+    where
         Self: Sized,
     {
         let decoded = hex::decode(data)?;
@@ -75,34 +77,36 @@ pub trait DataBuilder {
 pub trait CiphertextBuilder {
     type Output;
     fn with_ciphertext<T: Into<Vec<u8>>>(self, ciphertext: T) -> Self::Output;
-    
+
     /// Accept ciphertext from a file
-    fn with_ciphertext_file<P: AsRef<std::path::Path> + Send>(self, path: P) -> impl std::future::Future<Output = crate::Result<Self::Output>> + Send
-    where 
+    fn with_ciphertext_file<P: AsRef<std::path::Path> + Send>(
+        self,
+        path: P,
+    ) -> impl std::future::Future<Output = crate::Result<Self::Output>> + Send
+    where
         Self: Sized + Send,
     {
         async move {
-            let data = tokio::fs::read(path)
-                .await
-                .map_err(|e| crate::CryptError::Io(format!("Failed to read ciphertext file: {}", e)))?;
+            let data = tokio::fs::read(path).await.map_err(|e| {
+                crate::CryptError::Io(format!("Failed to read ciphertext file: {}", e))
+            })?;
             Ok(self.with_ciphertext(data))
         }
     }
-    
+
     /// Accept ciphertext from base64 encoded string
-    fn with_ciphertext_base64(self, ciphertext: &str) -> crate::Result<Self::Output> 
-    where 
+    fn with_ciphertext_base64(self, ciphertext: &str) -> crate::Result<Self::Output>
+    where
         Self: Sized,
     {
         use base64::Engine;
-        let decoded = base64::engine::general_purpose::STANDARD
-            .decode(ciphertext)?;
+        let decoded = base64::engine::general_purpose::STANDARD.decode(ciphertext)?;
         Ok(self.with_ciphertext(decoded))
     }
-    
+
     /// Accept ciphertext from hex encoded string
     fn with_ciphertext_hex(self, ciphertext: &str) -> crate::Result<Self::Output>
-    where 
+    where
         Self: Sized,
     {
         let decoded = hex::decode(ciphertext)?;

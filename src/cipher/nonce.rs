@@ -8,7 +8,7 @@
 //! - Domain-separated key derivation
 
 use crate::{CryptError, Result};
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use dashmap::DashMap;
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
@@ -19,9 +19,9 @@ use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, Zeroizing};
 
 /// Nonce structure sizes
-pub const TIMESTAMP_BYTES: usize = 8;   // u64 nanoseconds
-pub const RANDOM_BYTES: usize = 32;     // 256-bit entropy
-pub const MAC_BYTES: usize = 32;        // 256-bit HMAC tag
+pub const TIMESTAMP_BYTES: usize = 8; // u64 nanoseconds
+pub const RANDOM_BYTES: usize = 32; // 256-bit entropy
+pub const MAC_BYTES: usize = 32; // 256-bit HMAC tag
 pub const NONCE_BYTES: usize = TIMESTAMP_BYTES + RANDOM_BYTES + MAC_BYTES; // 72
 /// Base64url length (no padding) for 72 raw bytes = 96
 pub const ENCODED_LEN: usize = 96;
@@ -136,33 +136,34 @@ impl NonceManager {
     }
 
     /// Generate a fresh nonce using the supplied CSPRNG
-    pub fn generate<'a, R>(&'a self, rng: &'a mut R) -> impl std::future::Future<Output = Nonce> + 'a
+    pub fn generate<'a, R>(
+        &'a self,
+        rng: &'a mut R,
+    ) -> impl std::future::Future<Output = Nonce> + 'a
     where
         R: RngCore + CryptoRng,
     {
         async move {
-        let ts = unix_time_nanos();
-        let mut random = [0u8; RANDOM_BYTES];
-        rng.fill_bytes(&mut random);
+            let ts = unix_time_nanos();
+            let mut random = [0u8; RANDOM_BYTES];
+            rng.fill_bytes(&mut random);
 
-        let tag = self.hmac_tag(ts, &random);
+            let tag = self.hmac_tag(ts, &random);
 
-        // Assemble raw bytes
-        let mut raw = [0u8; NONCE_BYTES];
-        raw[..TIMESTAMP_BYTES].copy_from_slice(&ts.to_be_bytes());
-        raw[TIMESTAMP_BYTES..TIMESTAMP_BYTES + RANDOM_BYTES].copy_from_slice(&random);
-        raw[TIMESTAMP_BYTES + RANDOM_BYTES..].copy_from_slice(&tag);
+            // Assemble raw bytes
+            let mut raw = [0u8; NONCE_BYTES];
+            raw[..TIMESTAMP_BYTES].copy_from_slice(&ts.to_be_bytes());
+            raw[TIMESTAMP_BYTES..TIMESTAMP_BYTES + RANDOM_BYTES].copy_from_slice(&random);
+            raw[TIMESTAMP_BYTES + RANDOM_BYTES..].copy_from_slice(&tag);
 
-        let encoded = URL_SAFE_NO_PAD.encode(raw);
-        Nonce(encoded)
+            let encoded = URL_SAFE_NO_PAD.encode(raw);
+            Nonce(encoded)
         }
     }
 
     /// Convenience wrapper using rand::rng()
     pub fn generate_os(&self) -> impl std::future::Future<Output = Nonce> + '_ {
-        async move {
-            self.generate(&mut rng()).await
-        }
+        async move { self.generate(&mut rng()).await }
     }
 
     /// Verify nonce authenticity, freshness and replay
@@ -226,19 +227,18 @@ impl NonceManager {
     pub fn extract_cipher_nonce(&self, nonce: &Nonce) -> Result<[u8; 12]> {
         // Verify the nonce first
         let parsed = self.verify(nonce.as_str())?;
-        
+
         // Use first 8 bytes of timestamp + first 4 bytes of random
         let mut cipher_nonce = [0u8; 12];
         cipher_nonce[..8].copy_from_slice(&parsed.timestamp_ns.to_be_bytes());
         cipher_nonce[8..].copy_from_slice(&parsed.random[..4]);
-        
+
         Ok(cipher_nonce)
     }
 
     /// Compute HMAC-SHA3 tag for (timestamp, random)
     fn hmac_tag(&self, ts: u64, rand: &[u8; RANDOM_BYTES]) -> [u8; MAC_BYTES] {
-        let mut mac = HmacSha3::new_from_slice(&self.mac_key[..])
-            .expect("HMAC key length valid");
+        let mut mac = HmacSha3::new_from_slice(&self.mac_key[..]).expect("HMAC key length valid");
         mac.update(&ts.to_be_bytes());
         mac.update(rand);
         let mut out = [0u8; MAC_BYTES];
@@ -250,10 +250,9 @@ impl NonceManager {
     pub fn cleanup_expired(&self) {
         let now = unix_time_nanos();
         let ttl_nanos = self.cfg.ttl.as_nanos() as u64;
-        
-        self.seen.retain(|_, &mut ts| {
-            now.saturating_sub(ts) <= ttl_nanos
-        });
+
+        self.seen
+            .retain(|_, &mut ts| now.saturating_sub(ts) <= ttl_nanos);
     }
 }
 
@@ -286,4 +285,3 @@ impl NonceGenerator {
         nonce
     }
 }
-

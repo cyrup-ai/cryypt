@@ -126,25 +126,25 @@ impl<Sub, Exp, Iat> ClaimsBuilder<Sub, Exp, Iat> {
         self.extra.insert(k.into(), v);
         self
     }
-    
+
     /// Set the issuer (iss) claim.
     pub fn issuer(mut self, iss: impl Into<String>) -> Self {
         self.iss = Some(iss.into());
         self
     }
-    
+
     /// Set the audience (aud) claim.
     pub fn audience(mut self, aud: Vec<String>) -> Self {
         self.aud = Some(aud);
         self
     }
-    
+
     /// Set the not-before (nbf) claim.
     pub fn not_before(mut self, nbf: DateTime<Utc>) -> Self {
         self.nbf = Some(nbf.timestamp());
         self
     }
-    
+
     /// Set the JWT ID (jti) claim.
     pub fn jwt_id(mut self, jti: impl Into<String>) -> Self {
         self.jti = Some(jti.into());

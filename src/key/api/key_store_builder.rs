@@ -19,14 +19,14 @@ impl FileKeyStoreBuilder {
 /// Trait for types that can build a key store
 pub trait KeyStoreBuilder: Send + Sync {
     type Store: KeyStorage;
-    
+
     /// Build the key store with the given master key
     fn build(self, master_key: [u8; 32]) -> Self::Store;
 }
 
 impl KeyStoreBuilder for FileKeyStoreBuilder {
     type Store = FileKeyStore;
-    
+
     fn build(self, master_key: [u8; 32]) -> Self::Store {
         FileKeyStore::new(&self.base_path, master_key)
     }
@@ -47,7 +47,7 @@ impl KeychainStoreBuilder {
 
 impl KeyStoreBuilder for KeychainStoreBuilder {
     type Store = KeychainStore;
-    
+
     fn build(self, _master_key: [u8; 32]) -> Self::Store {
         // Keychain doesn't need master key
         KeychainStore::new(self.service_name)

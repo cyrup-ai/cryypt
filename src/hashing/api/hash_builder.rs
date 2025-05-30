@@ -1,9 +1,10 @@
 //! Builder for hash operations
 
-use crate::hashing::hash_result::HashResultImpl;
+use super::super::hash_result::HashResultImpl;
 use super::{
     NoData, HasData, NoSalt, HasSalt, NoPasses, HasPasses,
     hash::{Sha256Hash, Sha3_256Hash, Sha3_384Hash, Sha3_512Hash, Blake2bHash},
+    passes::HashPasses,
 };
 
 /// Builder for hash operations
@@ -53,7 +54,7 @@ impl<H, D, P> HashBuilder<H, D, NoSalt, P> {
 // Methods for setting passes (for iterative hashing)
 impl<H, D, S> HashBuilder<H, D, S, NoPasses> {
     /// Set the number of passes for iterative hashing
-    pub fn with_passes(self, passes: u32) -> HashBuilder<H, D, S, HasPasses> {
+    pub fn with_passes(self, passes: HashPasses) -> HashBuilder<H, D, S, HasPasses> {
         HashBuilder {
             hasher: self.hasher,
             data: self.data,
@@ -85,14 +86,14 @@ impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, HasSalt, NoPasses> {
 // SHA-256 with data and passes
 impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, NoSalt, HasPasses> {
     pub fn hash(self) -> impl AsyncHashResult {
-        sha256_hash(self.data.0, None, self.passes.0)
+        sha256_hash(self.data.0, None, self.passes.0.iterations())
     }
 }
 
 // SHA-256 with all options
 impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, HasSalt, HasPasses> {
     pub fn hash(self) -> impl AsyncHashResult {
-        sha256_hash(self.data.0, Some(self.salt.0), self.passes.0)
+        sha256_hash(self.data.0, Some(self.salt.0), self.passes.0.iterations())
     }
 }
 
@@ -111,13 +112,13 @@ impl HashBuilder<Sha3_256Hash, HasData<Vec<u8>>, HasSalt, NoPasses> {
 
 impl HashBuilder<Sha3_256Hash, HasData<Vec<u8>>, NoSalt, HasPasses> {
     pub fn hash(self) -> impl AsyncHashResult {
-        sha3_256_hash(self.data.0, None, self.passes.0)
+        sha3_256_hash(self.data.0, None, self.passes.0.iterations())
     }
 }
 
 impl HashBuilder<Sha3_256Hash, HasData<Vec<u8>>, HasSalt, HasPasses> {
     pub fn hash(self) -> impl AsyncHashResult {
-        sha3_256_hash(self.data.0, Some(self.salt.0), self.passes.0)
+        sha3_256_hash(self.data.0, Some(self.salt.0), self.passes.0.iterations())
     }
 }
 
@@ -144,8 +145,7 @@ impl<T> AsyncHashResult for T where T: Future<Output = Result<Vec<u8>>> + Send {
 // Internal hash functions that return HashResultImpl
 fn sha256_hash(data: Vec<u8>, salt: Option<Vec<u8>>, passes: u32) -> HashResultImpl {
     HashResultImpl::from_computation(move || {
-        use crate::hashing::sha256::SHA256;
-        use crate::hashing::hashing_traits::Hasher;
+        use sha2::{Sha256, Digest};
         
         let mut input = data;
         if let Some(salt) = salt {
@@ -154,9 +154,9 @@ fn sha256_hash(data: Vec<u8>, salt: Option<Vec<u8>>, passes: u32) -> HashResultI
         
         let mut result = input.clone();
         for _ in 0..passes {
-            let mut hasher = SHA256::new_default();
+            let mut hasher = Sha256::new();
             hasher.update(&result);
-            result = hasher.get_hash().to_vec();
+            result = hasher.finalize().to_vec();
         }
         
         Ok(result)
@@ -165,6 +165,8 @@ fn sha256_hash(data: Vec<u8>, salt: Option<Vec<u8>>, passes: u32) -> HashResultI
 
 fn sha3_256_hash(data: Vec<u8>, salt: Option<Vec<u8>>, passes: u32) -> HashResultImpl {
     HashResultImpl::from_computation(move || {
+        use sha3::{Sha3_256, Digest};
+        
         let mut input = data;
         if let Some(salt) = salt {
             input.extend_from_slice(&salt);
@@ -172,8 +174,9 @@ fn sha3_256_hash(data: Vec<u8>, salt: Option<Vec<u8>>, passes: u32) -> HashResul
         
         let mut result = input.clone();
         for _ in 0..passes {
-            // Use the internal sha3_256 implementation
-            result = crate::hashing::sha3::sha3_256_internal(&result)?;
+            let mut hasher = Sha3_256::new();
+            hasher.update(&result);
+            result = hasher.finalize().to_vec();
         }
         
         Ok(result)
@@ -182,7 +185,20 @@ fn sha3_256_hash(data: Vec<u8>, salt: Option<Vec<u8>>, passes: u32) -> HashResul
 
 fn blake2b_hash(data: Vec<u8>, key: Option<Vec<u8>>, output_size: u8) -> HashResultImpl {
     HashResultImpl::from_computation(move || {
-        let key = key.unwrap_or_default();
-        crate::hashing::blake2b::blake2b_internal(&data, &key, output_size)
+        use blake2::{Blake2b512, Blake2bMac512};
+        use blake2::digest::{Digest, KeyInit, Mac};
+        
+        if let Some(key) = key {
+            // Use Blake2b as MAC
+            let mut mac = <Blake2bMac512 as KeyInit>::new_from_slice(&key)
+                .map_err(|e| crate::CryptError::internal(format!("Blake2b key error: {}", e)))?;
+            mac.update(&data);
+            Ok(mac.finalize().into_bytes().to_vec())
+        } else {
+            // Use Blake2b as hash
+            let mut hasher = Blake2b512::default();
+            hasher.update(&data);
+            Ok(hasher.finalize().to_vec())
+        }
     })
 }

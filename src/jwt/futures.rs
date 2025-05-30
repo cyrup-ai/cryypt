@@ -28,7 +28,7 @@ impl TokenGenerationFuture {
 
 impl Future for TokenGenerationFuture {
     type Output = JwtResult<String>;
-    
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.rx).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
@@ -52,7 +52,7 @@ impl TokenVerificationFuture {
 
 impl Future for TokenVerificationFuture {
     type Output = JwtResult<Claims>;
-    
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.rx).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
@@ -76,7 +76,7 @@ impl CleanupStartFuture {
 
 impl Future for CleanupStartFuture {
     type Output = ();
-    
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.rx).poll(cx) {
             Poll::Ready(_) => Poll::Ready(()),
@@ -94,9 +94,9 @@ mod tests {
     async fn test_token_generation_future_success() {
         let (tx, rx) = oneshot::channel();
         let future = TokenGenerationFuture::new(rx);
-        
+
         tx.send(Ok("test.token.here".to_string())).unwrap();
-        
+
         let result = future.await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "test.token.here");
@@ -106,9 +106,9 @@ mod tests {
     async fn test_token_generation_future_error() {
         let (tx, rx) = oneshot::channel();
         let future = TokenGenerationFuture::new(rx);
-        
+
         tx.send(Err(JwtError::Malformed)).unwrap();
-        
+
         let result = future.await;
         assert!(matches!(result, Err(JwtError::Malformed)));
     }
@@ -117,9 +117,9 @@ mod tests {
     async fn test_token_generation_future_dropped_sender() {
         let (tx, rx) = oneshot::channel::<JwtResult<String>>();
         let future = TokenGenerationFuture::new(rx);
-        
+
         drop(tx); // Simulate task panic/cancellation
-        
+
         let result = future.await;
         assert!(matches!(result, Err(JwtError::TaskJoinError)));
     }
@@ -128,7 +128,7 @@ mod tests {
     async fn test_token_verification_future_success() {
         let (tx, rx) = oneshot::channel();
         let future = TokenVerificationFuture::new(rx);
-        
+
         let claims = Claims {
             sub: "test".to_string(),
             exp: 1234567890,
@@ -139,9 +139,9 @@ mod tests {
             jti: None,
             extra: Default::default(),
         };
-        
+
         tx.send(Ok(claims.clone())).unwrap();
-        
+
         let result = future.await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap().sub, "test");
@@ -151,9 +151,9 @@ mod tests {
     async fn test_cleanup_start_future() {
         let (tx, rx) = oneshot::channel();
         let future = CleanupStartFuture::new(rx);
-        
+
         tx.send(()).unwrap();
-        
+
         future.await; // Should complete without error
     }
 }

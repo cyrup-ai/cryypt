@@ -1,13 +1,9 @@
 //! KEM (Key Encapsulation Mechanism) builder implementations
 
+use super::super::{DecapsulationResult, EncapsulationResult, KemAlgorithm, SharedSecret};
+use super::{builder_traits::*, states::*};
 use crate::{CryptError, Result};
-use super::{
-    builder_traits::*,
-    states::*,
-};
-use super::super::{
-    KemAlgorithm, EncapsulationResult, DecapsulationResult, SharedSecret,
-};
+use pqcrypto_traits::kem::{PublicKey as PqPublicKey, SecretKey as PqSecretKey, SharedSecret as PqSharedSecret, Ciphertext as PqCiphertext};
 use std::marker::PhantomData;
 
 /// Main entry point for KEM operations
@@ -20,11 +16,14 @@ impl KemBuilder {
             512 => KemAlgorithm::MlKem512,
             768 => KemAlgorithm::MlKem768,
             1024 => KemAlgorithm::MlKem1024,
-            _ => return Err(CryptError::UnsupportedAlgorithm(
-                format!("ML-KEM-{} is not supported. Use 512, 768, or 1024", security_level)
-            )),
+            _ => {
+                return Err(CryptError::UnsupportedAlgorithm(format!(
+                    "ML-KEM-{} is not supported. Use 512, 768, or 1024",
+                    security_level
+                )));
+            }
         };
-        
+
         Ok(MlKemBuilder {
             algorithm,
             state: PhantomData,
@@ -33,7 +32,7 @@ impl KemBuilder {
             ciphertext: None,
         })
     }
-    
+
     /// Create ML-KEM-512 builder (NIST security level 1)
     pub fn ml_kem_512() -> MlKemBuilder<NeedKeyPair> {
         MlKemBuilder {
@@ -44,7 +43,7 @@ impl KemBuilder {
             ciphertext: None,
         }
     }
-    
+
     /// Create ML-KEM-768 builder (NIST security level 3)
     pub fn ml_kem_768() -> MlKemBuilder<NeedKeyPair> {
         MlKemBuilder {
@@ -55,7 +54,7 @@ impl KemBuilder {
             ciphertext: None,
         }
     }
-    
+
     /// Create ML-KEM-1024 builder (NIST security level 5)
     pub fn ml_kem_1024() -> MlKemBuilder<NeedKeyPair> {
         MlKemBuilder {
@@ -89,7 +88,7 @@ impl<State> MlKemBuilder<State> {
         }
         Ok(())
     }
-    
+
     fn validate_secret_key(&self, key: &[u8]) -> Result<()> {
         let expected = self.algorithm.secret_key_size();
         if key.len() != expected {
@@ -100,42 +99,32 @@ impl<State> MlKemBuilder<State> {
         }
         Ok(())
     }
-    
-    fn validate_ciphertext(&self, ct: &[u8]) -> Result<()> {
-        let expected = self.algorithm.ciphertext_size();
-        if ct.len() != expected {
-            return Err(CryptError::InvalidEncryptedData(format!(
-                "Invalid ciphertext size: expected {}, got {}",
-                expected,
-                ct.len()
-            )));
-        }
-        Ok(())
-    }
+
 }
 
 // Implementation for NeedKeyPair state
 impl KemKeyPairBuilder for MlKemBuilder<NeedKeyPair> {
     type Output = MlKemBuilder<HasKeyPair>;
-    
+    type PublicKeyOutput = MlKemBuilder<HasPublicKey>;
+    type SecretKeyOutput = MlKemBuilder<HasSecretKey>;
+
     async fn generate(self) -> Result<Self::Output> {
-        use rand::rngs::OsRng;
-        
+
         let (pk, sk) = match self.algorithm {
             KemAlgorithm::MlKem512 => {
                 let (pk, sk) = pqcrypto_mlkem::mlkem512::keypair();
-                (pk.as_bytes().to_vec(), sk.as_bytes().to_vec())
+                (PqPublicKey::as_bytes(&pk).to_vec(), PqSecretKey::as_bytes(&sk).to_vec())
             }
             KemAlgorithm::MlKem768 => {
                 let (pk, sk) = pqcrypto_mlkem::mlkem768::keypair();
-                (pk.as_bytes().to_vec(), sk.as_bytes().to_vec())
+                (PqPublicKey::as_bytes(&pk).to_vec(), PqSecretKey::as_bytes(&sk).to_vec())
             }
             KemAlgorithm::MlKem1024 => {
                 let (pk, sk) = pqcrypto_mlkem::mlkem1024::keypair();
-                (pk.as_bytes().to_vec(), sk.as_bytes().to_vec())
+                (PqPublicKey::as_bytes(&pk).to_vec(), PqSecretKey::as_bytes(&sk).to_vec())
             }
         };
-        
+
         Ok(MlKemBuilder {
             algorithm: self.algorithm,
             state: PhantomData,
@@ -144,14 +133,14 @@ impl KemKeyPairBuilder for MlKemBuilder<NeedKeyPair> {
             ciphertext: None,
         })
     }
-    
+
     fn with_keypair<T: Into<Vec<u8>>>(self, public_key: T, secret_key: T) -> Result<Self::Output> {
         let pk = public_key.into();
         let sk = secret_key.into();
-        
+
         self.validate_public_key(&pk)?;
         self.validate_secret_key(&sk)?;
-        
+
         Ok(MlKemBuilder {
             algorithm: self.algorithm,
             state: PhantomData,
@@ -160,11 +149,14 @@ impl KemKeyPairBuilder for MlKemBuilder<NeedKeyPair> {
             ciphertext: None,
         })
     }
-    
-    fn with_public_key<T: Into<Vec<u8>>>(self, public_key: T) -> Result<MlKemBuilder<HasPublicKey>> {
+
+    fn with_public_key<T: Into<Vec<u8>>>(
+        self,
+        public_key: T,
+    ) -> Result<MlKemBuilder<HasPublicKey>> {
         let pk = public_key.into();
         self.validate_public_key(&pk)?;
-        
+
         Ok(MlKemBuilder {
             algorithm: self.algorithm,
             state: PhantomData,
@@ -173,11 +165,14 @@ impl KemKeyPairBuilder for MlKemBuilder<NeedKeyPair> {
             ciphertext: None,
         })
     }
-    
-    fn with_secret_key<T: Into<Vec<u8>>>(self, secret_key: T) -> Result<MlKemBuilder<HasSecretKey>> {
+
+    fn with_secret_key<T: Into<Vec<u8>>>(
+        self,
+        secret_key: T,
+    ) -> Result<MlKemBuilder<HasSecretKey>> {
         let sk = secret_key.into();
         self.validate_secret_key(&sk)?;
-        
+
         Ok(MlKemBuilder {
             algorithm: self.algorithm,
             state: PhantomData,
@@ -194,38 +189,69 @@ pub type MlKemWithPublicKey = MlKemBuilder<HasPublicKey>;
 pub type MlKemWithSecretKey = MlKemBuilder<HasSecretKey>;
 pub type MlKemWithCiphertext = MlKemBuilder<HasCiphertext>;
 
+// Public key access methods for HasKeyPair state
+impl MlKemBuilder<HasKeyPair> {
+    /// Get the public key bytes
+    pub fn public_key(&self) -> &[u8] {
+        self.public_key.as_ref().expect("HasKeyPair must have public key")
+    }
+
+    /// Get the secret key bytes  
+    pub fn secret_key(&self) -> &[u8] {
+        self.secret_key.as_ref().expect("HasKeyPair must have secret key")
+    }
+
+    /// Get the public key as a vector
+    pub fn public_key_vec(&self) -> Vec<u8> {
+        self.public_key.clone().expect("HasKeyPair must have public key")
+    }
+
+    /// Get the secret key as a vector
+    pub fn secret_key_vec(&self) -> Vec<u8> {
+        self.secret_key.clone().expect("HasKeyPair must have secret key")
+    }
+}
+
 // Implementation for HasPublicKey state - can encapsulate
 impl EncapsulateBuilder for MlKemBuilder<HasPublicKey> {
     async fn encapsulate(self) -> Result<EncapsulationResult> {
-        let public_key = self.public_key
+        let public_key = self
+            .public_key
             .ok_or_else(|| CryptError::InternalError("Public key not set".to_string()))?;
-        
+
         let (shared_secret_bytes, ciphertext) = match self.algorithm {
             KemAlgorithm::MlKem512 => {
                 use pqcrypto_mlkem::mlkem512::{PublicKey, encapsulate};
-                let pk = PublicKey::from_bytes(&public_key)
-                    .map_err(|_| CryptError::InvalidKey("Invalid ML-KEM-512 public key".to_string()))?;
+                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                    CryptError::InvalidKey("Invalid ML-KEM-512 public key".to_string())
+                })?;
                 let (ss, ct) = encapsulate(&pk);
-                (ss.as_bytes().to_vec(), ct.as_bytes().to_vec())
+                (PqSharedSecret::as_bytes(&ss).to_vec(), PqCiphertext::as_bytes(&ct).to_vec())
             }
             KemAlgorithm::MlKem768 => {
                 use pqcrypto_mlkem::mlkem768::{PublicKey, encapsulate};
-                let pk = PublicKey::from_bytes(&public_key)
-                    .map_err(|_| CryptError::InvalidKey("Invalid ML-KEM-768 public key".to_string()))?;
+                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                    CryptError::InvalidKey("Invalid ML-KEM-768 public key".to_string())
+                })?;
                 let (ss, ct) = encapsulate(&pk);
-                (ss.as_bytes().to_vec(), ct.as_bytes().to_vec())
+                (PqSharedSecret::as_bytes(&ss).to_vec(), PqCiphertext::as_bytes(&ct).to_vec())
             }
             KemAlgorithm::MlKem1024 => {
                 use pqcrypto_mlkem::mlkem1024::{PublicKey, encapsulate};
-                let pk = PublicKey::from_bytes(&public_key)
-                    .map_err(|_| CryptError::InvalidKey("Invalid ML-KEM-1024 public key".to_string()))?;
+                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                    CryptError::InvalidKey("Invalid ML-KEM-1024 public key".to_string())
+                })?;
                 let (ss, ct) = encapsulate(&pk);
-                (ss.as_bytes().to_vec(), ct.as_bytes().to_vec())
+                (PqSharedSecret::as_bytes(&ss).to_vec(), PqCiphertext::as_bytes(&ct).to_vec())
             }
         };
-        
+
         let shared_secret = SharedSecret::new(self.algorithm, shared_secret_bytes);
-        Ok(EncapsulationResult::new(self.algorithm, ciphertext, shared_secret))
+        Ok(EncapsulationResult::new(
+            self.algorithm,
+            ciphertext,
+            shared_secret,
+        ))
     }
 }
 
@@ -238,13 +264,15 @@ impl EncapsulateBuilder for MlKemBuilder<HasKeyPair> {
             public_key: self.public_key,
             secret_key: None,
             ciphertext: None,
-        }.encapsulate().await
+        }
+        .encapsulate()
+        .await
     }
 }
 
 impl CiphertextBuilder for MlKemBuilder<HasSecretKey> {
     type Output = MlKemBuilder<HasCiphertext>;
-    
+
     fn with_ciphertext<T: Into<Vec<u8>>>(self, ciphertext: T) -> Self::Output {
         MlKemBuilder {
             algorithm: self.algorithm,
@@ -258,7 +286,7 @@ impl CiphertextBuilder for MlKemBuilder<HasSecretKey> {
 
 impl CiphertextBuilder for MlKemBuilder<HasKeyPair> {
     type Output = MlKemBuilder<HasCiphertext>;
-    
+
     fn with_ciphertext<T: Into<Vec<u8>>>(self, ciphertext: T) -> Self::Output {
         MlKemBuilder {
             algorithm: self.algorithm,
@@ -273,52 +301,68 @@ impl CiphertextBuilder for MlKemBuilder<HasKeyPair> {
 // Implementation for HasCiphertext state - can decapsulate if has secret key
 impl DecapsulateBuilder for MlKemBuilder<HasCiphertext> {
     async fn decapsulate(self) -> Result<DecapsulationResult> {
-        let secret_key = self.secret_key
-            .ok_or_else(|| CryptError::InvalidKey("Secret key required for decapsulation".to_string()))?;
-        let ciphertext = self.ciphertext
+        let algorithm = self.algorithm;
+        let secret_key = self.secret_key.ok_or_else(|| {
+            CryptError::InvalidKey("Secret key required for decapsulation".to_string())
+        })?;
+        let ciphertext = self
+            .ciphertext
             .ok_or_else(|| CryptError::InternalError("Ciphertext not set".to_string()))?;
-        
-        self.validate_ciphertext(&ciphertext)?;
-        
-        let shared_secret_bytes = match self.algorithm {
+
+        // Validate ciphertext size
+        let expected_size = algorithm.ciphertext_size();
+        if ciphertext.len() != expected_size {
+            return Err(CryptError::InvalidKeySize {
+                expected: expected_size,
+                actual: ciphertext.len(),
+            });
+        }
+
+        let shared_secret_bytes = match algorithm {
             KemAlgorithm::MlKem512 => {
-                use pqcrypto_mlkem::mlkem512::{SecretKey, Ciphertext, decapsulate};
-                let sk = SecretKey::from_bytes(&secret_key)
-                    .map_err(|_| CryptError::InvalidKey("Invalid ML-KEM-512 secret key".to_string()))?;
-                let ct = Ciphertext::from_bytes(&ciphertext)
-                    .map_err(|_| CryptError::InvalidEncryptedData("Invalid ML-KEM-512 ciphertext".to_string()))?;
+                use pqcrypto_mlkem::mlkem512::{Ciphertext, SecretKey, decapsulate};
+                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                    CryptError::InvalidKey("Invalid ML-KEM-512 secret key".to_string())
+                })?;
+                let ct = Ciphertext::from_bytes(&ciphertext).map_err(|_| {
+                    CryptError::InvalidEncryptedData("Invalid ML-KEM-512 ciphertext".to_string())
+                })?;
                 let ss = decapsulate(&ct, &sk);
-                ss.as_bytes().to_vec()
+                PqSharedSecret::as_bytes(&ss).to_vec()
             }
             KemAlgorithm::MlKem768 => {
-                use pqcrypto_mlkem::mlkem768::{SecretKey, Ciphertext, decapsulate};
-                let sk = SecretKey::from_bytes(&secret_key)
-                    .map_err(|_| CryptError::InvalidKey("Invalid ML-KEM-768 secret key".to_string()))?;
-                let ct = Ciphertext::from_bytes(&ciphertext)
-                    .map_err(|_| CryptError::InvalidEncryptedData("Invalid ML-KEM-768 ciphertext".to_string()))?;
+                use pqcrypto_mlkem::mlkem768::{Ciphertext, SecretKey, decapsulate};
+                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                    CryptError::InvalidKey("Invalid ML-KEM-768 secret key".to_string())
+                })?;
+                let ct = Ciphertext::from_bytes(&ciphertext).map_err(|_| {
+                    CryptError::InvalidEncryptedData("Invalid ML-KEM-768 ciphertext".to_string())
+                })?;
                 let ss = decapsulate(&ct, &sk);
-                ss.as_bytes().to_vec()
+                PqSharedSecret::as_bytes(&ss).to_vec()
             }
             KemAlgorithm::MlKem1024 => {
-                use pqcrypto_mlkem::mlkem1024::{SecretKey, Ciphertext, decapsulate};
-                let sk = SecretKey::from_bytes(&secret_key)
-                    .map_err(|_| CryptError::InvalidKey("Invalid ML-KEM-1024 secret key".to_string()))?;
-                let ct = Ciphertext::from_bytes(&ciphertext)
-                    .map_err(|_| CryptError::InvalidEncryptedData("Invalid ML-KEM-1024 ciphertext".to_string()))?;
+                use pqcrypto_mlkem::mlkem1024::{Ciphertext, SecretKey, decapsulate};
+                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                    CryptError::InvalidKey("Invalid ML-KEM-1024 secret key".to_string())
+                })?;
+                let ct = Ciphertext::from_bytes(&ciphertext).map_err(|_| {
+                    CryptError::InvalidEncryptedData("Invalid ML-KEM-1024 ciphertext".to_string())
+                })?;
                 let ss = decapsulate(&ct, &sk);
-                ss.as_bytes().to_vec()
+                PqSharedSecret::as_bytes(&ss).to_vec()
             }
         };
-        
-        let shared_secret = SharedSecret::new(self.algorithm, shared_secret_bytes);
-        Ok(DecapsulationResult::new(self.algorithm, shared_secret))
+
+        let shared_secret = SharedSecret::new(algorithm, shared_secret_bytes);
+        Ok(DecapsulationResult::new(algorithm, shared_secret))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_ml_kem_builder_creation() {
         // Test all security levels
@@ -326,7 +370,7 @@ mod tests {
         assert!(KemBuilder::ml_kem(768).is_ok());
         assert!(KemBuilder::ml_kem(1024).is_ok());
         assert!(KemBuilder::ml_kem(2048).is_err());
-        
+
         // Test convenience methods
         let _ = KemBuilder::ml_kem_512();
         let _ = KemBuilder::ml_kem_768();

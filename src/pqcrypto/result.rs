@@ -2,8 +2,6 @@
 
 use crate::{CryptError, Result};
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Result of a KEM encapsulation operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -229,7 +227,7 @@ mod base64_serde {
     use serde::{Deserialize, Deserializer, Serializer};
     use base64::Engine;
     
-    pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(bytes: &[u8], serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -237,7 +235,7 @@ mod base64_serde {
         serializer.serialize_str(&encoded)
     }
     
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> std::result::Result<Vec<u8>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -253,7 +251,7 @@ mod option_base64_serde {
     use serde::{Deserialize, Deserializer, Serializer};
     use base64::Engine;
     
-    pub fn serialize<S>(value: &Option<Vec<u8>>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(value: &Option<Vec<u8>>, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -266,7 +264,7 @@ mod option_base64_serde {
         }
     }
     
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Vec<u8>>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> std::result::Result<Option<Vec<u8>>, D::Error>
     where
         D: Deserializer<'de>,
     {

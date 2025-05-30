@@ -1,22 +1,19 @@
-use std::sync::Arc;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use futures::Future;
+use std::sync::Arc;
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
-use quiche::{connect, ConnectionId};
-use super::error::{Result, CryptoTransportError};
 use super::builder::QuicCryptoConfig;
+use super::error::{CryptoTransportError, Result};
 use super::quic_conn::{
-    QuicConnectionController,
-    QuicConnectionHandle,
-    QuicConnectionEvent,
-    quic_connection_main_loop,
+    QuicConnectionController, QuicConnectionEvent, QuicConnectionHandle, quic_connection_main_loop,
 };
+use quiche::{ConnectionId, connect};
 
 pub fn connect_quic_client(
     local_addr: &str,
     remote_addr: &str,
     crypto: Arc<QuicCryptoConfig>,
-) -> impl Future<Output=Result<QuicConnectionHandle>> + Send + 'static {
+) -> impl Future<Output = Result<QuicConnectionHandle>> + Send + 'static {
     let local_addr = local_addr.to_string();
     let remote_addr = remote_addr.to_string();
     async move {
@@ -25,8 +22,9 @@ pub fn connect_quic_client(
 
         let scid_bytes = random_16_bytes();
         let scid = ConnectionId::from_ref(&scid_bytes);
-        let remote_addr_parsed = remote_addr.parse()
-            .map_err(|e| CryptoTransportError::Internal(format!("Invalid remote address: {}", e)))?;
+        let remote_addr_parsed = remote_addr.parse().map_err(|e| {
+            CryptoTransportError::Internal(format!("Invalid remote address: {}", e))
+        })?;
         let mut config = crypto.build_config()?;
         let conn = connect(
             None,

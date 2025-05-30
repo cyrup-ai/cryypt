@@ -1,16 +1,16 @@
 //! AES encryption builders
 
 use super::{
+    AsyncDecryptionResult, AsyncEncryptionResult,
     builder_traits::{
         AadBuilder, CiphertextBuilder, DataBuilder, DecryptBuilder, EncryptBuilder, KeyBuilder,
         KeyProviderBuilder,
     },
-    AsyncDecryptionResult, AsyncEncryptionResult,
 };
-use crate::{cipher::encryption_result::EncryptionResultImpl, CryptError, Result};
+use crate::{CryptError, Result, cipher::encryption_result::EncryptionResultImpl};
 use aes_gcm::{
-    aead::{generic_array::GenericArray, Aead, KeyInit},
     Aes256Gcm,
+    aead::{Aead, KeyInit, generic_array::GenericArray},
 };
 use rand::RngCore;
 use tokio::sync::oneshot;
@@ -119,16 +119,20 @@ impl EncryptBuilder for AesWithKeyAndData {
                 let aad_bytes = if aad.is_empty() {
                     Vec::new()
                 } else {
-                    serde_json::to_vec(&aad)
-                        .map_err(|e| CryptError::SerializationError(format!("AAD serialization failed: {}", e)))?
+                    serde_json::to_vec(&aad).map_err(|e| {
+                        CryptError::SerializationError(format!("AAD serialization failed: {}", e))
+                    })?
                 };
 
                 // Encrypt with AAD
                 let ciphertext = cipher
-                    .encrypt(nonce_array, aes_gcm::aead::Payload {
-                        msg: &self.data,
-                        aad: &aad_bytes,
-                    })
+                    .encrypt(
+                        nonce_array,
+                        aes_gcm::aead::Payload {
+                            msg: &self.data,
+                            aad: &aad_bytes,
+                        },
+                    )
                     .map_err(|_| {
                         CryptError::EncryptionFailed("AES-GCM encryption failed".into())
                     })?;
@@ -204,17 +208,22 @@ impl DecryptBuilder for AesWithKeyAndCiphertext {
             let expected_aad = self.aad;
             let result = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
                 // Extract: [aad_len (4 bytes)][aad][nonce (12 bytes)][ciphertext]
-                if self.ciphertext.len() < 16 {  // 4 + 12 minimum
+                if self.ciphertext.len() < 16 {
+                    // 4 + 12 minimum
                     return Err(CryptError::DecryptionFailed("Ciphertext too short".into()));
                 }
 
                 let aad_len = u32::from_le_bytes([
-                    self.ciphertext[0], self.ciphertext[1], 
-                    self.ciphertext[2], self.ciphertext[3]
+                    self.ciphertext[0],
+                    self.ciphertext[1],
+                    self.ciphertext[2],
+                    self.ciphertext[3],
                 ]) as usize;
 
                 if self.ciphertext.len() < 4 + aad_len + 12 {
-                    return Err(CryptError::DecryptionFailed("Invalid ciphertext format".into()));
+                    return Err(CryptError::DecryptionFailed(
+                        "Invalid ciphertext format".into(),
+                    ));
                 }
 
                 let stored_aad_bytes = &self.ciphertext[4..4 + aad_len];
@@ -225,8 +234,9 @@ impl DecryptBuilder for AesWithKeyAndCiphertext {
                 let stored_aad: std::collections::HashMap<String, String> = if aad_len == 0 {
                     std::collections::HashMap::new()
                 } else {
-                    serde_json::from_slice(stored_aad_bytes)
-                        .map_err(|e| CryptError::DecryptionFailed(format!("AAD deserialization failed: {}", e)))?
+                    serde_json::from_slice(stored_aad_bytes).map_err(|e| {
+                        CryptError::DecryptionFailed(format!("AAD deserialization failed: {}", e))
+                    })?
                 };
 
                 if stored_aad != expected_aad {
@@ -243,12 +253,17 @@ impl DecryptBuilder for AesWithKeyAndCiphertext {
                     .map_err(|e| CryptError::InvalidKey(format!("Invalid AES key: {}", e)))?;
 
                 // Decrypt with AAD
-                let plaintext = cipher.decrypt(nonce_array, aes_gcm::aead::Payload {
-                    msg: ciphertext,
-                    aad: stored_aad_bytes,
-                }).map_err(|_| {
-                    CryptError::DecryptionFailed("AES-GCM decryption failed".into())
-                })?;
+                let plaintext = cipher
+                    .decrypt(
+                        nonce_array,
+                        aes_gcm::aead::Payload {
+                            msg: ciphertext,
+                            aad: stored_aad_bytes,
+                        },
+                    )
+                    .map_err(|_| {
+                        CryptError::DecryptionFailed("AES-GCM decryption failed".into())
+                    })?;
 
                 Ok(plaintext)
             })

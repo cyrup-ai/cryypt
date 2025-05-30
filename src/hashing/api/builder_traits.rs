@@ -2,6 +2,7 @@
 
 use crate::Result;
 use std::future::Future;
+use super::passes::HashPasses;
 
 /// Async result for hash operations
 pub trait AsyncHashResult: Future<Output = Result<Vec<u8>>> + Send {}
@@ -31,7 +32,7 @@ pub trait PassesBuilder {
     type Output;
 
     /// Set the number of passes for iterative hashing
-    fn with_passes(self, passes: u32) -> Self::Output;
+    fn with_passes(self, passes: HashPasses) -> Self::Output;
 }
 
 /// Trait for executing the hash operation

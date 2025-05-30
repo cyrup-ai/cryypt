@@ -1,8 +1,8 @@
 //! Entry point for the fluent cipher API
 
 use super::{
-    aes_builder::AesBuilder, chacha_builder::ChaChaBuilder, decryption_builder::DecryptionBuilder,
-    HasData,
+    HasData, aes_builder::AesBuilder, chacha_builder::ChaChaBuilder,
+    decryption_builder::DecryptionBuilder,
 };
 
 /// Entry point for cipher operations

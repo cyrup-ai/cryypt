@@ -74,11 +74,11 @@ async fn test_data_builder_with_data_base64() -> Result<(), Box<dyn std::error::
     let builder = MockDataBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     // Valid base64
     let output = builder.with_data_base64("SGVsbG8=")?; // "Hello" in base64
     assert_eq!(output.new_data, b"Hello");
-    
+
     Ok(())
 }
 
@@ -87,7 +87,7 @@ async fn test_data_builder_with_data_base64_invalid() {
     let builder = MockDataBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     // Invalid base64
     let result = builder.with_data_base64("InvalidBase64!!!");
     assert!(result.is_err());
@@ -98,11 +98,11 @@ async fn test_data_builder_with_data_hex() -> Result<(), Box<dyn std::error::Err
     let builder = MockDataBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     // Valid hex
     let output = builder.with_data_hex("48656c6c6f")?; // "Hello" in hex
     assert_eq!(output.new_data, b"Hello");
-    
+
     Ok(())
 }
 
@@ -111,11 +111,11 @@ async fn test_data_builder_with_data_hex_invalid() {
     let builder = MockDataBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     // Invalid hex (odd length)
     let result = builder.with_data_hex("48656c6c6");
     assert!(result.is_err());
-    
+
     // Invalid hex (non-hex characters)
     let result = builder.with_data_hex("48656z6c6f");
     assert!(result.is_err());
@@ -125,18 +125,18 @@ async fn test_data_builder_with_data_hex_invalid() {
 async fn test_data_builder_with_file() -> Result<(), Box<dyn std::error::Error>> {
     let test_dir = "/tmp/builder_traits_test";
     fs::create_dir_all(test_dir)?;
-    
+
     let test_file = format!("{}/test.txt", test_dir);
     let test_content = b"Test file content";
     fs::write(&test_file, test_content)?;
-    
+
     let builder = MockDataBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     let output = builder.with_file(&test_file).await?;
     assert_eq!(output.new_data, test_content);
-    
+
     // Cleanup
     fs::remove_dir_all(test_dir).ok();
     Ok(())
@@ -147,7 +147,7 @@ async fn test_data_builder_with_file_not_found() {
     let builder = MockDataBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     let result = builder.with_file("/nonexistent/file.txt").await;
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), cryypt::CryptError::Io(_)));
@@ -164,15 +164,16 @@ async fn test_ciphertext_builder_with_ciphertext() {
 }
 
 #[tokio::test]
-async fn test_ciphertext_builder_with_ciphertext_base64() -> Result<(), Box<dyn std::error::Error>> {
+async fn test_ciphertext_builder_with_ciphertext_base64() -> Result<(), Box<dyn std::error::Error>>
+{
     let builder = MockCiphertextBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     // Valid base64
     let output = builder.with_ciphertext_base64("SGVsbG8=")?; // "Hello" in base64
     assert_eq!(output.ciphertext, b"Hello");
-    
+
     Ok(())
 }
 
@@ -181,7 +182,7 @@ async fn test_ciphertext_builder_with_ciphertext_base64_invalid() {
     let builder = MockCiphertextBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     // Invalid base64
     let result = builder.with_ciphertext_base64("InvalidBase64!!!");
     assert!(result.is_err());
@@ -192,11 +193,11 @@ async fn test_ciphertext_builder_with_ciphertext_hex() -> Result<(), Box<dyn std
     let builder = MockCiphertextBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     // Valid hex
     let output = builder.with_ciphertext_hex("48656c6c6f")?; // "Hello" in hex
     assert_eq!(output.ciphertext, b"Hello");
-    
+
     Ok(())
 }
 
@@ -205,7 +206,7 @@ async fn test_ciphertext_builder_with_ciphertext_hex_invalid() {
     let builder = MockCiphertextBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     // Invalid hex
     let result = builder.with_ciphertext_hex("InvalidHex!!!");
     assert!(result.is_err());
@@ -215,18 +216,18 @@ async fn test_ciphertext_builder_with_ciphertext_hex_invalid() {
 async fn test_ciphertext_builder_with_ciphertext_file() -> Result<(), Box<dyn std::error::Error>> {
     let test_dir = "/tmp/ciphertext_builder_test";
     fs::create_dir_all(test_dir)?;
-    
+
     let test_file = format!("{}/ciphertext.bin", test_dir);
     let test_content = b"Test ciphertext content";
     fs::write(&test_file, test_content)?;
-    
+
     let builder = MockCiphertextBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     let output = builder.with_ciphertext_file(&test_file).await?;
     assert_eq!(output.ciphertext, test_content);
-    
+
     // Cleanup
     fs::remove_dir_all(test_dir).ok();
     Ok(())
@@ -237,48 +238,44 @@ async fn test_ciphertext_builder_with_ciphertext_file_not_found() {
     let builder = MockCiphertextBuilder {
         data: vec![1, 2, 3],
     };
-    
-    let result = builder.with_ciphertext_file("/nonexistent/ciphertext.bin").await;
+
+    let result = builder
+        .with_ciphertext_file("/nonexistent/ciphertext.bin")
+        .await;
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), cryypt::CryptError::Io(_)));
 }
 
 #[tokio::test]
 async fn test_base64_edge_cases() -> Result<(), Box<dyn std::error::Error>> {
-    let builder = MockDataBuilder {
-        data: vec![],
-    };
-    
+    let builder = MockDataBuilder { data: vec![] };
+
     // Empty base64
     let output = builder.with_data_base64("")?;
     assert_eq!(output.new_data, Vec::<u8>::new());
-    
+
     Ok(())
 }
 
 #[tokio::test]
 async fn test_hex_edge_cases() -> Result<(), Box<dyn std::error::Error>> {
-    let builder = MockDataBuilder {
-        data: vec![],
-    };
-    
+    let builder = MockDataBuilder { data: vec![] };
+
     // Empty hex
     let output = builder.with_data_hex("")?;
     assert_eq!(output.new_data, Vec::<u8>::new());
-    
+
     // Uppercase hex
     let output = builder.with_data_hex("48656C6C6F")?; // "Hello" in uppercase hex
     assert_eq!(output.new_data, b"Hello");
-    
+
     Ok(())
 }
 
 #[tokio::test]
 async fn test_unicode_text() {
-    let builder = MockDataBuilder {
-        data: vec![],
-    };
-    
+    let builder = MockDataBuilder { data: vec![] };
+
     let unicode_text = "Hello, 世界! 🌍 Emoji test";
     let output = builder.with_text(unicode_text);
     assert_eq!(output.new_data, unicode_text.as_bytes());
@@ -286,10 +283,8 @@ async fn test_unicode_text() {
 
 #[tokio::test]
 async fn test_binary_data() {
-    let builder = MockDataBuilder {
-        data: vec![],
-    };
-    
+    let builder = MockDataBuilder { data: vec![] };
+
     let binary_data = vec![0x00, 0x01, 0x02, 0xFF, 0xFE, 0xFD];
     let output = builder.with_data(binary_data.clone());
     assert_eq!(output.new_data, binary_data);
@@ -297,10 +292,8 @@ async fn test_binary_data() {
 
 #[tokio::test]
 async fn test_large_data() {
-    let builder = MockDataBuilder {
-        data: vec![],
-    };
-    
+    let builder = MockDataBuilder { data: vec![] };
+
     // Test with large data
     let large_data: Vec<u8> = (0..10000).map(|i| (i % 256) as u8).collect();
     let output = builder.with_data(large_data.clone());
@@ -321,11 +314,11 @@ async fn test_data_from_into_conversions() {
     let builder = MockDataBuilder {
         data: vec![1, 2, 3],
     };
-    
+
     // Test with different Into<Vec<u8>> types
     let output1 = builder.with_data(b"test".to_vec());
     assert_eq!(output1.new_data, b"test");
-    
+
     let builder = MockDataBuilder {
         data: vec![1, 2, 3],
     };

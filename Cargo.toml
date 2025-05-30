@@ -9,7 +9,7 @@ authors = ["Cyrup AI <dev@cyrup.ai>"]
 description = "typesafe builder for encryption decryption, compression, hashing primitives in Rust"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/cyrup-ai/crypt"
-keywords = ["encryption", "cryptography", "aesgcm", "chacha", "security"]
+keywords = ["encryption", "cryptography", "postquant", "cipher", "security"]
 categories = ["cryptography", "authentication"]
 
 [dependencies]
@@ -32,8 +32,8 @@ dashmap = "6.1"
 p256 = { version = "0.13", features = ["ecdsa", "pkcs8"] }
 hmac = "0.12"
 base64-url = "3.0"
-getrandom = "0.2"
-twox-hash = "2.0"
+getrandom = "0.3"
+twox-hash = "2.1"
 
 # Nonce security dependencies
 hkdf = "0.12"
@@ -61,11 +61,14 @@ rand_core = "0.9.3"
 quiche = "0.24.2"
 
 # Post-quantum cryptography
-pqcrypto = { version = "0.17", features = ["serialization"] }
+pqcrypto = { version = "0.18", features = ["serialization"] }
 pqcrypto-mlkem = { version = "0.1", features = ["serialization"] }
 pqcrypto-mldsa = { version = "0.1", features = ["serialization"] }
 pqcrypto-falcon = { version = "0.4", features = ["serialization"] }
 pqcrypto-sphincsplus = { version = "0.7", features = ["serialization"] }
+pqcrypto-traits = "0.3.5"
+uuid = { version = "1.17.0", features = ["serde", "v4"] }
+bincode = "2.0.1"
 
 [dev-dependencies]
 tokio = { version = "1.45.1", features = ["full"] }

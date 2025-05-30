@@ -1,6 +1,7 @@
 //! Unit tests for hashing functionality
 
 use cryypt::prelude::*;
+use cryypt::hashing::api::HashPasses;
 
 #[tokio::test]
 async fn test_sha256_basic_hashing() -> Result<(), Box<dyn std::error::Error>> {
@@ -78,14 +79,14 @@ async fn test_sha256_with_multiple_passes() -> Result<(), Box<dyn std::error::Er
     let hash_1_pass = Hash::sha256()
         .with_data(test_data)
         .with_salt(salt)
-        .with_passes(1)
+        .with_passes(HashPasses::Fast)
         .hash()
         .await?;
     
     let hash_1000_passes = Hash::sha256()
         .with_data(test_data)
         .with_salt(salt)
-        .with_passes(1000)
+        .with_passes(HashPasses::Moderate)
         .hash()
         .await?;
     
@@ -150,7 +151,7 @@ async fn test_sha3_with_salt_and_passes() -> Result<(), Box<dyn std::error::Erro
     let hash_result = Hash::sha3()
         .with_data(test_data)
         .with_salt(salt)
-        .with_passes(500)
+        .with_passes(HashPasses::Moderate)
         .hash()
         .await?;
     
@@ -374,14 +375,14 @@ async fn test_passes_deterministic() -> Result<(), Box<dyn std::error::Error>> {
     let hash1 = Hash::sha256()
         .with_data(test_data)
         .with_salt(salt)
-        .with_passes(100)
+        .with_passes(HashPasses::Fast)
         .hash()
         .await?;
     
     let hash2 = Hash::sha256()
         .with_data(test_data)
         .with_salt(salt)
-        .with_passes(100)
+        .with_passes(HashPasses::Fast)
         .hash()
         .await?;
     
@@ -391,7 +392,7 @@ async fn test_passes_deterministic() -> Result<(), Box<dyn std::error::Error>> {
     let hash3 = Hash::sha256()
         .with_data(test_data)
         .with_salt(salt)
-        .with_passes(101)
+        .with_passes(HashPasses::Moderate)
         .hash()
         .await?;
     
@@ -401,27 +402,31 @@ async fn test_passes_deterministic() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-async fn test_zero_passes() -> Result<(), Box<dyn std::error::Error>> {
-    let test_data = b"Zero passes test";
+async fn test_hash_passes_enum() -> Result<(), Box<dyn std::error::Error>> {
+    use cryypt::hashing::api::HashPasses;
     
-    // Zero passes should work (equivalent to 1 pass)
-    let hash_zero = Hash::sha256()
+    let test_data = b"Hash passes enum test";
+    
+    // Test Fast passes (100 iterations)
+    let hash_fast = Hash::sha256()
         .with_data(test_data)
-        .with_passes(0)
+        .with_passes(HashPasses::Fast)
         .hash()
         .await?;
     
-    let hash_one = Hash::sha256()
+    assert_eq!(hash_fast.len(), 32);
+    
+    // Test Default passes (10,000 iterations - production safe)
+    let hash_default = Hash::sha256()
         .with_data(test_data)
-        .with_passes(1)
+        .with_passes(HashPasses::Default)
         .hash()
         .await?;
     
-    assert_eq!(hash_zero.len(), 32);
-    assert_eq!(hash_one.len(), 32);
+    assert_eq!(hash_default.len(), 32);
     
-    // They might be the same if 0 is treated as 1
-    // This depends on implementation
+    // Different pass counts should produce different hashes
+    assert_ne!(hash_fast, hash_default);
     
     Ok(())
 }
@@ -435,7 +440,7 @@ async fn test_large_number_of_passes() -> Result<(), Box<dyn std::error::Error>>
     let hash_result = Hash::sha256()
         .with_data(test_data)
         .with_salt(salt)
-        .with_passes(10000)
+        .with_passes(HashPasses::Default)
         .hash()
         .await?;
     
@@ -445,7 +450,7 @@ async fn test_large_number_of_passes() -> Result<(), Box<dyn std::error::Error>>
     let single_pass = Hash::sha256()
         .with_data(test_data)
         .with_salt(salt)
-        .with_passes(1)
+        .with_passes(HashPasses::Fast)
         .hash()
         .await?;
     
@@ -527,7 +532,7 @@ async fn test_hash_consistency_across_calls() -> Result<(), Box<dyn std::error::
         let hash = Hash::sha256()
             .with_data(test_data)
             .with_salt(salt)
-            .with_passes(50)
+            .with_passes(HashPasses::Fast)
             .hash()
             .await?;
         hashes.push(hash);

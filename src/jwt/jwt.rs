@@ -20,15 +20,16 @@ use chrono::{DateTime, Duration, Utc};
 use dashmap::DashMap;
 use hmac::{Hmac, Mac};
 use once_cell::sync::Lazy;
-use std::hash::BuildHasherDefault;
 use p256::{
     ecdsa::{SigningKey, VerifyingKey, signature::Signer as _, signature::Verifier as _},
     elliptic_curve::rand_core::OsRng,
     pkcs8::EncodePublicKey,
 };
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::Sha256;
+use std::hash::BuildHasherDefault;
 use std::{
     collections::HashMap,
     future::Future,
@@ -38,7 +39,7 @@ use std::{
     task::{Context, Poll},
 };
 use thiserror::Error;
-use tokio::sync::{oneshot, RwLock};
+use tokio::sync::{RwLock, oneshot};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 // -----------------------------------------------------------------------------
@@ -210,25 +211,25 @@ impl<Sub, Exp, Iat> ClaimsBuilder<Sub, Exp, Iat> {
         self.extra.insert(k.into(), v);
         self
     }
-    
+
     /// Set the issuer (iss) claim.
     pub fn issuer(mut self, iss: impl Into<String>) -> Self {
         self.iss = Some(iss.into());
         self
     }
-    
+
     /// Set the audience (aud) claim.
     pub fn audience(mut self, aud: Vec<String>) -> Self {
         self.aud = Some(aud);
         self
     }
-    
+
     /// Set the not-before (nbf) claim.
     pub fn not_before(mut self, nbf: DateTime<Utc>) -> Self {
         self.nbf = Some(nbf.timestamp());
         self
     }
-    
+
     /// Set the JWT ID (jti) claim.
     pub fn jwt_id(mut self, jti: impl Into<String>) -> Self {
         self.jti = Some(jti.into());
@@ -347,7 +348,7 @@ pub struct TokenGenerationFuture {
 
 impl Future for TokenGenerationFuture {
     type Output = JwtResult<String>;
-    
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.rx).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
@@ -364,7 +365,7 @@ pub struct TokenVerificationFuture {
 
 impl Future for TokenVerificationFuture {
     type Output = JwtResult<Claims>;
-    
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.rx).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
@@ -389,12 +390,10 @@ impl Hs256Key {
     /// Generate a new random HS256 key.
     pub fn random() -> Self {
         let mut k = [0u8; 32];
-        match getrandom::getrandom(&mut k) {
-            Ok(_) => Self { key: k, kid: None },
-            Err(e) => panic!("Failed to generate random key: {}", e),
-        }
+        rand::rng().fill_bytes(&mut k);
+        Self { key: k, kid: None }
     }
-    
+
     /// Set the key ID for this key.
     pub fn with_kid(mut self, kid: impl Into<String>) -> Self {
         self.kid = Some(kid.into());
@@ -414,8 +413,8 @@ impl Signer for Hs256Key {
             base64_url::encode(payload)
         );
 
-        let mut mac =
-            Hmac::<Sha256>::new_from_slice(&self.key).map_err(|e| JwtError::Crypto(e.to_string()))?;
+        let mut mac = Hmac::<Sha256>::new_from_slice(&self.key)
+            .map_err(|e| JwtError::Crypto(e.to_string()))?;
         mac.update(data.as_bytes());
         let sig = mac.finalize().into_bytes();
         Ok(format!("{}.{}", data, base64_url::encode(&sig)))
@@ -427,21 +426,20 @@ impl Signer for Hs256Key {
         if parts.len() != 3 {
             return Err(JwtError::Malformed);
         }
-        
+
         // Parse and validate header
-        let header_bytes = base64_url::decode(parts[0])
-            .map_err(|_| JwtError::Malformed)?;
-        
+        let header_bytes = base64_url::decode(parts[0]).map_err(|_| JwtError::Malformed)?;
+
         // Parse header and extract algorithm
-        let header_json = String::from_utf8(header_bytes)
-            .map_err(|_| JwtError::Malformed)?;
-        let header: serde_json::Value = serde_json::from_str(&header_json)
-            .map_err(|_| JwtError::Malformed)?;
-        let header_alg = header.get("alg")
+        let header_json = String::from_utf8(header_bytes).map_err(|_| JwtError::Malformed)?;
+        let header: serde_json::Value =
+            serde_json::from_str(&header_json).map_err(|_| JwtError::Malformed)?;
+        let header_alg = header
+            .get("alg")
             .and_then(|v| v.as_str())
             .ok_or(JwtError::Malformed)?
             .to_string();
-        
+
         // Verify algorithm matches
         if header_alg != self.alg() {
             return Err(JwtError::AlgorithmMismatch {
@@ -449,13 +447,13 @@ impl Signer for Hs256Key {
                 got: header_alg,
             });
         }
-        
+
         // Verify signature
         let data = format!("{}.{}", parts[0], parts[1]);
         let sig = base64_url::decode(parts[2]).map_err(|_| JwtError::Malformed)?;
-        
-        let mut mac =
-            Hmac::<Sha256>::new_from_slice(&self.key).map_err(|e| JwtError::Crypto(e.to_string()))?;
+
+        let mut mac = Hmac::<Sha256>::new_from_slice(&self.key)
+            .map_err(|e| JwtError::Crypto(e.to_string()))?;
         mac.update(data.as_bytes());
         mac.verify_slice(&sig)
             .map_err(|_| JwtError::InvalidSignature)?;
@@ -469,7 +467,7 @@ impl Signer for Hs256Key {
     fn alg(&self) -> &'static str {
         "HS256"
     }
-    
+
     fn kid(&self) -> Option<String> {
         self.kid.clone()
     }
@@ -497,7 +495,7 @@ impl Es256Key {
         };
         Self { sk, pk, kid }
     }
-    
+
     /// Set the key ID for this key.
     pub fn with_kid(mut self, kid: impl Into<String>) -> Self {
         self.kid = kid.into();
@@ -527,21 +525,20 @@ impl Signer for Es256Key {
         if parts.len() != 3 {
             return Err(JwtError::Malformed);
         }
-        
+
         // Parse and validate header
-        let header_bytes = base64_url::decode(parts[0])
-            .map_err(|_| JwtError::Malformed)?;
-        
+        let header_bytes = base64_url::decode(parts[0]).map_err(|_| JwtError::Malformed)?;
+
         // Parse header and extract algorithm
-        let header_json = String::from_utf8(header_bytes)
-            .map_err(|_| JwtError::Malformed)?;
-        let header: serde_json::Value = serde_json::from_str(&header_json)
-            .map_err(|_| JwtError::Malformed)?;
-        let header_alg = header.get("alg")
+        let header_json = String::from_utf8(header_bytes).map_err(|_| JwtError::Malformed)?;
+        let header: serde_json::Value =
+            serde_json::from_str(&header_json).map_err(|_| JwtError::Malformed)?;
+        let header_alg = header
+            .get("alg")
             .and_then(|v| v.as_str())
             .ok_or(JwtError::Malformed)?
             .to_string();
-        
+
         // Verify algorithm matches
         if header_alg != self.alg() {
             return Err(JwtError::AlgorithmMismatch {
@@ -549,13 +546,13 @@ impl Signer for Es256Key {
                 got: header_alg,
             });
         }
-        
+
         // Verify signature
         let data = format!("{}.{}", parts[0], parts[1]);
         let sig_bytes = base64_url::decode(parts[2]).map_err(|_| JwtError::Malformed)?;
-        let sig = p256::ecdsa::Signature::from_slice(&sig_bytes)
-            .map_err(|_| JwtError::Malformed)?;
-        
+        let sig =
+            p256::ecdsa::Signature::from_slice(&sig_bytes).map_err(|_| JwtError::Malformed)?;
+
         self.pk
             .verify(data.as_bytes(), &sig)
             .map_err(|_| JwtError::InvalidSignature)?;
@@ -569,7 +566,7 @@ impl Signer for Es256Key {
     fn alg(&self) -> &'static str {
         "ES256"
     }
-    
+
     fn kid(&self) -> Option<String> {
         Some(self.kid.clone())
     }
@@ -593,7 +590,7 @@ impl<S: Signer> Generator<S> {
             validation_options: ValidationOptions::default(),
         }
     }
-    
+
     /// Set custom validation options.
     pub fn with_validation_options(mut self, options: ValidationOptions) -> Self {
         self.validation_options = options;
@@ -606,7 +603,7 @@ impl<S: Signer> Generator<S> {
         let signer = self.signer.clone();
         let header = Header::new(signer.alg(), signer.kid());
         let claims = claims.clone();
-        
+
         tokio::spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
                 let payload = match serde_json::to_string(&claims) {
@@ -617,10 +614,10 @@ impl<S: Signer> Generator<S> {
             })
             .await
             .unwrap_or_else(|_| Err(JwtError::TaskJoinError));
-            
+
             let _ = tx.send(result);
         });
-        
+
         TokenGenerationFuture { rx }
     }
 
@@ -630,20 +627,21 @@ impl<S: Signer> Generator<S> {
         let signer = self.signer.clone();
         let options = self.validation_options.clone();
         let token = token.into();
-        
+
         tokio::spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
                 let payload = signer.verify(&token)?;
-                let claims: Claims = serde_json::from_str(&payload).map_err(|_| JwtError::Malformed)?;
-                
+                let claims: Claims =
+                    serde_json::from_str(&payload).map_err(|_| JwtError::Malformed)?;
+
                 let now = Utc::now().timestamp();
                 let leeway = options.leeway.num_seconds();
-                
+
                 // Validate expiry
                 if options.validate_exp && claims.exp < now - leeway {
                     return Err(JwtError::Expired);
                 }
-                
+
                 // Validate not-before
                 if options.validate_nbf {
                     if let Some(nbf) = claims.nbf {
@@ -652,22 +650,22 @@ impl<S: Signer> Generator<S> {
                         }
                     }
                 }
-                
+
                 // Validate required claims
                 for claim in &options.required_claims {
                     if !claims.extra.contains_key(claim) {
                         return Err(JwtError::MissingClaim(claim.clone()));
                     }
                 }
-                
+
                 // Validate issuer
                 if let Some(expected_iss) = &options.expected_issuer {
                     match &claims.iss {
-                        Some(iss) if iss == expected_iss => {},
+                        Some(iss) if iss == expected_iss => {}
                         _ => return Err(JwtError::InvalidIssuer),
                     }
                 }
-                
+
                 // Validate audience
                 if let Some(expected_aud) = &options.expected_audience {
                     match &claims.aud {
@@ -676,19 +674,19 @@ impl<S: Signer> Generator<S> {
                             if !valid {
                                 return Err(JwtError::InvalidAudience);
                             }
-                        },
+                        }
                         None => return Err(JwtError::InvalidAudience),
                     }
                 }
-                
+
                 Ok(claims)
             })
             .await
             .unwrap_or_else(|_| Err(JwtError::TaskJoinError));
-            
+
             let _ = tx.send(result);
         });
-        
+
         TokenVerificationFuture { rx }
     }
 }
@@ -747,7 +745,7 @@ where
     fn alg(&self) -> &'static str {
         self.active.load().alg()
     }
-    
+
     fn kid(&self) -> Option<String> {
         self.active.load().kid()
     }
@@ -780,7 +778,7 @@ pub struct CleanupStartFuture {
 
 impl Future for CleanupStartFuture {
     type Output = ();
-    
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.rx).poll(cx) {
             Poll::Ready(_) => Poll::Ready(()),
@@ -801,20 +799,20 @@ impl<S: Signer> Revocation<S> {
     pub fn wrap(inner: S) -> Self {
         let revoked = Arc::new(DashMap::with_hasher(HASHER.clone()));
         let cleanup_task = Arc::new(RwLock::new(None));
-        
+
         Self {
             inner: Arc::new(inner),
             revoked,
             cleanup_task,
         }
     }
-    
+
     /// Start automatic cleanup task.
     pub fn start_cleanup(&self, interval: Duration) -> CleanupStartFuture {
         let (tx, rx) = oneshot::channel();
         let revoked = self.revoked.clone();
         let cleanup_task = self.cleanup_task.clone();
-        
+
         tokio::spawn(async move {
             let handle = tokio::spawn(async move {
                 let mut interval = tokio::time::interval(interval.to_std().unwrap());
@@ -824,14 +822,14 @@ impl<S: Signer> Revocation<S> {
                     revoked.retain(|_, token| token.expires_at > now);
                 }
             });
-            
+
             *cleanup_task.write().await = Some(handle);
             let _ = tx.send(());
         });
-        
+
         CleanupStartFuture { rx }
     }
-    
+
     /// Stop cleanup task.
     pub fn stop_cleanup(&self) -> impl Future<Output = ()> + '_ {
         async move {
@@ -848,30 +846,27 @@ impl<S: Signer> Revocation<S> {
             Ok(exp) => exp,
             Err(_) => Utc::now() + Duration::days(30), // Default 30 days
         };
-        
+
         let revoked_token = RevokedToken {
             hash: Self::hash(token),
             reason: reason.into(),
             revoked_at: Utc::now(),
             expires_at: exp,
         };
-        
+
         self.revoked.insert(revoked_token.hash, revoked_token);
     }
-    
+
     fn extract_expiry(&self, token: &str) -> JwtResult<DateTime<Utc>> {
         let parts: Vec<&str> = token.split('.').collect();
         if parts.len() != 3 {
             return Err(JwtError::Malformed);
         }
-        
-        let payload_bytes = base64_url::decode(parts[1])
-            .map_err(|_| JwtError::Malformed)?;
-        let payload = String::from_utf8(payload_bytes)
-            .map_err(|_| JwtError::Malformed)?;
-        let claims: Claims = serde_json::from_str(&payload)
-            .map_err(|_| JwtError::Malformed)?;
-        
+
+        let payload_bytes = base64_url::decode(parts[1]).map_err(|_| JwtError::Malformed)?;
+        let payload = String::from_utf8(payload_bytes).map_err(|_| JwtError::Malformed)?;
+        let claims: Claims = serde_json::from_str(&payload).map_err(|_| JwtError::Malformed)?;
+
         Ok(DateTime::from_timestamp(claims.exp, 0).unwrap())
     }
 
@@ -891,27 +886,27 @@ impl<S: Signer> Revocation<S> {
         let hash = Self::hash(&token_str);
         let revoked = self.revoked.clone();
         let inner = self.inner.clone();
-        
+
         tokio::spawn(async move {
             if revoked.contains_key(&hash) {
                 let _ = tx.send(Err(JwtError::Revoked));
                 return;
             }
-            
+
             let generator = Generator {
                 signer: inner,
                 validation_options: ValidationOptions::default(),
             };
-            
+
             // Await the verification future
             let result = generator.verify(token_str).await;
-            
+
             let _ = tx.send(result);
         });
-        
+
         TokenVerificationFuture { rx }
     }
-    
+
     /// Manually cleanup expired tokens.
     pub fn cleanup_expired(&self) {
         let now = Utc::now();
@@ -919,7 +914,7 @@ impl<S: Signer> Revocation<S> {
     }
 
     fn hash(t: &str) -> u64 {
-        use std::hash::{Hasher, BuildHasher};
+        use std::hash::{BuildHasher, Hasher};
         let mut h = (*HASHER).build_hasher();
         h.write(t.as_bytes());
         h.finish()

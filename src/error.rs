@@ -78,7 +78,7 @@ pub enum CryptError {
     /// Invalid nonce
     #[error("Invalid nonce: {0}")]
     InvalidNonce(String),
-    
+
     /// Invalid nonce size
     #[error("Invalid nonce size: expected {expected}, got {actual}")]
     InvalidNonceSize {

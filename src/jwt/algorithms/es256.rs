@@ -28,18 +28,18 @@ impl Es256Key {
         };
         Self { sk, pk, kid }
     }
-    
+
     /// Set the key ID for this key.
     pub fn with_kid(mut self, kid: impl Into<String>) -> Self {
         self.kid = kid.into();
         self
     }
-    
+
     /// Get the verifying (public) key.
     pub fn verifying_key(&self) -> &VerifyingKey {
         &self.pk
     }
-    
+
     /// Create from an existing signing key.
     pub fn from_signing_key(sk: SigningKey) -> Self {
         let pk = *sk.verifying_key();
@@ -79,19 +79,18 @@ impl Signer for Es256Key {
         if parts.len() != 3 {
             return Err(JwtError::Malformed);
         }
-        
+
         // Parse and validate header
-        let header_bytes = base64_url::decode(parts[0])
-            .map_err(|_| JwtError::Malformed)?;
-        
+        let header_bytes = base64_url::decode(parts[0]).map_err(|_| JwtError::Malformed)?;
+
         // Parse header to extract algorithm
-        let header_json: serde_json::Value = serde_json::from_slice(&header_bytes)
-            .map_err(|_| JwtError::Malformed)?;
+        let header_json: serde_json::Value =
+            serde_json::from_slice(&header_bytes).map_err(|_| JwtError::Malformed)?;
         let header_alg = header_json["alg"]
             .as_str()
             .ok_or(JwtError::Malformed)?
             .to_string();
-        
+
         // Verify algorithm matches
         if header_alg != self.alg() {
             return Err(JwtError::AlgorithmMismatch {
@@ -99,13 +98,13 @@ impl Signer for Es256Key {
                 got: header_alg,
             });
         }
-        
+
         // Verify signature
         let data = format!("{}.{}", parts[0], parts[1]);
         let sig_bytes = base64_url::decode(parts[2]).map_err(|_| JwtError::Malformed)?;
-        let sig = p256::ecdsa::Signature::from_slice(&sig_bytes)
-            .map_err(|_| JwtError::Malformed)?;
-        
+        let sig =
+            p256::ecdsa::Signature::from_slice(&sig_bytes).map_err(|_| JwtError::Malformed)?;
+
         self.pk
             .verify(data.as_bytes(), &sig)
             .map_err(|_| JwtError::InvalidSignature)?;
@@ -119,7 +118,7 @@ impl Signer for Es256Key {
     fn alg(&self) -> &'static str {
         "ES256"
     }
-    
+
     fn kid(&self) -> Option<String> {
         Some(self.kid.clone())
     }
@@ -134,7 +133,7 @@ mod tests {
         let key = Es256Key::new();
         assert_eq!(key.alg(), "ES256");
         assert!(key.kid().is_some());
-        
+
         let key_with_kid = Es256Key::new().with_kid("custom-es256-key");
         assert_eq!(key_with_kid.kid(), Some("custom-es256-key".to_string()));
     }
@@ -144,11 +143,11 @@ mod tests {
         let key = Es256Key::new();
         let header = Header::new("ES256", key.kid());
         let payload = r#"{"sub":"user123","exp":1234567890}"#;
-        
+
         let token = key.sign(&header, payload).unwrap();
         assert!(!token.is_empty());
         assert_eq!(token.matches('.').count(), 2);
-        
+
         let verified_payload = key.verify(&token).unwrap();
         assert_eq!(verified_payload, payload);
     }
@@ -159,10 +158,10 @@ mod tests {
         let key2 = Es256Key::new();
         let header = Header::new("ES256", None);
         let payload = r#"{"sub":"user123"}"#;
-        
+
         // Sign with key1
         let token = key1.sign(&header, payload).unwrap();
-        
+
         // Try to verify with key2 (should fail)
         let result = key2.verify(&token);
         assert!(matches!(result, Err(JwtError::InvalidSignature)));
@@ -171,12 +170,12 @@ mod tests {
     #[test]
     fn test_es256_algorithm_mismatch() {
         let key = Es256Key::new();
-        
+
         // Create a token with wrong algorithm in header
         let wrong_header = Header::new("HS256", None);
         let header_json = serde_json::to_string(&wrong_header).unwrap();
         let payload = r#"{"sub":"user123"}"#;
-        
+
         // Manually create token with wrong algorithm
         let data = format!(
             "{}.{}",
@@ -184,7 +183,7 @@ mod tests {
             base64_url::encode(payload)
         );
         let fake_token = format!("{}.fakesignature", data);
-        
+
         let result = key.verify(&fake_token);
         assert!(matches!(result, Err(JwtError::AlgorithmMismatch { .. })));
     }
@@ -194,13 +193,13 @@ mod tests {
         let key = Es256Key::new();
         let header = Header::new("ES256", None);
         let payload = r#"{"test":true}"#;
-        
+
         let token = key.sign(&header, payload).unwrap();
         let parts: Vec<&str> = token.split('.').collect();
-        
+
         // Verify signature is base64url encoded
         let sig_bytes = base64_url::decode(parts[2]).unwrap();
-        
+
         // ES256 signatures should be exactly 64 bytes (r: 32, s: 32)
         assert_eq!(sig_bytes.len(), 64);
     }

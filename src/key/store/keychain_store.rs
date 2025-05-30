@@ -1,11 +1,11 @@
 //! OS Keychain-based key storage (macOS Keychain, Windows Credential Store, Linux Secret Service)
 
+use crate::CryptError;
 use crate::key::{
     AsyncDeleteResult, AsyncExistsResult, AsyncListResult, AsyncRetrieveResult, AsyncStoreResult,
     KeyEnumeration, KeyId, KeyImport, KeyRetrieval, KeyStorage,
 };
-use crate::CryptError;
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use zeroize::Zeroizing;
 
 /// OS Keychain store

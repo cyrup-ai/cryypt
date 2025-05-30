@@ -86,8 +86,3 @@ impl<T: BuilderState> Clone for StateMarker<T> {
 
 impl<T: BuilderState> Copy for StateMarker<T> {}
 
-/// Helper type alias for key state transitions
-pub type KeyState<T> = T;
-
-/// Helper type alias for data state transitions
-pub type DataState<T> = T;

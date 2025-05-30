@@ -38,29 +38,29 @@
 //! ```
 
 // Internal modules
-mod error;
-mod claims;
-mod validation;
-mod traits;
 mod algorithms;
+mod claims;
+mod error;
 mod futures;
 mod generator;
-mod rotator;
 mod revocation;
+mod rotator;
+mod traits;
+mod validation;
 
 // Keep the old jwt.rs for now during transition
 mod jwt;
 
 // Public re-exports
-pub use error::{JwtError, JwtResult};
+pub use algorithms::{Es256Key, Hs256Key};
 pub use claims::{Claims, ClaimsBuilder};
-pub use validation::ValidationOptions;
-pub use traits::{Header, Signer};
-pub use algorithms::{Hs256Key, Es256Key};
-pub use futures::{TokenGenerationFuture, TokenVerificationFuture, CleanupStartFuture};
+pub use error::{JwtError, JwtResult};
+pub use futures::{CleanupStartFuture, TokenGenerationFuture, TokenVerificationFuture};
 pub use generator::Generator;
-pub use rotator::Rotator;
 pub use revocation::{Revocation, RevokedToken};
+pub use rotator::Rotator;
+pub use traits::{Header, Signer};
+pub use validation::ValidationOptions;
 
 // Re-export typestate markers for advanced usage
 pub use claims::ts;

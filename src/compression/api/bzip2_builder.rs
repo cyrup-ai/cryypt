@@ -13,7 +13,7 @@ impl Bzip2Builder {
     pub fn max_compression(self) -> Self {
         self
     }
-    
+
     /// Balanced compression (level 6)
     pub fn balanced_compression(self) -> Self {
         self
@@ -63,7 +63,7 @@ impl Bzip2WithData {
     pub fn max_compression(self) -> Bzip2WithDataAndLevel {
         self.with_level(9)
     }
-    
+
     /// Balanced compression (level 6)
     pub fn balanced_compression(self) -> Bzip2WithDataAndLevel {
         self.with_level(6)

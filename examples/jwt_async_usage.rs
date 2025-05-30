@@ -204,16 +204,16 @@ async fn example_parallel_operations() -> Result<(), Box<dyn std::error::Error>>
     println!("Verifying all tokens in parallel...");
 
     // Verify all tokens in parallel
-    let verify_futures: Vec<_> = tokens
-        .iter()
-        .map(|token| generator.verify(token))
-        .collect();
+    let verify_futures: Vec<_> = tokens.iter().map(|token| generator.verify(token)).collect();
 
     let verified_claims = futures::future::try_join_all(verify_futures).await?;
 
     // Print subjects
     for claims in verified_claims {
-        println!("  Verified: {} (batch: {})", claims.sub, claims.extra["batch"]);
+        println!(
+            "  Verified: {} (batch: {})",
+            claims.sub, claims.extra["batch"]
+        );
     }
 
     println!("\nParallel operations completed successfully!");

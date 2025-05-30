@@ -1,6 +1,6 @@
 //! Blake2b hash builder
 
-use super::{AsyncHashResult, DataBuilder, HashExecutor, PassesBuilder, SaltBuilder};
+use super::{AsyncHashResult, DataBuilder, HashExecutor, PassesBuilder, SaltBuilder, HashPasses};
 
 /// Initial Blake2b builder
 pub struct Blake2bBuilder;
@@ -58,11 +58,11 @@ impl SaltBuilder for Blake2bWithData {
 
 impl PassesBuilder for Blake2bWithData {
     type Output = Blake2bWithDataAndPasses;
-
-    fn with_passes(self, passes: u32) -> Self::Output {
+    
+    fn with_passes(self, passes: HashPasses) -> Self::Output {
         Blake2bWithDataAndPasses {
             data: self.data,
-            passes,
+            passes: passes.iterations(),
         }
     }
 }
@@ -86,12 +86,12 @@ impl HashExecutor for Blake2bWithData {
 // With data and salt
 impl PassesBuilder for Blake2bWithDataAndSalt {
     type Output = Blake2bComplete;
-
-    fn with_passes(self, passes: u32) -> Self::Output {
+    
+    fn with_passes(self, passes: HashPasses) -> Self::Output {
         Blake2bComplete {
             data: self.data,
             salt: self.salt,
-            passes,
+            passes: passes.iterations(),
         }
     }
 }

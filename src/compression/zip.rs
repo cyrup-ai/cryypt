@@ -2,7 +2,7 @@
 
 use crate::{CryptError, Result};
 use std::io::{Read, Write};
-use zip::{write::SimpleFileOptions, CompressionMethod};
+use zip::{CompressionMethod, write::SimpleFileOptions};
 
 pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
     let mut buffer = std::io::Cursor::new(Vec::new());
@@ -40,14 +40,14 @@ pub fn compress_with_level(data: &[u8], level: i32) -> Result<Vec<u8>> {
     let mut buffer = std::io::Cursor::new(Vec::new());
     {
         let mut zip = zip::ZipWriter::new(&mut buffer);
-        
+
         // Convert level to CompressionMethod
         let method = match level {
             0 => CompressionMethod::Stored,
             1..=9 => CompressionMethod::Deflated,
             _ => CompressionMethod::Deflated,
         };
-        
+
         let options = SimpleFileOptions::default().compression_method(method);
 
         zip.start_file("data", options)
