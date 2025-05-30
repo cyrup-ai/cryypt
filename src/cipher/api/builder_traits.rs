@@ -4,7 +4,9 @@ use super::{AsyncDecryptionResult, AsyncEncryptionResult};
 
 /// Builder that can accept a key
 pub trait KeyBuilder {
+    /// The output type after adding a key
     type Output;
+    /// Add a key to the builder
     fn with_key<K>(self, key_builder: K) -> Self::Output
     where
         K: KeyProviderBuilder + 'static;
@@ -18,6 +20,7 @@ pub trait KeyProviderBuilder: Send + Sync {
 
 /// Builder that can accept AAD (Additional Authenticated Data) for AEAD ciphers
 pub trait AadBuilder {
+    /// The resulting type after adding AAD
     type Output;
 
     /// Add multiple AAD key-value pairs from a map
@@ -26,7 +29,9 @@ pub trait AadBuilder {
 
 /// Builder that can accept data
 pub trait DataBuilder {
+    /// The resulting type after adding data
     type Output;
+    /// Add data to this builder
     fn with_data<T: Into<Vec<u8>>>(self, data: T) -> Self::Output;
 
     /// Accept data from a file
@@ -75,7 +80,9 @@ pub trait DataBuilder {
 
 /// Builder that can accept ciphertext
 pub trait CiphertextBuilder {
+    /// The resulting type after adding ciphertext
     type Output;
+    /// Add ciphertext to this builder
     fn with_ciphertext<T: Into<Vec<u8>>>(self, ciphertext: T) -> Self::Output;
 
     /// Accept ciphertext from a file
@@ -116,28 +123,32 @@ pub trait CiphertextBuilder {
 
 /// Final stage builder that can encrypt
 pub trait EncryptBuilder {
+    /// Perform encryption operation
     fn encrypt(self) -> impl AsyncEncryptionResult;
 }
 
 /// Final stage builder that can decrypt
 pub trait DecryptBuilder {
+    /// Perform decryption operation
     fn decrypt(self) -> impl AsyncDecryptionResult;
 }
 
-/// Extension trait for encryption second pass
-pub trait EncryptSecondPass: EncryptBuilder + Sized {
-    fn second_pass<C>(self, second_cipher: C) -> TwoPassEncryptWrapper<Self, C> {
-        TwoPassEncryptWrapper {
+/// Extension trait for decryption second pass
+pub trait DecryptSecondPass: DecryptBuilder + Sized {
+    /// Add a second decryption pass for two-pass ciphers
+    fn second_pass<C>(self, second_cipher: C) -> TwoPassDecryptWrapper<Self, C> {
+        TwoPassDecryptWrapper {
             first: self,
             second: second_cipher,
         }
     }
 }
 
-/// Extension trait for decryption second pass
-pub trait DecryptSecondPass: DecryptBuilder + Sized {
-    fn second_pass<C>(self, second_cipher: C) -> TwoPassDecryptWrapper<Self, C> {
-        TwoPassDecryptWrapper {
+/// Extension trait for encryption second pass
+pub trait EncryptSecondPass: EncryptBuilder + Sized {
+    /// Add a second encryption pass for two-pass ciphers
+    fn second_pass<C>(self, second_cipher: C) -> TwoPassEncryptWrapper<Self, C> {
+        TwoPassEncryptWrapper {
             first: self,
             second: second_cipher,
         }
@@ -148,6 +159,7 @@ pub trait DecryptSecondPass: DecryptBuilder + Sized {
 impl<T: EncryptBuilder + Sized> EncryptSecondPass for T {}
 impl<T: DecryptBuilder + Sized> DecryptSecondPass for T {}
 
+/// Wrapper for two-pass encryption operations
 pub struct TwoPassEncryptWrapper<First, Second> {
     first: First,
     second: Second,
@@ -170,6 +182,7 @@ where
     }
 }
 
+/// Wrapper for two-pass decryption operations
 pub struct TwoPassDecryptWrapper<First, Second> {
     first: First,
     second: Second,
@@ -193,7 +206,9 @@ where
 }
 
 /// Extension trait to add compression to any cipher with key
+/// Support for compression
 pub trait WithCompression: Sized {
+    /// Add compression to this cipher operation
     fn with_compression<C>(self, compression: C) -> CompressionWrapper<Self, C> {
         CompressionWrapper {
             cipher: self,
@@ -205,6 +220,7 @@ pub trait WithCompression: Sized {
 // Blanket implementation for any type that has a key configured
 impl<T: Sized> WithCompression for T {}
 
+/// Wrapper that adds compression to cipher operations
 pub struct CompressionWrapper<Cipher, Compression> {
     cipher: Cipher,
     compression: Compression,
@@ -240,6 +256,7 @@ where
     }
 }
 
+/// Wrapper for compression with data already provided to cipher
 pub struct CompressionDataWrapper<CipherWithData, Compression> {
     cipher_with_data: CipherWithData,
     compression: Compression,
@@ -304,6 +321,7 @@ where
     }
 }
 
+/// Wrapper for compression with ciphertext already provided to cipher
 pub struct CompressionCiphertextWrapper<CipherWithCiphertext, Compression> {
     cipher_with_ciphertext: CipherWithCiphertext,
     compression: Compression,

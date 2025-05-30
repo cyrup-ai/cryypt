@@ -63,6 +63,7 @@ pub struct MasterKeyBuilderWithStoreNamespaceAndVersion<S: KeyStorage> {
 }
 
 impl MasterKeyBuilder {
+    /// Set the key storage backend for this master key builder
     pub fn with_store<S: KeyStorage + 'static>(self, store: S) -> MasterKeyBuilderWithStore<S> {
         MasterKeyBuilderWithStore { store }
     }
@@ -240,6 +241,7 @@ pub trait MasterKeyProvider: Send + Sync {
     fn resolve(&self) -> crate::Result<[u8; 32]>;
 }
 
+/// Master key derived from a user passphrase
 pub struct PassphraseMasterKey {
     passphrase: Zeroizing<String>,
 }
@@ -275,6 +277,7 @@ impl MasterKeyProvider for PassphraseMasterKey {
     }
 }
 
+/// Master key using raw key material directly
 pub struct RawMasterKey {
     key: [u8; 32],
 }
@@ -285,6 +288,7 @@ impl MasterKeyProvider for RawMasterKey {
     }
 }
 
+/// Master key loaded from environment variables
 pub struct EnvMasterKey {
     var_name: String,
 }

@@ -5,6 +5,11 @@ use bzip2::Compression;
 use bzip2::read::{BzDecoder, BzEncoder};
 use std::io::Read;
 
+/// Compress data using bzip2 algorithm
+/// 
+/// # Arguments
+/// * `data` - The data to compress
+/// * `level` - Compression level (1-9, higher is more compression)
 pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {
     let compression = Compression::new(level);
 
@@ -17,6 +22,10 @@ pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {
     Ok(compressed)
 }
 
+/// Decompress bzip2 compressed data
+/// 
+/// # Arguments
+/// * `data` - The compressed data to decompress
 pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
     let mut decoder = BzDecoder::new(data);
     let mut decompressed = Vec::new();

@@ -184,9 +184,13 @@ impl KemKeyPairBuilder for MlKemBuilder<NeedKeyPair> {
 }
 
 // Type aliases for better readability
+/// ML-KEM builder with a complete key pair (public and secret keys)
 pub type MlKemWithKeyPair = MlKemBuilder<HasKeyPair>;
+/// ML-KEM builder with only the public key for encapsulation
 pub type MlKemWithPublicKey = MlKemBuilder<HasPublicKey>;
+/// ML-KEM builder with only the secret key for decapsulation
 pub type MlKemWithSecretKey = MlKemBuilder<HasSecretKey>;
+/// ML-KEM builder with ciphertext ready for decapsulation
 pub type MlKemWithCiphertext = MlKemBuilder<HasCiphertext>;
 
 // Public key access methods for HasKeyPair state

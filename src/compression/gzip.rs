@@ -5,6 +5,11 @@ use flate2::Compression;
 use flate2::read::{GzDecoder, GzEncoder};
 use std::io::Read;
 
+/// Compress data using gzip algorithm
+/// 
+/// # Arguments
+/// * `data` - The data to compress
+/// * `level` - Compression level (0-9, higher is more compression)
 pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {
     let compression = match level {
         0..=3 => Compression::fast(),
@@ -22,6 +27,10 @@ pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {
     Ok(compressed)
 }
 
+/// Decompress gzip compressed data
+/// 
+/// # Arguments
+/// * `data` - The compressed data to decompress
 pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
     let mut decoder = GzDecoder::new(data);
     let mut decompressed = Vec::new();
@@ -32,6 +41,11 @@ pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
     Ok(decompressed)
 }
 
+/// Compress data using gzip with specified compression level
+/// 
+/// # Arguments
+/// * `data` - The data to compress
+/// * `level` - Compression level (-1 to 9, -1 is default, higher is more compression)
 pub fn compress_with_level(data: &[u8], level: i32) -> Result<Vec<u8>> {
     compress(data, level as u32)
 }

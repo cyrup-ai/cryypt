@@ -2,6 +2,7 @@
 
 /// Trait for setting the key store builder
 pub trait StoreBuilderSetter {
+    /// The resulting type after setting the store
     type Output;
 
     /// Set the key store builder
@@ -12,6 +13,7 @@ pub trait StoreBuilderSetter {
 
 /// Trait for types that can build a key store
 pub trait KeyStoreBuilder: Send + Sync {
+    /// The key storage backend type
     type Store: crate::key::KeyStorage;
 
     /// Build the key store
@@ -20,6 +22,7 @@ pub trait KeyStoreBuilder: Send + Sync {
 
 /// Trait for setting namespace
 pub trait NamespaceBuilder {
+    /// The resulting type after setting the namespace
     type Output;
 
     /// Set the namespace for the key
@@ -28,6 +31,7 @@ pub trait NamespaceBuilder {
 
 /// Trait for setting version
 pub trait VersionBuilder {
+    /// The resulting type after setting the version
     type Output;
 
     /// Set the version for the key

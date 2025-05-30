@@ -54,11 +54,14 @@
 #![forbid(unsafe_code)]
 
 pub mod bits_macro;
+/// Encryption and decryption primitives with multiple cipher support
 pub mod cipher;
+/// Data compression algorithms including gzip, bzip2, zstd, and zip
 pub mod compression;
 pub mod error;
 pub mod hashing;
 pub mod jwt;
+/// Key management, derivation, and storage with rotation support
 pub mod key;
 pub mod pqcrypto;
 pub mod transport;

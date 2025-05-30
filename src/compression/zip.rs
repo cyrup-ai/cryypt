@@ -4,6 +4,10 @@ use crate::{CryptError, Result};
 use std::io::{Read, Write};
 use zip::{CompressionMethod, write::SimpleFileOptions};
 
+/// Compress data using zip algorithm
+/// 
+/// # Arguments
+/// * `data` - The data to compress
 pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
     let mut buffer = std::io::Cursor::new(Vec::new());
     {
@@ -20,6 +24,10 @@ pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
     Ok(buffer.into_inner())
 }
 
+/// Decompress zip compressed data
+/// 
+/// # Arguments
+/// * `data` - The compressed data to decompress
 pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
     let reader = std::io::Cursor::new(data);
     let mut archive = zip::ZipArchive::new(reader)
@@ -36,6 +44,11 @@ pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
     Ok(decompressed)
 }
 
+/// Compress data using zip with specified compression level
+/// 
+/// # Arguments
+/// * `data` - The data to compress
+/// * `level` - Compression level (0-9, higher is more compression)
 pub fn compress_with_level(data: &[u8], level: i32) -> Result<Vec<u8>> {
     let mut buffer = std::io::Cursor::new(Vec::new());
     {

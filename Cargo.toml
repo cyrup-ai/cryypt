@@ -1,5 +1,4 @@
 [workspace]
-edition = "2024"
 
 [package]
 name = "cryypt"
@@ -11,6 +10,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/cyrup-ai/crypt"
 keywords = ["encryption", "cryptography", "postquant", "cipher", "security"]
 categories = ["cryptography", "authentication"]
+
 
 [dependencies]
 arc-swap = "1.7"
@@ -92,3 +92,23 @@ debug = true
 [lib]
 name = "cryypt"
 path = "src/lib.rs"
+
+[[example]]
+name = "hashing"
+path = "examples/hashing.rs"
+
+[[example]]
+name = "jwt"
+path = "examples/jwt.rs"
+
+[[example]]
+name = "nonce"
+path = "examples/nonce.rs"
+
+[[example]]
+name = "pqcrypto"
+path = "examples/pqcrypto.rs"
+
+[[example]]
+name = "quiq"
+path = "examples/quiq.rs"

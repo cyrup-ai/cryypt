@@ -311,10 +311,15 @@ impl SignatureKeyPairBuilder for MlDsaBuilder<NeedKeyPair> {
 }
 
 // Type aliases for ML-DSA
+/// ML-DSA builder with a complete key pair (public and secret keys)
 pub type MlDsaWithKeyPair = MlDsaBuilder<HasKeyPair>;
+/// ML-DSA builder with only the secret key for signing
 pub type MlDsaWithSecretKey = MlDsaBuilder<HasSecretKey>;
+/// ML-DSA builder with only the public key for verification
 pub type MlDsaWithPublicKey = MlDsaBuilder<HasPublicKey>;
+/// ML-DSA builder with message ready for signing
 pub type MlDsaWithMessage = MlDsaBuilder<HasMessage>;
+/// ML-DSA builder with signature ready for verification
 pub type MlDsaWithSignature = MlDsaBuilder<HasSignature>;
 
 // Public key access methods for ML-DSA HasKeyPair state
@@ -428,10 +433,15 @@ impl SignatureKeyPairBuilder for FalconBuilder<NeedKeyPair> {
 }
 
 // Type aliases for FALCON
+/// FALCON builder with a complete key pair (public and secret keys)
 pub type FalconWithKeyPair = FalconBuilder<HasKeyPair>;
+/// FALCON builder with only the secret key for signing
 pub type FalconWithSecretKey = FalconBuilder<HasSecretKey>;
+/// FALCON builder with only the public key for verification
 pub type FalconWithPublicKey = FalconBuilder<HasPublicKey>;
+/// FALCON builder with message ready for signing
 pub type FalconWithMessage = FalconBuilder<HasMessage>;
+/// FALCON builder with signature ready for verification
 pub type FalconWithSignature = FalconBuilder<HasSignature>;
 
 // Public key access methods for FALCON HasKeyPair state
@@ -561,10 +571,15 @@ impl SignatureKeyPairBuilder for SphincsBuilder<NeedKeyPair> {
 }
 
 // Type aliases for SPHINCS+
+/// SPHINCS+ builder with a complete key pair (public and secret keys)
 pub type SphincsWithKeyPair = SphincsBuilder<HasKeyPair>;
+/// SPHINCS+ builder with only the secret key for signing
 pub type SphincsWithSecretKey = SphincsBuilder<HasSecretKey>;
+/// SPHINCS+ builder with only the public key for verification
 pub type SphincsWithPublicKey = SphincsBuilder<HasPublicKey>;
+/// SPHINCS+ builder with message ready for signing
 pub type SphincsWithMessage = SphincsBuilder<HasMessage>;
+/// SPHINCS+ builder with signature ready for verification
 pub type SphincsWithSignature = SphincsBuilder<HasSignature>;
 
 // Public key access methods for SPHINCS+ HasKeyPair state

@@ -50,8 +50,11 @@ impl<T> AsyncVerificationResult for T where
 
 /// Builder that can generate a KEM key pair
 pub trait KemKeyPairBuilder {
+    /// The resulting type after building the KEM scheme
     type Output;
+    /// The resulting type containing the public key
     type PublicKeyOutput;
+    /// The resulting type containing the secret key
     type SecretKeyOutput;
 
     /// Generate a new key pair
@@ -141,8 +144,11 @@ pub trait KemKeyPairBuilder {
 
 /// Builder that can generate a signature key pair
 pub trait SignatureKeyPairBuilder {
+    /// The resulting type after building the signature scheme
     type Output;
+    /// The resulting type containing the public key
     type PublicKeyOutput;
+    /// The resulting type containing the secret key
     type SecretKeyOutput;
 
     /// Generate a new key pair
@@ -212,6 +218,7 @@ pub trait SignatureKeyPairBuilder {
 
 /// Builder that can accept ciphertext for decapsulation
 pub trait CiphertextBuilder {
+    /// The resulting type after adding the ciphertext
     type Output;
 
     /// Set the ciphertext from bytes
@@ -261,6 +268,7 @@ pub trait CiphertextBuilder {
 
 /// Builder that can accept a message for signing
 pub trait MessageBuilder {
+    /// The resulting type after adding the message
     type Output;
 
     /// Set the message from bytes
@@ -315,6 +323,7 @@ pub trait MessageBuilder {
 
 /// Builder that can accept a signature for verification
 pub trait SignatureDataBuilder {
+    /// The resulting type after adding the signature
     type Output;
 
     /// Set the signature from bytes
@@ -363,20 +372,24 @@ pub trait SignatureDataBuilder {
 
 /// Final stage builder that can encapsulate
 pub trait EncapsulateBuilder {
+    /// Perform key encapsulation operation
     fn encapsulate(self) -> impl AsyncEncapsulationResult;
 }
 
 /// Final stage builder that can decapsulate
 pub trait DecapsulateBuilder {
+    /// Perform key decapsulation operation
     fn decapsulate(self) -> impl AsyncDecapsulationResult;
 }
 
 /// Final stage builder that can sign
 pub trait SignBuilder {
+    /// Perform digital signature operation
     fn sign(self) -> impl AsyncSignatureResult;
 }
 
 /// Final stage builder that can verify
 pub trait VerifyBuilder {
+    /// Perform signature verification operation
     fn verify(self) -> impl AsyncVerificationResult;
 }

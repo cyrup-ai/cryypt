@@ -75,13 +75,18 @@ impl<T> FullKeyStore for T where
 /// Legacy trait for backwards compatibility - DO NOT USE IN NEW CODE
 #[deprecated(note = "Use capability-specific traits instead")]
 pub trait KeyStore: KeyStorage {
+    /// Store key material with the given key ID
     fn store(
         &self,
         key_id: &dyn KeyId,
         key_material: &[u8],
     ) -> impl Future<Output = Result<()>> + Send;
+    /// Retrieve key material for the given key ID
     fn retrieve(&self, key_id: &dyn KeyId) -> impl Future<Output = Result<Vec<u8>>> + Send;
+    /// Delete the key with the given key ID
     fn delete(&self, key_id: &dyn KeyId) -> impl Future<Output = Result<()>> + Send;
+    /// Check if a key exists with the given key ID
     fn exists(&self, key_id: &dyn KeyId) -> impl Future<Output = Result<bool>> + Send;
+    /// List all keys matching the given namespace pattern
     fn list(&self, namespace_pattern: &str) -> impl Future<Output = Result<Vec<String>>> + Send;
 }

@@ -3,7 +3,7 @@
 use super::super::hash_result::HashResultImpl;
 use super::{
     NoData, HasData, NoSalt, HasSalt, NoPasses, HasPasses,
-    hash::{Sha256Hash, Sha3_256Hash, Sha3_384Hash, Sha3_512Hash, Blake2bHash},
+    hash::{Sha256Hash, Sha3_256Hash, Blake2bHash},
     passes::HashPasses,
 };
 
@@ -64,13 +64,11 @@ impl<H, D, S> HashBuilder<H, D, S, NoPasses> {
     }
 }
 
-// Hash implementations for different algorithms
-trait HashImpl {
-    fn hash_data(&self, data: Vec<u8>, salt: Option<Vec<u8>>, passes: u32) -> HashResultImpl;
-}
+
 
 // SHA-256 with data only
 impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, NoSalt, NoPasses> {
+    /// Perform the hash operation asynchronously
     pub fn hash(self) -> impl AsyncHashResult {
         sha256_hash(self.data.0, None, 1)
     }
@@ -78,6 +76,7 @@ impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, NoSalt, NoPasses> {
 
 // SHA-256 with data and salt
 impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, HasSalt, NoPasses> {
+    /// Perform the hash operation asynchronously with salt
     pub fn hash(self) -> impl AsyncHashResult {
         sha256_hash(self.data.0, Some(self.salt.0), 1)
     }
@@ -85,6 +84,7 @@ impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, HasSalt, NoPasses> {
 
 // SHA-256 with data and passes
 impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, NoSalt, HasPasses> {
+    /// Perform the hash operation asynchronously with specified passes
     pub fn hash(self) -> impl AsyncHashResult {
         sha256_hash(self.data.0, None, self.passes.0.iterations())
     }
@@ -92,6 +92,7 @@ impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, NoSalt, HasPasses> {
 
 // SHA-256 with all options
 impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, HasSalt, HasPasses> {
+    /// Perform the hash operation asynchronously with salt and specified passes
     pub fn hash(self) -> impl AsyncHashResult {
         sha256_hash(self.data.0, Some(self.salt.0), self.passes.0.iterations())
     }
@@ -99,24 +100,28 @@ impl HashBuilder<Sha256Hash, HasData<Vec<u8>>, HasSalt, HasPasses> {
 
 // SHA3-256 implementations
 impl HashBuilder<Sha3_256Hash, HasData<Vec<u8>>, NoSalt, NoPasses> {
+    /// Perform the SHA3-256 hash operation asynchronously
     pub fn hash(self) -> impl AsyncHashResult {
         sha3_256_hash(self.data.0, None, 1)
     }
 }
 
 impl HashBuilder<Sha3_256Hash, HasData<Vec<u8>>, HasSalt, NoPasses> {
+    /// Perform the SHA3-256 hash operation asynchronously with salt
     pub fn hash(self) -> impl AsyncHashResult {
         sha3_256_hash(self.data.0, Some(self.salt.0), 1)
     }
 }
 
 impl HashBuilder<Sha3_256Hash, HasData<Vec<u8>>, NoSalt, HasPasses> {
+    /// Perform the SHA3-256 hash operation asynchronously with specified passes
     pub fn hash(self) -> impl AsyncHashResult {
         sha3_256_hash(self.data.0, None, self.passes.0.iterations())
     }
 }
 
 impl HashBuilder<Sha3_256Hash, HasData<Vec<u8>>, HasSalt, HasPasses> {
+    /// Perform the SHA3-256 hash operation asynchronously with salt and specified passes
     pub fn hash(self) -> impl AsyncHashResult {
         sha3_256_hash(self.data.0, Some(self.salt.0), self.passes.0.iterations())
     }
@@ -124,12 +129,14 @@ impl HashBuilder<Sha3_256Hash, HasData<Vec<u8>>, HasSalt, HasPasses> {
 
 // Blake2b implementations
 impl HashBuilder<Blake2bHash, HasData<Vec<u8>>, NoSalt, NoPasses> {
+    /// Perform the BLAKE2b hash operation asynchronously
     pub fn hash(self) -> impl AsyncHashResult {
         blake2b_hash(self.data.0, None, self.hasher.output_size)
     }
 }
 
 impl HashBuilder<Blake2bHash, HasData<Vec<u8>>, HasSalt, NoPasses> {
+    /// Perform the BLAKE2b hash operation asynchronously with salt
     pub fn hash(self) -> impl AsyncHashResult {
         blake2b_hash(self.data.0, Some(self.salt.0), self.hasher.output_size)
     }
@@ -183,7 +190,7 @@ fn sha3_256_hash(data: Vec<u8>, salt: Option<Vec<u8>>, passes: u32) -> HashResul
     })
 }
 
-fn blake2b_hash(data: Vec<u8>, key: Option<Vec<u8>>, output_size: u8) -> HashResultImpl {
+fn blake2b_hash(data: Vec<u8>, key: Option<Vec<u8>>, _output_size: u8) -> HashResultImpl {
     HashResultImpl::from_computation(move || {
         use blake2::{Blake2b512, Blake2bMac512};
         use blake2::digest::{Digest, KeyInit, Mac};

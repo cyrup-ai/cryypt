@@ -58,10 +58,16 @@ impl Hash {
 }
 
 // Marker types for different hash algorithms
+/// SHA-256 hash algorithm implementation
 pub struct Sha256Hash;
+/// SHA3-256 hash algorithm implementation
 pub struct Sha3_256Hash;
+/// SHA3-384 hash algorithm implementation
 pub struct Sha3_384Hash;
+/// SHA3-512 hash algorithm implementation
 pub struct Sha3_512Hash;
+/// BLAKE2b hash algorithm implementation with configurable output size
 pub struct Blake2bHash {
+    /// Output size in bytes (1-64)
     pub output_size: u8,
 }

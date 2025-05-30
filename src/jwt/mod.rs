@@ -48,8 +48,7 @@ mod rotator;
 mod traits;
 mod validation;
 
-// Keep the old jwt.rs for now during transition
-mod jwt;
+
 
 // Public re-exports
 pub use algorithms::{Es256Key, Hs256Key};

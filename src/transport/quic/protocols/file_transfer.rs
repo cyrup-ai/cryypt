@@ -9,7 +9,7 @@ use crate::{
         QuicCryptoBuilder, QuicServerConfig, connect_quic_client, run_quic_server,
         QuicConnectionHandle, AsyncQuicResult, Result,
     },
-    hashing::{Hash, api::{DataBuilder, HashExecutor}},
+    hashing::Hash,
 };
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

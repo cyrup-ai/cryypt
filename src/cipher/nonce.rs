@@ -64,6 +64,7 @@ impl core::fmt::Debug for Nonce {
 }
 
 impl Nonce {
+    /// Convert the nonce to a string representation
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -72,7 +73,9 @@ impl Nonce {
 /// Parsed nonce returned on successful verification
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ParsedNonce {
+    /// Timestamp in nanoseconds since Unix epoch
     pub timestamp_ns: u64,
+    /// Random bytes for entropy
     pub random: [u8; RANDOM_BYTES],
 }
 
@@ -95,14 +98,19 @@ impl Default for NonceConfig {
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum NonceError {
     #[error("base64url decode failure")]
+    /// Failed to decode nonce data
     Decode,
     #[error("encoded length mismatch")]
+    /// Nonce length does not match expected size
     LengthMismatch,
     #[error("authentication tag mismatch")]
+    /// Message authentication code verification failed
     BadMac,
     #[error("nonce expired")]
+    /// Nonce has expired based on timestamp
     Expired,
     #[error("replay detected")]
+    /// Nonce has been used before (replay attack detected)
     Replay,
 }
 

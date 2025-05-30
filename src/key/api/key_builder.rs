@@ -25,12 +25,14 @@ pub struct Key256BuilderWithStoreNamespaceAndVersion<S: KeyStorage> {
 }
 
 impl Key256Builder {
+    /// Set the key storage backend for this key builder
     pub fn with_store<S: KeyStorage + 'static>(self, store: S) -> Key256BuilderWithStore<S> {
         Key256BuilderWithStore { store }
     }
 }
 
 impl<S: KeyStorage> Key256BuilderWithStore<S> {
+    /// Set the namespace for organizing keys
     pub fn with_namespace(
         self,
         namespace: impl Into<String>,
@@ -43,6 +45,7 @@ impl<S: KeyStorage> Key256BuilderWithStore<S> {
 }
 
 impl<S: KeyStorage> Key256BuilderWithStoreAndNamespace<S> {
+    /// Set the version number for key rotation
     pub fn version(self, version: u32) -> Key256BuilderWithStoreNamespaceAndVersion<S> {
         Key256BuilderWithStoreNamespaceAndVersion {
             store: self.store,

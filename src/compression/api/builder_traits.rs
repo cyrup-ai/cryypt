@@ -13,6 +13,7 @@ impl<T> AsyncDecompressResult for T where T: Future<Output = Result<Vec<u8>>> + 
 
 /// Trait for setting data to compress
 pub trait DataBuilder {
+    /// The resulting type after adding data
     type Output;
 
     /// Set the data to compress (as bytes)
@@ -24,6 +25,7 @@ pub trait DataBuilder {
 
 /// Trait for setting compression level
 pub trait LevelBuilder {
+    /// The resulting type after adding compression level
     type Output;
 
     /// Set the compression level (0-9, where 0 is no compression and 9 is maximum)
