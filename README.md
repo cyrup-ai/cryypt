@@ -1,4 +1,4 @@
-# `crypt`
+# `cryypt`
 
 Immutable builders for encryption, hashing, compression.
 
@@ -7,7 +7,7 @@ Immutable builders for encryption, hashing, compression.
 ### AES-GCM Encryption
 
 ```rust
-use cyrup_crypt::{Cipher, Key, FileKeyStore};
+use cryypt::{Cipher, Key, FileKeyStore};
 
 // Simple encryption with key
 let ciphertext = Cipher::aes()
@@ -32,7 +32,7 @@ let plaintext = Cipher::aes()
 
 ### ChaCha20-Poly1305 Encryption
 ```rust
-use cyrup_crypt::{Cipher, Key, KeychainStore};
+use cryypt::{Cipher, Key, KeychainStore};
 
 // Encrypt with ChaCha20-Poly1305
 let ciphertext = Cipher::chachapoly()
@@ -57,7 +57,7 @@ let plaintext = Cipher::chachapoly()
 
 ### Two-Pass Encryption (AES then ChaCha)
 ```rust
-use cyrup_crypt::{Cipher, Key, FileKeyStore};
+use cryypt::{Cipher, Key, FileKeyStore};
 
 // Double encryption: AES-GCM followed by ChaCha20-Poly1305
 let ciphertext = Cipher::aes()
@@ -94,7 +94,7 @@ let plaintext = Cipher::chachapoly()
 
 ### SHA-256 Hashing
 ```rust
-use cyrup_crypt::hashing::Hash;
+use cryypt::hashing::Hash;
 
 // Simple hash
 let hash = Hash::sha256()
@@ -120,7 +120,7 @@ let hash = Hash::sha256()
 
 ### Blake2b Hashing
 ```rust
-use cyrup_crypt::hashing::Hash;
+use cryypt::hashing::Hash;
 
 // Blake2b with default 64-byte output
 let hash = Hash::blake2b()
@@ -138,7 +138,7 @@ let hash = Hash::blake2b()
 
 ### SHA3 Hashing
 ```rust
-use cyrup_crypt::hashing::Hash;
+use cryypt::hashing::Hash;
 
 // SHA3-256 (default)
 let hash = Hash::sha3()
@@ -157,7 +157,7 @@ let hash = Hash::sha3()
 
 ### Text Input
 ```rust
-use cyrup_crypt::hashing::Hash;
+use cryypt::hashing::Hash;
 
 // Hash text directly
 let hash = Hash::sha256()
@@ -177,7 +177,7 @@ let hash = Hash::blake2b()
 
 ### Generate Key and Encrypt in One Chain
 ```rust
-use cyrup_crypt::{Cipher, Key, FileKeyStore};
+use cryypt::{Cipher, Key, FileKeyStore};
 
 // Setup key store (one time)
 let master_key = [0u8; 32]; // In practice: derive from secure source
@@ -205,7 +205,7 @@ let plaintext = Cipher::aes()
 
 ### AWS KMS Integration
 ```rust
-use cyrup_crypt::{Cipher, Key, AwsKmsDataKeyStore, AwsSecretsManagerStore};
+use cryypt::{Cipher, Key, AwsKmsDataKeyStore, AwsSecretsManagerStore};
 
 // Encrypt with KMS-managed key (generates on first use)
 let ciphertext = Cipher::chachapoly()
@@ -221,7 +221,7 @@ let ciphertext = Cipher::chachapoly()
 
 ### OS Keychain Storage
 ```rust
-use cyrup_crypt::{Cipher, Key, KeychainStore};
+use cryypt::{Cipher, Key, KeychainStore};
 
 // Encrypt user data (key generated/retrieved automatically)
 let encrypted = Cipher::aes()
@@ -238,7 +238,7 @@ let encrypted = Cipher::aes()
 
 ### Zstd Compression (Recommended)
 ```rust
-use cyrup_crypt::compression::Compress;
+use cryypt::compression::Compress;
 
 // Simple compression (defaults to high compression)
 let compressed = Compress::zstd()
@@ -255,7 +255,7 @@ let original = Compress::zstd()
 
 ### Compression with Encryption
 ```rust
-use cyrup_crypt::{compression::Compress, Cipher, Key, FileKeyStore};
+use cryypt::{compression::Compress, Cipher, Key, FileKeyStore};
 
 // Compress then encrypt in the cipher builder
 let result = Cipher::aes()
@@ -452,3 +452,12 @@ let text = String::from_utf8(original_text)?;
 - **Async by Default**: Non-blocking operations with `impl Future` returns
 - **No Boxing**: Zero-allocation async returns using `impl Trait`
 - **Flexible Chaining**: Compose multiple encryption/hashing operations
+
+ACKNOWLEDGEMENTS
+
+- [Cloudflare Team](https://www.cloudflare.com/) - Thank you for your support and contributions to Rust, especially [Quique](https://github.com/cloudflare/quiche) which was our choice for a quiq client/server pairing.
+- We also want to thank the entire Rust community for their support and contributions.
+
+CONTRIBUTING
+
+We welcome contributions to the project! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to contribute.

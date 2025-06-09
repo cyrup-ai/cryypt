@@ -250,6 +250,17 @@ out/
 # ==============================
 fork
 /target/
+.aiderignore
+.cursorignore
+.windsurfignore
+.zed
+CLAUDE.md
+.cursorrules/
+.aider
+.codequery
+.claude
+
+
 
 # ============== <cyrup> ===============
 # ------  ## MIRRORMARK PROTOCOL   -----

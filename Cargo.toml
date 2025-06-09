@@ -1,114 +1,145 @@
 [workspace]
+resolver = "3"
+members = [
+    "cipher",        # Symmetric encryption
+    "compression",   # Data compression
+    "hashing",       # Hash functions
+    "jwt",           # JSON Web Tokens
+    "key",           # Key management
+    "pqcrypto",      # Post-quantum cryptography
+    "quiq",          # QUIC protocol crypto
+    "vault",         # Secure storage
+]
 
-[package]
-name = "cryypt"
+[workspace.package]
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 authors = ["Cyrup AI <dev@cyrup.ai>"]
-description = "typesafe builder for encryption decryption, compression, hashing primitives in Rust"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/cyrup-ai/crypt"
 keywords = ["encryption", "cryptography", "postquant", "cipher", "security"]
 categories = ["cryptography", "authentication"]
+rust-version = "1.70"
 
-
-[dependencies]
-arc-swap = "1.7"
-# Core dependencies
+[workspace.dependencies]
+# Core utilities
+arc-swap = "1.7.1"
 rand = { version = "0.9.1", features = ["std", "std_rng"] }
+rand_core = "0.9.3"
 zeroize = { version = "1.8.1", features = ["derive"] }
+subtle = "2.6.1"
+once_cell = "1.21.3"
+getrandom = "0.3.3"
+
+# Error handling & serialization
 thiserror = "2.0.12"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
+bincode = "2.0.1"
+
+# Encoding
 base64 = "0.22.1"
+base64-url = "3.0.0"
 hex = "0.4.3"
-once_cell = "1.21.3"
+
+# Async runtime
 tokio = { version = "1.45.1", features = ["sync", "rt", "macros", "fs", "io-util", "net"] }
 tokio-stream = "0.1.17"
 futures = "0.3.31"
+futures-core = "0.3.31"
 
-# JWT dependencies
-dashmap = "6.1"
-p256 = { version = "0.13", features = ["ecdsa", "pkcs8"] }
-hmac = "0.12"
-base64-url = "3.0"
-getrandom = "0.3"
-twox-hash = "2.1"
-
-# Nonce security dependencies
-hkdf = "0.12"
-subtle = "2.6"
-
-# Time-based features
+# Data structures
+dashmap = "6.1.0"
+uuid = { version = "1.17.0", features = ["serde", "v4"] }
 chrono = { version = "0.4.41", features = ["serde"] }
 
-# Tracing
+# Logging
 tracing = "0.1.41"
+
+# Cryptographic primitives
+aes-gcm = "0.10.3"
+chacha20poly1305 = "0.10.1"
+sha2 = "0.10.9"
+sha3 = "0.10.8"
+blake2 = "0.10.6"
+blake3 = "1.8.2"
+argon2 = "0.5.3"
+hkdf = "0.12.4"
+hmac = "0.12.1"
+p256 = { version = "0.13.2", features = ["ecdsa", "pkcs8"] }
+
+# Hashing utilities
+twox-hash = "2.1.0"
 
 # Compression
 bzip2 = "0.5.2"
-aes-gcm = "0.10"
-chacha20poly1305 = "0.10"
-sha2 = "0.10"
-sha3 = "0.10"
-blake2 = "0.10"
-argon2 = "0.5.3"
-keyring = "3.6.2"
 flate2 = "1.1.1"
 zstd = "0.13.3"
 zip = "4.0.0"
-rand_core = "0.9.3"
-quiche = "0.24.2"
 
 # Post-quantum cryptography
-pqcrypto = { version = "0.18", features = ["serialization"] }
-pqcrypto-mlkem = { version = "0.1", features = ["serialization"] }
-pqcrypto-mldsa = { version = "0.1", features = ["serialization"] }
-pqcrypto-falcon = { version = "0.4", features = ["serialization"] }
-pqcrypto-sphincsplus = { version = "0.7", features = ["serialization"] }
+pqcrypto = { version = "0.18.1", features = ["serialization"] }
+pqcrypto-mlkem = { version = "0.1.0", features = ["serialization"] }
+pqcrypto-mldsa = { version = "0.1.1", features = ["serialization"] }
+pqcrypto-falcon = { version = "0.4.0", features = ["serialization"] }
+pqcrypto-sphincsplus = { version = "0.7.1", features = ["serialization"] }
 pqcrypto-traits = "0.3.5"
-uuid = { version = "1.17.0", features = ["serde", "v4"] }
-bincode = "2.0.1"
 
-[dev-dependencies]
-tokio = { version = "1.45.1", features = ["full"] }
-criterion = "0.6.0"
-proptest = "1.6.0"
-hex-literal = "1.0.0"
+# QUIC protocol
+quiche = "0.24.2"
 
-# No features - everything is included by default
+# Key management
+keyring = "3.6.2"
 
+# Database & storage
+surrealdb = "2.2.1"
+surrealdb-migrations = "2.2.1"
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-strip = true
+# System utilities
+dirs = "5.0.1"
+regex = "1.11.1"
+time = "0.3.36"
+
+# Async utilities
+pin-project = "1.1.7"
+secrecy = "0.10.2"
+secretrust-core = "0.1.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unused_imports = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+cargo = "warn"
+
+# Allow some pedantic lints that are too noisy for crypto code
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+similar_names = "allow"
+too_many_lines = "allow"
 
 [profile.dev]
-opt-level = 0
 debug = true
+opt-level = 0
+overflow-checks = true
 
-[lib]
-name = "cryypt"
-path = "src/lib.rs"
+[profile.release]
+debug = false
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
 
-[[example]]
-name = "hashing"
-path = "examples/hashing.rs"
+# Optimize dependencies even in dev builds for crypto performance
+[profile.dev.package."*"]
+opt-level = 2
+debug = "line-tables-only"
 
-[[example]]
-name = "jwt"
-path = "examples/jwt.rs"
-
-[[example]]
-name = "nonce"
-path = "examples/nonce.rs"
-
-[[example]]
-name = "pqcrypto"
-path = "examples/pqcrypto.rs"
-
-[[example]]
-name = "quiq"
-path = "examples/quiq.rs"
+[profile.bench]
+inherits = "release"
+debug = true
