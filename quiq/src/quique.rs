@@ -83,7 +83,7 @@ impl ClientBuilder {
     pub async fn connect(self, addr: impl Into<String>) -> Result<QuicConnection> {
         let addr_str = addr.into();
         let socket_addr: SocketAddr = addr_str.parse().map_err(|e| {
-            crate::CryptError::internal(format!("Invalid address {}: {}", addr_str, e))
+            crate::CryptoTransportError::Internal(format!("Invalid address {}: {}", addr_str, e))
         })?;
 
         // Validate transport type

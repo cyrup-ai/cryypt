@@ -1,5 +1,5 @@
 [package]
-name = "cryypt-quiq"
+name = "cryypt_quiq"
 version = "0.1.0"
 edition = "2021"
 authors = ["Cyrup AI <dev@cyrup.ai>"]
@@ -53,6 +53,7 @@ pqcrypto-sphincsplus = { version = "0.7.1", features = ["serialization"] }
 pqcrypto-traits = "0.3.5"
 uuid = { version = "1.17.0", features = ["serde", "v4"] }
 bincode = "2.0.1"
+cryypt_hashing = { path = "../hashing" }
 
 [dev-dependencies]
 tokio = { version = "1.45.1", features = ["full"] }

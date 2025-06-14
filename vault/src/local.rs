@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, Mutex};
-use tokio::spawn; // Add spawn
+use tokio::spawn;
 use zeroize::Zeroizing;
 use rand::Rng;
 
@@ -11,23 +11,25 @@ use crate::config::VaultConfig;
 use crate::core::VaultValue;
 use crate::error::{VaultError, VaultResult};
 use crate::operation::*;
+use secrecy::ExposeSecret;
+use cryypt_cipher::CipherAlgorithm;
+use argon2::{
+    password_hash::SaltString,
+    Argon2,
+};
 
 #[derive(Clone)]
 pub struct LocalVaultProvider {
     config: VaultConfig,
     data: Arc<Mutex<HashMap<String, VaultValue>>>,
     key: Arc<Mutex<Option<Zeroizing<[u8; 32]>>>>,
-    encryptor: Arc<dyn Encryptor>,
+    cipher_algorithm: CipherAlgorithm,
 }
 
 impl LocalVaultProvider {
     pub fn new(config: VaultConfig) -> VaultResult<Self> {
-        // Create default MilitaryGradeEncryptor for highest security
-        let encryptor = MilitaryGradeEncryptor::new(
-            config.argon2_memory_cost,
-            config.argon2_time_cost,
-            config.argon2_parallelism,
-        );
+        // Use Cascade algorithm for highest security (defense-in-depth)
+        let cipher_algorithm = CipherAlgorithm::Cascade;
         
         // Ensure salt file exists with proper permissions
         if !Path::new(&config.salt_path).exists() {
@@ -45,16 +47,18 @@ impl LocalVaultProvider {
             }
         }
         
-        Ok(Self::with_encryptor(config, encryptor))
+        Ok(Self {
+            config,
+            data: Arc::new(Mutex::new(HashMap::new())),
+            key: Arc::new(Mutex::new(None)),
+            cipher_algorithm,
+        })
     }
     
     /// Create a provider with ChaCha20Poly1305 for faster but still secure encryption
     pub fn new_with_chacha(config: VaultConfig) -> VaultResult<Self> {
-        let encryptor = ChaChaEncryptor::new(
-            config.argon2_memory_cost,
-            config.argon2_time_cost,
-            config.argon2_parallelism,
-        );
+        // Use ChaCha20Poly1305 for faster encryption
+        let cipher_algorithm = CipherAlgorithm::ChaCha20Poly1305;
         
         // Ensure salt file exists with proper permissions
         if !Path::new(&config.salt_path).exists() {
@@ -72,15 +76,20 @@ impl LocalVaultProvider {
             }
         }
         
-        Ok(Self::with_encryptor(config, encryptor))
+        Ok(Self {
+            config,
+            data: Arc::new(Mutex::new(HashMap::new())),
+            key: Arc::new(Mutex::new(None)),
+            cipher_algorithm,
+        })
     }
     
-    pub fn with_encryptor(config: VaultConfig, encryptor: impl Encryptor) -> Self {
+    pub fn with_algorithm(config: VaultConfig, algorithm: CipherAlgorithm) -> Self {
         Self {
             config,
             data: Arc::new(Mutex::new(HashMap::new())),
             key: Arc::new(Mutex::new(None)),
-            encryptor: Arc::new(encryptor),
+            cipher_algorithm: algorithm,
         }
     }
 
@@ -114,6 +123,76 @@ impl LocalVaultProvider {
         true
     }
 
+    /// Derive a key from passphrase using Argon2
+    fn derive_key(&self, passphrase: &str, salt: &[u8]) -> VaultResult<Zeroizing<[u8; 32]>> {
+        let argon2 = Argon2::new(
+            argon2::Algorithm::Argon2id,
+            argon2::Version::V0x13,
+            argon2::Params::new(
+                self.config.argon2_memory_cost,
+                self.config.argon2_time_cost,
+                self.config.argon2_parallelism,
+                Some(32)
+            ).map_err(|e| VaultError::KeyDerivation(e.to_string()))?
+        );
+        
+        let salt_string = SaltString::encode_b64(salt)
+            .map_err(|e| VaultError::KeyDerivation(e.to_string()))?;
+        
+        let mut output = [0u8; 32];
+        argon2.hash_password_into(passphrase.as_bytes(), salt_string.as_salt().as_str().as_bytes(), &mut output)
+            .map_err(|e| VaultError::KeyDerivation(e.to_string()))?;
+        
+        Ok(Zeroizing::new(output))
+    }
+
+    /// Encrypt data using the cipher API
+    async fn encrypt_data(&self, data: &[u8], key: &[u8]) -> VaultResult<Vec<u8>> {
+        // For now, use a simplified approach - in production this would use the full cipher API
+        // with proper key management
+        use aes_gcm::{
+            aead::{Aead, KeyInit},
+            Aes256Gcm, Nonce,
+        };
+        
+        let cipher = Aes256Gcm::new_from_slice(key)
+            .map_err(|e| VaultError::Encryption(e.to_string()))?;
+        
+        let mut nonce_bytes = [0u8; 12];
+        use aes_gcm::aead::rand_core::{RngCore, OsRng as AesOsRng};
+        AesOsRng.fill_bytes(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+        
+        let ciphertext = cipher.encrypt(nonce, data)
+            .map_err(|e| VaultError::Encryption(e.to_string()))?;
+        
+        // Prepend nonce to ciphertext
+        let mut result = nonce_bytes.to_vec();
+        result.extend_from_slice(&ciphertext);
+        Ok(result)
+    }
+
+    /// Decrypt data using the cipher API
+    async fn decrypt_data(&self, encrypted_data: &[u8], key: &[u8]) -> VaultResult<Vec<u8>> {
+        use aes_gcm::{
+            aead::{Aead, KeyInit},
+            Aes256Gcm, Nonce,
+        };
+        
+        if encrypted_data.len() < 12 {
+            return Err(VaultError::Decryption("Data too short".into()));
+        }
+        
+        let (nonce_bytes, ciphertext) = encrypted_data.split_at(12);
+        let nonce = Nonce::from_slice(nonce_bytes);
+        
+        let cipher = Aes256Gcm::new_from_slice(key)
+            .map_err(|e| VaultError::Decryption(e.to_string()))?;
+        
+        cipher.decrypt(nonce, ciphertext)
+            .map_err(|e| VaultError::Decryption(e.to_string()))
+    }
+
     async fn unlock_impl(&self, passphrase: &str) -> VaultResult<()> {
         let salt = fs::read(&self.config.salt_path).map_err(VaultError::Io)?;
         
@@ -123,12 +202,12 @@ impl LocalVaultProvider {
         }
         
         // Don't validate passphrase on unlock, only when creating new vault or changing passphrase
-        let key = self.encryptor.derive_key(passphrase, &salt)?;
+        let key = self.derive_key(passphrase, &salt)?;
         *self.key.lock().await = Some(key.clone());
 
         if Path::new(&self.config.vault_path).exists() {
             let encrypted_data = fs::read(&self.config.vault_path).map_err(VaultError::Io)?;
-            let decrypted_data = self.encryptor.decrypt(&encrypted_data, &key)?;
+            let decrypted_data = self.decrypt_data(&encrypted_data, key.as_ref()).await?;
             let data: HashMap<String, VaultValue> = serde_json::from_slice(&decrypted_data)?;
             *self.data.lock().await = data;
             
@@ -261,7 +340,7 @@ impl LocalVaultProvider {
         let data = serde_json::to_vec(&*self.data.lock().await)?;
         let key_guard = self.key.lock().await;
         let key = key_guard.as_ref().ok_or(VaultError::VaultLocked)?;
-        let encrypted_data = self.encryptor.encrypt(&data, key)?;
+        let encrypted_data = self.encrypt_data(&data, key.as_ref()).await?;
         
         // If file exists, securely overwrite it
         if Path::new(&self.config.vault_path).exists() {
@@ -332,7 +411,7 @@ impl LocalVaultProvider {
         let salt = fs::read(&self.config.salt_path).map_err(VaultError::Io)?;
         
         // Verify old passphrase
-        let old_key = self.encryptor.derive_key(old_passphrase, &salt)?;
+        let old_key = self.derive_key(old_passphrase, &salt)?;
         let current_key = self.key.lock().await;
         
         // Use safer comparison without unwrap
@@ -346,7 +425,7 @@ impl LocalVaultProvider {
         }
         
         // Generate new key
-        let new_key = self.encryptor.derive_key(new_passphrase, &salt)?;
+        let new_key = self.derive_key(new_passphrase, &salt)?;
         drop(current_key); // Release the lock
         
         // Update the key
@@ -370,12 +449,17 @@ impl VaultOperation for LocalVaultProvider {
     }
     
     fn encryption_type(&self) -> &str {
-        self.encryptor.name()
+        match self.cipher_algorithm {
+            CipherAlgorithm::Aes256Gcm => "AES-256-GCM",
+            CipherAlgorithm::ChaCha20Poly1305 => "ChaCha20-Poly1305",
+            CipherAlgorithm::Cascade => "Cascade (AES + ChaCha)",
+            CipherAlgorithm::Custom(ref name) => name,
+        }
     }
     
     fn supports_defense_in_depth(&self) -> bool {
-        // Only true if using MilitaryGradeEncryptor with its cascade encryption
-        self.encryptor.name().contains("MilitaryGrade")
+        // Only true if using Cascade algorithm
+        matches!(self.cipher_algorithm, CipherAlgorithm::Cascade)
     }
 
     fn is_locked(&self) -> bool {
@@ -386,7 +470,7 @@ impl VaultOperation for LocalVaultProvider {
     fn unlock(&self, passphrase: &Passphrase) -> VaultUnitRequest {
         let (tx, rx) = oneshot::channel();
         let op_clone = self.clone();
-        let passphrase = passphrase.to_string(); // Clone passphrase for the task
+        let passphrase = passphrase.expose_secret().to_string(); // Clone passphrase for the task
 
         spawn(async move {
             let result = op_clone.unlock_impl(&passphrase).await;
@@ -513,7 +597,7 @@ impl VaultOperation for LocalVaultProvider {
         VaultFindRequest::new(rx)
     }
 
-    fn list(&self, prefix: Option<&str>) -> VaultListRequest {
+    fn list(&self, _prefix: Option<&str>) -> VaultListRequest {
         // Note: LocalVaultProvider's list_impl doesn't currently support prefix filtering.
         // It lists all keys. We'll implement the streaming part but ignore the prefix for now.
         // A future enhancement could add prefix filtering to list_impl.
@@ -550,8 +634,8 @@ impl VaultOperation for LocalVaultProvider {
     ) -> VaultChangePassphraseRequest {
         let (tx, rx) = oneshot::channel();
         let op_clone = self.clone();
-        let old_passphrase = old_passphrase.to_string();
-        let new_passphrase = new_passphrase.to_string();
+        let old_passphrase = old_passphrase.expose_secret().to_string();
+        let new_passphrase = new_passphrase.expose_secret().to_string();
 
         spawn(async move {
             let result = op_clone

@@ -1,6 +1,6 @@
 //! Concrete key result type
 
-use crate::{CryptError, Result};
+use crate::{KeyError, Result};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -25,7 +25,7 @@ impl KeyResult {
     }
 
     /// Create a KeyResult that yields an error
-    pub fn error(error: CryptError) -> Self {
+    pub fn error(error: KeyError) -> Self {
         Self::ready(Err(error))
     }
 }
@@ -37,7 +37,7 @@ impl Future for KeyResult {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
             Poll::Ready(Err(_)) => {
-                Poll::Ready(Err(CryptError::internal("Key resolution task dropped")))
+                Poll::Ready(Err(KeyError::internal("Key resolution task dropped")))
             }
             Poll::Pending => Poll::Pending,
         }

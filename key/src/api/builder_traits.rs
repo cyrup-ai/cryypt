@@ -14,7 +14,7 @@ pub trait StoreBuilderSetter {
 /// Trait for types that can build a key store
 pub trait KeyStoreBuilder: Send + Sync {
     /// The key storage backend type
-    type Store: crate::key::KeyStorage;
+    type Store: crate::KeyStorage;
 
     /// Build the key store
     fn build(self) -> Self::Store;

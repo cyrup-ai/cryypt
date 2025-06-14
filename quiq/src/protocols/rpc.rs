@@ -3,7 +3,8 @@
 //! Provides request/response patterns with automatic timeouts,
 //! retries, and load balancing across multiple connections.
 
-use crate::transport::quic::{AsyncQuicResult, Result};
+use crate::Result;
+use std::future::Future;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -28,7 +29,7 @@ impl<Req: Serialize + Send + 'static, Resp: for<'de> Deserialize<'de> + Send + '
     RpcCall<Req, Resp>
 {
     /// Execute the RPC call
-    pub fn execute(self) -> impl AsyncQuicResult<RpcResponse<Resp>> {
+    pub fn execute(self) -> impl Future<Output = Result<RpcResponse<Resp>>> + Send {
         async move {
             // Log RPC call details
             println!("🔄 Executing RPC method: {}", self.method);
@@ -36,7 +37,7 @@ impl<Req: Serialize + Send + 'static, Resp: for<'de> Deserialize<'de> + Send + '
 
             // Serialize request
             let _request_json = serde_json::to_string(&self.request).map_err(|e| {
-                crate::transport::quic::error::CryptoTransportError::Internal(format!(
+                crate::error::CryptoTransportError::Internal(format!(
                     "Failed to serialize RPC request: {}",
                     e
                 ))
@@ -44,7 +45,7 @@ impl<Req: Serialize + Send + 'static, Resp: for<'de> Deserialize<'de> + Send + '
 
             // TODO: Implementation would send RPC request and wait for response
             Err(
-                crate::transport::quic::error::CryptoTransportError::Internal(
+                crate::error::CryptoTransportError::Internal(
                     "RPC execution not implemented yet".to_string(),
                 ),
             )
@@ -90,7 +91,7 @@ impl RpcServerBuilder {
         self
     }
 
-    pub fn listen(self, addr: &str) -> impl AsyncQuicResult<RpcServer> {
+    pub fn listen(self, addr: &str) -> impl Future<Output = Result<RpcServer>> + Send {
         let _addr = addr.to_string();
         async move {
             // Implementation would set up QUIC server with RPC protocol

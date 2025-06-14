@@ -24,8 +24,12 @@
 
 mod algorithm;
 pub mod api;
+mod error;
 mod result;
 mod shared_secret;
+
+// Re-export error types
+pub use self::error::{PqCryptoError, Result};
 
 // Re-export main types
 pub use self::algorithm::{KemAlgorithm, SignatureAlgorithm};

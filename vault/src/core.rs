@@ -1,17 +1,17 @@
-use std::sync::Arc;
-use std::fmt;
-use tokio::sync::Mutex;
-use serde::{Deserialize, Serialize};
 use crate::error::{VaultError, VaultResult};
 use crate::operation::{
     Passphrase, VaultBoolRequest, VaultChangePassphraseRequest, VaultFindRequest, VaultGetRequest,
     VaultListRequest, VaultOperation, VaultPutAllRequest, VaultUnitRequest,
 };
-// Import SecretBytes from the correct crate path
-use secretrust_core::secretrust::SecretBytes;
-use serde::{Serializer, Deserializer};
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+// Import Zeroizing from zeroize crate
+use zeroize::{Zeroize, Zeroizing};
+// Remove unused import
+use serde::{Deserializer, Serializer};
 use std::collections::HashMap;
-use zeroize::Zeroize;
 
 /// Represents a value stored in the vault, ensuring the underlying bytes are zeroized.
 /// Includes support for metadata, provider tracking, and secure serialization.
@@ -19,7 +19,7 @@ use zeroize::Zeroize;
 /// for common conversions.
 #[derive(Clone)]
 pub struct VaultValue {
-    inner: SecretBytes,
+    inner: Zeroizing<Vec<u8>>,
     metadata: Option<serde_json::Value>,
     provider: Option<Arc<dyn VaultOperation + Send + Sync>>,
     key: Option<String>,
@@ -31,7 +31,7 @@ impl VaultValue {
     /// Creates a VaultValue from raw bytes.
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         Self {
-            inner: SecretBytes::new(bytes),
+            inner: Zeroizing::new(bytes),
             metadata: None,
             provider: None,
             key: None,
@@ -41,7 +41,7 @@ impl VaultValue {
     /// Creates a VaultValue from a String (converts to UTF-8 bytes).
     pub fn from_string(s: String) -> Self {
         Self {
-            inner: SecretBytes::new(s.into_bytes()),
+            inner: Zeroizing::new(s.into_bytes()),
             metadata: None,
             provider: None,
             key: None,
@@ -50,10 +50,9 @@ impl VaultValue {
 
     /// Creates a VaultValue by serializing a type `T` to JSON bytes.
     pub fn from_serializable<T: Serialize>(value: &T) -> Result<Self, VaultError> {
-        let bytes = serde_json::to_vec(value)
-            .map_err(|e| VaultError::Serialization(e))?;
+        let bytes = serde_json::to_vec(value).map_err(|e| VaultError::Serialization(e))?;
         Ok(Self {
-            inner: SecretBytes::new(bytes),
+            inner: Zeroizing::new(bytes),
             metadata: None,
             provider: None,
             key: None,
@@ -73,7 +72,11 @@ impl VaultValue {
     }
 
     /// Sets the associated key and provider for this value
-    pub(crate) fn with_provider(mut self, key: String, provider: Arc<dyn VaultOperation + Send + Sync>) -> Self {
+    pub(crate) fn with_provider(
+        mut self,
+        key: String,
+        provider: Arc<dyn VaultOperation + Send + Sync>,
+    ) -> Self {
         self.key = Some(key);
         self.provider = Some(provider);
         self
@@ -86,7 +89,7 @@ impl VaultValue {
 
     /// Exposes the underlying bytes temporarily. Use with caution.
     pub fn expose_secret(&self) -> &[u8] {
-        self.inner.expose_secret()
+        &self.inner
     }
 
     /// Tries to interpret the bytes as a UTF-8 string, exposing temporarily.
@@ -96,12 +99,11 @@ impl VaultValue {
 
     /// Tries to deserialize the underlying bytes (assuming JSON) into type `T`.
     pub fn to_serializable<T: for<'de> Deserialize<'de>>(&self) -> Result<T, VaultError> {
-        serde_json::from_slice(self.expose_secret())
-            .map_err(|e| VaultError::Serialization(e))
+        serde_json::from_slice(self.expose_secret()).map_err(|e| VaultError::Serialization(e))
     }
 
-    /// Consumes the VaultValue and returns the inner SecretBytes.
-    pub fn into_secret_bytes(self) -> SecretBytes {
+    /// Consumes the VaultValue and returns the inner Zeroizing<Vec<u8>>.
+    pub fn into_secret_bytes(self) -> Zeroizing<Vec<u8>> {
         self.inner
     }
 }
@@ -143,7 +145,8 @@ impl<'de> Deserialize<'de> for VaultValue {
     where
         D: Deserializer<'de>,
     {
-        let inner = SecretBytes::deserialize(deserializer)?;
+        let bytes = Vec::<u8>::deserialize(deserializer)?;
+        let inner = Zeroizing::new(bytes);
         Ok(VaultValue {
             inner,
             metadata: None,
@@ -170,7 +173,6 @@ impl fmt::Debug for VaultValue {
     }
 }
 
-
 // --- Main Vault struct (remains the same for now) ---
 pub struct Vault {
     providers: Arc<Mutex<Vec<Arc<dyn VaultOperation>>>>,
@@ -183,12 +185,12 @@ impl Vault {
             providers: Arc::new(Mutex::new(vec![])),
         }
     }
-    
+
     /// Creates a new Vault with a LocalVaultProvider using FortressEncrypt (defense-in-depth) encryption
     pub fn with_fortress_encryption(config: crate::config::VaultConfig) -> VaultResult<Self> {
         let vault = Self::new();
         let provider = crate::local::LocalVaultProvider::new(config)?;
-        
+
         // Register provider (non-async context so we need to block)
         let providers = Arc::clone(&vault.providers);
         let rt = tokio::runtime::Runtime::new().map_err(|e| VaultError::Other(e.to_string()))?;
@@ -196,7 +198,7 @@ impl Vault {
             let mut guard = providers.lock().await;
             guard.push(Arc::new(provider));
         });
-        
+
         Ok(vault)
     }
 
@@ -206,12 +208,14 @@ impl Vault {
     }
 
     pub async fn unlock(&self, passphrase: &str) -> VaultResult<VaultUnitRequest> {
-        let secure_passphrase = Passphrase::new(passphrase.to_string());
+        let secure_passphrase = Passphrase::from(passphrase.to_string());
         let providers = self.providers.lock().await;
         if let Some(provider) = providers.first() {
             Ok(provider.unlock(&secure_passphrase))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
@@ -220,25 +224,33 @@ impl Vault {
         if let Some(provider) = providers.first() {
             Ok(provider.lock())
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
     pub async fn is_locked(&self) -> bool {
         let providers = self.providers.lock().await;
-        providers.first().map_or(true, |provider| provider.is_locked())
+        providers
+            .first()
+            .map_or(true, |provider| provider.is_locked())
     }
-    
+
     /// Determines if this vault is using fortress-grade (defense-in-depth) encryption
     pub async fn has_fortress_encryption(&self) -> bool {
         let providers = self.providers.lock().await;
-        providers.first().map_or(false, |provider| provider.supports_defense_in_depth())
+        providers
+            .first()
+            .map_or(false, |provider| provider.supports_defense_in_depth())
     }
-    
+
     /// Gets the encryption type being used by this vault
     pub async fn encryption_type(&self) -> Option<String> {
         let providers = self.providers.lock().await;
-        providers.first().map(|provider| provider.encryption_type().to_string())
+        providers
+            .first()
+            .map(|provider| provider.encryption_type().to_string())
     }
 
     pub async fn put(&self, key: &str, value: &str) -> VaultResult<VaultUnitRequest> {
@@ -247,18 +259,27 @@ impl Vault {
             // Convert &str to VaultValue using from_string
             Ok(provider.put(key, VaultValue::from_string(value.to_string())))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
-    pub async fn put_with_metadata(&self, key: &str, value: &str, metadata: HashMap<String, String>) -> VaultResult<VaultUnitRequest> {
+    pub async fn put_with_metadata(
+        &self,
+        key: &str,
+        value: &str,
+        metadata: HashMap<String, String>,
+    ) -> VaultResult<VaultUnitRequest> {
         let providers = self.providers.lock().await;
         if let Some(provider) = providers.first() {
             // Convert &str to VaultValue using from_string with metadata
             let vault_value = VaultValue::from_string(value.to_string()).with_metadata(metadata);
             Ok(provider.put(key, vault_value))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
@@ -268,7 +289,9 @@ impl Vault {
             // Convert &str to VaultValue using from_string
             Ok(provider.put_if_absent(key, VaultValue::from_string(value.to_string())))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
@@ -282,7 +305,9 @@ impl Vault {
                 .collect();
             Ok(provider.put_all(vault_entries))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
@@ -291,7 +316,9 @@ impl Vault {
         if let Some(provider) = providers.first() {
             Ok(provider.get(key))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
@@ -300,7 +327,9 @@ impl Vault {
         if let Some(provider) = providers.first() {
             Ok(provider.delete(key))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
@@ -309,7 +338,9 @@ impl Vault {
         if let Some(provider) = providers.first() {
             Ok(provider.find(pattern))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
@@ -319,19 +350,27 @@ impl Vault {
             // Call provider list with None to list all under the provider's prefix
             Ok(provider.list(None))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 
-    pub async fn change_passphrase(&self, old_passphrase: &str, new_passphrase: &str) -> VaultResult<VaultChangePassphraseRequest> {
-        let secure_old_passphrase = Passphrase::new(old_passphrase.to_string());
-        let secure_new_passphrase = Passphrase::new(new_passphrase.to_string());
-        
+    pub async fn change_passphrase(
+        &self,
+        old_passphrase: &str,
+        new_passphrase: &str,
+    ) -> VaultResult<VaultChangePassphraseRequest> {
+        let secure_old_passphrase = Passphrase::from(old_passphrase.to_string());
+        let secure_new_passphrase = Passphrase::from(new_passphrase.to_string());
+
         let providers = self.providers.lock().await;
         if let Some(provider) = providers.first() {
             Ok(provider.change_passphrase(&secure_old_passphrase, &secure_new_passphrase))
         } else {
-            Err(VaultError::Configuration("No provider configured".to_string()))
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 }

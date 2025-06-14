@@ -1,4 +1,4 @@
-use surrealdb::engine::local::Db;
+use surrealdb::engine::any::Any;
 use futures::Stream;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -21,6 +21,14 @@ pub enum Error {
     NotFound,
     #[error("Invalid ID format")]
     InvalidId,
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+    #[error("Conflict: {0}")]
+    Conflict(String),
+    #[error("Other error: {0}")]
+    Other(String),
 }
 
 // Implement From<surrealdb::Error> for Error so we can use the ? operator
@@ -83,7 +91,7 @@ where
 {
     fn table_name(&self) -> &str;
     fn table_type(&self) -> &TableType;
-    fn db(&self) -> &Arc<Surreal<Db>>;
+    fn db(&self) -> &Arc<Surreal<Any>>;
 
     /// Create a new record
     fn create<'life0, 'fut>(
@@ -260,7 +268,7 @@ where
 /// SurrealDB implementation of the GenericDao trait
 #[derive(Debug, Clone)]
 pub struct SurrealDbDao<T> {
-    pub db: Arc<Surreal<Db>>,
+    pub db: Arc<Surreal<Any>>,
     pub table: String,
     pub table_type: TableType,
     pub _marker: std::marker::PhantomData<T>,
@@ -270,7 +278,7 @@ impl<T> SurrealDbDao<T>
 where
     T: Serialize + DeserializeOwned + Send + Sync + Clone + 'static,
 {
-    pub fn new(db: Arc<Surreal<Db>>, table: impl Into<String>, table_type: TableType) -> Self {
+    pub fn new(db: Arc<Surreal<Any>>, table: impl Into<String>, table_type: TableType) -> Self {
         Self {
             db,
             table: table.into(),
@@ -287,7 +295,7 @@ where
         &self.table_type
     }
 
-    pub fn db(&self) -> &Arc<Surreal<Db>> {
+    pub fn db(&self) -> &Arc<Surreal<Any>> {
         &self.db
     }
 }
@@ -304,7 +312,7 @@ where
         self.table_type()
     }
 
-    fn db(&self) -> &Arc<Surreal<Db>> {
+    fn db(&self) -> &Arc<Surreal<Any>> {
         self.db()
     }
 

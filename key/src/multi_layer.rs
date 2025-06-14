@@ -5,7 +5,7 @@
 //! atomic rotation counters and comprehensive audit logging.
 
 use super::entropy::EntropySource;
-use crate::{CryptError, Result};
+use crate::{KeyError, Result};
 use std::sync::atomic::{AtomicU64, Ordering};
 use zeroize::Zeroizing;
 
@@ -70,7 +70,7 @@ impl MultiLayerKey {
     pub fn new(entropy: &mut EntropySource) -> Result<Self> {
         // Verify entropy source quality
         if !entropy.verify_min_entropy(7.8) {
-            return Err(CryptError::InsufficientEntropy);
+            return Err(KeyError::InsufficientEntropy);
         }
 
         // Generate three independent keys using hardware RNG
@@ -121,7 +121,7 @@ impl MultiLayerKey {
     pub fn rotate_keys(&mut self, entropy: &mut EntropySource) -> Result<()> {
         // Verify entropy source
         if !entropy.verify_min_entropy(7.8) {
-            return Err(CryptError::InsufficientEntropy);
+            return Err(KeyError::InsufficientEntropy);
         }
 
         // Generate new keys atomically
@@ -163,7 +163,7 @@ impl MultiLayerKey {
             PARALLELISM,
             Some(MIN_KEY_LENGTH),
         )
-        .map_err(|e| CryptError::KeyDerivationFailed(e.to_string()))?;
+        .map_err(|e| KeyError::KeyDerivationFailed(e.to_string()))?;
 
         let argon2 = Argon2::new(argon2::Algorithm::Argon2id, Version::V0x13, params);
 
@@ -171,17 +171,17 @@ impl MultiLayerKey {
         use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
         let salt_b64 = URL_SAFE_NO_PAD.encode(&salt[..16]); // Use first 16 bytes for salt
         let salt_string = SaltString::from_b64(&salt_b64)
-            .map_err(|e| CryptError::KeyDerivationFailed(e.to_string()))?;
+            .map_err(|e| KeyError::KeyDerivationFailed(e.to_string()))?;
 
         // Derive stretched key
         let password_hash = argon2
             .hash_password(key, &salt_string)
-            .map_err(|e| CryptError::KeyDerivationFailed(e.to_string()))?;
+            .map_err(|e| KeyError::KeyDerivationFailed(e.to_string()))?;
 
         // Extract hash bytes
         let hash_bytes = password_hash
             .hash
-            .ok_or_else(|| CryptError::KeyDerivationFailed("No hash generated".into()))?;
+            .ok_or_else(|| KeyError::KeyDerivationFailed("No hash generated".into()))?;
 
         Ok(Zeroizing::new(hash_bytes.as_bytes().to_vec()))
     }

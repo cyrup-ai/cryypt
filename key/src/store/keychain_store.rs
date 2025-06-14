@@ -1,10 +1,10 @@
 //! OS Keychain-based key storage (macOS Keychain, Windows Credential Store, Linux Secret Service)
 
-use crate::key::{
+use crate::{
     AsyncDeleteResult, AsyncExistsResult, AsyncListResult, AsyncRetrieveResult, AsyncStoreResult,
     KeyEnumeration, KeyId, KeyImport, KeyRetrieval, KeyStorage,
 };
-use crate::CryptError;
+use crate::KeyError;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use zeroize::Zeroizing;
 
@@ -36,16 +36,16 @@ impl KeyStorage for KeychainStore {
         async move {
             tokio::task::spawn_blocking(move || {
                 let keyring = keyring::Entry::new(&service_name, &key_id_str)
-                    .map_err(|e| CryptError::Io(format!("Keychain error: {}", e)))?;
+                    .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
 
                 match keyring.get_password() {
                     Ok(_) => Ok(true),
                     Err(keyring::Error::NoEntry) => Ok(false),
-                    Err(e) => Err(CryptError::Io(format!("Keychain error: {}", e))),
+                    Err(e) => Err(KeyError::Io(format!("Keychain error: {}", e))),
                 }
             })
             .await
-            .map_err(|e| CryptError::internal(format!("Task failed: {}", e)))?
+            .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))?
         }
     }
 
@@ -56,16 +56,16 @@ impl KeyStorage for KeychainStore {
         async move {
             tokio::task::spawn_blocking(move || {
                 let keyring = keyring::Entry::new(&service_name, &key_id_str)
-                    .map_err(|e| CryptError::Io(format!("Keychain error: {}", e)))?;
+                    .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
 
                 keyring.delete_credential().map_err(|e| {
-                    CryptError::Io(format!("Failed to delete from keychain: {}", e))
+                    KeyError::Io(format!("Failed to delete from keychain: {}", e))
                 })?;
 
                 Ok(())
             })
             .await
-            .map_err(|e| CryptError::internal(format!("Task failed: {}", e)))?
+            .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))?
         }
     }
 }
@@ -79,16 +79,16 @@ impl KeyImport for KeychainStore {
         async move {
             tokio::task::spawn_blocking(move || {
                 let keyring = keyring::Entry::new(&service_name, &key_id_str)
-                    .map_err(|e| CryptError::Io(format!("Keychain error: {}", e)))?;
+                    .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
 
                 keyring
                     .set_password(&encoded)
-                    .map_err(|e| CryptError::Io(format!("Failed to store in keychain: {}", e)))?;
+                    .map_err(|e| KeyError::Io(format!("Failed to store in keychain: {}", e)))?;
 
                 Ok(())
             })
             .await
-            .map_err(|e| CryptError::internal(format!("Task failed: {}", e)))?
+            .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))?
         }
     }
 }
@@ -101,18 +101,18 @@ impl KeyRetrieval for KeychainStore {
         async move {
             tokio::task::spawn_blocking(move || {
                 let keyring = keyring::Entry::new(&service_name, &key_id_str)
-                    .map_err(|e| CryptError::Io(format!("Keychain error: {}", e)))?;
+                    .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
 
                 let encoded = keyring
                     .get_password()
-                    .map_err(|e| CryptError::Io(format!("Failed to read from keychain: {}", e)))?;
+                    .map_err(|e| KeyError::Io(format!("Failed to read from keychain: {}", e)))?;
 
                 STANDARD
                     .decode(&encoded)
-                    .map_err(|e| CryptError::Io(format!("Invalid key format: {}", e)))
+                    .map_err(|e| KeyError::Io(format!("Invalid key format: {}", e)))
             })
             .await
-            .map_err(|e| CryptError::internal(format!("Task failed: {}", e)))?
+            .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))?
         }
     }
 }
@@ -121,7 +121,7 @@ impl KeyEnumeration for KeychainStore {
     fn list(&self, _namespace_pattern: &str) -> impl AsyncListResult {
         async move {
             // Most OS keychains don't support listing
-            Err(CryptError::Io(
+            Err(KeyError::Io(
                 "Keychain does not support listing keys".into(),
             ))
         }

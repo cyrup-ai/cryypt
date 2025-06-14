@@ -3,7 +3,7 @@
 //! This module provides thread-safe key rotation for JWT signing operations.
 //! It uses lock-free atomic swapping to ensure zero-downtime key rotation.
 
-use crate::jwt::{
+use crate::{
     error::JwtResult,
     traits::{Header, Signer},
 };
@@ -120,7 +120,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::jwt::{
+    use crate::{
         algorithms::Hs256Key,
         claims::{Claims, ClaimsBuilder},
     };

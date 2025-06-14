@@ -1,6 +1,7 @@
 //! Builder traits for cipher operations
 
 use super::{AsyncDecryptionResult, AsyncEncryptionResult};
+use crate::CryptError;
 
 /// Builder that can accept a key
 pub trait KeyBuilder {
@@ -15,7 +16,7 @@ pub trait KeyBuilder {
 /// Trait for key builders that can provide keys
 pub trait KeyProviderBuilder: Send + Sync {
     /// Resolve this builder to get the key material
-    fn resolve(&self) -> crate::key::KeyResult;
+    fn resolve(&self) -> cryypt_key::KeyResult;
 }
 
 /// Builder that can accept AAD (Additional Authenticated Data) for AEAD ciphers
@@ -266,19 +267,20 @@ pub struct CompressionDataWrapper<CipherWithData, Compression> {
 impl<Compression> EncryptBuilder
     for CompressionDataWrapper<super::aes_builder::AesWithKeyAndData, Compression>
 where
-    Compression: crate::compression::api::DataBuilder + Send + 'static,
-    <Compression as crate::compression::api::DataBuilder>::Output:
-        crate::compression::api::CompressExecutor + Send + 'static,
+    Compression: cryypt_compression::api::DataBuilder + Send + 'static,
+    <Compression as cryypt_compression::api::DataBuilder>::Output:
+        cryypt_compression::api::CompressExecutor + Send + 'static,
 {
     fn encrypt(self) -> impl AsyncEncryptionResult {
         async move {
             // Compress the data first
-            use crate::compression::api::CompressExecutor;
+            use cryypt_compression::api::CompressExecutor;
             let compressed_data = self
                 .compression
                 .with_data(self.cipher_with_data.data.clone())
                 .compress()
-                .await?;
+                .await
+                .map_err(|e| CryptError::from(e))?;
 
             // Create new AES builder with compressed data and encrypt
             super::aes_builder::AesWithKeyAndData {
@@ -296,19 +298,20 @@ where
 impl<Compression> EncryptBuilder
     for CompressionDataWrapper<super::chacha_builder::ChaChaWithKeyAndData, Compression>
 where
-    Compression: crate::compression::api::DataBuilder + Send + 'static,
-    <Compression as crate::compression::api::DataBuilder>::Output:
-        crate::compression::api::CompressExecutor + Send + 'static,
+    Compression: cryypt_compression::api::DataBuilder + Send + 'static,
+    <Compression as cryypt_compression::api::DataBuilder>::Output:
+        cryypt_compression::api::CompressExecutor + Send + 'static,
 {
     fn encrypt(self) -> impl AsyncEncryptionResult {
         async move {
             // Compress the data first
-            use crate::compression::api::CompressExecutor;
+            use cryypt_compression::api::CompressExecutor;
             let compressed_data = self
                 .compression
                 .with_data(self.cipher_with_data.data.clone())
                 .compress()
-                .await?;
+                .await
+                .map_err(|e| CryptError::from(e))?;
 
             // Create new ChaCha builder with compressed data and encrypt
             super::chacha_builder::ChaChaWithKeyAndData {
@@ -331,9 +334,9 @@ pub struct CompressionCiphertextWrapper<CipherWithCiphertext, Compression> {
 impl<Compression> DecryptBuilder
     for CompressionCiphertextWrapper<super::aes_builder::AesWithKeyAndCiphertext, Compression>
 where
-    Compression: crate::compression::api::DataBuilder + Send + 'static,
-    <Compression as crate::compression::api::DataBuilder>::Output:
-        crate::compression::api::DecompressExecutor + Send + 'static,
+    Compression: cryypt_compression::api::DataBuilder + Send + 'static,
+    <Compression as cryypt_compression::api::DataBuilder>::Output:
+        cryypt_compression::api::DecompressExecutor + Send + 'static,
 {
     fn decrypt(self) -> impl AsyncDecryptionResult {
         async move {
@@ -341,11 +344,12 @@ where
             let decrypted_data = self.cipher_with_ciphertext.decrypt().await?;
 
             // Then decompress
-            use crate::compression::api::DecompressExecutor;
+            use cryypt_compression::api::DecompressExecutor;
             self.compression
                 .with_data(decrypted_data)
                 .decompress()
                 .await
+                .map_err(|e| CryptError::from(e))
         }
     }
 }
@@ -354,9 +358,9 @@ where
 impl<Compression> DecryptBuilder
     for CompressionCiphertextWrapper<super::chacha_builder::ChaChaWithKeyAndCiphertext, Compression>
 where
-    Compression: crate::compression::api::DataBuilder + Send + 'static,
-    <Compression as crate::compression::api::DataBuilder>::Output:
-        crate::compression::api::DecompressExecutor + Send + 'static,
+    Compression: cryypt_compression::api::DataBuilder + Send + 'static,
+    <Compression as cryypt_compression::api::DataBuilder>::Output:
+        cryypt_compression::api::DecompressExecutor + Send + 'static,
 {
     fn decrypt(self) -> impl AsyncDecryptionResult {
         async move {
@@ -364,11 +368,12 @@ where
             let decrypted_data = self.cipher_with_ciphertext.decrypt().await?;
 
             // Then decompress
-            use crate::compression::api::DecompressExecutor;
+            use cryypt_compression::api::DecompressExecutor;
             self.compression
                 .with_data(decrypted_data)
                 .decompress()
                 .await
+                .map_err(|e| CryptError::from(e))
         }
     }
 }

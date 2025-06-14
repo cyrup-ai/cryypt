@@ -85,12 +85,12 @@ impl DecompressExecutor for Bzip2WithData {
     fn decompress(self) -> impl AsyncDecompressResult {
         async move {
             tokio::task::spawn_blocking(move || {
-                crate::compression::bzip2::decompress(&self.data).map_err(|e| {
-                    crate::CryptError::internal(format!("Bzip2 decompression failed: {}", e))
+                crate::bzip2::decompress(&self.data).map_err(|e| {
+                    crate::CompressionError::internal(format!("Bzip2 decompression failed: {}", e))
                 })
             })
             .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            .map_err(|e| crate::CompressionError::internal(e.to_string()))?
         }
     }
 }
@@ -100,12 +100,12 @@ impl CompressExecutor for Bzip2WithDataAndLevel {
     fn compress(self) -> impl AsyncCompressResult {
         async move {
             tokio::task::spawn_blocking(move || {
-                crate::compression::bzip2::compress(&self.data, self.level as u32).map_err(|e| {
-                    crate::CryptError::internal(format!("Bzip2 compression failed: {}", e))
+                crate::bzip2::compress(&self.data, self.level as u32).map_err(|e| {
+                    crate::CompressionError::internal(format!("Bzip2 compression failed: {}", e))
                 })
             })
             .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            .map_err(|e| crate::CompressionError::internal(e.to_string()))?
         }
     }
 }

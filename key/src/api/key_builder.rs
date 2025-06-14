@@ -1,7 +1,6 @@
 //! Minimal key builder implementation
 
-use crate::cipher::api::builder_traits::KeyProviderBuilder;
-use crate::key::{KeyImport, KeyResult, KeyRetrieval, KeyStorage, SimpleKeyId};
+use crate::{KeyImport, KeyResult, KeyRetrieval, KeyStorage, SimpleKeyId, traits::KeyProviderBuilder};
 
 /// 256-bit key builder
 pub struct Key256Builder;
@@ -69,7 +68,7 @@ impl KeyProviderBuilder for Key256Builder {
             .await;
 
             let _ = tx.send(result.unwrap_or_else(|e| {
-                Err(crate::CryptError::internal(format!(
+                Err(crate::KeyError::internal(format!(
                     "Key generation task failed: {}",
                     e
                 )))
@@ -113,7 +112,7 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> K
                         Ok(Ok(new_key)) => {
                             // Store the key
                             if let Err(e) = store.store(&key_id, &new_key).await {
-                                let _ = tx.send(Err(crate::CryptError::internal(format!(
+                                let _ = tx.send(Err(crate::KeyError::internal(format!(
                                     "Failed to store key: {}",
                                     e
                                 ))));
@@ -125,7 +124,7 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> K
                             let _ = tx.send(Err(e));
                         }
                         Err(e) => {
-                            let _ = tx.send(Err(crate::CryptError::internal(format!(
+                            let _ = tx.send(Err(crate::KeyError::internal(format!(
                                 "Key generation task failed: {}",
                                 e
                             ))));

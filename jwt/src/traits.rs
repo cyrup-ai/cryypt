@@ -1,6 +1,6 @@
 //! Core JWT traits and types.
 
-use crate::jwt::error::JwtResult;
+use crate::error::JwtResult;
 use serde::{Deserialize, Serialize};
 
 /// JWT header structure.

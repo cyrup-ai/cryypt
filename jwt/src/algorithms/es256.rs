@@ -1,6 +1,6 @@
 //! ES256 (ECDSA with P-256) JWT signing algorithm implementation.
 
-use crate::jwt::{
+use crate::{
     error::{JwtError, JwtResult},
     traits::{Header, Signer},
 };

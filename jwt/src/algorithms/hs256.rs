@@ -1,6 +1,6 @@
 //! HS256 (HMAC-SHA256) JWT signing algorithm implementation.
 
-use crate::jwt::{
+use crate::{
     error::{JwtError, JwtResult},
     traits::{Header, Signer},
 };
@@ -111,7 +111,7 @@ impl Signer for Hs256Key {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::jwt::claims::{Claims, ClaimsBuilder};
+    use crate::claims::{Claims, ClaimsBuilder};
     use chrono::Duration;
 
     #[test]

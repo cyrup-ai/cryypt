@@ -96,7 +96,7 @@ impl EncryptBuilder for AesWithKeyAndData {
             let key_vec = match key_result {
                 Ok(k) => k,
                 Err(e) => {
-                    let _ = tx.send(Err(e));
+                    let _ = tx.send(Err(CryptError::from(e)));
                     return;
                 }
             };
@@ -200,7 +200,7 @@ impl DecryptBuilder for AesWithKeyAndCiphertext {
             let key_vec = match key_result {
                 Ok(k) => k,
                 Err(e) => {
-                    let _ = tx.send(Err(e));
+                    let _ = tx.send(Err(CryptError::from(e)));
                     return;
                 }
             };

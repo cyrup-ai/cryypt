@@ -5,12 +5,11 @@
 //! integrity verification, compression, and progress tracking.
 
 use crate::{
-    hashing::Hash,
-    transport::quic::{
-        connect_quic_client, run_quic_server, AsyncQuicResult, QuicConnectionHandle,
-        QuicCryptoBuilder, QuicServerConfig, Result,
-    },
+    connect_quic_client, run_quic_server, QuicConnectionHandle, QuicCryptoBuilder, QuicServerConfig,
+    error::Result,
 };
+use cryypt_hashing::Hash;
+use std::future::Future;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -178,7 +177,7 @@ impl FileTransferServerBuilder {
     }
 
     /// Start the server listening on the specified address
-    pub fn listen(self, addr: &str) -> impl AsyncQuicResult<FileTransferServer> {
+    pub fn listen(self, addr: &str) -> impl Future<Output = Result<FileTransferServer>> + Send {
         let addr = addr.to_string();
         async move {
             // Ensure storage directory exists
@@ -330,7 +329,7 @@ impl FileTransferClientBuilder {
     }
 
     /// List files available on the server
-    pub fn list_files(self) -> impl AsyncQuicResult<Vec<FileMetadata>> {
+    pub fn list_files(self) -> impl Future<Output = Result<Vec<FileMetadata>>> + Send {
         async move {
             let _connection = self.establish_connection().await?;
             // Send list request and handle response
@@ -401,7 +400,7 @@ impl FileUploadBuilder {
     }
 
     /// Execute the upload
-    pub fn execute(self) -> impl AsyncQuicResult<TransferResult> {
+    pub fn execute(self) -> impl Future<Output = Result<TransferResult>> + Send {
         async move {
             // Validate file exists
             if !self.file_path.exists() {
@@ -444,7 +443,7 @@ impl FileUploadBuilder {
     pub fn execute_with_stream(
         self,
     ) -> (
-        impl AsyncQuicResult<TransferResult>,
+        impl Future<Output = Result<TransferResult>> + Send,
         impl Stream<Item = FileTransferProgress>,
     ) {
         let (_progress_tx, progress_rx) = mpsc::unbounded_channel();
@@ -500,7 +499,7 @@ impl FileDownloadBuilder {
     }
 
     /// Execute the download
-    pub fn execute(self) -> impl AsyncQuicResult<TransferResult> {
+    pub fn execute(self) -> impl Future<Output = Result<TransferResult>> + Send {
         async move {
             let output_path = self
                 .output_path

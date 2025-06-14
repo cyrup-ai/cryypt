@@ -3,7 +3,7 @@
 //! This module provides Future implementations that hide async complexity
 //! behind channels and spawned tasks, following the project's async conventions.
 
-use crate::jwt::{
+use crate::{
     claims::Claims,
     error::{JwtError, JwtResult},
 };

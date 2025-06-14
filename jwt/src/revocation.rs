@@ -3,7 +3,7 @@
 //! This module provides in-memory token revocation with automatic cleanup
 //! of expired tokens to prevent memory leaks.
 
-use crate::jwt::{
+use crate::{
     claims::Claims,
     error::{JwtError, JwtResult},
     futures::{CleanupStartFuture, TokenGenerationFuture, TokenVerificationFuture},
@@ -251,7 +251,7 @@ impl<S: Signer> Drop for Revocation<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::jwt::{algorithms::Hs256Key, claims::ClaimsBuilder};
+    use crate::{algorithms::Hs256Key, claims::ClaimsBuilder};
     use chrono::Duration;
     use tokio::time::sleep;
 

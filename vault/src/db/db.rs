@@ -1,19 +1,18 @@
 use crate::error::VaultResult;
 use std::path::Path;
 use std::sync::{Arc, Mutex, LazyLock};
-use surrealdb::{engine::local::{Db, SurrealKv}, Surreal};
+use surrealdb::{engine::any::{connect, Any}, Surreal};
 use crate::db::migrations;
 
 // Use Arc<Mutex<>> for thread-safe global access with mutability
-static DB: LazyLock<Arc<Mutex<Option<Surreal<Db>>>>> = LazyLock::new(|| {
-    let db = Surreal::init();
-    Arc::new(Mutex::new(Some(db)))
+static DB: LazyLock<Arc<Mutex<Option<Surreal<Any>>>>> = LazyLock::new(|| {
+    Arc::new(Mutex::new(None))
 });
 
 /// Database Access Object for managing database connections and operations
 #[derive(Clone)]
 pub struct Dao {
-    db: Arc<Surreal<Db>>,
+    db: Arc<Surreal<Any>>,
 }
 
 impl Dao {
@@ -28,19 +27,15 @@ impl Dao {
 
     /// Create a new DAO instance
     pub fn new() -> Self {
-        let db = match DB.lock().unwrap().take() {
-            Some(db) => db,
-            None => Surreal::init(),
-        };
-        
-        // Put it back for future use
-        *DB.lock().unwrap() = Some(db.clone());
-        
-        Self { db: Arc::new(db) }
+        // For now, create a placeholder that will be initialized later
+        // The actual connection happens in initialize_from_path
+        Self { 
+            db: Arc::new(Surreal::init())
+        }
     }
 
     /// Get the database connection
-    pub fn get_db(&self) -> Arc<Surreal<Db>> {
+    pub fn get_db(&self) -> Arc<Surreal<Any>> {
         self.db.clone()
     }
 
@@ -62,8 +57,9 @@ impl Dao {
 
         println!("Initializing database at: {}", db_path.as_ref().display());
 
-        // Initialize with SurrealKv backend - using clone to avoid mutable reference issues
-        let new_db = Surreal::new::<SurrealKv>(db_path.as_ref()).await?;
+        // Initialize with file backend using kv-surrealkv
+        let connection_string = format!("surrealkv://{}", db_path.as_ref().display());
+        let new_db = connect(connection_string).await?;
         
         // Make a new connection with the initialized db
         let new_db_arc = Arc::new(new_db);

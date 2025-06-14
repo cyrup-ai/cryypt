@@ -1,7 +1,7 @@
 //! Master key builder
 
 use crate::bits_macro::BitSize;
-use crate::key::{KeyImport, KeyRetrieval, KeyStorage, SimpleKeyId};
+use crate::{KeyImport, KeyRetrieval, KeyStorage, SimpleKeyId};
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use hex;
@@ -83,10 +83,10 @@ impl MasterKeyBuilder {
     /// From hex string (no storage)
     pub fn from_hex(hex_str: &str) -> crate::Result<RawMasterKey> {
         let decoded = hex::decode(hex_str)
-            .map_err(|e| crate::CryptError::InvalidKey(format!("Invalid hex string: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid hex string: {}", e)))?;
 
         if decoded.len() != 32 {
-            return Err(crate::CryptError::InvalidKey(format!(
+            return Err(crate::KeyError::InvalidKey(format!(
                 "Hex key must be exactly 32 bytes, got {}",
                 decoded.len()
             )));
@@ -101,10 +101,10 @@ impl MasterKeyBuilder {
     pub fn from_base64(base64_str: &str) -> crate::Result<RawMasterKey> {
         let decoded = STANDARD
             .decode(base64_str)
-            .map_err(|e| crate::CryptError::InvalidKey(format!("Invalid base64 string: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid base64 string: {}", e)))?;
 
         if decoded.len() != 32 {
-            return Err(crate::CryptError::InvalidKey(format!(
+            return Err(crate::KeyError::InvalidKey(format!(
                 "Base64 key must be exactly 32 bytes, got {}",
                 decoded.len()
             )));
@@ -177,7 +177,7 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static>
 
                     // Store it
                     store.store(&key_id, &key).await.map_err(|e| {
-                        crate::CryptError::InvalidKey(format!("Failed to store master key: {}", e))
+                        crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
                     })?;
 
                     Ok(hex::encode(&key))
@@ -225,7 +225,7 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> M
 
                     // Store it
                     store.store(&key_id, &key).await.map_err(|e| {
-                        crate::CryptError::InvalidKey(format!("Failed to store master key: {}", e))
+                        crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
                     })?;
 
                     Ok(key)
@@ -254,21 +254,21 @@ impl MasterKeyProvider for PassphraseMasterKey {
         // Use a fixed salt for deterministic key derivation
         // In production, you might want configurable salts
         let salt = SaltString::from_b64("YourFixedSaltHere1234567890")
-            .map_err(|e| crate::CryptError::InvalidKey(format!("Invalid salt: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {}", e)))?;
 
         let password_hash = argon2
             .hash_password(self.passphrase.as_bytes(), &salt)
             .map_err(|e| {
-                crate::CryptError::InvalidKey(format!("Password hashing failed: {}", e))
+                crate::KeyError::InvalidKey(format!("Password hashing failed: {}", e))
             })?;
 
         let hash_output = password_hash
             .hash
-            .ok_or_else(|| crate::CryptError::InvalidKey("No hash generated".into()))?;
+            .ok_or_else(|| crate::KeyError::InvalidKey("No hash generated".into()))?;
         let hash_bytes = hash_output.as_bytes();
 
         if hash_bytes.len() < 32 {
-            return Err(crate::CryptError::InvalidKey("Hash too short".into()));
+            return Err(crate::KeyError::InvalidKey("Hash too short".into()));
         }
 
         let mut key = [0u8; 32];
@@ -296,7 +296,7 @@ pub struct EnvMasterKey {
 impl MasterKeyProvider for EnvMasterKey {
     fn resolve(&self) -> crate::Result<[u8; 32]> {
         let value = std::env::var(&self.var_name)
-            .map_err(|_| crate::CryptError::InvalidKey("Master key env var not found".into()))?;
+            .map_err(|_| crate::KeyError::InvalidKey("Master key env var not found".into()))?;
 
         // Try to decode from hex first
         if let Ok(decoded) = hex::decode(&value) {
@@ -319,19 +319,19 @@ impl MasterKeyProvider for EnvMasterKey {
         // If neither hex nor base64 worked, derive from the string using Argon2
         let argon2 = Argon2::default();
         let salt = SaltString::from_b64("EnvVarSaltHere1234567890123")
-            .map_err(|e| crate::CryptError::InvalidKey(format!("Invalid salt: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {}", e)))?;
 
         let password_hash = argon2.hash_password(value.as_bytes(), &salt).map_err(|e| {
-            crate::CryptError::InvalidKey(format!("Password hashing failed: {}", e))
+            crate::KeyError::InvalidKey(format!("Password hashing failed: {}", e))
         })?;
 
         let hash_output = password_hash
             .hash
-            .ok_or_else(|| crate::CryptError::InvalidKey("No hash generated".into()))?;
+            .ok_or_else(|| crate::KeyError::InvalidKey("No hash generated".into()))?;
         let hash_bytes = hash_output.as_bytes();
 
         if hash_bytes.len() < 32 {
-            return Err(crate::CryptError::InvalidKey("Hash too short".into()));
+            return Err(crate::KeyError::InvalidKey("Hash too short".into()));
         }
 
         let mut key = [0u8; 32];

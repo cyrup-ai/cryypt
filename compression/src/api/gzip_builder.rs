@@ -67,9 +67,9 @@ impl CompressExecutor for GzipWithData {
 impl DecompressExecutor for GzipWithData {
     fn decompress(self) -> impl AsyncDecompressResult {
         async move {
-            tokio::task::spawn_blocking(move || crate::compression::gzip::decompress(&self.data))
+            tokio::task::spawn_blocking(move || crate::gzip::decompress(&self.data))
                 .await
-                .map_err(|e| crate::CryptError::internal(e.to_string()))?
+                .map_err(|e| crate::CompressionError::internal(e.to_string()))?
         }
     }
 }
@@ -79,10 +79,10 @@ impl CompressExecutor for GzipWithDataAndLevel {
     fn compress(self) -> impl AsyncCompressResult {
         async move {
             tokio::task::spawn_blocking(move || {
-                crate::compression::gzip::compress_with_level(&self.data, self.level as i32)
+                crate::gzip::compress_with_level(&self.data, self.level as i32)
             })
             .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            .map_err(|e| crate::CompressionError::internal(e.to_string()))?
         }
     }
 }

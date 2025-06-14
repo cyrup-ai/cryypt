@@ -6,14 +6,13 @@ use crate::operation::{
     VaultListRequest, VaultOperation, VaultPutAllRequest, VaultSaveRequest, VaultUnitRequest,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
-use futures::{future::BoxFuture, FutureExt, StreamExt};
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use surrealdb::engine::local::Db;
+use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 use time::OffsetDateTime;
 use tokio::sync::{mpsc, oneshot};
-use zeroize::Zeroizing;
 
 /// Vault entry stored in SurrealDB
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,9 +36,10 @@ fn map_dao_error(e: DaoError) -> VaultError {
     match e {
         DaoError::NotFound => VaultError::ItemNotFound,
         DaoError::Database(msg) => VaultError::Provider(format!("SurrealDB error: {}", msg)),
-        DaoError::Serialization(e) => VaultError::Serialization(e.to_string()),
+        DaoError::Serialization(msg) => VaultError::Serialization(serde_json::from_str::<()>(&format!("serialization error: {}", msg)).unwrap_err()),
         DaoError::InvalidInput(msg) => VaultError::InvalidInput(msg),
         DaoError::Conflict(msg) => VaultError::Conflict(msg),
+        DaoError::InvalidId => VaultError::InvalidInput("Invalid ID format".into()),
         DaoError::Other(msg) => VaultError::Provider(msg),
     }
 }
@@ -52,7 +52,7 @@ pub struct SurrealDbVaultProvider {
 
 impl SurrealDbVaultProvider {
     /// Create a new SurrealDbVaultProvider DAO
-    pub fn new(db: Arc<Surreal<Db>>) -> Self {
+    pub fn new(db: Arc<Surreal<Any>>) -> Self {
         Self {
             dao: SurrealDbDao::new(
                 db,
@@ -114,6 +114,7 @@ impl SurrealDbVaultProvider {
     async fn get_impl(&self, key: &str) -> VaultResult<Option<VaultValue>> {
         let query = "SELECT value FROM vault_entries WHERE key = $key LIMIT 1";
         let db = self.dao.db();
+        let key = key.to_string(); // Clone to satisfy 'static lifetime
 
         let mut result = db
             .query(query)
@@ -139,7 +140,7 @@ impl SurrealDbVaultProvider {
                 // Decode base64 string back to bytes
                 let bytes = BASE64_STANDARD
                     .decode(entry.value)
-                    .map_err(|e| VaultError::Serialization(format!("Base64 decode error: {}", e)))?;
+                    .map_err(|_| VaultError::Serialization(serde_json::from_str::<()>("invalid base64").unwrap_err()))?;
                 Ok(Some(VaultValue::from_bytes(bytes)))
             }
             None => Ok(None), // Key not found is not an error for get, return None
@@ -149,6 +150,7 @@ impl SurrealDbVaultProvider {
     async fn delete_impl(&self, key: &str) -> VaultResult<()> {
         let query = "DELETE FROM vault_entries WHERE key = $key";
         let db = self.dao.db();
+        let key = key.to_string(); // Clone to satisfy 'static lifetime
 
         // Execute the delete query
         let mut result = db
@@ -198,7 +200,7 @@ impl SurrealDbVaultProvider {
         for entry in entries {
             let bytes = BASE64_STANDARD
                 .decode(entry.value)
-                .map_err(|e| VaultError::Serialization(format!("Base64 decode error: {}", e)))?;
+                .map_err(|_| VaultError::Serialization(serde_json::from_str::<()>("invalid base64").unwrap_err()))?;
             results.push((entry.key, VaultValue::from_bytes(bytes)));
         }
 
@@ -206,7 +208,7 @@ impl SurrealDbVaultProvider {
     }
 
     async fn list_impl(&self, prefix: Option<&str>) -> VaultResult<Vec<String>> {
-        let query = if let Some(p) = prefix {
+        let query = if prefix.is_some() {
             // Use STARTSWITH for prefix filtering
             "SELECT key FROM vault_entries WHERE string::startsWith(key, $prefix)"
         } else {
@@ -216,6 +218,7 @@ impl SurrealDbVaultProvider {
 
         let mut query_builder = db.query(query);
         if let Some(p) = prefix {
+            let p = p.to_string(); // Clone to satisfy 'static lifetime
             query_builder = query_builder.bind(("prefix", p));
         }
 

@@ -1,6 +1,6 @@
 //! Hash result type that implements Future for clean async interfaces
 
-use crate::{CryptError, Result};
+use crate::{HashError, Result};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -25,7 +25,7 @@ impl HashResultImpl {
     }
 
     /// Create a HashResultImpl that yields an error
-    pub(crate) fn error(error: CryptError) -> Self {
+    pub(crate) fn error(error: HashError) -> Self {
         Self::ready(Err(error))
     }
 
@@ -40,7 +40,7 @@ impl HashResultImpl {
             let result = tokio::task::spawn_blocking(computation)
                 .await
                 .unwrap_or_else(|e| {
-                    Err(CryptError::internal(format!("Hash task panicked: {}", e)))
+                    Err(HashError::internal(format!("Hash task panicked: {}", e)))
                 });
             let _ = tx.send(result);
         });
@@ -55,7 +55,7 @@ impl Future for HashResultImpl {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptError::internal("Hash task dropped"))),
+            Poll::Ready(Err(_)) => Poll::Ready(Err(HashError::internal("Hash task dropped"))),
             Poll::Pending => Poll::Pending,
         }
     }

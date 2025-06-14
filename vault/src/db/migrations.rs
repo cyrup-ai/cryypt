@@ -1,8 +1,8 @@
 use crate::error::VaultError;
-use surrealdb::{engine::local::Db, Surreal};
+use surrealdb::{engine::any::Any, Surreal};
 use surrealdb_migrations::MigrationRunner;
 
-pub async fn run_migrations(db: &Surreal<Db>) -> Result<(), VaultError> {
+pub async fn run_migrations(db: &Surreal<Any>) -> Result<(), VaultError> {
     println!("🔄 Running database migrations...");
 
     // First, manually create the essential tables

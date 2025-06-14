@@ -78,7 +78,7 @@ impl HashExecutor for Sha256WithData {
                 Ok(hasher.finalize().to_vec())
             })
             .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            .map_err(|e| crate::HashError::internal(e.to_string()))?
         }
     }
 }
@@ -110,7 +110,7 @@ impl HashExecutor for Sha256WithDataAndSalt {
                 Ok(hasher.finalize().to_vec())
             })
             .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            .map_err(|e| crate::HashError::internal(e.to_string()))?
         }
     }
 }
@@ -143,7 +143,7 @@ impl HashExecutor for Sha256WithDataAndPasses {
                 Ok(result)
             })
             .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            .map_err(|e| crate::HashError::internal(e.to_string()))?
         }
     }
 }
@@ -167,7 +167,7 @@ impl HashExecutor for Sha256Complete {
                 Ok(result)
             })
             .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            .map_err(|e| crate::HashError::internal(e.to_string()))?
         }
     }
 }

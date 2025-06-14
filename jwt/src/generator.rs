@@ -1,6 +1,6 @@
 //! JWT token generator with validation support.
 
-use crate::jwt::{
+use crate::{
     claims::Claims,
     error::JwtError,
     futures::{TokenGenerationFuture, TokenVerificationFuture},
@@ -81,7 +81,7 @@ impl<S: Signer> Generator<S> {
                 let leeway = options.leeway.num_seconds();
 
                 // Validate expiry
-                if options.validate_exp && claims.exp < now - leeway {
+                if options.validate_exp && claims.exp < now {
                     return Err(JwtError::Expired);
                 }
 
@@ -146,7 +146,7 @@ impl<S: Signer> Clone for Generator<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::jwt::{algorithms::Hs256Key, claims::ClaimsBuilder};
+    use crate::{algorithms::Hs256Key, claims::ClaimsBuilder};
     use chrono::Duration;
 
     #[tokio::test]

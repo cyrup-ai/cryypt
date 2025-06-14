@@ -2,7 +2,7 @@ use crate::db::dao::{GenericDao, SurrealDbDao, TableType, Error};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::Surreal;
-use surrealdb::engine::local::Db;
+use surrealdb::engine::any::Any;
 // Add additional imports if needed
 use time::OffsetDateTime;
 use futures::StreamExt;
@@ -35,7 +35,7 @@ pub struct DocumentDao {
 
 impl DocumentDao {
     /// Create a new DocumentDao
-    pub fn new(db: Arc<Surreal<Db>>) -> Self {
+    pub fn new(db: Arc<Surreal<Any>>) -> Self {
         Self {
             dao: SurrealDbDao::new(
                 db,

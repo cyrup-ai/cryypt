@@ -1,4 +1,3 @@
-
 #[derive(Debug, thiserror::Error)]
 pub enum VaultError {
     #[error("IO error: {0}")]
@@ -15,7 +14,9 @@ pub enum VaultError {
     VaultLocked,
     #[error("Invalid passphrase")]
     InvalidPassphrase,
-    #[error("Weak passphrase - must be at least 12 characters with uppercase, lowercase, numbers and special characters")]
+    #[error(
+        "Weak passphrase - must be at least 12 characters with uppercase, lowercase, numbers and special characters"
+    )]
     WeakPassphrase,
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
@@ -55,39 +56,24 @@ pub enum VaultError {
 
 pub type VaultResult<T> = Result<T, VaultError>;
 
-// Import CryptoError from secretrust_core if available
-use secretrust_core::military_grade::CryptoError;
+// Import cipher error types
+use cryypt_cipher::CryptError;
 
-// Implement conversion from CryptoError to VaultError
-impl From<CryptoError> for VaultError {
-    fn from(err: CryptoError) -> Self {
+// Implement conversion from CryptError to VaultError
+impl From<CryptError> for VaultError {
+    fn from(err: CryptError) -> Self {
         match err {
-            CryptoError::InsufficientEntropy => VaultError::Crypto("Insufficient entropy".into()),
-            CryptoError::EncryptionFailed(msg) => VaultError::Encryption(msg),
-            CryptoError::DecryptionFailed(msg) => VaultError::Decryption(msg),
-            CryptoError::InvalidKey => VaultError::InvalidPassphrase,
-            CryptoError::EntropyError => VaultError::Crypto("Entropy source error".into()),
-        }
-    }
-}
-
-// Implement conversion from secretrust_core::Error to VaultError
-impl From<secretrust_core::error::Error> for VaultError {
-    fn from(err: secretrust_core::error::Error) -> Self {
-        use secretrust_core::error::Error;
-        match err {
-            Error::InvalidSize => VaultError::MemoryProtection("Invalid memory size".into()),
-            Error::InvalidAlignment => VaultError::MemoryProtection("Invalid memory alignment".into()),
-            Error::InvalidPointer => VaultError::MemoryProtection("Invalid pointer".into()),
-            Error::MemoryCorruption => VaultError::MemoryCorruption,
-            Error::Provider(msg) => VaultError::Provider(msg),
-            Error::Nix(e) => VaultError::MemoryProtection(e.to_string()),
-            Error::Io(e) => VaultError::Io(e),
-            Error::NotFound(key) => VaultError::ItemNotFound,
-            Error::Serialization(e) => VaultError::Serialization(e),
-            Error::Crypto(e) => VaultError::from(e),
-            Error::InvalidKey => VaultError::InvalidPassphrase,
-            Error::Other(msg) => VaultError::Other(msg),
+            CryptError::KeyDerivationFailed(msg) => VaultError::KeyDerivation(msg),
+            CryptError::EncryptionFailed(msg) => VaultError::Encryption(msg),
+            CryptError::DecryptionFailed(msg) => VaultError::Decryption(msg),
+            CryptError::InvalidKeySize { expected, actual } => VaultError::Crypto(format!("Invalid key size: expected {}, got {}", expected, actual)),
+            CryptError::InvalidNonceSize { expected, actual } => VaultError::Crypto(format!("Invalid nonce size: expected {}, got {}", expected, actual)),
+            CryptError::InvalidEncryptedData(msg) => VaultError::Crypto(msg),
+            CryptError::SerializationError(msg) => VaultError::Serialization(serde_json::from_str::<()>(&format!("serialization error: {}", msg)).unwrap_err()),
+            CryptError::IoError(e) => VaultError::Io(e),
+            CryptError::Io(msg) => VaultError::Io(std::io::Error::new(std::io::ErrorKind::Other, msg)),
+            CryptError::InternalError(msg) => VaultError::Other(msg),
+            _ => VaultError::Other(err.to_string()),
         }
     }
 }

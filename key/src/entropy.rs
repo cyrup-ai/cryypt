@@ -3,7 +3,7 @@
 //! This module provides the peer-reviewed entropy generation system that ensures
 //! cryptographically secure random number generation with quality validation.
 
-use crate::{CryptError, Result};
+use crate::{KeyError, Result};
 use rand::RngCore;
 use zeroize::Zeroizing;
 
@@ -28,7 +28,7 @@ impl EntropySource {
 
         // Verify entropy quality on initialization
         if !source.verify_min_entropy(MIN_ENTROPY_THRESHOLD) {
-            return Err(CryptError::InsufficientEntropy);
+            return Err(KeyError::InsufficientEntropy);
         }
 
         source.quality_verified = true;
@@ -53,7 +53,7 @@ impl EntropySource {
     /// Generate cryptographically secure random bytes
     pub fn generate_bytes(&mut self, len: usize) -> Result<Zeroizing<Vec<u8>>> {
         if !self.quality_verified {
-            return Err(CryptError::InsufficientEntropy);
+            return Err(KeyError::InsufficientEntropy);
         }
 
         let mut bytes = Zeroizing::new(vec![0u8; len]);

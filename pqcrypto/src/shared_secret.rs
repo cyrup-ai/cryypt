@@ -59,13 +59,14 @@ impl SharedSecret {
 
     /// Create from hex string
     pub fn from_hex(algorithm: super::KemAlgorithm, hex_str: &str) -> crate::Result<Self> {
-        let secret = hex::decode(hex_str)
-            .map_err(|e| crate::CryptError::InvalidEncryptedData(format!("Invalid hex: {}", e)))?;
+        let secret = hex::decode(hex_str).map_err(|e| {
+            crate::PqCryptoError::InvalidEncryptedData(format!("Invalid hex: {}", e))
+        })?;
 
         // Validate size
         let expected_size = algorithm.shared_secret_size();
         if secret.len() != expected_size {
-            return Err(crate::CryptError::InvalidKeySize {
+            return Err(crate::PqCryptoError::InvalidKeySize {
                 expected: expected_size,
                 actual: secret.len(),
             });
@@ -80,13 +81,13 @@ impl SharedSecret {
         let secret = base64::engine::general_purpose::STANDARD
             .decode(base64_str)
             .map_err(|e| {
-                crate::CryptError::InvalidEncryptedData(format!("Invalid base64: {}", e))
+                crate::PqCryptoError::InvalidEncryptedData(format!("Invalid base64: {}", e))
             })?;
 
         // Validate size
         let expected_size = algorithm.shared_secret_size();
         if secret.len() != expected_size {
-            return Err(crate::CryptError::InvalidKeySize {
+            return Err(crate::PqCryptoError::InvalidKeySize {
                 expected: expected_size,
                 actual: secret.len(),
             });

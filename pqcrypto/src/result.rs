@@ -1,6 +1,6 @@
 //! Result types for post-quantum cryptography operations
 
-use crate::{CryptError, Result};
+use crate::{PqCryptoError, Result};
 use serde::{Deserialize, Serialize};
 
 /// Result of a KEM encapsulation operation
@@ -215,7 +215,7 @@ impl VerificationResult {
         if self.is_valid {
             Ok(self.message)
         } else {
-            Err(CryptError::AuthenticationFailed(
+            Err(PqCryptoError::AuthenticationFailed(
                 "Signature verification failed".to_string(),
             ))
         }

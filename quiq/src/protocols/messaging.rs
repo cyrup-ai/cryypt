@@ -3,7 +3,7 @@
 //! Provides reliable, ordered message delivery with acknowledgments,
 //! delivery guarantees, and automatic retry logic.
 
-use crate::transport::quic::AsyncQuicResult;
+use std::future::Future;
 use serde::Serialize;
 use std::time::Duration;
 use tokio_stream::Stream;
@@ -54,7 +54,7 @@ impl MessagingServerBuilder {
         self
     }
 
-    pub fn listen(self, addr: &str) -> impl AsyncQuicResult<MessagingServer> {
+    pub fn listen(self, addr: &str) -> impl Future<Output = crate::Result<MessagingServer>> + Send {
         let _addr = addr.to_string();
         async move {
             // Implementation would set up QUIC server with messaging protocol
@@ -94,7 +94,7 @@ impl MessagingClientBuilder {
     pub fn send_message(
         self,
         message: impl Serialize + Send + 'static,
-    ) -> impl AsyncQuicResult<MessageDelivery> {
+    ) -> impl Future<Output = crate::Result<MessageDelivery>> + Send {
         async move {
             // Log messaging details
             println!(
@@ -104,7 +104,7 @@ impl MessagingClientBuilder {
 
             // Serialize message
             let _serialized = serde_json::to_string(&message).map_err(|e| {
-                crate::transport::quic::error::CryptoTransportError::Internal(format!(
+                crate::error::CryptoTransportError::Internal(format!(
                     "Failed to serialize message: {}",
                     e
                 ))
@@ -120,7 +120,7 @@ impl MessagingClientBuilder {
     }
 
     /// Subscribe to incoming messages
-    pub fn subscribe(self) -> impl AsyncQuicResult<Box<dyn Stream<Item = Vec<u8>> + Unpin + Send>> {
+    pub fn subscribe(self) -> impl Future<Output = crate::Result<Box<dyn Stream<Item = Vec<u8>> + Unpin + Send>>> + Send {
         async move {
             // Implementation would return a stream of incoming messages
             Ok(Box::new(tokio_stream::empty()) as Box<dyn Stream<Item = Vec<u8>> + Unpin + Send>)

@@ -1,10 +1,10 @@
 //! File-based key storage implementation
 
-use crate::key::{
+use crate::{
     AsyncGenerateResult, AsyncListResult, AsyncRetrieveResult, AsyncStoreResult, KeyEnumeration,
     KeyGeneration, KeyId, KeyImport, KeyRetrieval, KeyStorage,
 };
-use crate::{CryptError, Result};
+use crate::{KeyError, Result};
 use aes_gcm::{
     aead::{generic_array::GenericArray, Aead, KeyInit},
     Aes256Gcm,
@@ -73,7 +73,7 @@ impl KeyStorage for FileKeyStore {
         async move {
             fs::remove_file(&path)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to delete key: {}", e)))?;
+                .map_err(|e| KeyError::Io(format!("Failed to delete key: {}", e)))?;
             Ok(())
         }
     }
@@ -94,12 +94,12 @@ impl KeyImport for FileKeyStore {
 
                 // Create cipher with master key
                 let cipher = Aes256Gcm::new_from_slice(master_key.as_ref())
-                    .map_err(|e| CryptError::InvalidKey(format!("Invalid master key: {}", e)))?;
+                    .map_err(|e| KeyError::InvalidKey(format!("Invalid master key: {}", e)))?;
 
                 // Encrypt key material
                 let ciphertext = cipher
                     .encrypt(nonce_array, key_data.as_ref())
-                    .map_err(|_| CryptError::EncryptionFailed("Key encryption failed".into()))?;
+                    .map_err(|_| KeyError::EncryptionFailed("Key encryption failed".into()))?;
 
                 // Combine nonce + ciphertext
                 let mut encrypted_data = nonce;
@@ -108,27 +108,27 @@ impl KeyImport for FileKeyStore {
                 Ok(encrypted_data)
             })
             .await
-            .map_err(|e| CryptError::internal(format!("Encryption task failed: {}", e)))??;
+            .map_err(|e| KeyError::internal(format!("Encryption task failed: {}", e)))??;
 
             // Ensure directory exists
             if let Some(parent) = path.parent() {
                 fs::create_dir_all(parent)
                     .await
-                    .map_err(|e| CryptError::Io(format!("Failed to create directory: {}", e)))?;
+                    .map_err(|e| KeyError::Io(format!("Failed to create directory: {}", e)))?;
             }
 
             // Write encrypted data to file
             let mut file = fs::File::create(&path)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to create key file: {}", e)))?;
+                .map_err(|e| KeyError::Io(format!("Failed to create key file: {}", e)))?;
 
             file.write_all(&result)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to write key: {}", e)))?;
+                .map_err(|e| KeyError::Io(format!("Failed to write key: {}", e)))?;
 
             file.sync_all()
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to sync key file: {}", e)))?;
+                .map_err(|e| KeyError::Io(format!("Failed to sync key file: {}", e)))?;
 
             Ok(())
         }
@@ -144,17 +144,17 @@ impl KeyRetrieval for FileKeyStore {
             // Read encrypted data
             let mut file = fs::File::open(&path)
                 .await
-                .map_err(|e| CryptError::Io(format!("Key not found: {}", e)))?;
+                .map_err(|e| KeyError::Io(format!("Key not found: {}", e)))?;
 
             let mut encrypted_data = Zeroizing::new(Vec::new());
             file.read_to_end(&mut encrypted_data)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to read key: {}", e)))?;
+                .map_err(|e| KeyError::Io(format!("Failed to read key: {}", e)))?;
 
             tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
                 // Validate minimum size (12 bytes nonce + at least 16 bytes ciphertext)
                 if encrypted_data.len() < 28 {
-                    return Err(CryptError::DecryptionFailed(
+                    return Err(KeyError::DecryptionFailed(
                         "Invalid encrypted key format".into(),
                     ));
                 }
@@ -166,17 +166,17 @@ impl KeyRetrieval for FileKeyStore {
 
                 // Create cipher with master key
                 let cipher = Aes256Gcm::new_from_slice(master_key.as_ref())
-                    .map_err(|e| CryptError::InvalidKey(format!("Invalid master key: {}", e)))?;
+                    .map_err(|e| KeyError::InvalidKey(format!("Invalid master key: {}", e)))?;
 
                 // Decrypt key material
                 let decrypted = cipher
                     .decrypt(nonce_array, ciphertext)
-                    .map_err(|_| CryptError::DecryptionFailed("Key decryption failed".into()))?;
+                    .map_err(|_| KeyError::DecryptionFailed("Key decryption failed".into()))?;
 
                 Ok(decrypted)
             })
             .await
-            .map_err(|e| CryptError::internal(format!("Decryption task failed: {}", e)))?
+            .map_err(|e| KeyError::internal(format!("Decryption task failed: {}", e)))?
         }
     }
 }
@@ -202,7 +202,7 @@ impl KeyGeneration for FileKeyStore {
 
                     // Create cipher with master key
                     let cipher = Aes256Gcm::new_from_slice(master_key.as_ref()).map_err(|e| {
-                        CryptError::InvalidKey(format!("Invalid master key: {}", e))
+                        KeyError::InvalidKey(format!("Invalid master key: {}", e))
                     })?;
 
                     // Encrypt key material
@@ -210,7 +210,7 @@ impl KeyGeneration for FileKeyStore {
                         cipher
                             .encrypt(nonce_array, key_material.as_ref())
                             .map_err(|_| {
-                                CryptError::EncryptionFailed("Key encryption failed".into())
+                                KeyError::EncryptionFailed("Key encryption failed".into())
                             })?;
 
                     // Combine nonce + ciphertext
@@ -221,20 +221,20 @@ impl KeyGeneration for FileKeyStore {
                 })
                 .await
                 .map_err(|e| {
-                    CryptError::internal(format!("Key generation task failed: {}", e))
+                    KeyError::internal(format!("Key generation task failed: {}", e))
                 })??;
 
             // Ensure directory exists
             if let Some(parent) = path.parent() {
                 fs::create_dir_all(parent)
                     .await
-                    .map_err(|e| CryptError::Io(format!("Failed to create directory: {}", e)))?;
+                    .map_err(|e| KeyError::Io(format!("Failed to create directory: {}", e)))?;
             }
 
             // Write encrypted data to file
             fs::write(&path, &encrypted_data)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to write key file: {}", e)))?;
+                .map_err(|e| KeyError::Io(format!("Failed to write key file: {}", e)))?;
 
             Ok(key_material)
         }
@@ -249,13 +249,13 @@ impl KeyEnumeration for FileKeyStore {
         async move {
             let mut entries = fs::read_dir(&base_path)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to read directory: {}", e)))?;
+                .map_err(|e| KeyError::Io(format!("Failed to read directory: {}", e)))?;
 
             let mut keys = Vec::new();
             while let Some(entry) = entries
                 .next_entry()
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to read entry: {}", e)))?
+                .map_err(|e| KeyError::Io(format!("Failed to read entry: {}", e)))?
             {
                 if let Some(name) = entry.file_name().to_str() {
                     if name.ends_with(".key") && name.contains(&pattern) {

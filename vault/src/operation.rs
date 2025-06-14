@@ -8,7 +8,6 @@ use std::task::{Context, Poll};
 // Remove Duration import if not used elsewhere
 // use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
-use zeroize::Zeroizing;
 use secrecy::SecretString; // Use secrecy::SecretString for Passphrase
 
 // --- Type Aliases ---
@@ -161,7 +160,7 @@ pub trait VaultOperation: Send + Sync + 'static {
     fn find(&self, pattern: &str) -> VaultFindRequest;
     
     /// Optional: Create a new namespace
-    fn create_namespace(&self, namespace: &str) -> VaultUnitRequest {
+    fn create_namespace(&self, _namespace: &str) -> VaultUnitRequest {
         let (tx, rx) = oneshot::channel();
         let _ = tx.send(Err(VaultError::UnsupportedOperation(
             "This provider does not support namespaces".to_string(),
@@ -170,7 +169,7 @@ pub trait VaultOperation: Send + Sync + 'static {
     }
     
     /// Optional: Store a value in a specific namespace
-    fn put_with_namespace(&self, namespace: &str, key: &str, value: VaultValue) -> VaultUnitRequest {
+    fn put_with_namespace(&self, _namespace: &str, _key: &str, _value: VaultValue) -> VaultUnitRequest {
         let (tx, rx) = oneshot::channel();
         let _ = tx.send(Err(VaultError::UnsupportedOperation(
             "This provider does not support namespaces".to_string(),
@@ -179,7 +178,7 @@ pub trait VaultOperation: Send + Sync + 'static {
     }
     
     /// Optional: Get entries in a specific namespace
-    fn get_by_namespace(&self, namespace: &str) -> VaultListRequest {
+    fn get_by_namespace(&self, _namespace: &str) -> VaultListRequest {
         let (tx, rx) = mpsc::channel(1);
         let _ = tx.send(Err(VaultError::UnsupportedOperation(
             "This provider does not support namespaces".to_string(),

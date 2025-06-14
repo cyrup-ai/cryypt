@@ -1,9 +1,16 @@
 [package]
-name = "cryypt-vault"
+name = "cryypt_vault"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+cryypt_cipher = { workspace = true }
+cryypt_hashing = { workspace = true }
+cryypt_jwt = { workspace = true }
+cryypt_key = { workspace = true }
+cryypt_pqcrypto = { workspace = true }
+cryypt_quiq = { workspace = true }
+
 # Core workspace dependencies
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
@@ -25,7 +32,9 @@ regex = { workspace = true }
 time = { workspace = true }
 pin-project = { workspace = true }
 secrecy = { workspace = true }
-secretrust-core = { workspace = true }
+argon2 = { workspace = true }
+aes-gcm = { workspace = true }
+
 
 [[bin]]
 name = "cryypt"

@@ -1,5 +1,5 @@
 //! Ephemeral key material for QUIC transport with post-quantum support
-use crate::CryptError;
+use crate::CryptoTransportError;
 use std::time::{Duration, Instant};
 use zeroize::Zeroizing;
 
@@ -37,9 +37,9 @@ impl EphemeralKeyMaterial {
     }
 
     /// Rotate the PSK material
-    pub fn rotate(&mut self, new_psk: Vec<u8>) -> Result<(), CryptError> {
+    pub fn rotate(&mut self, new_psk: Vec<u8>) -> Result<(), CryptoTransportError> {
         if self.is_expired() {
-            return Err(CryptError::internal("Key material has expired"));
+            return Err(CryptoTransportError::Internal("Key material has expired".to_string()));
         }
         self.psk = Zeroizing::new(new_psk);
         self.created_at = Instant::now();
@@ -48,7 +48,7 @@ impl EphemeralKeyMaterial {
 }
 
 /// Generate ephemeral key material using quantum-resistant KDF
-pub fn generate_ephemeral_keys(session_id: &str) -> Result<EphemeralKeyMaterial, CryptError> {
+pub fn generate_ephemeral_keys(session_id: &str) -> Result<EphemeralKeyMaterial, CryptoTransportError> {
     use rand::RngCore;
 
     // Generate 512-bit PSK for post-quantum resistance

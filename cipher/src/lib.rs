@@ -56,33 +56,17 @@
 pub mod bits_macro;
 /// Encryption and decryption primitives with multiple cipher support
 pub mod cipher;
-/// Data compression algorithms including gzip, bzip2, zstd, and zip
-pub mod compression;
 pub mod error;
-pub mod hashing;
-pub mod jwt;
-/// Key management, derivation, and storage with rotation support
-pub mod key;
-pub mod pqcrypto;
-pub mod transport;
 
 // Re-export core types
 pub use cipher::{
     encryption_result::EncodableResult, CipherAlgorithm, DecryptionResultImpl, EncryptionResultImpl,
 };
 pub use error::{CryptError, Result};
-pub use key::{KeyId, SimpleKeyId};
 
 // Re-export the fluent API
 pub use bits_macro::{BitSize, Bits};
 pub use cipher::api::Cipher;
-pub use key::api::Key;
-pub use pqcrypto::api::{KemBuilder, SignatureBuilder};
-
-pub use jwt::{
-    Claims, ClaimsBuilder, Es256Key, Generator, Header, Hs256Key, JwtError, JwtResult, Revocation,
-    Rotator, Signer, TokenGenerationFuture, TokenVerificationFuture, ValidationOptions,
-};
 
 /// Prelude module for convenient imports
 pub mod prelude {
@@ -91,16 +75,6 @@ pub mod prelude {
             CiphertextBuilder, DataBuilder as CipherDataBuilder, DecryptBuilder, DecryptSecondPass,
             EncryptBuilder, EncryptSecondPass, KeyBuilder, WithCompression,
         },
-        compression::{
-            api::{CompressExecutor, DataBuilder as CompressDataBuilder, DecompressExecutor},
-            Compress,
-        },
-        hashing::{
-            api::{DataBuilder as HashDataBuilder, HashExecutor, PassesBuilder, SaltBuilder},
-            Hash,
-        },
-        key::store::{FileKeyStore, KeychainStore},
-        pqcrypto::prelude::*,
-        BitSize, Bits, Cipher, CryptError, EncodableResult, KemBuilder, Key, SignatureBuilder,
+        BitSize, Bits, Cipher, CryptError, EncodableResult,
     };
 }

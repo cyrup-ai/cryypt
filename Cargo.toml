@@ -22,6 +22,15 @@ categories = ["cryptography", "authentication"]
 rust-version = "1.70"
 
 [workspace.dependencies]
+cryypt_cipher = { path = "./cipher" }
+cryypt_compression = { path = "./compression" }
+cryypt_hashing = { path = "./hashing" }
+cryypt_jwt = { path = "./jwt" }
+cryypt_key = { path = "./key" }
+cryypt_pqcrypto = { path = "./pqcrypto" }
+cryypt_quiq = { path = "./quiq" }
+cryypt = { path = "./vault" }
+
 # Core utilities
 arc-swap = "1.7.1"
 rand = { version = "0.9.1", features = ["std", "std_rng"] }
@@ -98,30 +107,19 @@ surrealdb-migrations = "2.2.1"
 # System utilities
 dirs = "5.0.1"
 regex = "1.11.1"
-time = "0.3.36"
+time = { version = "0.3.36", features = ["serde", "formatting", "parsing"] }
 
 # Async utilities
 pin-project = "1.1.7"
 secrecy = "0.10.2"
-secretrust-core = "0.1.0"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
-missing_docs = "warn"
+missing_docs = "forbid"
 unused_imports = "warn"
+unwrap = "forbid"
+expect = "forbid"
 
-[workspace.lints.clippy]
-all = "warn"
-pedantic = "warn"
-nursery = "warn"
-cargo = "warn"
-
-# Allow some pedantic lints that are too noisy for crypto code
-module_name_repetitions = "allow"
-missing_errors_doc = "allow"
-missing_panics_doc = "allow"
-similar_names = "allow"
-too_many_lines = "allow"
 
 [profile.dev]
 debug = true

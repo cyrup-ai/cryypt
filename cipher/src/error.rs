@@ -121,6 +121,14 @@ pub enum CryptError {
     /// Simple IO error with string message
     #[error("IO error: {0}")]
     Io(String),
+    
+    /// Key management error
+    #[error("Key management error: {0}")]
+    KeyManagement(String),
+    
+    /// Compression error
+    #[error("Compression error: {0}")]
+    CompressionError(String),
 
     /// Generic internal error
     #[error("Internal error: {0}")]
@@ -202,5 +210,17 @@ impl From<hex::FromHexError> for CryptError {
 impl From<argon2::password_hash::Error> for CryptError {
     fn from(err: argon2::password_hash::Error) -> Self {
         Self::KeyDerivationFailed(format!("Argon2 error: {}", err))
+    }
+}
+
+impl From<cryypt_key::KeyError> for CryptError {
+    fn from(e: cryypt_key::KeyError) -> Self {
+        Self::KeyManagement(e.to_string())
+    }
+}
+
+impl From<cryypt_compression::CompressionError> for CryptError {
+    fn from(e: cryypt_compression::CompressionError) -> Self {
+        Self::CompressionError(e.to_string())
     }
 }

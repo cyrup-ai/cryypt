@@ -1,6 +1,6 @@
 //! Traits for key storage backends
 
-use crate::{KeyId, Result};
+use crate::{KeyId, KeyResult, Result};
 use std::future::Future;
 
 /// Async result for key existence check
@@ -70,6 +70,12 @@ pub trait FullKeyStore:
 impl<T> FullKeyStore for T where
     T: KeyStorage + KeyRetrieval + KeyImport + KeyGeneration + KeyEnumeration
 {
+}
+
+/// Trait for key providers that can resolve to key material
+pub trait KeyProviderBuilder: Send + Sync {
+    /// Resolve this builder to get the key material
+    fn resolve(&self) -> KeyResult;
 }
 
 /// Legacy trait for backwards compatibility - DO NOT USE IN NEW CODE

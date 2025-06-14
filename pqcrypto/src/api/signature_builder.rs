@@ -2,7 +2,7 @@
 
 use super::super::{SignatureAlgorithm, SignatureResult, VerificationResult};
 use super::{builder_traits::*, states::*};
-use crate::{CryptError, Result};
+use crate::{PqCryptoError, Result};
 use pqcrypto_traits::sign::{
     DetachedSignature as PqDetachedSignature, PublicKey as PqPublicKey, SecretKey as PqSecretKey,
 };
@@ -20,7 +20,7 @@ impl SignatureBuilder {
             65 | 3 => SignatureAlgorithm::MlDsa65,
             87 | 5 => SignatureAlgorithm::MlDsa87,
             _ => {
-                return Err(CryptError::UnsupportedAlgorithm(format!(
+                return Err(PqCryptoError::UnsupportedAlgorithm(format!(
                     "ML-DSA-{} is not supported. Use 44, 65, or 87",
                     security_level
                 )));
@@ -79,7 +79,7 @@ impl SignatureBuilder {
             512 | 1 => SignatureAlgorithm::Falcon512,
             1024 | 5 => SignatureAlgorithm::Falcon1024,
             _ => {
-                return Err(CryptError::UnsupportedAlgorithm(format!(
+                return Err(PqCryptoError::UnsupportedAlgorithm(format!(
                     "FALCON-{} is not supported. Use 512 or 1024",
                     security_level
                 )));
@@ -130,7 +130,7 @@ impl SignatureBuilder {
             "sha256-256f-simple" => SignatureAlgorithm::SphincsShaSha256_256fSimple,
             "sha256-256s-simple" => SignatureAlgorithm::SphincsShaSha256_256sSimple,
             _ => {
-                return Err(CryptError::UnsupportedAlgorithm(format!(
+                return Err(PqCryptoError::UnsupportedAlgorithm(format!(
                     "SPHINCS+-{} is not supported",
                     variant
                 )));
@@ -154,7 +154,7 @@ trait BaseSignatureBuilder {
     fn validate_public_key(&self, key: &[u8]) -> Result<()> {
         let expected = self.algorithm().public_key_size();
         if key.len() != expected {
-            return Err(CryptError::InvalidKeySize {
+            return Err(PqCryptoError::InvalidKeySize {
                 expected,
                 actual: key.len(),
             });
@@ -165,7 +165,7 @@ trait BaseSignatureBuilder {
     fn validate_secret_key(&self, key: &[u8]) -> Result<()> {
         let expected = self.algorithm().secret_key_size();
         if key.len() != expected {
-            return Err(CryptError::InvalidKeySize {
+            return Err(PqCryptoError::InvalidKeySize {
                 expected,
                 actual: key.len(),
             });
@@ -253,7 +253,7 @@ impl SignatureKeyPairBuilder for MlDsaBuilder<NeedKeyPair> {
                     )
                 }
                 _ => {
-                    return Err(CryptError::InternalError(
+                    return Err(PqCryptoError::InternalError(
                         "Invalid algorithm for ML-DSA".to_string(),
                     ));
                 }
@@ -389,7 +389,7 @@ impl SignatureKeyPairBuilder for FalconBuilder<NeedKeyPair> {
                     )
                 }
                 _ => {
-                    return Err(CryptError::InternalError(
+                    return Err(PqCryptoError::InternalError(
                         "Invalid algorithm for FALCON".to_string(),
                     ));
                 }
@@ -553,7 +553,7 @@ impl SignatureKeyPairBuilder for SphincsBuilder<NeedKeyPair> {
                     )
                 }
                 _ => {
-                    return Err(CryptError::InternalError(
+                    return Err(PqCryptoError::InternalError(
                         "Invalid algorithm for SPHINCS+".to_string(),
                     ));
                 }
@@ -763,362 +763,376 @@ impl<State> SignatureDataBuilder for SphincsBuilder<State> {
 
 // Sign builder implementation for ML-DSA with message
 impl SignBuilder for MlDsaBuilder<HasMessage> {
-    async fn sign(self) -> Result<SignatureResult> {
-        let secret_key = self
-            .secret_key
-            .ok_or_else(|| CryptError::InvalidKey("Secret key required for signing".to_string()))?;
-        let message = self
-            .message
-            .ok_or_else(|| CryptError::InternalError("Message not set".to_string()))?;
+    fn sign(self) -> impl AsyncSignatureResult {
+        async move {
+            let secret_key = self.secret_key.ok_or_else(|| {
+                PqCryptoError::InvalidKey("Secret key required for signing".to_string())
+            })?;
+            let message = self
+                .message
+                .ok_or_else(|| PqCryptoError::InternalError("Message not set".to_string()))?;
 
-        let signature = match self.algorithm {
-            SignatureAlgorithm::MlDsa44 => {
-                use pqcrypto_mldsa::mldsa44::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid ML-DSA-44 secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            SignatureAlgorithm::MlDsa65 => {
-                use pqcrypto_mldsa::mldsa65::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid ML-DSA-65 secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            SignatureAlgorithm::MlDsa87 => {
-                use pqcrypto_mldsa::mldsa87::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid ML-DSA-87 secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            _ => {
-                return Err(CryptError::InternalError(
-                    "Invalid algorithm for ML-DSA".to_string(),
-                ));
-            }
-        };
+            let signature = match self.algorithm {
+                SignatureAlgorithm::MlDsa44 => {
+                    use pqcrypto_mldsa::mldsa44::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid ML-DSA-44 secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                SignatureAlgorithm::MlDsa65 => {
+                    use pqcrypto_mldsa::mldsa65::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid ML-DSA-65 secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                SignatureAlgorithm::MlDsa87 => {
+                    use pqcrypto_mldsa::mldsa87::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid ML-DSA-87 secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                _ => {
+                    return Err(PqCryptoError::InternalError(
+                        "Invalid algorithm for ML-DSA".to_string(),
+                    ));
+                }
+            };
 
-        Ok(SignatureResult::new(self.algorithm, signature, None))
+            Ok(SignatureResult::new(self.algorithm, signature, None))
+        }
     }
 }
 
 // Sign builder implementation for FALCON with message
 impl SignBuilder for FalconBuilder<HasMessage> {
-    async fn sign(self) -> Result<SignatureResult> {
-        let secret_key = self
-            .secret_key
-            .ok_or_else(|| CryptError::InvalidKey("Secret key required for signing".to_string()))?;
-        let message = self
-            .message
-            .ok_or_else(|| CryptError::InternalError("Message not set".to_string()))?;
+    fn sign(self) -> impl AsyncSignatureResult {
+        async move {
+            let secret_key = self.secret_key.ok_or_else(|| {
+                PqCryptoError::InvalidKey("Secret key required for signing".to_string())
+            })?;
+            let message = self
+                .message
+                .ok_or_else(|| PqCryptoError::InternalError("Message not set".to_string()))?;
 
-        let signature = match self.algorithm {
-            SignatureAlgorithm::Falcon512 => {
-                use pqcrypto_falcon::falcon512::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid FALCON-512 secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            SignatureAlgorithm::Falcon1024 => {
-                use pqcrypto_falcon::falcon1024::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid FALCON-1024 secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            _ => {
-                return Err(CryptError::InternalError(
-                    "Invalid algorithm for FALCON".to_string(),
-                ));
-            }
-        };
+            let signature = match self.algorithm {
+                SignatureAlgorithm::Falcon512 => {
+                    use pqcrypto_falcon::falcon512::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid FALCON-512 secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                SignatureAlgorithm::Falcon1024 => {
+                    use pqcrypto_falcon::falcon1024::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid FALCON-1024 secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                _ => {
+                    return Err(PqCryptoError::InternalError(
+                        "Invalid algorithm for FALCON".to_string(),
+                    ));
+                }
+            };
 
-        Ok(SignatureResult::new(self.algorithm, signature, None))
+            Ok(SignatureResult::new(self.algorithm, signature, None))
+        }
     }
 }
 
 // Sign builder implementation for SPHINCS+ with message
 impl SignBuilder for SphincsBuilder<HasMessage> {
-    async fn sign(self) -> Result<SignatureResult> {
-        let secret_key = self
-            .secret_key
-            .ok_or_else(|| CryptError::InvalidKey("Secret key required for signing".to_string()))?;
-        let message = self
-            .message
-            .ok_or_else(|| CryptError::InternalError("Message not set".to_string()))?;
+    fn sign(self) -> impl AsyncSignatureResult {
+        async move {
+            let secret_key = self.secret_key.ok_or_else(|| {
+                PqCryptoError::InvalidKey("Secret key required for signing".to_string())
+            })?;
+            let message = self
+                .message
+                .ok_or_else(|| PqCryptoError::InternalError("Message not set".to_string()))?;
 
-        let signature = match self.algorithm {
-            SignatureAlgorithm::SphincsShaSha256_128fSimple => {
-                use pqcrypto_sphincsplus::sphincssha2128fsimple::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            SignatureAlgorithm::SphincsShaSha256_128sSimple => {
-                use pqcrypto_sphincsplus::sphincssha2128ssimple::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            SignatureAlgorithm::SphincsShaSha256_192fSimple => {
-                use pqcrypto_sphincsplus::sphincssha2192fsimple::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            SignatureAlgorithm::SphincsShaSha256_192sSimple => {
-                use pqcrypto_sphincsplus::sphincssha2192ssimple::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            SignatureAlgorithm::SphincsShaSha256_256fSimple => {
-                use pqcrypto_sphincsplus::sphincssha2256fsimple::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            SignatureAlgorithm::SphincsShaSha256_256sSimple => {
-                use pqcrypto_sphincsplus::sphincssha2256ssimple::{detached_sign, SecretKey};
-                let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
-                })?;
-                let sig = detached_sign(&message, &sk);
-                PqDetachedSignature::as_bytes(&sig).to_vec()
-            }
-            _ => {
-                return Err(CryptError::InternalError(
-                    "Invalid algorithm for SPHINCS+".to_string(),
-                ));
-            }
-        };
+            let signature = match self.algorithm {
+                SignatureAlgorithm::SphincsShaSha256_128fSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2128fsimple::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                SignatureAlgorithm::SphincsShaSha256_128sSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2128ssimple::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                SignatureAlgorithm::SphincsShaSha256_192fSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2192fsimple::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                SignatureAlgorithm::SphincsShaSha256_192sSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2192ssimple::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                SignatureAlgorithm::SphincsShaSha256_256fSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2256fsimple::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                SignatureAlgorithm::SphincsShaSha256_256sSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2256ssimple::{detached_sign, SecretKey};
+                    let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
+                    })?;
+                    let sig = detached_sign(&message, &sk);
+                    PqDetachedSignature::as_bytes(&sig).to_vec()
+                }
+                _ => {
+                    return Err(PqCryptoError::InternalError(
+                        "Invalid algorithm for SPHINCS+".to_string(),
+                    ));
+                }
+            };
 
-        Ok(SignatureResult::new(self.algorithm, signature, None))
+            Ok(SignatureResult::new(self.algorithm, signature, None))
+        }
     }
 }
 
 // Verify builder implementation for ML-DSA with signature
 impl VerifyBuilder for MlDsaBuilder<HasSignature> {
-    async fn verify(self) -> Result<VerificationResult> {
-        let public_key = self.public_key.ok_or_else(|| {
-            CryptError::InvalidKey("Public key required for verification".to_string())
-        })?;
-        let message = self.message.ok_or_else(|| {
-            CryptError::InvalidParameters("Message required for verification".to_string())
-        })?;
-        let signature = self
-            .signature
-            .ok_or_else(|| CryptError::InternalError("Signature not set".to_string()))?;
+    fn verify(self) -> impl AsyncVerificationResult {
+        async move {
+            let public_key = self.public_key.ok_or_else(|| {
+                PqCryptoError::InvalidKey("Public key required for verification".to_string())
+            })?;
+            let message = self.message.ok_or_else(|| {
+                PqCryptoError::InvalidParameters("Message required for verification".to_string())
+            })?;
+            let signature = self
+                .signature
+                .ok_or_else(|| PqCryptoError::InternalError("Signature not set".to_string()))?;
 
-        let is_valid = match self.algorithm {
-            SignatureAlgorithm::MlDsa44 => {
-                use pqcrypto_mldsa::mldsa44::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid ML-DSA-44 public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid ML-DSA-44 signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            SignatureAlgorithm::MlDsa65 => {
-                use pqcrypto_mldsa::mldsa65::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid ML-DSA-65 public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid ML-DSA-65 signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            SignatureAlgorithm::MlDsa87 => {
-                use pqcrypto_mldsa::mldsa87::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid ML-DSA-87 public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid ML-DSA-87 signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            _ => {
-                return Err(CryptError::InternalError(
-                    "Invalid algorithm for ML-DSA".to_string(),
-                ));
-            }
-        };
+            let is_valid = match self.algorithm {
+                SignatureAlgorithm::MlDsa44 => {
+                    use pqcrypto_mldsa::mldsa44::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid ML-DSA-44 public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid ML-DSA-44 signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                SignatureAlgorithm::MlDsa65 => {
+                    use pqcrypto_mldsa::mldsa65::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid ML-DSA-65 public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid ML-DSA-65 signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                SignatureAlgorithm::MlDsa87 => {
+                    use pqcrypto_mldsa::mldsa87::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid ML-DSA-87 public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid ML-DSA-87 signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                _ => {
+                    return Err(PqCryptoError::InternalError(
+                        "Invalid algorithm for ML-DSA".to_string(),
+                    ));
+                }
+            };
 
-        Ok(VerificationResult::new(self.algorithm, is_valid, None))
+            Ok(VerificationResult::new(self.algorithm, is_valid, None))
+        }
     }
 }
 
 // Verify builder implementation for FALCON with signature
 impl VerifyBuilder for FalconBuilder<HasSignature> {
-    async fn verify(self) -> Result<VerificationResult> {
-        let public_key = self.public_key.ok_or_else(|| {
-            CryptError::InvalidKey("Public key required for verification".to_string())
-        })?;
-        let message = self.message.ok_or_else(|| {
-            CryptError::InvalidParameters("Message required for verification".to_string())
-        })?;
-        let signature = self
-            .signature
-            .ok_or_else(|| CryptError::InternalError("Signature not set".to_string()))?;
+    fn verify(self) -> impl AsyncVerificationResult {
+        async move {
+            let public_key = self.public_key.ok_or_else(|| {
+                PqCryptoError::InvalidKey("Public key required for verification".to_string())
+            })?;
+            let message = self.message.ok_or_else(|| {
+                PqCryptoError::InvalidParameters("Message required for verification".to_string())
+            })?;
+            let signature = self
+                .signature
+                .ok_or_else(|| PqCryptoError::InternalError("Signature not set".to_string()))?;
 
-        let is_valid = match self.algorithm {
-            SignatureAlgorithm::Falcon512 => {
-                use pqcrypto_falcon::falcon512::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid FALCON-512 public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid FALCON-512 signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            SignatureAlgorithm::Falcon1024 => {
-                use pqcrypto_falcon::falcon1024::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid FALCON-1024 public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid FALCON-1024 signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            _ => {
-                return Err(CryptError::InternalError(
-                    "Invalid algorithm for FALCON".to_string(),
-                ));
-            }
-        };
+            let is_valid = match self.algorithm {
+                SignatureAlgorithm::Falcon512 => {
+                    use pqcrypto_falcon::falcon512::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid FALCON-512 public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid FALCON-512 signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                SignatureAlgorithm::Falcon1024 => {
+                    use pqcrypto_falcon::falcon1024::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid FALCON-1024 public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters(
+                            "Invalid FALCON-1024 signature".to_string(),
+                        )
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                _ => {
+                    return Err(PqCryptoError::InternalError(
+                        "Invalid algorithm for FALCON".to_string(),
+                    ));
+                }
+            };
 
-        Ok(VerificationResult::new(self.algorithm, is_valid, None))
+            Ok(VerificationResult::new(self.algorithm, is_valid, None))
+        }
     }
 }
 
 // Verify builder implementation for SPHINCS+ with signature
 impl VerifyBuilder for SphincsBuilder<HasSignature> {
-    async fn verify(self) -> Result<VerificationResult> {
-        let public_key = self.public_key.ok_or_else(|| {
-            CryptError::InvalidKey("Public key required for verification".to_string())
-        })?;
-        let message = self.message.ok_or_else(|| {
-            CryptError::InvalidParameters("Message required for verification".to_string())
-        })?;
-        let signature = self
-            .signature
-            .ok_or_else(|| CryptError::InternalError("Signature not set".to_string()))?;
+    fn verify(self) -> impl AsyncVerificationResult {
+        async move {
+            let public_key = self.public_key.ok_or_else(|| {
+                PqCryptoError::InvalidKey("Public key required for verification".to_string())
+            })?;
+            let message = self.message.ok_or_else(|| {
+                PqCryptoError::InvalidParameters("Message required for verification".to_string())
+            })?;
+            let signature = self
+                .signature
+                .ok_or_else(|| PqCryptoError::InternalError("Signature not set".to_string()))?;
 
-        let is_valid = match self.algorithm {
-            SignatureAlgorithm::SphincsShaSha256_128fSimple => {
-                use pqcrypto_sphincsplus::sphincssha2128fsimple::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            SignatureAlgorithm::SphincsShaSha256_128sSimple => {
-                use pqcrypto_sphincsplus::sphincssha2128ssimple::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            SignatureAlgorithm::SphincsShaSha256_192fSimple => {
-                use pqcrypto_sphincsplus::sphincssha2192fsimple::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            SignatureAlgorithm::SphincsShaSha256_192sSimple => {
-                use pqcrypto_sphincsplus::sphincssha2192ssimple::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            SignatureAlgorithm::SphincsShaSha256_256fSimple => {
-                use pqcrypto_sphincsplus::sphincssha2256fsimple::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            SignatureAlgorithm::SphincsShaSha256_256sSimple => {
-                use pqcrypto_sphincsplus::sphincssha2256ssimple::{
-                    verify_detached_signature, DetachedSignature, PublicKey,
-                };
-                let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                    CryptError::InvalidKey("Invalid SPHINCS+ public key".to_string())
-                })?;
-                let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
-                    CryptError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
-                })?;
-                verify_detached_signature(&sig, &message, &pk).is_ok()
-            }
-            _ => {
-                return Err(CryptError::InternalError(
-                    "Invalid algorithm for SPHINCS+".to_string(),
-                ));
-            }
-        };
+            let is_valid = match self.algorithm {
+                SignatureAlgorithm::SphincsShaSha256_128fSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2128fsimple::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                SignatureAlgorithm::SphincsShaSha256_128sSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2128ssimple::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                SignatureAlgorithm::SphincsShaSha256_192fSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2192fsimple::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                SignatureAlgorithm::SphincsShaSha256_192sSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2192ssimple::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                SignatureAlgorithm::SphincsShaSha256_256fSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2256fsimple::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                SignatureAlgorithm::SphincsShaSha256_256sSimple => {
+                    use pqcrypto_sphincsplus::sphincssha2256ssimple::{
+                        verify_detached_signature, DetachedSignature, PublicKey,
+                    };
+                    let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
+                        PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
+                    })?;
+                    let sig = DetachedSignature::from_bytes(&signature).map_err(|_| {
+                        PqCryptoError::InvalidParameters("Invalid SPHINCS+ signature".to_string())
+                    })?;
+                    verify_detached_signature(&sig, &message, &pk).is_ok()
+                }
+                _ => {
+                    return Err(PqCryptoError::InternalError(
+                        "Invalid algorithm for SPHINCS+".to_string(),
+                    ));
+                }
+            };
 
-        Ok(VerificationResult::new(self.algorithm, is_valid, None))
+            Ok(VerificationResult::new(self.algorithm, is_valid, None))
+        }
     }
 }
 

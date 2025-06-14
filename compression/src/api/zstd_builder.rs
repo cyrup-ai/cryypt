@@ -71,9 +71,9 @@ impl CompressExecutor for ZstdWithData {
 impl DecompressExecutor for ZstdWithData {
     fn decompress(self) -> impl AsyncDecompressResult {
         async move {
-            tokio::task::spawn_blocking(move || crate::compression::zstd::decompress(&self.data))
+            tokio::task::spawn_blocking(move || crate::zstd::decompress(&self.data))
                 .await
-                .map_err(|e| crate::CryptError::internal(e.to_string()))?
+                .map_err(|e| crate::CompressionError::internal(e.to_string()))?
         }
     }
 }
@@ -83,10 +83,10 @@ impl CompressExecutor for ZstdWithDataAndLevel {
     fn compress(self) -> impl AsyncCompressResult {
         async move {
             tokio::task::spawn_blocking(move || {
-                crate::compression::zstd::compress_with_level(&self.data, self.level)
+                crate::zstd::compress_with_level(&self.data, self.level)
             })
             .await
-            .map_err(|e| crate::CryptError::internal(e.to_string()))?
+            .map_err(|e| crate::CompressionError::internal(e.to_string()))?
         }
     }
 }

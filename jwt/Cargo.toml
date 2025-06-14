@@ -1,5 +1,5 @@
 [package]
-name = "cryypt-jwt"
+name = "cryypt_jwt"
 version = "0.1.0"
 edition = "2021"
 authors = ["Cyrup AI <dev@cyrup.ai>"]

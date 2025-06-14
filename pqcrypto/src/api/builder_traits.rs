@@ -1,6 +1,6 @@
 //! Builder traits for post-quantum cryptography operations
 
-use crate::{CryptError, Result};
+use crate::{PqCryptoError, Result};
 use std::future::Future;
 use std::path::Path;
 
@@ -83,7 +83,7 @@ pub trait KemKeyPairBuilder {
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| CryptError::InvalidKey(format!("Invalid hex public key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex public key: {}", e)))?;
         self.with_public_key(bytes)
     }
 
@@ -93,7 +93,7 @@ pub trait KemKeyPairBuilder {
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| CryptError::InvalidKey(format!("Invalid hex secret key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex secret key: {}", e)))?;
         self.with_secret_key(bytes)
     }
 
@@ -105,7 +105,7 @@ pub trait KemKeyPairBuilder {
         use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
-            .map_err(|e| CryptError::InvalidKey(format!("Invalid base64 public key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 public key: {}", e)))?;
         self.with_public_key(bytes)
     }
 
@@ -117,7 +117,7 @@ pub trait KemKeyPairBuilder {
         use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
-            .map_err(|e| CryptError::InvalidKey(format!("Invalid base64 secret key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 secret key: {}", e)))?;
         self.with_secret_key(bytes)
     }
 
@@ -133,10 +133,10 @@ pub trait KemKeyPairBuilder {
         async move {
             let public_key = tokio::fs::read(public_key_path)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to read public key file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read public key file: {}", e)))?;
             let secret_key = tokio::fs::read(secret_key_path)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to read secret key file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read secret key file: {}", e)))?;
             self.with_keypair(public_key, secret_key)
         }
     }
@@ -177,7 +177,7 @@ pub trait SignatureKeyPairBuilder {
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| CryptError::InvalidKey(format!("Invalid hex public key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex public key: {}", e)))?;
         self.with_public_key(bytes)
     }
 
@@ -187,7 +187,7 @@ pub trait SignatureKeyPairBuilder {
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| CryptError::InvalidKey(format!("Invalid hex secret key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex secret key: {}", e)))?;
         self.with_secret_key(bytes)
     }
 
@@ -199,7 +199,7 @@ pub trait SignatureKeyPairBuilder {
         use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
-            .map_err(|e| CryptError::InvalidKey(format!("Invalid base64 public key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 public key: {}", e)))?;
         self.with_public_key(bytes)
     }
 
@@ -211,7 +211,7 @@ pub trait SignatureKeyPairBuilder {
         use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
-            .map_err(|e| CryptError::InvalidKey(format!("Invalid base64 secret key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 secret key: {}", e)))?;
         self.with_secret_key(bytes)
     }
 }
@@ -230,7 +230,7 @@ pub trait CiphertextBuilder {
         Self: Sized,
     {
         let bytes = hex::decode(hex).map_err(|e| {
-            CryptError::InvalidEncryptedData(format!("Invalid hex ciphertext: {}", e))
+            PqCryptoError::InvalidEncryptedData(format!("Invalid hex ciphertext: {}", e))
         })?;
         Ok(self.with_ciphertext(bytes))
     }
@@ -244,7 +244,7 @@ pub trait CiphertextBuilder {
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
             .map_err(|e| {
-                CryptError::InvalidEncryptedData(format!("Invalid base64 ciphertext: {}", e))
+                PqCryptoError::InvalidEncryptedData(format!("Invalid base64 ciphertext: {}", e))
             })?;
         Ok(self.with_ciphertext(bytes))
     }
@@ -260,7 +260,7 @@ pub trait CiphertextBuilder {
         async move {
             let ciphertext = tokio::fs::read(path)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to read ciphertext file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read ciphertext file: {}", e)))?;
             Ok(self.with_ciphertext(ciphertext))
         }
     }
@@ -288,7 +288,7 @@ pub trait MessageBuilder {
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| CryptError::InvalidParameters(format!("Invalid hex message: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidParameters(format!("Invalid hex message: {}", e)))?;
         Ok(self.with_message(bytes))
     }
 
@@ -300,7 +300,9 @@ pub trait MessageBuilder {
         use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
-            .map_err(|e| CryptError::InvalidParameters(format!("Invalid base64 message: {}", e)))?;
+            .map_err(|e| {
+                PqCryptoError::InvalidParameters(format!("Invalid base64 message: {}", e))
+            })?;
         Ok(self.with_message(bytes))
     }
 
@@ -315,7 +317,7 @@ pub trait MessageBuilder {
         async move {
             let message = tokio::fs::read(path)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to read message file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read message file: {}", e)))?;
             Ok(self.with_message(message))
         }
     }
@@ -334,8 +336,9 @@ pub trait SignatureDataBuilder {
     where
         Self: Sized,
     {
-        let bytes = hex::decode(hex)
-            .map_err(|e| CryptError::InvalidParameters(format!("Invalid hex signature: {}", e)))?;
+        let bytes = hex::decode(hex).map_err(|e| {
+            PqCryptoError::InvalidParameters(format!("Invalid hex signature: {}", e))
+        })?;
         Ok(self.with_signature(bytes))
     }
 
@@ -348,7 +351,7 @@ pub trait SignatureDataBuilder {
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
             .map_err(|e| {
-                CryptError::InvalidParameters(format!("Invalid base64 signature: {}", e))
+                PqCryptoError::InvalidParameters(format!("Invalid base64 signature: {}", e))
             })?;
         Ok(self.with_signature(bytes))
     }
@@ -364,7 +367,7 @@ pub trait SignatureDataBuilder {
         async move {
             let signature = tokio::fs::read(path)
                 .await
-                .map_err(|e| CryptError::Io(format!("Failed to read signature file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read signature file: {}", e)))?;
             Ok(self.with_signature(signature))
         }
     }

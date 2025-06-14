@@ -1,7 +1,6 @@
 //! Raw key builder
 
-use crate::cipher::api::builder_traits::KeyProviderBuilder;
-use crate::key::KeyResult;
+use crate::{KeyResult, traits::KeyProviderBuilder};
 
 /// Builder for raw key bytes
 pub struct RawKeyBuilder {

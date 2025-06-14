@@ -76,7 +76,7 @@ impl EncryptBuilder for ChaChaWithKeyAndData {
             let key_vec = match key_result {
                 Ok(k) => k,
                 Err(e) => {
-                    let _ = tx.send(Err(e));
+                    let _ = tx.send(Err(CryptError::from(e)));
                     return;
                 }
             };
@@ -143,7 +143,7 @@ impl DecryptBuilder for ChaChaWithKeyAndCiphertext {
             let key_vec = match key_result {
                 Ok(k) => k,
                 Err(e) => {
-                    let _ = tx.send(Err(e));
+                    let _ = tx.send(Err(CryptError::from(e)));
                     return;
                 }
             };

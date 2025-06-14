@@ -12,6 +12,6 @@ pub use {
     document::Document,
     document::DocumentDao,
     stream::QueryStream,
-    vault_store::SurrealVault,
+    vault_store::SurrealDbVaultProvider,
     vault_store::VaultEntry,
 };

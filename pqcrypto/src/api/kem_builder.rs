@@ -2,7 +2,7 @@
 
 use super::super::{DecapsulationResult, EncapsulationResult, KemAlgorithm, SharedSecret};
 use super::{builder_traits::*, states::*};
-use crate::{CryptError, Result};
+use crate::{PqCryptoError, Result};
 use pqcrypto_traits::kem::{
     Ciphertext as PqCiphertext, PublicKey as PqPublicKey, SecretKey as PqSecretKey,
     SharedSecret as PqSharedSecret,
@@ -21,7 +21,7 @@ impl KemBuilder {
             768 => KemAlgorithm::MlKem768,
             1024 => KemAlgorithm::MlKem1024,
             _ => {
-                return Err(CryptError::UnsupportedAlgorithm(format!(
+                return Err(PqCryptoError::UnsupportedAlgorithm(format!(
                     "ML-KEM-{} is not supported. Use 512, 768, or 1024",
                     security_level
                 )));
@@ -85,7 +85,7 @@ impl<State> MlKemBuilder<State> {
     fn validate_public_key(&self, key: &[u8]) -> Result<()> {
         let expected = self.algorithm.public_key_size();
         if key.len() != expected {
-            return Err(CryptError::InvalidKeySize {
+            return Err(PqCryptoError::InvalidKeySize {
                 expected,
                 actual: key.len(),
             });
@@ -96,7 +96,7 @@ impl<State> MlKemBuilder<State> {
     fn validate_secret_key(&self, key: &[u8]) -> Result<()> {
         let expected = self.algorithm.secret_key_size();
         if key.len() != expected {
-            return Err(CryptError::InvalidKeySize {
+            return Err(PqCryptoError::InvalidKeySize {
                 expected,
                 actual: key.len(),
             });
@@ -243,13 +243,13 @@ impl EncapsulateBuilder for MlKemBuilder<HasPublicKey> {
         async move {
             let public_key = self
                 .public_key
-                .ok_or_else(|| CryptError::InternalError("Public key not set".to_string()))?;
+                .ok_or_else(|| PqCryptoError::InternalError("Public key not set".to_string()))?;
 
             let (shared_secret_bytes, ciphertext) = match self.algorithm {
                 KemAlgorithm::MlKem512 => {
                     use pqcrypto_mlkem::mlkem512::{encapsulate, PublicKey};
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                        CryptError::InvalidKey("Invalid ML-KEM-512 public key".to_string())
+                        PqCryptoError::InvalidKey("Invalid ML-KEM-512 public key".to_string())
                     })?;
                     let (ss, ct) = encapsulate(&pk);
                     (
@@ -260,7 +260,7 @@ impl EncapsulateBuilder for MlKemBuilder<HasPublicKey> {
                 KemAlgorithm::MlKem768 => {
                     use pqcrypto_mlkem::mlkem768::{encapsulate, PublicKey};
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                        CryptError::InvalidKey("Invalid ML-KEM-768 public key".to_string())
+                        PqCryptoError::InvalidKey("Invalid ML-KEM-768 public key".to_string())
                     })?;
                     let (ss, ct) = encapsulate(&pk);
                     (
@@ -271,7 +271,7 @@ impl EncapsulateBuilder for MlKemBuilder<HasPublicKey> {
                 KemAlgorithm::MlKem1024 => {
                     use pqcrypto_mlkem::mlkem1024::{encapsulate, PublicKey};
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
-                        CryptError::InvalidKey("Invalid ML-KEM-1024 public key".to_string())
+                        PqCryptoError::InvalidKey("Invalid ML-KEM-1024 public key".to_string())
                     })?;
                     let (ss, ct) = encapsulate(&pk);
                     (
@@ -342,16 +342,16 @@ impl DecapsulateBuilder for MlKemBuilder<HasCiphertext> {
         async move {
             let algorithm = self.algorithm;
             let secret_key = self.secret_key.ok_or_else(|| {
-                CryptError::InvalidKey("Secret key required for decapsulation".to_string())
+                PqCryptoError::InvalidKey("Secret key required for decapsulation".to_string())
             })?;
             let ciphertext = self
                 .ciphertext
-                .ok_or_else(|| CryptError::InternalError("Ciphertext not set".to_string()))?;
+                .ok_or_else(|| PqCryptoError::InternalError("Ciphertext not set".to_string()))?;
 
             // Validate ciphertext size
             let expected_size = algorithm.ciphertext_size();
             if ciphertext.len() != expected_size {
-                return Err(CryptError::InvalidKeySize {
+                return Err(PqCryptoError::InvalidKeySize {
                     expected: expected_size,
                     actual: ciphertext.len(),
                 });
@@ -361,10 +361,10 @@ impl DecapsulateBuilder for MlKemBuilder<HasCiphertext> {
                 KemAlgorithm::MlKem512 => {
                     use pqcrypto_mlkem::mlkem512::{decapsulate, Ciphertext, SecretKey};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                        CryptError::InvalidKey("Invalid ML-KEM-512 secret key".to_string())
+                        PqCryptoError::InvalidKey("Invalid ML-KEM-512 secret key".to_string())
                     })?;
                     let ct = Ciphertext::from_bytes(&ciphertext).map_err(|_| {
-                        CryptError::InvalidEncryptedData(
+                        PqCryptoError::InvalidEncryptedData(
                             "Invalid ML-KEM-512 ciphertext".to_string(),
                         )
                     })?;
@@ -374,10 +374,10 @@ impl DecapsulateBuilder for MlKemBuilder<HasCiphertext> {
                 KemAlgorithm::MlKem768 => {
                     use pqcrypto_mlkem::mlkem768::{decapsulate, Ciphertext, SecretKey};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                        CryptError::InvalidKey("Invalid ML-KEM-768 secret key".to_string())
+                        PqCryptoError::InvalidKey("Invalid ML-KEM-768 secret key".to_string())
                     })?;
                     let ct = Ciphertext::from_bytes(&ciphertext).map_err(|_| {
-                        CryptError::InvalidEncryptedData(
+                        PqCryptoError::InvalidEncryptedData(
                             "Invalid ML-KEM-768 ciphertext".to_string(),
                         )
                     })?;
@@ -387,10 +387,10 @@ impl DecapsulateBuilder for MlKemBuilder<HasCiphertext> {
                 KemAlgorithm::MlKem1024 => {
                     use pqcrypto_mlkem::mlkem1024::{decapsulate, Ciphertext, SecretKey};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
-                        CryptError::InvalidKey("Invalid ML-KEM-1024 secret key".to_string())
+                        PqCryptoError::InvalidKey("Invalid ML-KEM-1024 secret key".to_string())
                     })?;
                     let ct = Ciphertext::from_bytes(&ciphertext).map_err(|_| {
-                        CryptError::InvalidEncryptedData(
+                        PqCryptoError::InvalidEncryptedData(
                             "Invalid ML-KEM-1024 ciphertext".to_string(),
                         )
                     })?;

@@ -196,7 +196,7 @@ fn blake2b_hash(data: Vec<u8>, key: Option<Vec<u8>>, _output_size: u8) -> HashRe
         if let Some(key) = key {
             // Use Blake2b as MAC
             let mut mac = <Blake2bMac512 as KeyInit>::new_from_slice(&key)
-                .map_err(|e| crate::CryptError::internal(format!("Blake2b key error: {}", e)))?;
+                .map_err(|e| crate::HashError::internal(format!("Blake2b key error: {}", e)))?;
             mac.update(&data);
             Ok(mac.finalize().into_bytes().to_vec())
         } else {
