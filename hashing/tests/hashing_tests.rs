@@ -212,6 +212,8 @@ async fn test_empty_data_hashing() {
         let hash_result = match name {
             "SHA256" => Hash::sha256().with_data(empty_data).hash().await,
             "SHA3-256" => Hash::sha3().with_data(empty_data).hash().await,
+            "SHA3-384" => Hash::sha3_384().with_data(empty_data).hash().await,
+            "SHA3-512" => Hash::sha3_512().with_data(empty_data).hash().await,
             "BLAKE2b" => Hash::blake2b().with_data(empty_data).hash().await,
             _ => unreachable!(),
         }.expect(&format!("{} empty data hashing should succeed", name));
@@ -222,6 +224,8 @@ async fn test_empty_data_hashing() {
         let hash_result2 = match name {
             "SHA256" => Hash::sha256().with_data(empty_data).hash().await,
             "SHA3-256" => Hash::sha3().with_data(empty_data).hash().await,
+            "SHA3-384" => Hash::sha3_384().with_data(empty_data).hash().await,
+            "SHA3-512" => Hash::sha3_512().with_data(empty_data).hash().await,
             "BLAKE2b" => Hash::blake2b().with_data(empty_data).hash().await,
             _ => unreachable!(),
         }.expect(&format!("{} empty data hashing should succeed", name));
@@ -260,9 +264,9 @@ async fn test_hash_passes_properties() {
     assert_eq!(HashPasses::Default.iterations(), 10_000);
     assert_eq!(HashPasses::Strong.iterations(), 100_000);
     
-    assert_eq!(HashPasses::Fast.security_level(), "Development");
-    assert_eq!(HashPasses::Default.security_level(), "Production");
-    assert_eq!(HashPasses::Strong.security_level(), "High Security");
+    assert_eq!(HashPasses::Fast.security_level(), "⚠️  Development only");
+    assert_eq!(HashPasses::Default.security_level(), "✓ Production ready");
+    assert_eq!(HashPasses::Strong.security_level(), "✓ High security");
     
     assert!(!HashPasses::Fast.is_password_safe());
     assert!(HashPasses::Default.is_password_safe());

@@ -2,6 +2,8 @@
 
 use super::{AsyncDecryptionResult, AsyncEncryptionResult};
 use crate::CryptError;
+// Import KeyProviderBuilder from the key crate where it belongs
+pub use cryypt_key::traits::KeyProviderBuilder;
 
 /// Builder that can accept a key
 pub trait KeyBuilder {
@@ -13,11 +15,6 @@ pub trait KeyBuilder {
         K: KeyProviderBuilder + 'static;
 }
 
-/// Trait for key builders that can provide keys
-pub trait KeyProviderBuilder: Send + Sync {
-    /// Resolve this builder to get the key material
-    fn resolve(&self) -> cryypt_key::KeyResult;
-}
 
 /// Builder that can accept AAD (Additional Authenticated Data) for AEAD ciphers
 pub trait AadBuilder {

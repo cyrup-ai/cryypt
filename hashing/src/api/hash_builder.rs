@@ -2,7 +2,7 @@
 
 use super::super::hash_result::HashResultImpl;
 use super::{
-    hash::{Blake2bHash, Sha256Hash, Sha3_256Hash},
+    hash::{Blake2bHash, Sha256Hash, Sha3_256Hash, Sha3_384Hash, Sha3_512Hash},
     passes::HashPasses,
     HasData, HasPasses, HasSalt, NoData, NoPasses, NoSalt,
 };
@@ -126,6 +126,64 @@ impl HashBuilder<Sha3_256Hash, HasData<Vec<u8>>, HasSalt, HasPasses> {
 }
 
 // Blake2b implementations
+// SHA3-384 hash implementations
+impl HashBuilder<Sha3_384Hash, HasData<Vec<u8>>, NoSalt, NoPasses> {
+    /// Perform the SHA3-384 hash operation asynchronously
+    pub fn hash(self) -> impl AsyncHashResult {
+        sha3_384_hash(self.data.0, None, 1)
+    }
+}
+
+impl HashBuilder<Sha3_384Hash, HasData<Vec<u8>>, HasSalt, NoPasses> {
+    /// Perform the SHA3-384 hash operation asynchronously with salt
+    pub fn hash(self) -> impl AsyncHashResult {
+        sha3_384_hash(self.data.0, Some(self.salt.0), 1)
+    }
+}
+
+impl HashBuilder<Sha3_384Hash, HasData<Vec<u8>>, NoSalt, HasPasses> {
+    /// Perform the SHA3-384 hash operation asynchronously with specified passes
+    pub fn hash(self) -> impl AsyncHashResult {
+        sha3_384_hash(self.data.0, None, self.passes.0.iterations())
+    }
+}
+
+impl HashBuilder<Sha3_384Hash, HasData<Vec<u8>>, HasSalt, HasPasses> {
+    /// Perform the SHA3-384 hash operation asynchronously with salt and specified passes
+    pub fn hash(self) -> impl AsyncHashResult {
+        sha3_384_hash(self.data.0, Some(self.salt.0), self.passes.0.iterations())
+    }
+}
+
+// SHA3-512 hash implementations
+impl HashBuilder<Sha3_512Hash, HasData<Vec<u8>>, NoSalt, NoPasses> {
+    /// Perform the SHA3-512 hash operation asynchronously
+    pub fn hash(self) -> impl AsyncHashResult {
+        sha3_512_hash(self.data.0, None, 1)
+    }
+}
+
+impl HashBuilder<Sha3_512Hash, HasData<Vec<u8>>, HasSalt, NoPasses> {
+    /// Perform the SHA3-512 hash operation asynchronously with salt
+    pub fn hash(self) -> impl AsyncHashResult {
+        sha3_512_hash(self.data.0, Some(self.salt.0), 1)
+    }
+}
+
+impl HashBuilder<Sha3_512Hash, HasData<Vec<u8>>, NoSalt, HasPasses> {
+    /// Perform the SHA3-512 hash operation asynchronously with specified passes
+    pub fn hash(self) -> impl AsyncHashResult {
+        sha3_512_hash(self.data.0, None, self.passes.0.iterations())
+    }
+}
+
+impl HashBuilder<Sha3_512Hash, HasData<Vec<u8>>, HasSalt, HasPasses> {
+    /// Perform the SHA3-512 hash operation asynchronously with salt and specified passes
+    pub fn hash(self) -> impl AsyncHashResult {
+        sha3_512_hash(self.data.0, Some(self.salt.0), self.passes.0.iterations())
+    }
+}
+
 impl HashBuilder<Blake2bHash, HasData<Vec<u8>>, NoSalt, NoPasses> {
     /// Perform the BLAKE2b hash operation asynchronously
     pub fn hash(self) -> impl AsyncHashResult {
@@ -205,5 +263,47 @@ fn blake2b_hash(data: Vec<u8>, key: Option<Vec<u8>>, _output_size: u8) -> HashRe
             hasher.update(&data);
             Ok(hasher.finalize().to_vec())
         }
+    })
+}
+
+/// Perform SHA3-384 hash operation
+fn sha3_384_hash(data: Vec<u8>, salt: Option<Vec<u8>>, iterations: u32) -> HashResultImpl {
+    HashResultImpl::from_computation(move || {
+        use sha3::{Digest, Sha3_384};
+
+        let mut input = data;
+        if let Some(salt) = salt {
+            input.extend_from_slice(&salt);
+        }
+
+        let mut result = input;
+        for _ in 0..iterations {
+            let mut hasher = Sha3_384::new();
+            hasher.update(&result);
+            result = hasher.finalize().to_vec();
+        }
+
+        Ok(result)
+    })
+}
+
+/// Perform SHA3-512 hash operation
+fn sha3_512_hash(data: Vec<u8>, salt: Option<Vec<u8>>, iterations: u32) -> HashResultImpl {
+    HashResultImpl::from_computation(move || {
+        use sha3::{Digest, Sha3_512};
+
+        let mut input = data;
+        if let Some(salt) = salt {
+            input.extend_from_slice(&salt);
+        }
+
+        let mut result = input;
+        for _ in 0..iterations {
+            let mut hasher = Sha3_512::new();
+            hasher.update(&result);
+            result = hasher.finalize().to_vec();
+        }
+
+        Ok(result)
     })
 }

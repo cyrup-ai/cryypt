@@ -37,6 +37,7 @@ pub struct ChaChaWithKeyAndCiphertext {
 }
 
 impl ChaChaBuilder {
+    #[doc(hidden)]
     pub fn new() -> Self {
         Self
     }

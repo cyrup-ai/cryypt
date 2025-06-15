@@ -3,12 +3,14 @@ resolver = "3"
 members = [
     "cipher",        # Symmetric encryption
     "compression",   # Data compression
+    "cryypt",        # Main unified crate
+    "cryypt-vault",  # Secure storage
+    "cryypt-workspace-hack",   # Workspace hack
     "hashing",       # Hash functions
     "jwt",           # JSON Web Tokens
     "key",           # Key management
     "pqcrypto",      # Post-quantum cryptography
     "quiq",          # QUIC protocol crypto
-    "vault",         # Secure storage
 ]
 
 [workspace.package]
@@ -29,7 +31,8 @@ cryypt_jwt = { path = "./jwt" }
 cryypt_key = { path = "./key" }
 cryypt_pqcrypto = { path = "./pqcrypto" }
 cryypt_quiq = { path = "./quiq" }
-cryypt = { path = "./vault" }
+cryypt = { path = "./cryypt" }
+cryypt_vault = { path = "./cryypt-vault" }
 
 # Core utilities
 arc-swap = "1.7.1"

@@ -39,6 +39,7 @@ pub struct AesWithKeyAndCiphertext {
 }
 
 impl AesBuilder {
+    #[doc(hidden)]
     pub fn new() -> Self {
         Self
     }
