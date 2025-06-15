@@ -11,7 +11,7 @@
 //!   cargo run --example quiq -- client upload file.zip
 //!   cargo run --example quiq -- client download remote.zip
 
-use cryypt::transport::{Auth, Quique, Transport};
+use cryypt::quiq::{Auth, Quique, Transport};
 use std::env;
 use std::time::Duration;
 

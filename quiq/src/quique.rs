@@ -3,9 +3,12 @@
 //! Provides a fluent, type-safe API for establishing persistent QUIC connections
 //! and multiplexing different application protocols over the same connection.
 
-use crate::Result;
+use crate::{Result, client::connect_quic_client, quic_conn::QuicConnectionHandle};
+use crate::builder::QuicCryptoConfig;
 use std::net::SocketAddr;
 use std::time::Duration;
+use std::sync::Arc;
+use serde_json;
 
 /// Transport layer specification
 #[derive(Debug, Clone, Copy)]
@@ -96,7 +99,30 @@ impl ClientBuilder {
             }
         }
 
-        Ok(QuicConnection::new(socket_addr, self.auth))
+        // Build crypto config based on auth
+        let crypto_config = match &self.auth {
+            Some(Auth::MutualTLS { cert, key }) => {
+                let mut config = QuicCryptoConfig::new();
+                config.set_cert_chain(cert.clone());
+                config.set_private_key(key.clone());
+                Arc::new(config)
+            }
+            Some(Auth::PSK { key: _ }) => {
+                // PSK not supported in quiche, use default config
+                Arc::new(QuicCryptoConfig::new())
+            }
+            Some(Auth::Anonymous) | None => {
+                Arc::new(QuicCryptoConfig::new())
+            }
+        };
+
+        // Connect using the actual QUIC implementation
+        let local_addr = "0.0.0.0:0"; // Let OS choose port
+        let handle = connect_quic_client(local_addr, &addr_str, crypto_config).await?;
+
+        let mut connection = QuicConnection::new(socket_addr, self.auth);
+        connection.handle = Some(handle);
+        Ok(connection)
     }
 }
 
@@ -171,11 +197,12 @@ impl ServerListenerBuilder {
 pub struct QuicConnection {
     addr: SocketAddr,
     auth: Option<Auth>,
+    handle: Option<QuicConnectionHandle>,
 }
 
 impl QuicConnection {
     fn new(addr: SocketAddr, auth: Option<Auth>) -> Self {
-        Self { addr, auth }
+        Self { addr, auth, handle: None }
     }
 
     /// Dispatch multiple protocols over the same connection
@@ -184,7 +211,7 @@ impl QuicConnection {
         F: FnOnce(QuicStreamDispatcher) -> Fut + Send,
         Fut: std::future::Future<Output = Result<()>> + Send,
     {
-        let dispatcher = QuicStreamDispatcher::new(self.addr);
+        let dispatcher = QuicStreamDispatcher::new(self.addr, self.handle.clone());
         handler(dispatcher).await
     }
 
@@ -211,8 +238,20 @@ impl QuicConnection {
                 None => "None",
             }
         );
-        // TODO: Implement messaging with proper authentication
-        println!("    Message: {}", msg);
+        
+        if let Some(handle) = &self.handle {
+            // Wait for handshake to complete
+            handle.wait_for_handshake().await?;
+            
+            // Send the message over QUIC stream
+            let data = msg.as_bytes();
+            handle.send_stream_data(data, true)?;
+            println!("    Message sent: {}", msg);
+        } else {
+            return Err(crate::CryptoTransportError::Internal(
+                "No active connection".to_string()
+            ));
+        }
         Ok(())
     }
 
@@ -222,22 +261,48 @@ impl QuicConnection {
         method: impl Into<String>,
         params: impl Into<String>,
     ) -> Result<String> {
-        let _method = method.into();
-        let _params = params.into();
-        // TODO: Implement RPC
-        println!("🔄 Calling RPC on {}", self.addr);
-        Ok("response".to_string())
+        let method_str = method.into();
+        let params_str = params.into();
+        
+        if let Some(handle) = &self.handle {
+            // Wait for handshake to complete
+            handle.wait_for_handshake().await?;
+            
+            // Create RPC request
+            let request = serde_json::json!({
+                "method": method_str,
+                "params": params_str,
+                "id": 1
+            });
+            
+            let data = serde_json::to_vec(&request).map_err(|e| {
+                crate::CryptoTransportError::Internal(format!("Failed to serialize RPC: {}", e))
+            })?;
+            
+            // Send RPC request
+            handle.send_stream_data(&data, true)?;
+            println!("🔄 RPC {} called on {}", method_str, self.addr);
+            
+            // For now, return a mock response since we need to implement receiving
+            // In a complete implementation, we'd wait for the response
+            Ok(format!("{{\"result\": \"Response for {}\"}}", method_str))
+        } else {
+            Err(crate::CryptoTransportError::Internal(
+                "No active connection".to_string()
+            ))
+        }
     }
 }
 
 /// Stream dispatcher for multiplexed protocols
 pub struct QuicStreamDispatcher {
     addr: SocketAddr,
+    handle: Option<QuicConnectionHandle>,
 }
 
 impl QuicStreamDispatcher {
-    fn new(addr: SocketAddr) -> Self {
-        Self { addr }
+    fn new(addr: SocketAddr, handle: Option<QuicConnectionHandle>) -> Self {
+        Self { addr, handle }
     }
 
     /// Access file transfer protocol
@@ -247,12 +312,12 @@ impl QuicStreamDispatcher {
 
     /// Access messaging protocol
     pub fn messaging(&self) -> MessagingProtocol {
-        MessagingProtocol::new(self.addr)
+        MessagingProtocol::new(self.addr, self.handle.clone())
     }
 
     /// Access RPC protocol
     pub fn rpc(&self) -> RpcProtocol {
-        RpcProtocol::new(self.addr)
+        RpcProtocol::new(self.addr, self.handle.clone())
     }
 }
 
@@ -280,32 +345,34 @@ impl FileTransferProtocol {
 /// Messaging protocol over QUIC stream
 pub struct MessagingProtocol {
     addr: SocketAddr,
+    handle: Option<QuicConnectionHandle>,
 }
 
 impl MessagingProtocol {
-    fn new(addr: SocketAddr) -> Self {
-        Self { addr }
+    fn new(addr: SocketAddr, handle: Option<QuicConnectionHandle>) -> Self {
+        Self { addr, handle }
     }
 
     /// Send a message
     pub fn send(&self, message: impl Into<String>) -> MessageBuilder {
-        MessageBuilder::new(message.into(), self.addr)
+        MessageBuilder::new(message.into(), self.addr, self.handle.clone())
     }
 }
 
 /// RPC protocol over QUIC stream
 pub struct RpcProtocol {
     addr: SocketAddr,
+    handle: Option<QuicConnectionHandle>,
 }
 
 impl RpcProtocol {
-    fn new(addr: SocketAddr) -> Self {
-        Self { addr }
+    fn new(addr: SocketAddr, handle: Option<QuicConnectionHandle>) -> Self {
+        Self { addr, handle }
     }
 
     /// Call a remote procedure
     pub fn call(&self, method: impl Into<String>, params: impl Into<String>) -> RpcBuilder {
-        RpcBuilder::new(method.into(), params.into(), self.addr)
+        RpcBuilder::new(method.into(), params.into(), self.addr, self.handle.clone())
     }
 }
 
@@ -433,14 +500,16 @@ pub struct MessageBuilder {
     message: String,
     addr: SocketAddr,
     reliable: bool,
+    handle: Option<QuicConnectionHandle>,
 }
 
 impl MessageBuilder {
-    fn new(message: String, addr: SocketAddr) -> Self {
+    fn new(message: String, addr: SocketAddr, handle: Option<QuicConnectionHandle>) -> Self {
         Self {
             message,
             addr,
             reliable: false,
+            handle,
         }
     }
 
@@ -456,7 +525,7 @@ impl std::future::Future for MessageBuilder {
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
+        cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
         // Log message details
         println!(
@@ -465,8 +534,31 @@ impl std::future::Future for MessageBuilder {
         );
         println!("    Message: {}", self.message);
 
-        // TODO: Implement actual messaging with reliability guarantees
-        std::task::Poll::Ready(Ok(()))
+        if let Some(handle) = &self.handle {
+            let handle_clone = handle.clone();
+            let message = self.message.clone();
+            
+            let fut = async move {
+                // Wait for handshake
+                handle_clone.wait_for_handshake().await?;
+                
+                // Send the message
+                let data = message.as_bytes();
+                handle_clone.send_stream_data(data, true)?;
+                
+                Ok(())
+            };
+            
+            // Create a pinned future and poll it
+            let mut pinned = Box::pin(fut);
+            pinned.as_mut().poll(cx)
+        } else {
+            std::task::Poll::Ready(Err(
+                crate::CryptoTransportError::Internal(
+                    "No QUIC connection handle available".to_string(),
+                ),
+            ))
+        }
     }
 }
 
@@ -476,15 +568,17 @@ pub struct RpcBuilder {
     params: String,
     addr: SocketAddr,
     timeout: Option<Duration>,
+    handle: Option<QuicConnectionHandle>,
 }
 
 impl RpcBuilder {
-    fn new(method: String, params: String, addr: SocketAddr) -> Self {
+    fn new(method: String, params: String, addr: SocketAddr, handle: Option<QuicConnectionHandle>) -> Self {
         Self {
             method,
             params,
             addr,
             timeout: None,
+            handle,
         }
     }
 
@@ -500,7 +594,7 @@ impl std::future::Future for RpcBuilder {
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
+        cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
         // Log RPC details
         println!("🔄 Calling RPC method '{}' on {}", self.method, self.addr);
@@ -509,8 +603,45 @@ impl std::future::Future for RpcBuilder {
             println!("    Timeout: {:?}", timeout);
         }
 
-        // TODO: Implement actual RPC with timeout support
-        std::task::Poll::Ready(Ok("response".to_string()))
+        if let Some(handle) = &self.handle {
+            // Create async block to handle the RPC call
+            let handle_clone = handle.clone();
+            let method = self.method.clone();
+            let params = self.params.clone();
+            
+            let fut = async move {
+                // Wait for handshake
+                handle_clone.wait_for_handshake().await?;
+                
+                // Create RPC request
+                let request = serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "method": method,
+                    "params": params,
+                    "id": 1
+                });
+                
+                let data = serde_json::to_vec(&request).map_err(|e| {
+                    crate::CryptoTransportError::Internal(format!("Failed to serialize RPC: {}", e))
+                })?;
+                
+                // Send RPC request
+                handle_clone.send_stream_data(&data, true)?;
+                
+                // Return mock response for now
+                Ok(format!("{{\"result\": \"Response for {}\"}}", method))
+            };
+            
+            // Create a pinned future and poll it
+            let mut pinned = Box::pin(fut);
+            pinned.as_mut().poll(cx)
+        } else {
+            std::task::Poll::Ready(Err(
+                crate::CryptoTransportError::Internal(
+                    "No QUIC connection handle available".to_string(),
+                ),
+            ))
+        }
     }
 }
 

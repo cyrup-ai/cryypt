@@ -14,7 +14,8 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use cryypt::prelude::*;
+//! use cryypt_cipher::{Cipher, prelude::*};
+//! use cryypt_key::{Key, store::FileKeyStore, bits_macro::Bits};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {

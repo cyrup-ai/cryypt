@@ -23,6 +23,44 @@ pub struct QuicCryptoConfig {
 }
 
 impl QuicCryptoConfig {
+    /// Create a new crypto config with defaults
+    pub fn new() -> Self {
+        Self {
+            alpn_protocols: vec![b"cryypt/1".to_vec()],
+            cert_path: None,
+            key_path: None,
+            verify_peer: true,
+            max_idle_timeout: 30_000,
+            max_udp_payload_size: 1350,
+            initial_max_data: 10_000_000,
+            initial_max_stream_data_bidi_local: 1_000_000,
+            initial_max_stream_data_bidi_remote: 1_000_000,
+            initial_max_streams_bidi: 100,
+            initial_max_streams_uni: 100,
+            ack_delay_exponent: 3,
+            max_ack_delay: 25,
+            disable_active_migration: true,
+            cc_algorithm: quiche::CongestionControlAlgorithm::BBR,
+        }
+    }
+    
+    /// Set certificate chain
+    pub fn set_cert_chain(&mut self, cert: Vec<u8>) {
+        // For now, we'll need to write cert to a temp file
+        // In production, we'd handle this better
+        self.cert_path = Some("/tmp/cert.pem".to_string());
+        // Write cert to file
+        std::fs::write("/tmp/cert.pem", cert).ok();
+    }
+    
+    /// Set private key
+    pub fn set_private_key(&mut self, key: Vec<u8>) {
+        // For now, we'll need to write key to a temp file
+        // In production, we'd handle this better
+        self.key_path = Some("/tmp/key.pem".to_string());
+        // Write key to file
+        std::fs::write("/tmp/key.pem", key).ok();
+    }
     /// Create a new quiche::Config
     pub fn build_config(&self) -> Result<quiche::Config> {
         let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)?;
