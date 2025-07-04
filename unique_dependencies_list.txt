@@ -1,0 +1,328 @@
+# Comprehensive List of Unique Dependencies Used Across Cryypt Workspace
+
+## External Dependencies (with latest versions)
+
+aes = "0.9.0-rc.0"
+aes-gcm = "0.11.0-rc.0"
+anyhow = "1.0.98"
+arc-swap = "1.7.1"
+argon2 = "0.6.0-rc.0"
+atty = "0.2.14"
+aws-config = "1.8.1"
+aws-sdk-secretsmanager = "1.78.0"
+backtrace = "0.3.75"
+base64 = "0.22.1"
+base64-url = "3.0.0"
+base64ct = "1.8.0"
+bincode = "2.0.1"
+blake2 = "0.11.0-rc.0"
+blake2b_simd = "1.0.3"
+blake3 = "1.8.2"
+bzip2 = "0.6.0"
+bytes = "1.10.1"
+chacha20poly1305 = "0.11.0-rc.0"
+chrono = "0.4.41"
+clap = "4.5.40"
+clap_complete = "4.5.54"
+criterion = "0.6.0"
+crossbeam-channel = "0.5.15"
+crossterm = "0.29.0"
+crypto-common = "0.2.0-rc.3"
+dashmap = "7.0.0-rc2"
+deranged = "0.4.0"
+dialoguer = "0.11.0"
+digest = "0.11.0-rc.0"
+dirs = "6.0.0"
+either = "1.15.0"
+env_logger = "0.11.8"
+flate2 = "1.1.2"
+futures = "0.3.31"
+futures-core = "0.3.31"
+getrandom = "0.3.3"
+hashbrown = "0.15.4"
+hex = "0.4.3"
+hex-literal = "1.0.0"
+hkdf = "0.13.0-rc.0"
+hmac = "0.13.0-rc.0"
+indexmap = "2.10.0"
+itertools = "0.14.0"
+keyring = "4.0.0-rc.1"
+log = "0.4.27"
+once_cell = "1.21.3"
+p256 = "0.14.0-pre.8"
+pin-project = "1.1.10"
+proptest = "1.7.0"
+quiche = "0.24.4"
+rand = "0.9.1"
+rand_core = "0.9.3"
+ratatui = "0.30.0-alpha.5"
+regex = "1.11.1"
+secrecy = "0.10.3"
+serde = "1.0.219"
+serde_json = "1.0.140"
+sha2 = "0.11.0-rc.0"
+sha3 = "0.11.0-rc.0"
+shellexpand = "3.1.1"
+subtle = "2.6.1"
+surrealdb = "2.3.6"
+surrealdb-migrations = "2.3.0"
+tempfile = "3.20.0"
+thiserror = "2.0.12"
+time = "0.3.41"
+tokio = "1.46.1"
+tokio-stream = "0.1.17"
+tracing = "0.1.41"
+twox-hash = "2.1.1"
+uuid = "1.17.0"
+zeroize = "1.8.1"
+zip = "4.2.0"
+zstd = "0.13.3"
+
+## Post-Quantum Cryptography Dependencies
+
+pqcrypto = "0.18.1"
+pqcrypto-falcon = "0.4.0"
+pqcrypto-mldsa = "0.1.1"
+pqcrypto-mlkem = "0.1.0"
+pqcrypto-sphincsplus = "0.7.1"
+pqcrypto-traits = "0.3.5"
+
+## Internal Workspace Dependencies
+
+cryypt_cipher = { path = "../cipher" }
+cryypt_compression = { path = "../compression" }
+cryypt_hashing = { path = "../hashing" }
+cryypt_jwt = { path = "../jwt" }
+cryypt_key = { path = "../key" }
+cryypt_pqcrypto = { path = "../pqcrypto" }
+cryypt_quic = { path = "../quic" }
+cryypt_vault = { path = "../vault" }
+cryypt-workspace-hack = { path = "../cryypt-workspace-hack" }
+
+## Current Versions in Workspace Hack File (for comparison)
+
+# These are the current versions from cryypt-workspace-hack/Cargo.toml
+# Some are outdated compared to latest available versions above
+
+tokio = "1.45.1"           # Latest: 1.46.1
+serde = "1.0.219"          # Current
+serde_json = "1.0.140"     # Current
+thiserror = "2.0.12"       # Current
+anyhow = "1.0.98"          # Current
+aes-gcm = "0.10.3"         # Latest: 0.11.0-rc.0
+chacha20poly1305 = "0.10.1" # Latest: 0.11.0-rc.0
+argon2 = "0.5.3"           # Latest: 0.6.0-rc.0
+sha2 = "0.10.9"            # Latest: 0.11.0-rc.0
+sha3 = "0.10.8"            # Latest: 0.11.0-rc.0
+blake2b_simd = "1.0.3"     # Current
+blake3 = "1.8.2"           # Current
+digest = "0.10.7"          # Latest: 0.11.0-rc.0
+hmac = "0.12.1"            # Latest: 0.13.0-rc.0
+hkdf = "0.12.4"            # Latest: 0.13.0-rc.0
+zstd = "0.13.3"            # Current
+flate2 = "1.1.2"           # Current
+bzip2 = "0.6.0"            # Current
+zip = "4.2.0"              # Current
+clap = "4.5.40"            # Current
+clap_complete = "4.5.54"   # Current
+ratatui = "0.30.0-alpha.4" # Latest: 0.30.0-alpha.5
+crossterm = "0.29.0"       # Current
+dialoguer = "0.11.0"       # Current
+tracing = "0.1.41"         # Current
+log = "0.4.27"             # Current
+bytes = "1.10.1"           # Current
+chrono = "0.4.41"          # Current
+rand = "0.9.1"             # Current
+rand_core = "0.9.3"        # Current
+hex = "0.4.3"              # Current
+hex-literal = "1.0.0"      # Current
+base64 = "0.22.1"          # Current
+base64-url = "3.0.0"       # Current
+base64ct = "1.8.0"         # Current
+uuid = "1.17.0"            # Current
+regex = "1.11.1"           # Current
+once_cell = "1.21.3"       # Current
+itertools = "0.14.0"       # Current
+either = "1.15.0"          # Current
+indexmap = "2.10.0"        # Current
+time = "0.3.41"            # Current
+deranged = "0.4.0"         # Current
+keyring = "3.6.2"          # Latest: 4.0.0-rc.1
+zeroize = "1.8.1"          # Current
+secrecy = "0.10.3"         # Current
+subtle = "2.6.1"           # Current
+aws-config = "1.8.0"       # Latest: 1.8.1
+aws-sdk-secretsmanager = "1.77.0" # Latest: 1.78.0
+surrealdb = "2.3.6"        # Current
+surrealdb-migrations = "2.3.0" # Current
+dashmap = "6.1.0"          # Latest: 7.0.0-rc2
+crossbeam-channel = "0.5.15" # Current
+arc-swap = "1.7.1"         # Current
+pin-project = "1.1.10"     # Current
+dirs = "6.0.0"             # Current
+getrandom = "0.3.3"        # Current
+twox-hash = "2.1.1"        # Current
+quiche = "0.24.4"          # Current
+pqcrypto = "0.15.0"        # Latest: 0.18.1
+pqcrypto-falcon = "0.4.0"  # Current
+pqcrypto-mldsa = "0.1.1"   # Current
+pqcrypto-mlkem = "0.1.0"   # Current
+pqcrypto-sphincsplus = "0.6.2" # Latest: 0.7.1
+pqcrypto-traits = "0.3.5"  # Current
+atty = "0.2.14"            # Current
+proptest = "1.7.0"         # Current
+
+## Summary
+
+Total unique external dependencies: 67
+Total unique internal workspace dependencies: 9
+Dependencies needing updates: 18
+
+### Major Version Updates Needed:
+- keyring: 3.6.2 → 4.0.0-rc.1 (major)
+- dashmap: 6.1.0 → 7.0.0-rc2 (major)
+- pqcrypto: 0.15.0 → 0.18.1 (minor but significant)
+
+### Release Candidate Updates Available:
+- aes-gcm: 0.10.3 → 0.11.0-rc.0
+- chacha20poly1305: 0.10.1 → 0.11.0-rc.0
+- argon2: 0.5.3 → 0.6.0-rc.0
+- digest: 0.10.7 → 0.11.0-rc.0
+- hmac: 0.12.1 → 0.13.0-rc.0
+- hkdf: 0.12.4 → 0.13.0-rc.0
+- sha2: 0.10.9 → 0.11.0-rc.0
+- sha3: 0.10.8 → 0.11.0-rc.0
+
+### Minor Updates Available:
+- tokio: 1.45.1 → 1.46.1
+- aws-config: 1.8.0 → 1.8.1
+- aws-sdk-secretsmanager: 1.77.0 → 1.78.0
+- ratatui: 0.30.0-alpha.4 → 0.30.0-alpha.5
+- pqcrypto-sphincsplus: 0.6.2 → 0.7.1
+
+## Dependency Name → Latest Version Mapping
+
+For easy reference when updating Cargo.toml files:
+
+```toml
+# Core async/runtime
+tokio = "1.46.1"
+tokio-stream = "0.1.17"
+futures = "0.3.31"
+futures-core = "0.3.31"
+
+# Serialization
+serde = "1.0.219"
+serde_json = "1.0.140"
+bincode = "2.0.1"
+
+# Error handling
+thiserror = "2.0.12"
+anyhow = "1.0.98"
+
+# Cryptography - Symmetric
+aes = "0.9.0-rc.0"
+aes-gcm = "0.11.0-rc.0"
+chacha20poly1305 = "0.11.0-rc.0"
+
+# Cryptography - Hashing
+sha2 = "0.11.0-rc.0"
+sha3 = "0.11.0-rc.0"
+blake2 = "0.11.0-rc.0"
+blake2b_simd = "1.0.3"
+blake3 = "1.8.2"
+argon2 = "0.6.0-rc.0"
+
+# Cryptography - MAC/KDF
+hmac = "0.13.0-rc.0"
+hkdf = "0.13.0-rc.0"
+digest = "0.11.0-rc.0"
+crypto-common = "0.2.0-rc.3"
+
+# Cryptography - Curves
+p256 = "0.14.0-pre.8"
+subtle = "2.6.1"
+
+# Compression
+zstd = "0.13.3"
+flate2 = "1.1.2"
+bzip2 = "0.6.0"
+zip = "4.2.0"
+
+# CLI/TUI
+clap = "4.5.40"
+clap_complete = "4.5.54"
+ratatui = "0.30.0-alpha.5"
+crossterm = "0.29.0"
+dialoguer = "0.11.0"
+
+# Logging/Tracing
+tracing = "0.1.41"
+log = "0.4.27"
+env_logger = "0.11.8"
+
+# Utilities
+bytes = "1.10.1"
+chrono = "0.4.41"
+rand = "0.9.1"
+rand_core = "0.9.3"
+hex = "0.4.3"
+hex-literal = "1.0.0"
+base64 = "0.22.1"
+base64-url = "3.0.0"
+base64ct = "1.8.0"
+uuid = "1.17.0"
+regex = "1.11.1"
+once_cell = "1.21.3"
+itertools = "0.14.0"
+either = "1.15.0"
+indexmap = "2.10.0"
+time = "0.3.41"
+deranged = "0.4.0"
+shellexpand = "3.1.1"
+tempfile = "3.20.0"
+dirs = "6.0.0"
+
+# Security
+keyring = "4.0.0-rc.1"
+zeroize = "1.8.1"
+secrecy = "0.10.3"
+getrandom = "0.3.3"
+
+# AWS
+aws-config = "1.8.1"
+aws-sdk-secretsmanager = "1.78.0"
+
+# Database
+surrealdb = "2.3.6"
+surrealdb-migrations = "2.3.0"
+
+# Concurrency
+dashmap = "7.0.0-rc2"
+crossbeam-channel = "0.5.15"
+arc-swap = "1.7.1"
+pin-project = "1.1.10"
+
+# Type system/collections
+hashbrown = "0.15.4"
+twox-hash = "2.1.1"
+
+# Network/QUIC
+quiche = "0.24.4"
+
+# Post-quantum cryptography
+pqcrypto = "0.18.1"
+pqcrypto-falcon = "0.4.0"
+pqcrypto-mldsa = "0.1.1"
+pqcrypto-mlkem = "0.1.0"
+pqcrypto-sphincsplus = "0.7.1"
+pqcrypto-traits = "0.3.5"
+
+# Testing
+criterion = "0.6.0"
+proptest = "1.7.0"
+
+# Legacy/deprecated
+atty = "0.2.14"
+backtrace = "0.3.75"
+```

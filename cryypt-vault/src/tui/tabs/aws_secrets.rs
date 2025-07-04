@@ -1,7 +1,7 @@
 use zeroize::Zeroizing;
-use crate::app::App;
-use crate::types::{AppMode, AppTab, InputField, AwsSecretsStateMode};
-use crate::aws_interface::{AwsSecretManager, SecretSummary, AwsError};
+use super::super::app::App;
+use super::super::types::{AppMode, AppTab, InputField, AwsSecretsStateMode};
+use super::super::aws_interface::{AwsSecretManager, SecretSummary, AwsError};
 use ratatui::backend::Backend;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};

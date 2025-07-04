@@ -1,6 +1,6 @@
 //! Raw key builder
 
-use crate::{KeyResult, traits::KeyProviderBuilder};
+use crate::{traits::KeyProviderBuilder, KeyResult};
 
 /// Builder for raw key bytes
 pub struct RawKeyBuilder {

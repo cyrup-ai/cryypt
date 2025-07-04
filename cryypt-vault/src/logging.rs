@@ -22,5 +22,3 @@ pub fn log_security_event(event_type: &str, details: &str, success: bool) {
     }
 }
 
-// Re-export for use in other modules
-pub use log_security_event;

@@ -54,6 +54,12 @@
 #![warn(missing_docs)]
 #![forbid(unsafe_code)]
 
+#[macro_use]
+pub mod result_macro;
+
+#[macro_use]
+pub mod chunk_macro;
+
 pub mod bits_macro;
 /// Encryption and decryption primitives with multiple cipher support
 pub mod cipher;
@@ -67,7 +73,7 @@ pub use error::{CryptError, Result};
 
 // Re-export the fluent API
 pub use bits_macro::{BitSize, Bits};
-pub use cipher::api::Cipher;
+pub use cipher::api::{Cipher, AesWithKey, ChaChaWithKey, CryptoStream};
 
 /// Prelude module for convenient imports
 pub mod prelude {

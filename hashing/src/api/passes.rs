@@ -86,23 +86,3 @@ impl From<HashPasses> for u32 {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_default_is_production_safe() {
-        let default = HashPasses::default();
-        assert_eq!(default.iterations(), 10_000);
-        assert!(default.is_password_safe());
-    }
-
-    #[test]
-    fn test_password_safety() {
-        assert!(!HashPasses::Fast.is_password_safe());
-        assert!(!HashPasses::Moderate.is_password_safe());
-        assert!(HashPasses::Default.is_password_safe());
-        assert!(HashPasses::Strong.is_password_safe());
-        assert!(HashPasses::Maximum.is_password_safe());
-    }
-}

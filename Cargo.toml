@@ -2,145 +2,30 @@
 resolver = "3"
 members = [
     "cipher",        # Symmetric encryption
+    "common",        # Common infrastructure
     "compression",   # Data compression
     "cryypt",        # Main unified crate
     "cryypt-vault",  # Secure storage
     "cryypt-workspace-hack",   # Workspace hack
+    "examples",      # Examples
     "hashing",       # Hash functions
     "jwt",           # JSON Web Tokens
     "key",           # Key management
+    "map_macro",     # Ergonomic map/set macros
     "pqcrypto",      # Post-quantum cryptography
-    "quiq",          # QUIC protocol crypto
+    "quic",          # QUIC protocol crypto
 ]
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Cyrup AI <dev@cyrup.ai>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/cyrup-ai/crypt"
 keywords = ["encryption", "cryptography", "postquant", "cipher", "security"]
 categories = ["cryptography", "authentication"]
-rust-version = "1.70"
+rust-version = "1.88"
 
-[workspace.dependencies]
-cryypt_cipher = { path = "./cipher" }
-cryypt_compression = { path = "./compression" }
-cryypt_hashing = { path = "./hashing" }
-cryypt_jwt = { path = "./jwt" }
-cryypt_key = { path = "./key" }
-cryypt_pqcrypto = { path = "./pqcrypto" }
-cryypt_quiq = { path = "./quiq" }
-cryypt = { path = "./cryypt" }
-cryypt_vault = { path = "./cryypt-vault" }
-
-# Core utilities
-arc-swap = "1.7.1"
-rand = { version = "0.9.1", features = ["std", "std_rng"] }
-rand_core = "0.9.3"
-zeroize = { version = "1.8.1", features = ["derive"] }
-subtle = "2.6.1"
-once_cell = "1.21.3"
-getrandom = "0.3.3"
-
-# Error handling & serialization
-thiserror = "2.0.12"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
-bincode = "2.0.1"
-
-# Encoding
-base64 = "0.22.1"
-base64-url = "3.0.0"
-hex = "0.4.3"
-
-# Async runtime
-tokio = { version = "1.45.1", features = ["sync", "rt", "macros", "fs", "io-util", "net"] }
-tokio-stream = "0.1.17"
-futures = "0.3.31"
-futures-core = "0.3.31"
-
-# Data structures
-dashmap = "6.1.0"
-uuid = { version = "1.17.0", features = ["serde", "v4"] }
-chrono = { version = "0.4.41", features = ["serde"] }
-
-# Logging
-tracing = "0.1.41"
-
-# Cryptographic primitives
-aes-gcm = "0.10.3"
-chacha20poly1305 = "0.10.1"
-sha2 = "0.10.9"
-sha3 = "0.10.8"
-blake2 = "0.10.6"
-blake3 = "1.8.2"
-argon2 = "0.5.3"
-hkdf = "0.12.4"
-hmac = "0.12.1"
-p256 = { version = "0.13.2", features = ["ecdsa", "pkcs8"] }
-
-# Hashing utilities
-twox-hash = "2.1.0"
-
-# Compression
-bzip2 = "0.5.2"
-flate2 = "1.1.1"
-zstd = "0.13.3"
-zip = "4.0.0"
-
-# Post-quantum cryptography
-pqcrypto = { version = "0.18.1", features = ["serialization"] }
-pqcrypto-mlkem = { version = "0.1.0", features = ["serialization"] }
-pqcrypto-mldsa = { version = "0.1.1", features = ["serialization"] }
-pqcrypto-falcon = { version = "0.4.0", features = ["serialization"] }
-pqcrypto-sphincsplus = { version = "0.7.1", features = ["serialization"] }
-pqcrypto-traits = "0.3.5"
-
-# QUIC protocol
-quiche = "0.24.2"
-
-# Key management
-keyring = "3.6.2"
-
-# Database & storage
-surrealdb = "2.2.1"
-surrealdb-migrations = "2.2.1"
-
-# System utilities
-dirs = "5.0.1"
-regex = "1.11.1"
-time = { version = "0.3.36", features = ["serde", "formatting", "parsing"] }
-
-# Async utilities
-pin-project = "1.1.7"
-secrecy = "0.10.2"
-
-[workspace.lints.rust]
-unsafe_code = "forbid"
-missing_docs = "forbid"
-unused_imports = "warn"
-unwrap = "forbid"
-expect = "forbid"
-
-
-[profile.dev]
-debug = true
-opt-level = 0
-overflow-checks = true
-
-[profile.release]
-debug = false
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-panic = "abort"
-
-# Optimize dependencies even in dev builds for crypto performance
-[profile.dev.package."*"]
-opt-level = 2
-debug = "line-tables-only"
-
-[profile.bench]
-inherits = "release"
-debug = true
+[workspace.lints]
+clippy.all = "warn"
+clippy.pedantic = "warn"

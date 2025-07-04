@@ -201,17 +201,13 @@ impl KeyGeneration for FileKeyStore {
                     let nonce_array = GenericArray::from_slice(&nonce);
 
                     // Create cipher with master key
-                    let cipher = Aes256Gcm::new_from_slice(master_key.as_ref()).map_err(|e| {
-                        KeyError::InvalidKey(format!("Invalid master key: {}", e))
-                    })?;
+                    let cipher = Aes256Gcm::new_from_slice(master_key.as_ref())
+                        .map_err(|e| KeyError::InvalidKey(format!("Invalid master key: {}", e)))?;
 
                     // Encrypt key material
-                    let ciphertext =
-                        cipher
-                            .encrypt(nonce_array, key_material.as_ref())
-                            .map_err(|_| {
-                                KeyError::EncryptionFailed("Key encryption failed".into())
-                            })?;
+                    let ciphertext = cipher
+                        .encrypt(nonce_array, key_material.as_ref())
+                        .map_err(|_| KeyError::EncryptionFailed("Key encryption failed".into()))?;
 
                     // Combine nonce + ciphertext
                     let mut encrypted_data = nonce;
@@ -220,9 +216,7 @@ impl KeyGeneration for FileKeyStore {
                     Ok((key_material.to_vec(), encrypted_data))
                 })
                 .await
-                .map_err(|e| {
-                    KeyError::internal(format!("Key generation task failed: {}", e))
-                })??;
+                .map_err(|e| KeyError::internal(format!("Key generation task failed: {}", e)))??;
 
             // Ensure directory exists
             if let Some(parent) = path.parent() {

@@ -8,6 +8,8 @@ mod chacha_builder;
 mod cipher;
 mod decryption_builder;
 mod states;
+mod on_result_ext;
+mod stream;
 
 use crate::cipher::encryption_result::EncodableResult;
 use crate::Result;
@@ -26,3 +28,7 @@ impl<T> AsyncDecryptionResult for T where T: Future<Output = Result<Vec<u8>>> + 
 pub use builder_traits::{DataBuilder, EncryptBuilder, KeyBuilder};
 pub use cipher::Cipher;
 pub use states::{HasData, HasKey, NoData, NoKey};
+pub use on_result_ext::{CipherOnResultExt, CipherProducer};
+pub use aes_builder::{AesBuilder, AesWithKey};
+pub use chacha_builder::{ChaChaBuilder, ChaChaWithKey};
+pub use stream::CryptoStream;

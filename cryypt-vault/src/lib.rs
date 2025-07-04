@@ -3,7 +3,13 @@ pub mod core;
 pub mod db;
 pub mod error;
 pub mod local;
+pub mod logging;
 pub mod operation;
+pub mod tui;
+
+// TUI-specific modules
+pub use tui::aws_interface;
+pub use tui::pass_interface;
 
 // Re-export the public API
 pub use config::VaultConfig;

@@ -1,85 +1,75 @@
-//! Hash result type that implements Future for clean async interfaces
+//! Hash result type with encoding support
 
-use crate::{HashError, Result};
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use tokio::sync::oneshot;
-
-/// Result of a hash operation that can be awaited
-pub struct HashResultImpl {
-    receiver: oneshot::Receiver<Result<Vec<u8>>>,
+/// Result of a hash operation with encoding options
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HashResult {
+    /// Raw hash bytes
+    bytes: Vec<u8>,
 }
 
-impl HashResultImpl {
-    /// Create a new HashResultImpl from a oneshot receiver
-    pub(crate) fn new(receiver: oneshot::Receiver<Result<Vec<u8>>>) -> Self {
-        Self { receiver }
+impl HashResult {
+    /// Create a new hash result from raw bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self { bytes }
     }
 
-    /// Create a HashResultImpl that's already completed
-    pub(crate) fn ready(result: Result<Vec<u8>>) -> Self {
-        let (tx, rx) = oneshot::channel();
-        let _ = tx.send(result); // Safe to ignore error since we control both ends
-        Self { receiver: rx }
+    /// Get the raw bytes of the hash
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes
     }
 
-    /// Create a HashResultImpl that yields an error
-    pub(crate) fn error(error: HashError) -> Self {
-        Self::ready(Err(error))
+    /// Convert to a Vec<u8>
+    pub fn to_vec(self) -> Vec<u8> {
+        self.bytes
     }
 
-    /// Create a HashResultImpl from a closure that computes the hash
-    pub(crate) fn from_computation<F>(computation: F) -> Self
-    where
-        F: FnOnce() -> Result<Vec<u8>> + Send + 'static,
-    {
-        let (tx, rx) = oneshot::channel();
-
-        tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(computation)
-                .await
-                .unwrap_or_else(|e| {
-                    Err(HashError::internal(format!("Hash task panicked: {}", e)))
-                });
-            let _ = tx.send(result);
-        });
-
-        Self { receiver: rx }
+    /// Get the hash as a hexadecimal string
+    pub fn to_hex(&self) -> String {
+        hex::encode(&self.bytes)
     }
-}
 
-impl Future for HashResultImpl {
-    type Output = Result<Vec<u8>>;
+    /// Get the hash as a base64 string
+    pub fn to_base64(&self) -> String {
+        use base64::{Engine as _, engine::general_purpose};
+        general_purpose::STANDARD.encode(&self.bytes)
+    }
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match Pin::new(&mut self.receiver).poll(cx) {
-            Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(HashError::internal("Hash task dropped"))),
-            Poll::Pending => Poll::Pending,
-        }
+    /// Get the hash as a base64url string (URL-safe)
+    pub fn to_base64url(&self) -> String {
+        base64_url::encode(&self.bytes)
+    }
+
+    /// Get the length of the hash in bytes
+    pub fn len(&self) -> usize {
+        self.bytes.len()
+    }
+
+    /// Check if the hash is empty
+    pub fn is_empty(&self) -> bool {
+        self.bytes.is_empty()
     }
 }
 
-/// Result of a batch hash operation that can be streamed
-pub struct HashStream {
-    receiver: tokio_stream::wrappers::ReceiverStream<Result<Vec<u8>>>,
-}
-
-impl HashStream {
-    /// Create a new HashStream from an mpsc receiver
-    pub(crate) fn new(receiver: tokio::sync::mpsc::Receiver<Result<Vec<u8>>>) -> Self {
-        use tokio_stream::wrappers::ReceiverStream;
-        Self {
-            receiver: ReceiverStream::new(receiver),
-        }
+impl From<Vec<u8>> for HashResult {
+    fn from(bytes: Vec<u8>) -> Self {
+        Self::new(bytes)
     }
 }
 
-impl futures::Stream for HashStream {
-    type Item = Result<Vec<u8>>;
+impl From<HashResult> for Vec<u8> {
+    fn from(result: HashResult) -> Self {
+        result.bytes
+    }
+}
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Pin::new(&mut self.receiver).poll_next(cx)
+impl AsRef<[u8]> for HashResult {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
+    }
+}
+
+impl std::fmt::Display for HashResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_hex())
     }
 }

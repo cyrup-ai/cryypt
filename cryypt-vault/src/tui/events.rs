@@ -10,7 +10,7 @@ use ratatui::{
     backend::CrosstermBackend,
     Terminal,
 };
-use crate::vault::Vault;
+use crate::core::Vault;
 use zeroize::Zeroizing;
 use super::app::App;
 use super::types::{AppMode, AppTab, InputField};
@@ -102,7 +102,9 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                                     AppTab::Keys => AppTab::Search,
                                     AppTab::Search => AppTab::Add,
                                     AppTab::Add => AppTab::Settings,
-                                    AppTab::Settings => AppTab::Help,
+                                    AppTab::Settings => AppTab::Pass,
+                                    AppTab::Pass => AppTab::AwsSecrets,
+                                    AppTab::AwsSecrets => AppTab::Help,
                                     AppTab::Help => AppTab::Keys,
                                 }
                             }
@@ -110,7 +112,9 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                             KeyCode::Char('2') => app.active_tab = AppTab::Search,
                             KeyCode::Char('3') => app.active_tab = AppTab::Add,
                             KeyCode::Char('4') => app.active_tab = AppTab::Settings,
-                            KeyCode::Char('5') => app.active_tab = AppTab::Help,
+                            KeyCode::Char('5') => app.active_tab = AppTab::Pass,
+                            KeyCode::Char('6') => app.active_tab = AppTab::AwsSecrets,
+                            KeyCode::Char('7') => app.active_tab = AppTab::Help,
                             KeyCode::Char('s') => {
                                 if app.active_tab == AppTab::Search {
                                     app.mode = AppMode::Input(InputField::Search);
@@ -173,7 +177,7 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                             }
                             _ => {}
                         },
-                        AppMode::Input(ref field) => match key.code {
+                        AppMode::Input(field) => match key.code {
                             KeyCode::Esc => {
                                 app.mode = AppMode::Normal;
                             }

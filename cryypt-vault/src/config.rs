@@ -35,14 +35,14 @@ impl Default for VaultConfig {
                 home.join(".local/share")
             })
             .join("cysec");
-        
+
         // Create the directory if it doesn't exist
         if !data_dir.exists() {
             if let Err(e) = std::fs::create_dir_all(&data_dir) {
                 eprintln!("Warning: Failed to create data directory: {}", e);
             }
         }
-        
+
         // Set appropriate permissions on Unix systems
         #[cfg(unix)]
         {
@@ -53,7 +53,7 @@ impl Default for VaultConfig {
                 let _ = std::fs::set_permissions(&data_dir, perms);
             }
         }
-        
+
         Self {
             vault_path: data_dir.join("cysec.db"),
             salt_path: data_dir.join("cysec.salt"),

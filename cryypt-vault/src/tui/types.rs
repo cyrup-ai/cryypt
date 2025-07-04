@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::vault::VaultValue;
+use crate::core::VaultValue;
 use zeroize::Zeroizing;
 use std::time::Instant;
 use crate::aws_interface::{AwsSecretManager, SecretSummary};

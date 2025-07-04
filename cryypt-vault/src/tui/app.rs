@@ -1,8 +1,9 @@
-use crate::vault::Vault;
-use crate::vault::error::VaultError;
+use crate::core::Vault;
+use crate::error::VaultError;
 use super::types::{AppMode, AppState, AppTab};
 use crate::logging::log_security_event;
 use zeroize::Zeroizing;
+use tokio_stream::StreamExt;
 
 pub struct App {
     pub active_tab: AppTab,
@@ -90,14 +91,20 @@ impl App {
             return;
         }
 
-        match self.vault.find(".*").await {
-            Ok(items) => {
-                self.state.vault_items = items;
-            }
-            Err(err) => {
-                self.state.error_message = Some(format!("Failed to load items: {}", err));
+        let mut stream = self.vault.find(".*").await;
+        let mut items = Vec::new();
+        
+        while let Some(result) = stream.next().await {
+            match result {
+                Ok(item) => items.push(item),
+                Err(err) => {
+                    self.state.error_message = Some(format!("Failed to load items: {}", err));
+                    return;
+                }
             }
         }
+        
+        self.state.vault_items = items;
     }
 
     pub async fn search(&mut self) {
@@ -110,14 +117,20 @@ impl App {
             return;
         }
 
-        match self.vault.find(&self.state.search_pattern).await {
-            Ok(items) => {
-                self.state.search_results = items;
-            }
-            Err(err) => {
-                self.state.error_message = Some(format!("Failed to search: {}", err));
+        let mut stream = self.vault.find(&self.state.search_pattern).await;
+        let mut items = Vec::new();
+        
+        while let Some(result) = stream.next().await {
+            match result {
+                Ok(item) => items.push(item),
+                Err(err) => {
+                    self.state.error_message = Some(format!("Failed to search: {}", err));
+                    return;
+                }
             }
         }
+        
+        self.state.search_results = items;
     }
 
     pub async fn add_entry(&mut self) {

@@ -7,8 +7,8 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 // Remove Duration import if not used elsewhere
 // use std::time::Duration;
-use tokio::sync::{mpsc, oneshot};
-use secrecy::SecretString; // Use secrecy::SecretString for Passphrase
+use secrecy::SecretString;
+use tokio::sync::{mpsc, oneshot}; // Use secrecy::SecretString for Passphrase
 
 // --- Type Aliases ---
 
@@ -54,7 +54,6 @@ pub type VaultSaveRequest = VaultRequest<()>;
 pub type VaultChangePassphraseRequest = VaultRequest<()>;
 pub type VaultPutAllRequest = VaultRequest<()>;
 
-
 // Generic request type for operations returning a stream of values
 #[pin_project]
 #[derive(Debug)]
@@ -64,7 +63,7 @@ pub struct VaultStreamRequest<T> {
 }
 
 impl<T> VaultStreamRequest<T> {
-     // This constructor would typically be called by the trait implementation
+    // This constructor would typically be called by the trait implementation
     pub(crate) fn new(receiver: mpsc::Receiver<VaultResult<T>>) -> Self {
         Self { receiver }
     }
@@ -82,7 +81,6 @@ impl<T> Stream for VaultStreamRequest<T> {
 pub type VaultListRequest = VaultStreamRequest<String>;
 pub type VaultFindRequest = VaultStreamRequest<(String, VaultValue)>;
 
-
 /// Defines the core vault operations using awaitable return types
 pub trait VaultOperation: Send + Sync + 'static {
     /// Get the operation name
@@ -96,37 +94,37 @@ pub trait VaultOperation: Send + Sync + 'static {
 
     /// Lock the vault. Returns a request that resolves when locked.
     fn lock(&self) -> VaultUnitRequest;
-    
+
     /// Check if this provider supports time-to-live for secrets
     fn supports_ttl(&self) -> bool {
         false
     }
-    
+
     /// Check if this provider supports versioning of secrets
     fn supports_versioning(&self) -> bool {
         false
     }
-    
+
     /// Check if this provider supports tagging secrets
     fn supports_tags(&self) -> bool {
         false
     }
-    
+
     /// Check if this provider supports namespaces
     fn supports_namespaces(&self) -> bool {
         false
     }
-    
+
     /// Check if this provider supports encryption
     fn supports_encryption(&self) -> bool {
         false
     }
-    
+
     /// Get the encryption type used by this provider
     fn encryption_type(&self) -> &str {
         "none"
     }
-    
+
     /// Check if this provider supports defense-in-depth encryption (cascading layers)
     fn supports_defense_in_depth(&self) -> bool {
         false
@@ -145,7 +143,11 @@ pub trait VaultOperation: Send + Sync + 'static {
     fn list(&self, prefix: Option<&str>) -> VaultListRequest;
 
     /// Change the passphrase. Returns a request that resolves when changed.
-    fn change_passphrase(&self, old_passphrase: &Passphrase, new_passphrase: &Passphrase) -> VaultChangePassphraseRequest;
+    fn change_passphrase(
+        &self,
+        old_passphrase: &Passphrase,
+        new_passphrase: &Passphrase,
+    ) -> VaultChangePassphraseRequest;
 
     /// Save the vault state (if applicable). Returns a request that resolves when saved.
     fn save(&self) -> VaultSaveRequest;
@@ -158,7 +160,7 @@ pub trait VaultOperation: Send + Sync + 'static {
 
     /// Find entries matching a pattern. Returns a request yielding a stream of matching key-value pairs.
     fn find(&self, pattern: &str) -> VaultFindRequest;
-    
+
     /// Optional: Create a new namespace
     fn create_namespace(&self, _namespace: &str) -> VaultUnitRequest {
         let (tx, rx) = oneshot::channel();
@@ -167,16 +169,21 @@ pub trait VaultOperation: Send + Sync + 'static {
         )));
         VaultUnitRequest::new(rx)
     }
-    
+
     /// Optional: Store a value in a specific namespace
-    fn put_with_namespace(&self, _namespace: &str, _key: &str, _value: VaultValue) -> VaultUnitRequest {
+    fn put_with_namespace(
+        &self,
+        _namespace: &str,
+        _key: &str,
+        _value: VaultValue,
+    ) -> VaultUnitRequest {
         let (tx, rx) = oneshot::channel();
         let _ = tx.send(Err(VaultError::UnsupportedOperation(
             "This provider does not support namespaces".to_string(),
         )));
         VaultUnitRequest::new(rx)
     }
-    
+
     /// Optional: Get entries in a specific namespace
     fn get_by_namespace(&self, _namespace: &str) -> VaultListRequest {
         let (tx, rx) = mpsc::channel(1);

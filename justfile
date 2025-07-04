@@ -47,8 +47,8 @@ test-jwt:
 test-pqcrypto:
     cargo test --package cryypt_pqcrypto
 
-test-quiq:
-    cargo test --package cryypt_quiq
+test-quic:
+    cargo test --package cryypt_quic
 
 # Run tests including doctests
 test-all-including-docs:

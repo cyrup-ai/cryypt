@@ -60,4 +60,3 @@ impl CompressionError {
         Self::InternalError(msg.to_string())
     }
 }
-

@@ -58,15 +58,15 @@ pub enum KeyError {
     /// Encryption failed
     #[error("Encryption failed: {0}")]
     EncryptionFailed(String),
-    
+
     /// Decryption failed
     #[error("Decryption failed: {0}")]
     DecryptionFailed(String),
-    
+
     /// IO error wrapper
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
-    
+
     /// IO error with message
     #[error("IO error: {0}")]
     Io(String),
@@ -119,6 +119,14 @@ impl KeyError {
     /// Create an InternalError with a formatted message
     pub fn internal(msg: impl fmt::Display) -> Self {
         Self::InternalError(msg.to_string())
+    }
+
+    /// Create a KeyNotFound error with a key ID
+    pub fn key_not_found(id: impl Into<String>) -> Self {
+        Self::KeyNotFound {
+            id: id.into(),
+            version: None,
+        }
     }
 }
 

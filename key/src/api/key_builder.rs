@@ -1,6 +1,8 @@
 //! Minimal key builder implementation
 
-use crate::{KeyImport, KeyResult, KeyRetrieval, KeyStorage, SimpleKeyId, traits::KeyProviderBuilder};
+use crate::{
+    traits::KeyProviderBuilder, KeyImport, KeyResult, KeyRetrieval, KeyStorage, SimpleKeyId,
+};
 
 /// 256-bit key builder
 pub struct Key256Builder;

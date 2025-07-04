@@ -1,3 +1,6 @@
+#[macro_use]
+pub mod result_macro;
+
 pub mod api;
 pub mod bits_macro;
 pub mod entropy;
@@ -11,7 +14,7 @@ pub mod traits;
 // Re-export error types
 pub use error::{KeyError, Result};
 
-pub use api::Key;
+pub use api::{Key, KeyGenerator, KeyRetriever, KeyRetrieverBatch, KeyRetrieverVersionRange};
 pub use key_id::{KeyId, SimpleKeyId};
 pub use key_result::KeyResult;
 pub use multi_layer::MultiLayerKey;

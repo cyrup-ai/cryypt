@@ -121,11 +121,11 @@ pub enum CryptError {
     /// Simple IO error with string message
     #[error("IO error: {0}")]
     Io(String),
-    
+
     /// Key management error
     #[error("Key management error: {0}")]
     KeyManagement(String),
-    
+
     /// Compression error
     #[error("Compression error: {0}")]
     CompressionError(String),

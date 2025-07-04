@@ -20,9 +20,9 @@ pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {
 
     let mut encoder = GzEncoder::new(data, compression);
     let mut compressed = Vec::new();
-    encoder
-        .read_to_end(&mut compressed)
-        .map_err(|e| CompressionError::compression_failed(format!("Gzip compression failed: {}", e)))?;
+    encoder.read_to_end(&mut compressed).map_err(|e| {
+        CompressionError::compression_failed(format!("Gzip compression failed: {}", e))
+    })?;
 
     Ok(compressed)
 }
@@ -34,9 +34,9 @@ pub fn compress(data: &[u8], level: u32) -> Result<Vec<u8>> {
 pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
     let mut decoder = GzDecoder::new(data);
     let mut decompressed = Vec::new();
-    decoder
-        .read_to_end(&mut decompressed)
-        .map_err(|e| CompressionError::decompression_failed(format!("Gzip decompression failed: {}", e)))?;
+    decoder.read_to_end(&mut decompressed).map_err(|e| {
+        CompressionError::decompression_failed(format!("Gzip decompression failed: {}", e))
+    })?;
 
     Ok(decompressed)
 }

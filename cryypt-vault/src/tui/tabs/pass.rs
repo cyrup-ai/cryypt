@@ -3,11 +3,12 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
     Frame,
 };
 use super::super::app::App;
-use super::super::types::{AppMode, InputField};
+use super::super::types::{PassState, PassStateMode};
+use super::super::pass_interface::PassInterface;
 
 pub fn render_pass_tab<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
@@ -20,24 +21,25 @@ pub fn render_pass_tab<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
         .split(area);
 
     // Pass store path input
-    let pass_store_path_input = Paragraph::new(app.state.pass_store_path.as_str())
+    let pass_store_path_input = Paragraph::new(app.state.pass.store_path.as_str())
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .title("Password Store Path")
-                .style(match app.mode {
+                .style(Style::default()),
+        );
 
-    f.render_widget(title, chunks[0]);
+    f.render_widget(pass_store_path_input, chunks[0]);
 
     match app.state.pass.mode {
-        PassState::List => render_pass_list(f, app, chunks[1]),
-        PassState::View => render_pass_view(f, app, chunks[1]),
-        PassState::Search => render_pass_search(f, app, chunks[1]),
+        PassStateMode::List => render_pass_list(f, app, chunks[1]),
+        PassStateMode::View => render_pass_view(f, app, chunks[1]),
+        PassStateMode::Search => render_pass_search(f, app, chunks[1]),
     }
 }
 
 fn render_pass_list<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
-    let passwords = app.state.pass.passwords.clone();
+    let passwords = app.state.pass.entries.clone();
     let list_items: Vec<ListItem> = passwords
         .iter()
         .map(|p| ListItem::new(Span::raw(p.clone())))
@@ -57,13 +59,13 @@ fn render_pass_list<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
 
 fn render_pass_view<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
     let selected = app.state.pass.selected_index;
-    let password_name = if selected < app.state.pass.passwords.len() {
-        app.state.pass.passwords[selected].clone()
+    let password_name = if selected < app.state.pass.entries.len() {
+        app.state.pass.entries[selected].clone()
     } else {
         String::new()
     };
 
-    let content = app.state.pass.current_password.clone();
+    let content = app.state.pass.content.as_ref().map(|z| z.as_str()).unwrap_or("").to_string();
     let lines = vec![
         Line::from(Span::styled(
             format!("Password: {}", password_name),
@@ -104,8 +106,8 @@ pub async fn load_passwords(app: &mut App) {
     
     match pass.get_all_entries() {
         Ok(entries) => {
-            app.state.pass.passwords = entries;
-            if !app.state.pass.passwords.is_empty() && app.state.pass.selected_index == 0 {
+            app.state.pass.entries = entries;
+            if !app.state.pass.entries.is_empty() && app.state.pass.selected_index == 0 {
                 app.state.pass.selected_index = 0;
             }
         }
@@ -117,16 +119,16 @@ pub async fn load_passwords(app: &mut App) {
 
 /// Load a password content
 pub async fn load_password_content(app: &mut App) {
-    if app.state.pass.selected_index >= app.state.pass.passwords.len() {
+    if app.state.pass.selected_index >= app.state.pass.entries.len() {
         return;
     }
     
-    let password_name = app.state.pass.passwords[app.state.pass.selected_index].clone();
+    let password_name = app.state.pass.entries[app.state.pass.selected_index].clone();
     let pass = PassInterface::default();
     
     match pass.get_password(&password_name) {
         Ok(content) => {
-            app.state.pass.current_password = content.to_string();
+            app.state.pass.content = Some(content);
         }
         Err(e) => {
             app.state.pass.status_message = format!("Error loading password: {}", e);
@@ -141,9 +143,9 @@ pub async fn search_passwords(app: &mut App) {
     
     match pass.search_entries(&query) {
         Ok(entries) => {
-            app.state.pass.passwords = entries;
+            app.state.pass.entries = entries;
             app.state.pass.selected_index = 0;
-            app.state.pass.mode = PassState::List;
+            app.state.pass.mode = PassStateMode::List;
         }
         Err(e) => {
             app.state.pass.status_message = format!("Error searching passwords: {}", e);
@@ -154,48 +156,48 @@ pub async fn search_passwords(app: &mut App) {
 /// Process keyboard input for the Pass tab
 pub async fn handle_input(app: &mut App, key: crossterm::event::KeyEvent) {
     match app.state.pass.mode {
-        PassState::List => {
+        PassStateMode::List => {
             match key.code {
                 crossterm::event::KeyCode::Down => {
-                    if !app.state.pass.passwords.is_empty() {
-                        app.state.pass.selected_index = (app.state.pass.selected_index + 1) % app.state.pass.passwords.len();
+                    if !app.state.pass.entries.is_empty() {
+                        app.state.pass.selected_index = (app.state.pass.selected_index + 1) % app.state.pass.entries.len();
                     }
                 }
                 crossterm::event::KeyCode::Up => {
-                    if !app.state.pass.passwords.is_empty() {
+                    if !app.state.pass.entries.is_empty() {
                         app.state.pass.selected_index = app.state.pass.selected_index.checked_sub(1)
-                            .unwrap_or(app.state.pass.passwords.len() - 1);
+                            .unwrap_or(app.state.pass.entries.len() - 1);
                     }
                 }
                 crossterm::event::KeyCode::Enter => {
-                    if !app.state.pass.passwords.is_empty() {
-                        app.state.pass.mode = PassState::View;
+                    if !app.state.pass.entries.is_empty() {
+                        app.state.pass.mode = PassStateMode::View;
                         load_password_content(app).await;
                     }
                 }
                 crossterm::event::KeyCode::Char('/') => {
-                    app.state.pass.mode = PassState::Search;
+                    app.state.pass.mode = PassStateMode::Search;
                     app.state.pass.search_query.clear();
                 }
                 _ => {}
             }
         }
-        PassState::View => {
+        PassStateMode::View => {
             match key.code {
                 crossterm::event::KeyCode::Esc => {
-                    app.state.pass.mode = PassState::List;
-                    app.state.pass.current_password.clear();
+                    app.state.pass.mode = PassStateMode::List;
+                    app.state.pass.content = None;
                 }
                 _ => {}
             }
         }
-        PassState::Search => {
+        PassStateMode::Search => {
             match key.code {
                 crossterm::event::KeyCode::Enter => {
                     search_passwords(app).await;
                 }
                 crossterm::event::KeyCode::Esc => {
-                    app.state.pass.mode = PassState::List;
+                    app.state.pass.mode = PassStateMode::List;
                     app.state.pass.search_query.clear();
                 }
                 crossterm::event::KeyCode::Char(c) => {

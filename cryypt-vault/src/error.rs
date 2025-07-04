@@ -66,12 +66,22 @@ impl From<CryptError> for VaultError {
             CryptError::KeyDerivationFailed(msg) => VaultError::KeyDerivation(msg),
             CryptError::EncryptionFailed(msg) => VaultError::Encryption(msg),
             CryptError::DecryptionFailed(msg) => VaultError::Decryption(msg),
-            CryptError::InvalidKeySize { expected, actual } => VaultError::Crypto(format!("Invalid key size: expected {}, got {}", expected, actual)),
-            CryptError::InvalidNonceSize { expected, actual } => VaultError::Crypto(format!("Invalid nonce size: expected {}, got {}", expected, actual)),
+            CryptError::InvalidKeySize { expected, actual } => VaultError::Crypto(format!(
+                "Invalid key size: expected {}, got {}",
+                expected, actual
+            )),
+            CryptError::InvalidNonceSize { expected, actual } => VaultError::Crypto(format!(
+                "Invalid nonce size: expected {}, got {}",
+                expected, actual
+            )),
             CryptError::InvalidEncryptedData(msg) => VaultError::Crypto(msg),
-            CryptError::SerializationError(msg) => VaultError::Serialization(serde_json::from_str::<()>(&format!("serialization error: {}", msg)).unwrap_err()),
+            CryptError::SerializationError(msg) => VaultError::Serialization(
+                serde_json::from_str::<()>(&format!("serialization error: {}", msg)).unwrap_err(),
+            ),
             CryptError::IoError(e) => VaultError::Io(e),
-            CryptError::Io(msg) => VaultError::Io(std::io::Error::new(std::io::ErrorKind::Other, msg)),
+            CryptError::Io(msg) => {
+                VaultError::Io(std::io::Error::new(std::io::ErrorKind::Other, msg))
+            }
             CryptError::InternalError(msg) => VaultError::Other(msg),
             _ => VaultError::Other(err.to_string()),
         }

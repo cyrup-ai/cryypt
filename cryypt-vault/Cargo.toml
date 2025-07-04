@@ -1,39 +1,57 @@
 [package]
 name = "cryypt_vault"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
-cryypt_cipher = { workspace = true }
-cryypt_hashing = { workspace = true }
-cryypt_jwt = { workspace = true }
-cryypt_key = { workspace = true }
-cryypt_pqcrypto = { workspace = true }
-cryypt_quiq = { workspace = true }
+cryypt_cipher = { path = "../cipher" }
+cryypt_hashing = { path = "../hashing" }
+cryypt_jwt = { path = "../jwt" }
+cryypt_key = { path = "../key" }
+cryypt_pqcrypto = { path = "../pqcrypto" }
+cryypt_quic = { path = "../quic" }
 
-# Core workspace dependencies
-tokio = { workspace = true }
-tokio-stream = { workspace = true }
-futures = { workspace = true }
-futures-core = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
-zeroize = { workspace = true }
-base64 = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
-tracing = { workspace = true }
-rand = { workspace = true }
-surrealdb = { workspace = true }
-surrealdb-migrations = { workspace = true }
-dirs = { workspace = true }
-regex = { workspace = true }
-time = { workspace = true }
-pin-project = { workspace = true }
-secrecy = { workspace = true }
-argon2 = { workspace = true }
+# Core dependencies
+tokio = "1.46.1"
+tokio-stream = "0.1.17"
+futures = "0.3.31"
+futures-core = "0.3.31"
+serde = "1.0.219"
+serde_json = "1.0.140"
+thiserror = "2.0.12"
+zeroize = "1.8.1"
+base64 = "0.22.1"
+uuid = "1.17.0"
+chrono = "0.4.41"
+tracing = "0.1.41"
+rand = "0.9.1"
+surrealdb = "2.3.6"
+surrealdb-migrations = "2.3.0"
+dirs = "6.0.0"
+regex = "1.11.1"
+time = "0.3.41"
+pin-project = "1.1.10"
+secrecy = "0.10.3"
+argon2 = "0.6.0-rc.0"
 
+# CLI dependencies
+clap = "4.5.40"
+clap_complete = "4.5.54"
+dialoguer = "0.11.0"
+atty = "0.2.14"
+shellexpand = "3.1.1"
+log = "0.4.27"
+crossterm = "0.29.0"
+ratatui = "0.30.0-alpha.5"
+
+# AWS SDK dependencies
+aws-config = "1.8.1"
+aws-sdk-secretsmanager = "1.78.0"
 
 [[bin]]
 name = "cryypt"

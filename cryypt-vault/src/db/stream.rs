@@ -14,7 +14,12 @@ impl<T> QueryStream<T> {
     /// Create a new QueryStream
     pub fn new() -> (Self, mpsc::Sender<Result<T, VaultError>>) {
         let (tx, rx) = mpsc::channel(16);
-        (Self { inner: ReceiverStream::new(rx) }, tx)
+        (
+            Self {
+                inner: ReceiverStream::new(rx),
+            },
+            tx,
+        )
     }
 
     /// Convert into a vector by collecting all items

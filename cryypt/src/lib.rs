@@ -84,11 +84,31 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
+// === Core Modules ===
+
+#[cfg(feature = "key")]
+mod master;
+
+#[cfg(feature = "key")]
+pub use master::Cryypt;
+
 // === Core Re-exports ===
 
 #[cfg(feature = "key")]
 #[cfg_attr(docsrs, doc(cfg(feature = "key")))]
-pub use cryypt_key::{Key, KeyId, KeyResult};
+pub use cryypt_key::{Key, KeyGenerator, KeyId, KeyResult, KeyRetriever};
+
+#[cfg(feature = "key")]
+#[cfg_attr(docsrs, doc(cfg(feature = "key")))]
+pub use cryypt_key::api::KeyBuilder;
+
+#[cfg(feature = "key")]
+#[cfg_attr(docsrs, doc(cfg(feature = "key")))]
+pub use cryypt_key::on_result;
+
+#[cfg(feature = "key")]
+#[cfg_attr(docsrs, doc(cfg(feature = "key")))]
+pub use cryypt_key::bits_macro::Bits;
 
 #[cfg(feature = "file-store")]
 #[cfg_attr(docsrs, doc(cfg(feature = "file-store")))]
@@ -102,18 +122,38 @@ pub use cryypt_key::store::KeychainStore;
 
 #[cfg(any(feature = "aes", feature = "chacha20"))]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "aes", feature = "chacha20"))))]
-pub use cryypt_cipher::{Cipher, EncodableResult, CryptError};
+pub use cryypt_cipher::{Cipher, CryptError, EncodableResult};
 
 // === Hashing Re-exports ===
 
 #[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))))]
-pub use cryypt_hashing::{Hash, HashError};
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b")))
+)]
+pub use cryypt_hashing::{Hash, HashError, HashResult};
+
+#[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b")))
+)]
+pub use cryypt_hashing::on_result as hash_on_result;
+
+#[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b")))
+)]
+pub use cryypt_hashing::on_chunk as hash_on_chunk;
 
 // === Compression Re-exports ===
 
 #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip")))
+)]
 pub use cryypt_compression::{Compress, CompressionError};
 
 // === Higher Level Re-exports ===
@@ -126,9 +166,9 @@ pub use cryypt_jwt as jwt;
 #[cfg_attr(docsrs, doc(cfg(feature = "pqcrypto")))]
 pub use cryypt_pqcrypto as pqcrypto;
 
-#[cfg(feature = "quiq")]
-#[cfg_attr(docsrs, doc(cfg(feature = "quiq")))]
-pub use cryypt_quiq as quiq;
+#[cfg(feature = "quic")]
+#[cfg_attr(docsrs, doc(cfg(feature = "quic")))]
+pub use cryypt_quic as quic;
 
 #[cfg(feature = "vault")]
 #[cfg_attr(docsrs, doc(cfg(feature = "vault")))]
@@ -137,7 +177,10 @@ pub use cryypt_vault as vault;
 /// Prelude module for convenient imports
 pub mod prelude {
     #[cfg(feature = "key")]
-    pub use crate::Key;
+    pub use crate::{on_result, Key, KeyBuilder, KeyGenerator, KeyRetriever};
+
+    #[cfg(feature = "key")]
+    pub use crate::Cryypt;
 
     #[cfg(feature = "file-store")]
     pub use crate::FileKeyStore;
@@ -149,7 +192,7 @@ pub mod prelude {
     pub use crate::{Cipher, EncodableResult};
 
     #[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
-    pub use crate::Hash;
+    pub use crate::{Hash, HashResult, hash_on_result, hash_on_chunk};
 
     #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
     pub use crate::Compress;

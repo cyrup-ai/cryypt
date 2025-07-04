@@ -1,12 +1,14 @@
 pub mod app;
+pub mod aws_interface;
 pub mod cli;
 pub mod events;
+pub mod pass_interface;
 pub mod tabs;
 pub mod types;
 pub mod ui;
 
-pub use cli::Commands;
-pub use crate::vault::Vault;
+pub use cli::{Cli, Commands};
+pub use crate::core::Vault;
 pub use events::run_tui;
 
 // Entry point for the TUI application
@@ -15,9 +17,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     use cli::Cli;
     use std::path::PathBuf;
     use tokio::runtime::Runtime;
-    use crate::vault::basic::LocalVaultProvider;
-    use crate::vault::crypt::ChaChaEncryptor;
-    use crate::vault::Vault;
+    use crate::local::LocalVaultProvider;
+    use crate::core::Vault;
     
     // Create the runtime
     let rt = Runtime::new()?;
@@ -31,7 +32,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         let vault = Vault::new();
         
         // Get default config
-        let mut config = crate::vault::config::VaultConfig::default();
+        let mut config = crate::config::VaultConfig::default();
         
         // Override with command line options if provided
         if let Some(vault_path) = cli.vault_path {
@@ -52,11 +53,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         // Create the vault provider
-        let encryptor = ChaChaEncryptor::new(
-            config.argon2_memory_cost,
-            config.argon2_time_cost, 
-            config.argon2_parallelism
-        );
+        // LocalVaultProvider has its own encryption setup
         
         // Ensure parent directories exist
         if let Some(parent) = config.vault_path.parent() {
@@ -83,7 +80,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         // Create provider with config
-        let provider = LocalVaultProvider::with_encryptor(config, encryptor);
+        let provider = LocalVaultProvider::new(config);
         
         // Register provider
         vault.register_operation(provider).await;
@@ -97,7 +94,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         let should_save = cli.save || matches!(command, Commands::Save {});
         
         // Execute CLI command
-        let result = rt.block_on(crate::cli::process_command(&vault, command, cli.json));
+        let result = rt.block_on(cli::process_command(&vault, command, cli.json));
         
         // If save flag is true or the command is Save, explicitly save data to disk
         if should_save {

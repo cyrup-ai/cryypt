@@ -1,10 +1,10 @@
 //! OS Keychain-based key storage (macOS Keychain, Windows Credential Store, Linux Secret Service)
 
+use crate::KeyError;
 use crate::{
     AsyncDeleteResult, AsyncExistsResult, AsyncListResult, AsyncRetrieveResult, AsyncStoreResult,
     KeyEnumeration, KeyId, KeyImport, KeyRetrieval, KeyStorage,
 };
-use crate::KeyError;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use zeroize::Zeroizing;
 
@@ -58,9 +58,9 @@ impl KeyStorage for KeychainStore {
                 let keyring = keyring::Entry::new(&service_name, &key_id_str)
                     .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
 
-                keyring.delete_credential().map_err(|e| {
-                    KeyError::Io(format!("Failed to delete from keychain: {}", e))
-                })?;
+                keyring
+                    .delete_credential()
+                    .map_err(|e| KeyError::Io(format!("Failed to delete from keychain: {}", e)))?;
 
                 Ok(())
             })

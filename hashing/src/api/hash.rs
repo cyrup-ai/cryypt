@@ -13,16 +13,20 @@ impl Hash {
             data: NoData,
             salt: NoSalt,
             passes: NoPasses,
+            result_handler: None,
+            chunk_handler: None,
         }
     }
 
     /// Use SHA3-256
-    pub fn sha3() -> HashBuilder<Sha3_256Hash, NoData, NoSalt, NoPasses> {
+    pub fn sha3_256() -> HashBuilder<Sha3_256Hash, NoData, NoSalt, NoPasses> {
         HashBuilder {
             hasher: Sha3_256Hash,
             data: NoData,
             salt: NoSalt,
             passes: NoPasses,
+            result_handler: None,
+            chunk_handler: None,
         }
     }
 
@@ -33,6 +37,8 @@ impl Hash {
             data: NoData,
             salt: NoSalt,
             passes: NoPasses,
+            result_handler: None,
+            chunk_handler: None,
         }
     }
 
@@ -43,6 +49,8 @@ impl Hash {
             data: NoData,
             salt: NoSalt,
             passes: NoPasses,
+            result_handler: None,
+            chunk_handler: None,
         }
     }
 
@@ -53,20 +61,27 @@ impl Hash {
             data: NoData,
             salt: NoSalt,
             passes: NoPasses,
+            result_handler: None,
+            chunk_handler: None,
         }
     }
 }
 
 // Marker types for different hash algorithms
 /// SHA-256 hash algorithm implementation
+#[derive(Clone)]
 pub struct Sha256Hash;
 /// SHA3-256 hash algorithm implementation
+#[derive(Clone)]
 pub struct Sha3_256Hash;
 /// SHA3-384 hash algorithm implementation
+#[derive(Clone)]
 pub struct Sha3_384Hash;
 /// SHA3-512 hash algorithm implementation
+#[derive(Clone)]
 pub struct Sha3_512Hash;
 /// BLAKE2b hash algorithm implementation with configurable output size
+#[derive(Clone)]
 pub struct Blake2bHash {
     /// Output size in bytes (1-64)
     pub output_size: u8,
