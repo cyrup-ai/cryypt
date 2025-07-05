@@ -1,4 +1,144 @@
-# TODO: File Decomposition and Production Quality Improvements
+# TODO: ALL WORKSPACE WARNINGS AND ERRORS FIXES  
+
+## 🚨 CRITICAL EMERGENCY: 11 ERRORS, 23 WARNINGS TO FIX
+
+**Success Criteria: 0 Errors, 0 Warnings in `cargo check --workspace`**
+
+## 💥 COMPILATION ERRORS (11 total) - MUST FIX FIRST
+
+### JWT ERRORS (2 errors)
+- [ ] Fix E0277: JwtRotator missing Default trait in jwt/src/api/rotator_builder.rs:54  
+- [ ] QA: Rate the Default trait fix on scale 1-10, verify if default values are appropriate for rotator
+- [ ] Fix E0599: JwtError::invalid_claims method doesn't exist in jwt/src/api.rs:23
+- [ ] QA: Rate the invalid_claims method fix on scale 1-10, ensure proper validation logic implementation
+
+### COMPRESSION ERRORS (9 errors)  
+- [ ] Fix E0432: Missing Bzip2Stream import in compression/src/api/mod.rs:10
+- [ ] QA: Rate the Bzip2Stream import fix on scale 1-10, verify streaming functionality is properly exposed
+- [ ] Fix E0432: Missing GzipStream import in compression/src/api/mod.rs:11  
+- [ ] QA: Rate the GzipStream import fix on scale 1-10, ensure gzip streaming works correctly
+- [ ] Fix E0432: Missing CompressionStream import in compression/src/api/mod.rs:13
+- [ ] QA: Rate the CompressionStream import fix on scale 1-10, check zstd streaming is functional
+- [ ] Fix E0432: Missing compression_on_result_impl in compression/src/api/bzip2_builder/compress.rs:9
+- [ ] QA: Rate the bzip2 result macro fix on scale 1-10, verify result handling is complete
+- [ ] Fix E0432: Missing compression_on_chunk_impl in compression/src/api/bzip2_builder/stream.rs:10
+- [ ] QA: Rate the bzip2 chunk macro fix on scale 1-10, ensure streaming chunks work properly  
+- [ ] Fix E0432: Missing compression_on_result_impl in compression/src/api/gzip_builder/compress.rs:9
+- [ ] QA: Rate the gzip result macro fix on scale 1-10, verify gzip result handling
+- [ ] Fix E0432: Missing compression_on_chunk_impl in compression/src/api/gzip_builder/stream.rs:10
+- [ ] QA: Rate the gzip chunk macro fix on scale 1-10, check gzip streaming chunks
+- [ ] Fix E0432: Missing compression_on_result_impl in compression/src/api/zstd_builder/compress.rs:5
+- [ ] QA: Rate the zstd result macro fix on scale 1-10, ensure zstd result handling works
+- [ ] Fix E0432: Missing compression_on_chunk_impl in compression/src/api/zstd_builder/stream.rs:10  
+- [ ] QA: Rate the zstd chunk macro fix on scale 1-10, verify zstd streaming functionality
+
+### HASHING CRATE WARNINGS (4 warnings)
+- [ ] Fix unused macro definition: `hash_on_result_impl` in hashing/src/result_macro.rs:4
+- [ ] QA: Rate the hash_on_result_impl fix on scale 1-10, provide specific feedback on implementation vs removal decision
+- [ ] Fix unused import: `hash_on_result_impl` in hashing/src/result_macro.rs:26
+- [ ] QA: Rate the hash_on_result_impl import fix on scale 1-10, ensure consistency with macro fix
+- [ ] Fix unused macro definition: `hash_on_chunk_impl` in hashing/src/chunk_macro.rs:4
+- [ ] QA: Rate the hash_on_chunk_impl fix on scale 1-10, verify macro actually serves a purpose or should be removed
+- [ ] Fix unused import: `hash_on_chunk_impl` in hashing/src/chunk_macro.rs:29
+- [ ] QA: Rate the hash_on_chunk_impl import fix on scale 1-10, ensure import/macro consistency
+
+### COMPRESSION CRATE WARNINGS (12 warnings)
+- [ ] Fix unused import: `CompressionAlgorithm` in compression/src/api/bzip2_builder/mod.rs:5
+- [ ] QA: Rate the CompressionAlgorithm fix on scale 1-10, determine if this enum should be used in builder
+- [ ] Fix unused import: `config::*` in compression/src/api/bzip2_builder/mod.rs:11
+- [ ] QA: Rate the config import fix on scale 1-10, verify if config methods are needed in bzip2 builder
+- [ ] Fix unused import: `compress::*` in compression/src/api/bzip2_builder/mod.rs:12
+- [ ] QA: Rate the compress import fix on scale 1-10, check if compress functions should be exposed
+- [ ] Fix unused import: `CompressionAlgorithm` in compression/src/api/gzip_builder/mod.rs:5
+- [ ] QA: Rate the gzip CompressionAlgorithm fix on scale 1-10, ensure consistent usage across builders
+- [ ] Fix unused import: `config::*` in compression/src/api/gzip_builder/mod.rs:11
+- [ ] QA: Rate the gzip config import fix on scale 1-10, verify configuration consistency
+- [ ] Fix unused import: `compress::*` in compression/src/api/gzip_builder/mod.rs:12
+- [ ] QA: Rate the gzip compress import fix on scale 1-10, ensure function exposure consistency
+- [ ] Fix unused import: `config::*` in compression/src/api/zstd_builder/mod.rs:9
+- [ ] QA: Rate the zstd config import fix on scale 1-10, check configuration method availability
+- [ ] Fix unused import: `compress::*` in compression/src/api/zstd_builder/mod.rs:10
+- [ ] QA: Rate the zstd compress import fix on scale 1-10, verify function availability for users
+- [ ] Fix unused macro definition: `compression_on_chunk_impl` in compression/src/chunk_macro.rs:4
+- [ ] QA: Rate the compression_on_chunk_impl fix on scale 1-10, determine if streaming should use this macro
+- [ ] Fix unused import: `compression_on_chunk_impl` in compression/src/chunk_macro.rs:29
+- [ ] QA: Rate the compression chunk import fix on scale 1-10, ensure macro/import consistency
+- [ ] Fix unused macro definition: `compression_on_result_impl` in compression/src/result_macro.rs:4
+- [ ] QA: Rate the compression_on_result_impl fix on scale 1-10, verify result handling completeness
+- [ ] Fix unused import: `compression_on_result_impl` in compression/src/result_macro.rs:26
+- [ ] QA: Rate the compression result import fix on scale 1-10, check result handler availability
+
+### JWT CRATE WARNINGS (7 warnings)
+- [ ] Fix unused import: `types::*` in jwt/src/api/rotator_builder.rs:3
+- [ ] QA: Rate the JWT types import fix on scale 1-10, verify if JWT types are needed in rotator
+- [ ] Fix unused imports: `error::*` and `types::*` in jwt/src/api.rs:7
+- [ ] QA: Rate the JWT api imports fix on scale 1-10, check if error/type handling is complete
+- [ ] Fix unused import: `crate::types::Es256KeyPair` in jwt/src/algorithms.rs:4
+- [ ] QA: Rate the Es256KeyPair fix on scale 1-10, determine if ES256 algorithm should be implemented
+- [ ] Fix unused import: `crate::api::rotator_builder::JwtRotator` in jwt/src/rotation.rs:4
+- [ ] QA: Rate the JwtRotator import fix on scale 1-10, verify rotation functionality completeness
+- [ ] Fix never read fields: `keys` and `current_key` in jwt/src/api/rotator_builder.rs:61
+- [ ] QA: Rate the rotator fields fix on scale 1-10, ensure key management functionality is implemented
+- [ ] Fix never read fields: `rotator` and `claims` in jwt/src/api/rotator_builder.rs:102
+- [ ] QA: Rate the signer fields fix on scale 1-10, verify signing functionality uses all fields
+- [ ] Fix never read field: `rotator` in jwt/src/api/rotator_builder.rs:132
+- [ ] QA: Rate the verifier field fix on scale 1-10, check if verification uses rotator properly
+
+### KEY CRATE WARNINGS (3 warnings)
+- [ ] Fix trait `KeyProducer` is never used in key/src/result_macro.rs:4
+- [ ] QA: Rate the KeyProducer fix on scale 1-10, determine if this trait should be implemented for key generation
+- [ ] Fix method `bytes` is never used in key/src/api/actual_key.rs:25
+- [ ] QA: Rate the bytes method fix on scale 1-10, verify if key access method should be exposed/used
+- [ ] Fix struct `DirectKeyProvider` is never constructed in key/src/api/actual_key.rs:56
+- [ ] QA: Rate the DirectKeyProvider fix on scale 1-10, check if direct key provision should be implemented
+
+### CIPHER CRATE WARNINGS (10 warnings)
+- [ ] Fix unused import: `advanced::*` in cipher/src/cipher/api/cipher_builder_traits/mod.rs:10
+- [ ] QA: Rate the cipher advanced import fix on scale 1-10, determine if advanced operations should be exposed
+- [ ] Fix unused import: `data::*` in cipher/src/cipher/api/cipher_builder_traits/mod.rs:12
+- [ ] QA: Rate the cipher data import fix on scale 1-10, verify data handling methods availability
+- [ ] Fix trait `AadBuilder` is never used in cipher/src/cipher/api/cipher_builder_traits/base.rs:20
+- [ ] QA: Rate the AadBuilder fix on scale 1-10, check if AAD (Additional Authenticated Data) should be implemented
+- [ ] Fix trait `EncryptBuilder` is never used in cipher/src/cipher/api/cipher_builder_traits/base.rs:29
+- [ ] QA: Rate the EncryptBuilder fix on scale 1-10, verify encrypt builder pattern implementation
+- [ ] Fix trait `DecryptBuilder` is never used in cipher/src/cipher/api/cipher_builder_traits/base.rs:35
+- [ ] QA: Rate the DecryptBuilder fix on scale 1-10, verify decrypt builder pattern implementation  
+- [ ] Fix trait `DataBuilder` is never used in cipher/src/cipher/api/cipher_builder_traits/data.rs:6
+- [ ] QA: Rate the DataBuilder fix on scale 1-10, check data input methods for encrypt/decrypt
+- [ ] Fix trait `CiphertextBuilder` is never used in cipher/src/cipher/api/cipher_builder_traits/data.rs:57
+- [ ] QA: Rate the CiphertextBuilder fix on scale 1-10, verify ciphertext handling completeness
+- [ ] Fix unused associated function `new` in cipher/src/cipher/encryption_result.rs:90
+- [ ] QA: Rate the EncryptionResultImpl::new fix on scale 1-10, check if result creation should be used
+- [ ] Fix unused associated function `new` in cipher/src/cipher/encryption_result.rs:116
+- [ ] QA: Rate the DecryptionResultImpl::new fix on scale 1-10, verify result creation usage
+- [ ] Fix missing documentation for struct `CryptoStream` in cipher/src/cipher/api/mod.rs:35
+- [ ] QA: Rate the CryptoStream documentation fix on scale 1-10, ensure streaming crypto docs are complete
+
+### QUIC CRATE WARNINGS (4 warnings)  
+- [ ] Fix unused import: `std::sync::Arc` in quic/src/protocols/rpc.rs:9
+- [ ] QA: Rate the Arc import fix on scale 1-10, verify if shared state is needed in RPC protocol
+- [ ] Fix struct `EphemeralKeyMaterial` is never constructed in quic/src/keys.rs:7
+- [ ] QA: Rate the EphemeralKeyMaterial fix on scale 1-10, determine if ephemeral keys should be implemented
+- [ ] Fix unused methods: `new`, `is_expired`, `remaining_ttl`, `rotate` in quic/src/keys.rs:20+
+- [ ] QA: Rate the key material methods fix on scale 1-10, verify key lifecycle management implementation
+- [ ] Fix function `generate_ephemeral_keys` is never used in quic/src/keys.rs:53
+- [ ] QA: Rate the generate_ephemeral_keys fix on scale 1-10, check if key generation should be exposed
+
+### VAULT CRATE WARNINGS (Additional - need recount after fixing other crates)
+- [ ] Count and catalog all vault crate warnings after core crate fixes
+- [ ] QA: Rate the vault warning assessment on scale 1-10, ensure comprehensive coverage
+
+## 🎯 EXECUTION STRATEGY
+
+1. **Research First**: For each warning, understand the codebase context and determine if it represents missing functionality or truly dead code
+2. **Implement vs Remove**: Prefer implementing missing functionality over removing code unless thoroughly verified as unused
+3. **Test After Each Fix**: Run `cargo check` after each fix to verify warning elimination
+4. **Document Decisions**: Each QA task must explain the reasoning behind implement vs remove decisions
+5. **Zero Tolerance**: Continue until `cargo check --workspace` shows 0 warnings and 0 errors
+
+---
+
+# ORIGINAL TODO: File Decomposition and Production Quality Improvements
 
 ## File Decomposition Tasks (Ranked by Size)
 

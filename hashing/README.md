@@ -118,7 +118,7 @@ use futures::future::try_join_all;
 // Hash multiple files in parallel
 let files = vec!["file1.txt", "file2.txt", "file3.txt"];
 let hashes = try_join_all(
-    files.into_iter().map(|file| async move {
+    files.into_iter().map(|file|  
         Cryypt::hash()
             .sha256()
             .on_result!(|result| {

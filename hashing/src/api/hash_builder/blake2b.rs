@@ -8,6 +8,7 @@ use super::{HashBuilder, HashStream, HashAlgorithm};
 use super::stream::DynHasher;
 use crate::{HashResult, Result};
 use tokio_stream::Stream;
+use crate::hash_on_result_impl;
 
 // BLAKE2b compute methods without key
 impl<P> HashBuilder<Blake2bHash, NoData, NoSalt, P> {

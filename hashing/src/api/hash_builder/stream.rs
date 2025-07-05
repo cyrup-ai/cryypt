@@ -6,6 +6,7 @@ use std::future::Future;
 use std::pin::Pin;
 use tokio::sync::mpsc;
 use tokio_stream::Stream;
+use crate::hash_on_chunk_impl;
 
 // Hash algorithm enum for streaming
 #[derive(Clone)]
@@ -102,6 +103,11 @@ impl HashStream {
     }
 }
 
+/// Apply chunk handler using hash_on_chunk_impl macro
+pub(crate) fn apply_hash_chunk_handler() -> impl Fn(Result<Vec<u8>>) -> Option<Vec<u8>> {
+    hash_on_chunk_impl!(|chunk| { Ok => chunk, Err(e) => return })
+}
+
 // Helper to create hasher based on algorithm
 fn create_hasher(algorithm: &HashAlgorithm) -> Box<dyn DynHasher> {
     match algorithm {
@@ -116,6 +122,11 @@ fn create_hasher(algorithm: &HashAlgorithm) -> Box<dyn DynHasher> {
 // Trait for async hash results
 pub trait AsyncHashResult: Future<Output = Result<Vec<u8>>> + Send {}
 impl<T> AsyncHashResult for T where T: Future<Output = Result<Vec<u8>>> + Send {}
+
+/// Apply chunk handler using hash_on_chunk_impl macro
+pub(crate) fn apply_hash_chunk_handler() -> impl Fn(Result<Vec<u8>>) -> Option<Vec<u8>> {
+    hash_on_chunk_impl!(|chunk| { Ok => chunk, Err(_) => return })
+}
 
 // Dynamic hasher trait for streaming
 pub(super) trait DynHasher: Send {

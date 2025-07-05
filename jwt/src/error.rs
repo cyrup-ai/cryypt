@@ -30,6 +30,8 @@ pub enum JwtError {
     Crypto,
     /// Task execution failed
     TaskFailed,
+    /// Invalid claims configuration
+    InvalidClaims(String),
 }
 
 impl fmt::Display for JwtError {
@@ -46,8 +48,16 @@ impl fmt::Display for JwtError {
             JwtError::Serialization => write!(f, "Failed to serialize/deserialize"),
             JwtError::Crypto => write!(f, "Cryptographic operation failed"),
             JwtError::TaskFailed => write!(f, "Task execution failed"),
+            JwtError::InvalidClaims(msg) => write!(f, "Invalid claims: {}", msg),
         }
     }
 }
 
 impl std::error::Error for JwtError {}
+
+impl JwtError {
+    /// Create an invalid claims error with a message
+    pub fn invalid_claims(msg: &str) -> Self {
+        JwtError::InvalidClaims(msg.to_string())
+    }
+}

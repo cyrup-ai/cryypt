@@ -8,6 +8,7 @@ use super::{HashBuilder, HashStream, HashAlgorithm};
 use super::stream::DynHasher;
 use crate::{HashResult, Result};
 use tokio_stream::Stream;
+use crate::hash_on_result_impl;
 
 // SHA3-256 compute methods without key
 impl<P> HashBuilder<Sha3_256Hash, NoData, NoSalt, P> {

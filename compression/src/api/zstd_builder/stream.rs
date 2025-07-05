@@ -7,6 +7,7 @@ use crate::{CompressionAlgorithm, Result};
 use std::pin::Pin;
 use tokio::sync::mpsc;
 use tokio_stream::Stream;
+use crate::compression_on_chunk_impl;
 
 // Streaming methods for NoLevel builder
 impl ZstdBuilder<NoLevel> {
@@ -14,16 +15,16 @@ impl ZstdBuilder<NoLevel> {
     pub fn compress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
         self, 
         stream: S
-    ) -> CompressionStream {
-        CompressionStream::new(stream, CompressionAlgorithm::Zstd { level: Some(3) }, self.chunk_handler)
+    ) -> ZstdStream {
+        ZstdStream::new(stream, CompressionAlgorithm::Zstd { level: Some(3) }, self.chunk_handler)
     }
     
     /// Decompress data from a stream
     pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
         self, 
         stream: S
-    ) -> CompressionStream {
-        CompressionStream::new_decompress(stream, CompressionAlgorithm::Zstd { level: None }, self.chunk_handler)
+    ) -> ZstdStream {
+        ZstdStream::new_decompress(stream, CompressionAlgorithm::Zstd { level: None }, self.chunk_handler)
     }
 }
 
@@ -33,26 +34,26 @@ impl ZstdBuilder<HasLevel> {
     pub fn compress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
         self, 
         stream: S
-    ) -> CompressionStream {
-        CompressionStream::new(stream, CompressionAlgorithm::Zstd { level: Some(self.level.0) }, self.chunk_handler)
+    ) -> ZstdStream {
+        ZstdStream::new(stream, CompressionAlgorithm::Zstd { level: Some(self.level.0) }, self.chunk_handler)
     }
     
     /// Decompress data from a stream
     pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
         self, 
         stream: S
-    ) -> CompressionStream {
-        CompressionStream::new_decompress(stream, CompressionAlgorithm::Zstd { level: None }, self.chunk_handler)
+    ) -> ZstdStream {
+        ZstdStream::new_decompress(stream, CompressionAlgorithm::Zstd { level: None }, self.chunk_handler)
     }
 }
 
-/// Stream of compression chunks
-pub struct CompressionStream {
+/// Stream of Zstd compression chunks
+pub struct ZstdStream {
     receiver: mpsc::Receiver<Result<Vec<u8>>>,
     handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>>,
 }
 
-impl CompressionStream {
+impl ZstdStream {
     /// Create a new compression stream
     pub fn new<S>(
         stream: S,
@@ -81,7 +82,7 @@ impl CompressionStream {
             let _ = sender.send(Ok(final_data)).await;
         });
         
-        CompressionStream {
+        ZstdStream {
             receiver,
             handler: handler.map(|h| Box::new(h) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
         }
@@ -115,14 +116,14 @@ impl CompressionStream {
             let _ = sender.send(Ok(final_data)).await;
         });
         
-        CompressionStream {
+        ZstdStream {
             receiver,
             handler: handler.map(|h| Box::new(h) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
         }
     }
 }
 
-impl Stream for CompressionStream {
+impl Stream for ZstdStream {
     type Item = Vec<u8>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
@@ -144,7 +145,7 @@ impl Stream for CompressionStream {
 }
 
 // Implement standard async iteration
-impl CompressionStream {
+impl ZstdStream {
     /// Get the next chunk from the stream
     pub async fn next(&mut self) -> Option<Vec<u8>> {
         use tokio_stream::StreamExt;

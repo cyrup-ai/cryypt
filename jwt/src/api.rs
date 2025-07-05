@@ -15,6 +15,18 @@ impl JwtMasterBuilder {
         hs256_builder::Hs256Builder::new()
     }
     
+    /// Validate JWT claims for consistency
+    pub fn validate_claims(claims: &JwtClaims) -> Result<(), JwtError> {
+        if claims.exp.is_some() && claims.nbf.is_some() {
+            if let (Some(exp), Some(nbf)) = (claims.exp, claims.nbf) {
+                if exp <= nbf {
+                    return Err(JwtError::invalid_claims("Expiration time must be after not-before time"));
+                }
+            }
+        }
+        Ok(())
+    }
+    
     /// Start building ES256 JWT - README.md pattern  
     pub fn es256(self) -> es256_builder::Es256Builder {
         es256_builder::Es256Builder::new()

@@ -162,31 +162,33 @@ pub type SphincsWithSignature = SphincsBuilder<HasSignature>;
 // Public key access methods for SPHINCS+ HasKeyPair state
 impl SphincsBuilder<HasKeyPair> {
     /// Get the public key bytes
-    pub fn public_key(&self) -> &[u8] {
+    pub fn public_key(&self) -> Result<&[u8]> {
         self.public_key
             .as_ref()
-            .expect("HasKeyPair must have public key")
+            .map(|k| k.as_slice())
+            .ok_or_else(|| PqCryptoError::internal("Public key not available in HasKeyPair state"))
     }
 
     /// Get the secret key bytes  
-    pub fn secret_key(&self) -> &[u8] {
+    pub fn secret_key(&self) -> Result<&[u8]> {
         self.secret_key
             .as_ref()
-            .expect("HasKeyPair must have secret key")
+            .map(|k| k.as_slice())
+            .ok_or_else(|| PqCryptoError::internal("Secret key not available in HasKeyPair state"))
     }
 
     /// Get the public key as a vector
-    pub fn public_key_vec(&self) -> Vec<u8> {
+    pub fn public_key_vec(&self) -> Result<Vec<u8>> {
         self.public_key
             .clone()
-            .expect("HasKeyPair must have public key")
+            .ok_or_else(|| PqCryptoError::internal("Public key not available in HasKeyPair state"))
     }
 
     /// Get the secret key as a vector
-    pub fn secret_key_vec(&self) -> Vec<u8> {
+    pub fn secret_key_vec(&self) -> Result<Vec<u8>> {
         self.secret_key
             .clone()
-            .expect("HasKeyPair must have secret key")
+            .ok_or_else(|| PqCryptoError::internal("Secret key not available in HasKeyPair state"))
     }
 }
 

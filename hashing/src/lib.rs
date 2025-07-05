@@ -17,6 +17,10 @@ pub use api::{Hash, Sha256Builder, Sha3_256Builder, Blake2bBuilder};
 // Re-export hash result type
 pub use hash_result::HashResult;
 
+// Export macros for internal use
+pub(crate) use chunk_macro::hash_on_chunk_impl;
+pub(crate) use result_macro::hash_on_result_impl;
+
 /// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
 pub struct Cryypt;
 

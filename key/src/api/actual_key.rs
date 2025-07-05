@@ -21,8 +21,8 @@ impl ActualKey {
         }
     }
 
-    /// Get the key bytes (for internal use)
-    pub(crate) fn bytes(&self) -> &[u8] {
+    /// Get the key bytes (for external use by cryypt consumers)
+    pub fn bytes(&self) -> &[u8] {
         &self.key_bytes
     }
 
@@ -32,9 +32,7 @@ impl ActualKey {
     #[cfg(feature = "aes")]
     pub fn aes(&self) -> cryypt_cipher::AesWithKey {
         // Create AES builder pre-configured with this key
-        let key_provider = DirectKeyProvider {
-            key_bytes: self.key_bytes.clone(),
-        };
+        let key_provider = DirectKeyProvider::new(self.key_bytes.to_vec());
         cryypt_cipher::Cipher::aes().with_key(key_provider)
     }
 
@@ -44,17 +42,24 @@ impl ActualKey {
     #[cfg(feature = "chacha20")]
     pub fn chacha20(&self) -> cryypt_cipher::ChaChaWithKey {
         // Create ChaCha builder pre-configured with this key
-        let key_provider = DirectKeyProvider {
-            key_bytes: self.key_bytes.clone(),
-        };
+        let key_provider = DirectKeyProvider::new(self.key_bytes.to_vec());
         cryypt_cipher::Cipher::chachapoly().with_key(key_provider)
     }
 }
 
 /// Simple key provider that provides the key bytes directly
 #[derive(Clone)]
-struct DirectKeyProvider {
+pub struct DirectKeyProvider {
     key_bytes: Zeroizing<Vec<u8>>,
+}
+
+impl DirectKeyProvider {
+    /// Create a new direct key provider
+    pub fn new(key_bytes: Vec<u8>) -> Self {
+        Self {
+            key_bytes: Zeroizing::new(key_bytes),
+        }
+    }
 }
 
 impl KeyProviderBuilder for DirectKeyProvider {

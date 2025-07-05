@@ -23,7 +23,7 @@ pub struct RpcCall<Req, Resp> {
     request: Req,
     timeout: Duration,
     retries: u32,
-    handle: Option<QuicConnectionHandle>,
+    handle: Option<Arc<QuicConnectionHandle>>,
     _phantom: std::marker::PhantomData<Resp>,
 }
 
@@ -156,7 +156,7 @@ pub struct RpcClientBuilder {
     connection_pool_size: usize,
     default_timeout: Duration,
     default_retries: u32,
-    handle: Option<QuicConnectionHandle>,
+    handle: Option<Arc<QuicConnectionHandle>>,
 }
 
 impl RpcClientBuilder {
@@ -171,7 +171,7 @@ impl RpcClientBuilder {
     }
 
     pub fn with_handle(mut self, handle: QuicConnectionHandle) -> Self {
-        self.handle = Some(handle);
+        self.handle = Some(Arc::new(handle));
         self
     }
 

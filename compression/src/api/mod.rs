@@ -7,10 +7,10 @@ mod gzip_builder;
 mod zip_builder;
 mod zstd_builder;
 
-pub use bzip2_builder::{Bzip2Builder, Bzip2Stream};
-pub use gzip_builder::{GzipBuilder, GzipStream};
+pub use bzip2_builder::{Bzip2Builder, stream::Bzip2Stream};
+pub use gzip_builder::{GzipBuilder, stream::GzipStream}; 
 pub use zip_builder::{ZipBuilder, ZipStream};
-pub use zstd_builder::{ZstdBuilder, CompressionStream};
+pub use zstd_builder::{ZstdBuilder, stream::ZstdStream};
 
 /// Entry point for compression operations
 pub struct Compress;

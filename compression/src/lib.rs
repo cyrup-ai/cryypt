@@ -18,4 +18,8 @@ pub use compression_result::{CompressionResult, CompressionAlgorithm};
 // Export on_result function for main cryypt crate
 pub use on_result::on_result;
 
+// Export macros for internal use
+pub(crate) use chunk_macro::compression_on_chunk_impl;
+pub(crate) use result_macro::compression_on_result_impl;
+
 pub use api::*;

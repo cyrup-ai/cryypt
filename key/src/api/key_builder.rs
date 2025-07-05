@@ -1,6 +1,9 @@
 //! Key builder implementation following README.md patterns exactly
 
 use crate::KeyResult;
+use crate::result_macro::KeyProducer;
+use crate::api::ActualKey;
+use crate::KeyError;
 
 /// Key builder for creating and retrieving keys
 pub struct KeyBuilder {
@@ -108,4 +111,34 @@ impl KeyBuilderReady {
             result
         }
     }
+}
+
+// KeyProducer implementations for different builder states
+impl KeyProducer for KeyBuilder {
+    async fn produce_key(self) -> Result<ActualKey, KeyError> {
+        // Generate a random key using default size
+        let key_bytes = rand::random::<[u8; 32]>().to_vec();
+        Ok(ActualKey::from_bytes(key_bytes))
+    }
+}
+
+impl KeyProducer for KeyBuilderWithStore {
+    async fn produce_key(self) -> Result<ActualKey, KeyError> {
+        // Use the store to generate a key
+        let result = self.store.generate_key(self.size_bits, "default", 1);
+        result.await.map(ActualKey::from_bytes)
+    }
+}
+
+impl KeyProducer for KeyBuilderReady {
+    async fn produce_key(self) -> Result<ActualKey, KeyError> {
+        // Use the store with proper namespace and version
+        let result = self.store.generate_key(self.size_bits, &self.namespace, self.version);
+        result.await.map(ActualKey::from_bytes)
+    }
+}
+
+/// Utility function to generate a key using any KeyProducer
+pub async fn generate_key_from_producer<T: KeyProducer>(producer: T) -> Result<ActualKey, KeyError> {
+    producer.produce_key().await
 }

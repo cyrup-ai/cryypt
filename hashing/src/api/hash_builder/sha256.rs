@@ -8,6 +8,7 @@ use super::{HashBuilder, HashStream, HashAlgorithm};
 use super::stream::DynHasher;
 use crate::{HashResult, Result};
 use tokio_stream::Stream;
+use crate::hash_on_result_impl;
 
 // SHA-256 compute methods without key
 impl<P> HashBuilder<Sha256Hash, NoData, NoSalt, P> {
@@ -100,6 +101,11 @@ pub(super) async fn sha256_hash(data: Vec<u8>, salt: Option<Vec<u8>>, passes: u3
     }
 
     Ok(result)
+}
+
+/// Apply result handler using hash_on_result_impl macro
+pub(crate) fn apply_hash_result_handler() -> impl Fn(Result<Vec<u8>>) -> Result<Vec<u8>> {
+    hash_on_result_impl!(|result| { Ok => Ok(result), Err(e) => Err(e) })
 }
 
 // SHA-256 HMAC function

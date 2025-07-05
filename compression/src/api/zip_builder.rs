@@ -79,35 +79,47 @@ impl ZipBuilder<HasFiles> {
 // Compression methods for ZIP archives with files
 impl ZipBuilder<HasFiles> {
     /// Create the ZIP archive from all added files
-    pub async fn compress(self) -> CompressionResult {
+    pub async fn compress(self) -> Result<CompressionResult> {
         let files_count = self.files.files.len();
         let total_size: usize = self.files.files.values().map(|data| data.len()).sum();
         
-        let compressed = zip_compress(self.files.files).await.unwrap();
-        CompressionResult::with_original_size(
+        let compressed = zip_compress(self.files.files).await?;
+        let result = CompressionResult::with_original_size(
             compressed,
             CompressionAlgorithm::Zip { 
                 level: Some(6), // Default compression level
                 files_count,
             },
             total_size,
-        )
+        );
+        
+        if let Some(handler) = self.result_handler {
+            handler(Ok(result))
+        } else {
+            Ok(result)
+        }
     }
     
     /// Extract files from a ZIP archive (takes compressed data as input)
-    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> CompressionResult {
+    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
         let data = data.into();
         let original_size = data.len();
         
-        let files = zip_decompress(data.clone()).await.unwrap();
-        CompressionResult::with_original_size(
+        let files = zip_decompress(data.clone()).await?;
+        let result = CompressionResult::with_original_size(
             data,
             CompressionAlgorithm::Zip { 
                 level: None,
                 files_count: files.len(),
             },
             original_size,
-        )
+        );
+        
+        if let Some(handler) = self.result_handler {
+            handler(Ok(result))
+        } else {
+            Ok(result)
+        }
     }
     
     /// Create ZIP archive from a stream of file data

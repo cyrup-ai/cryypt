@@ -7,6 +7,13 @@ use crate::{CompressionAlgorithm, Result};
 use std::pin::Pin;
 use tokio::sync::mpsc;
 use tokio_stream::Stream;
+use crate::compression_on_chunk_impl;
+
+/// Apply chunk handler using compression_on_chunk_impl macro
+#[allow(dead_code)]
+pub(crate) fn apply_compression_chunk_handler() -> impl Fn(Result<Vec<u8>>) -> Option<Vec<u8>> {
+    compression_on_chunk_impl!(|chunk| { Ok => chunk, Err(e) => return })
+}
 
 // Streaming methods for NoLevel builder
 impl Bzip2Builder<NoLevel> {

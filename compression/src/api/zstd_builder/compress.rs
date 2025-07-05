@@ -2,6 +2,7 @@
 
 use super::{ZstdBuilder, NoLevel, HasLevel};
 use crate::{CompressionResult, CompressionAlgorithm, Result};
+use crate::compression_on_result_impl;
 
 impl ZstdBuilder<NoLevel> {
     /// Compress data using default level (3) - README.md pattern

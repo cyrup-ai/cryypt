@@ -6,6 +6,13 @@ use crate::{CompressionResult, CompressionAlgorithm, Result};
 use super::{GzipBuilder, NoLevel, HasLevel};
 use std::future::Future;
 use tokio::sync::oneshot;
+use crate::compression_on_result_impl;
+
+/// Apply result handler using compression_on_result_impl macro
+#[allow(dead_code)]
+pub(crate) fn apply_compression_result_handler() -> impl Fn(Result<CompressionResult>) -> Result<CompressionResult> {
+    compression_on_result_impl!(|result| { Ok => Ok(result), Err(e) => Err(e) })
+}
 
 impl GzipBuilder<NoLevel> {
     /// Compress data using default compression level

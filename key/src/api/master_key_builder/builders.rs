@@ -105,14 +105,16 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static>
         // Key ID for master key
         let key_id = SimpleKeyId::new(format!("master:{}:v{}", namespace, version));
 
-        let rt = tokio::runtime::Handle::try_current().unwrap_or_else(|_| {
-            tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .handle()
-                .clone()
-        });
+        let rt = match tokio::runtime::Handle::try_current() {
+            Ok(handle) => handle,
+            Err(_) => {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|e| crate::KeyError::InvalidKey(format!("Failed to create runtime: {}", e)))?;
+                runtime.handle().clone()
+            }
+        };
 
         rt.block_on(async move {
             // Try to retrieve existing key first

@@ -191,7 +191,10 @@ impl NonceManager {
         let rand_bytes = &raw[TIMESTAMP_BYTES..TIMESTAMP_BYTES + RANDOM_BYTES];
         let tag_bytes = &raw[TIMESTAMP_BYTES + RANDOM_BYTES..];
 
-        let ts = u64::from_be_bytes(ts_bytes.try_into().unwrap());
+        let ts = u64::from_be_bytes(
+            ts_bytes.try_into()
+                .map_err(|_| NonceError::Decode)?
+        );
         let mut rand_arr = [0u8; RANDOM_BYTES];
         rand_arr.copy_from_slice(rand_bytes);
         let mut tag_arr = [0u8; MAC_BYTES];

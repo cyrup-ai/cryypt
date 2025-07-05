@@ -107,7 +107,11 @@ impl<S: Signer> Revocation<S> {
 
         tokio::spawn(async move {
             let handle = tokio::spawn(async move {
-                let mut interval = tokio::time::interval(interval.to_std().unwrap());
+                let std_duration = match interval.to_std() {
+                    Ok(duration) => duration,
+                    Err(_) => return, // Invalid duration, exit cleanup task
+                };
+                let mut interval = tokio::time::interval(std_duration);
                 loop {
                     interval.tick().await;
                     let now = Utc::now();
@@ -170,7 +174,9 @@ impl<S: Signer> Revocation<S> {
         let payload = String::from_utf8(payload_bytes).map_err(|_| JwtError::Malformed)?;
         let claims: Claims = serde_json::from_str(&payload).map_err(|_| JwtError::Malformed)?;
 
-        Ok(DateTime::from_timestamp(claims.exp, 0).unwrap())
+        DateTime::from_timestamp(claims.exp, 0)
+            .ok_or(JwtError::Malformed)
+            .map(Ok)?
     }
 
     /// Generate a JWT token with the given claims using the wrapped signer.

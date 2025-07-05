@@ -6,9 +6,12 @@ pub mod config;
 pub mod compress;
 pub mod stream;
 
+// Re-export configuration methods for builder pattern
 pub use config::*;
+// Re-export compression operations  
 pub use compress::*;
-pub use stream::*;
+// Re-export streaming types
+pub use stream::ZstdStream;
 
 /// Type-state marker for no level set
 pub struct NoLevel;
