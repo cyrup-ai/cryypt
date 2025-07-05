@@ -6,7 +6,7 @@ members = [
     "compression",   # Data compression
     "cryypt",        # Main unified crate
     "vault",  # Secure storage
-    "workspace-hack",   # Workspace hack
+    # "workspace-hack",   # Workspace hack
     "examples",      # Examples
     "hashing",       # Hash functions
     "jwt",           # JSON Web Tokens

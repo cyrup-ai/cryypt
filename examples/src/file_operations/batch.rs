@@ -1,3 +1,4 @@
+
 //! Multiple files and batch processing examples
 //!
 //! Demonstrates parallel file processing and archive compression with encryption.
@@ -37,7 +38,7 @@ pub async fn encrypt_files(input_dir: &str, output_dir: &str, master_key: Vec<u8
         .version(1)
         .retrieve(|result| {
             Ok => Ok(result),
-            Err(e) => Err(e)
+            Err(e) => Err(e);
         })
         .await; // Returns fully unwrapped value - no Result wrapper
     

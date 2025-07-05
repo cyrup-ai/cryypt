@@ -106,14 +106,14 @@ impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> KeyGeneratorBatc
             for _i in 0..count {
                 // Clone generator for each key generation
                 // This ensures complete isolation between key generations
-                let gen = KeyGeneratorReady {
+                let generator_instance = KeyGeneratorReady {
                     size_bits: generator.size_bits,
                     store: generator.store.clone(),
                     namespace: generator.namespace.clone(),
                     version: generator.version,
                 };
 
-                let result = gen.generate_internal().await;
+                let result = generator_instance.generate_internal().await;
 
                 // Send each result through the secure channel
                 if tx.send(result).is_err() {
