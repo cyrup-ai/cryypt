@@ -122,11 +122,11 @@ The following dependencies have multiple versions across different crates:
 
 - Most crates have their own copy of dependencies rather than using workspace inheritance
 - The workspace defines many dependencies that could be inherited
-- Only `cryypt` and `cryypt-vault` crates use workspace inheritance for dependencies
+- Only `cryypt` and `vault` crates use workspace inheritance for dependencies
 
 ## Notes
 
-1. The `cryypt-vault` crate has edition = "2024" which seems incorrect (should be "2021")
+1. The `vault` crate has edition = "2024" which seems incorrect (should be "2021")
 2. Many crates duplicate the same dependencies instead of using workspace inheritance
 3. The workspace-hack crate is managed by hakari for dependency optimization
 4. Some dependencies in individual crates have older versions than those defined in the workspace

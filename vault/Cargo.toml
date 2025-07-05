@@ -37,7 +37,7 @@ regex = "1.11.1"
 time = "0.3.41"
 pin-project = "1.1.10"
 secrecy = "0.10.3"
-argon2 = "0.6.0-rc.0"
+argon2 = "0.5.3"
 
 # CLI dependencies
 clap = "4.5.40"

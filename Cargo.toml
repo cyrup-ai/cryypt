@@ -5,8 +5,8 @@ members = [
     "common",        # Common infrastructure
     "compression",   # Data compression
     "cryypt",        # Main unified crate
-    "cryypt-vault",  # Secure storage
-    "cryypt-workspace-hack",   # Workspace hack
+    "vault",  # Secure storage
+    "workspace-hack",   # Workspace hack
     "examples",      # Examples
     "hashing",       # Hash functions
     "jwt",           # JSON Web Tokens

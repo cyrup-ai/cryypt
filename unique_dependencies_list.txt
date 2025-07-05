@@ -97,11 +97,11 @@ cryypt_key = { path = "../key" }
 cryypt_pqcrypto = { path = "../pqcrypto" }
 cryypt_quic = { path = "../quic" }
 cryypt_vault = { path = "../vault" }
-cryypt-workspace-hack = { path = "../cryypt-workspace-hack" }
+workspace-hack = { path = "../workspace-hack" }
 
 ## Current Versions in Workspace Hack File (for comparison)
 
-# These are the current versions from cryypt-workspace-hack/Cargo.toml
+# These are the current versions from workspace-hack/Cargo.toml
 # Some are outdated compared to latest available versions above
 
 tokio = "1.45.1"           # Latest: 1.46.1

@@ -15,7 +15,7 @@
 - [x] Create signature_builder/mod.rs with proper re-exports and main entry point (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the mod.rs on: preserves public API, correct re-exports, no breaking changes, uses sequential thinking to verify completeness.
 
-### 2. Decompose cryypt-vault/src/tui/cli.rs (989 lines)
+### 2. Decompose vault/src/tui/cli.rs (989 lines)
 - [x] Create cli/ directory structure
 - [x] Extract command definitions to cli/commands.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the command extraction on: all commands preserved, proper Clap derive macros maintained, uses sequential thinking to verify completeness.
@@ -30,7 +30,7 @@
 - [x] Create cli/mod.rs with proper structure (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the cli mod.rs on: maintains CLI interface, proper module organization, uses sequential thinking to verify completeness.
 
-### 3. Decompose cryypt-vault/src/local.rs (768 lines) [ALREADY COMPLETED]
+### 3. Decompose vault/src/local.rs (768 lines) [ALREADY COMPLETED]
 - [x] Create local/ directory structure
 - [x] Extract core vault structure to local/vault.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the vault structure extraction on: maintains Vault struct integrity, preserves all fields, uses sequential thinking to verify completeness.
@@ -75,7 +75,7 @@
 - [x] Update quic/mod.rs with new structure (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the quic mod.rs update on: public API maintained, all types accessible, uses sequential thinking to verify completeness.
 
-### 6. Decompose cryypt-vault/src/db/dao.rs (608 lines)
+### 6. Decompose vault/src/db/dao.rs (608 lines)
 - [x] Create dao/ subdirectory structure
 - [x] Extract DAO trait and base types to dao/mod.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the DAO trait extraction on: trait definition complete, associated types preserved, uses sequential thinking to verify completeness.
@@ -114,7 +114,7 @@
 - [x] Extract AAD handling to aes_builder/aad.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the AAD extraction on: additional data processing complete, authentication integration correct, uses sequential thinking to verify completeness.
 
-### 9. Decompose cryypt-vault/src/db/vault_store.rs (544 lines)
+### 9. Decompose vault/src/db/vault_store.rs (544 lines)
 - [x] Create vault_store/ subdirectory
 - [x] Extract store trait to vault_store/mod.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the store trait extraction on: trait methods complete, error types preserved, uses sequential thinking to verify completeness.
@@ -125,7 +125,7 @@
 - [x] Extract transaction handling to vault_store/transactions.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the transaction extraction on: ACID properties maintained, rollback logic preserved, uses sequential thinking to verify completeness.
 
-### 10. Decompose cryypt-vault/src/tui/main.rs (541 lines)
+### 10. Decompose vault/src/tui/main.rs (541 lines)
 - [x] Create main/ subdirectory for TUI
 - [x] Extract entry point to main/mod.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the entry point extraction on: main function preserved, initialization complete, uses sequential thinking to verify completeness.
@@ -214,7 +214,7 @@
 - [ ] Extract streaming to bzip2_builder/stream.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [ ] Act as an Objective QA Rust developer. Rate the streaming extraction on: stream processing correct, chunk handling preserved, uses sequential thinking to verify completeness.
 
-### 17. Decompose cryypt-vault/src/core.rs (376 lines) ✓
+### 17. Decompose vault/src/core.rs (376 lines) ✓
 - [x] Create core/ subdirectory
 - [x] Extract vault types to core/types.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the types extraction on: all value types included, serialization traits implemented, uses sequential thinking to verify completeness.
@@ -234,7 +234,7 @@
 - [x] Create cipher_builder_traits/mod.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the cipher_builder_traits mod.rs on: all traits exported correctly, module structure preserved, uses sequential thinking to verify completeness.
 
-### 19. Decompose cryypt-vault/src/tui/aws_interface.rs (371 lines) ✓
+### 19. Decompose vault/src/tui/aws_interface.rs (371 lines) ✓
 - [x] Create aws_interface/ subdirectory
 - [x] Extract AWS client setup to aws_interface/client.rs (DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.)
 - [x] Act as an Objective QA Rust developer. Rate the client extraction on: credential handling secure with ProfileFileCredentialsProvider, region configuration correct, uses sequential thinking to verify completeness.

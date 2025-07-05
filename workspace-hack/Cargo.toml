@@ -2,7 +2,7 @@
 # It contains all dependencies used anywhere in the workspace to optimize builds.
 
 [package]
-name = "cryypt-workspace-hack"
+name = "workspace-hack"
 version = "0.1.0"
 edition = "2021"
 description = "workspace-hack package for cryypt"
@@ -27,22 +27,21 @@ thiserror = { version = "2.0.12" }
 anyhow = { version = "1.0.98" }
 
 # Cryptography
-aes = { version = "0.9.0-rc.0" }
-aes-gcm = { version = "0.11.0-rc.0" }
-chacha20poly1305 = { version = "0.11.0-rc.0" }
-argon2 = { version = "0.6.0-rc.0" }
-crypto-common = { version = "0.2.0-rc.3", default-features = false, features = ["rand_core"] }
-p256 = { version = "0.14.0-pre.8" }
+aes = { version = "0.8.4" }
+aes-gcm = { version = "0.10.3" }
+chacha20poly1305 = { version = "0.10.1" }
+argon2 = { version = "0.5.3" }
+crypto-common = { version = "0.1.6", default-features = false, features = ["getrandom", "std"] }
+p256 = { version = "0.13.2" }
 
 # Hashing
-sha2 = { version = "0.11.0-rc.0" }
-sha3 = { version = "0.11.0-rc.0" }
-blake2 = { version = "0.11.0-rc.0" }
+sha2 = { version = "0.10.9" }
+sha3 = { version = "0.10.8" }
 blake2b_simd = { version = "1.0.3" }
 blake3 = { version = "1.8.2" }
-digest = { version = "0.11.0-rc.0", features = ["mac", "oid"] }
-hmac = { version = "0.13.0-rc.0", default-features = false }
-hkdf = { version = "0.13.0-rc.0" }
+digest = { version = "0.10.7", features = ["mac", "oid", "std"] }
+hmac = { version = "0.12.1", default-features = false, features = ["reset"] }
+hkdf = { version = "0.12.4" }
 
 # Compression
 zstd = { version = "0.13.3" }
@@ -88,7 +87,7 @@ time = { version = "0.3.41", features = ["formatting", "macros", "parsing", "ser
 deranged = { version = "0.4.0", default-features = false, features = ["powerfmt", "serde", "std"] }
 
 # Security
-keyring = { version = "4.0.0-rc.1" }
+keyring = { version = "3.6.2" }
 zeroize = { version = "1.8.1", features = ["derive"] }
 secrecy = { version = "0.10.3" }
 password-hash = { version = "0.5.0", features = ["std"] }

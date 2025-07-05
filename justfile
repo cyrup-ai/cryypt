@@ -5,11 +5,11 @@
 default:
     @just --list
 
-# Run the cryypt-vault binary
+# Run the vault binary
 run *args:
     cargo run --package cryypt_vault --bin cryypt {{args}}
 
-# Run cryypt-vault in release mode
+# Run vault in release mode
 run-release *args:
     cargo run --package cryypt_vault --bin cryypt --release {{args}}
 
@@ -108,7 +108,7 @@ audit:
 
 # Install the cryypt binary
 install:
-    cargo install --path cryypt-vault --bin cryypt
+    cargo install --path vault --bin cryypt
 
 # Benchmark performance
 bench:

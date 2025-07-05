@@ -91,7 +91,7 @@ cryypt_compression = { path = "../compression", optional = true }
 cryypt_jwt = { path = "../jwt", optional = true }
 cryypt_pqcrypto = { path = "../pqcrypto", optional = true }
 cryypt_quic = { path = "../quic", optional = true }
-cryypt_vault = { path = "../cryypt-vault", optional = true }
+cryypt_vault = { path = "../vault", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.46.1", features = ["full"] }
