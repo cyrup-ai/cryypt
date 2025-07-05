@@ -1,5 +1,5 @@
-//! Builder traits for cipher operations - re-exports from cipher_builder_traits module
+//! Builder traits for cipher operations
 
-mod cipher_builder_traits;
+pub mod cipher_builder_traits;
 
 pub use cipher_builder_traits::*;

@@ -13,7 +13,8 @@ members = [
     "key",           # Key management
     "map_macro",     # Ergonomic map/set macros
     "pqcrypto",      # Post-quantum cryptography
-    "quic",          # QUIC protocol crypto
+    "quic",      # Post-quantum cryptography
+    "workspace-hack",          # QUIC protocol crypto
 ]
 
 [workspace.package]

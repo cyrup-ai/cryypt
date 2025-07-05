@@ -63,9 +63,7 @@ hex-literal = "1.0.0"
 # No features - everything is included by default
 
 
-[[example]]
-name = "jwt"
-path = "examples/jwt.rs"
+# No examples - everything is included by default
 
 [lib]
 name = "cryypt_jwt"
