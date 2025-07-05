@@ -3,14 +3,10 @@
 //! Usage: `let compressed = Compress::zstd().compress(b"...").await` (NEW)
 //! Old:   `let compressed = Compress::gzip().with_data(b"...").compress().await` (OLD - will be updated)
 
-mod builder_traits;
 mod bzip2_builder;
 mod gzip_builder;
 mod zip_builder;
 mod zstd_builder;
-
-// Keep old traits temporarily for other builders
-pub use builder_traits::*;
 pub use bzip2_builder::{Bzip2Builder, Bzip2Stream};
 pub use gzip_builder::{GzipBuilder, GzipStream};
 pub use zip_builder::{ZipBuilder, ZipStream};

@@ -2,6 +2,7 @@
 
 use super::super::super::{SignatureAlgorithm, SignatureResult, VerificationResult};
 use super::super::{builder_traits::*, states::*};
+use super::BaseSignatureBuilder;
 use crate::{PqCryptoError, Result};
 use pqcrypto_traits::sign::{
     DetachedSignature as PqDetachedSignature, PublicKey as PqPublicKey, SecretKey as PqSecretKey,

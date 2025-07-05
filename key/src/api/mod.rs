@@ -1,6 +1,5 @@
 //! Fluent key management API
 
-pub mod builder_traits;
 mod key_builder;
 mod key_builder_entry;
 mod key_entry;
@@ -11,8 +10,6 @@ mod on_result_ext;
 mod key_store_builder;
 mod master_key_builder;
 mod raw_key_builder;
-
-pub use builder_traits::*;
 pub use key_builder::*;
 pub use key_builder_entry::KeyBuilder;
 pub use actual_key::ActualKey;

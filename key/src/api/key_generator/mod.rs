@@ -15,9 +15,9 @@ pub mod entropy;
 pub mod derive;
 
 // Re-export key types from submodules for external use
-pub use derive::*;
-pub use entropy::*;
-pub use symmetric::*;
+// pub use derive::*;
+// pub use entropy::*;
+// pub use symmetric::*;
 
 /// Secure key buffer that automatically zeroizes on drop
 /// Prevents key material from remaining in memory

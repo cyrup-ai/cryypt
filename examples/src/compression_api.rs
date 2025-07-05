@@ -1,36 +1,10 @@
-//! Compression API Examples - Exactly matching README.md patterns
-//! These examples demonstrate Zstd, Gzip, Bzip2, and ZIP compression with fully unwrapped returns
+//! Compression API examples - EXACTLY matching compression/README.md
 
-use cryypt::{Cryypt, Compress, on_result, on_chunk};
-use tokio_stream::{Stream, StreamExt};
+use cryypt::{Cryypt, on_result, Compress, FileKeyStore, KeyRetriever, Cipher};
+use std::path::Path;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
-    
-    // Example 1: Zstandard (Recommended)
-    example_zstd_compression().await?;
-    
-    // Example 2: Stream compression
-    example_stream_compression().await?;
-    
-    // Example 3: Other compression formats
-    example_other_formats().await?;
-    
-    // Example 4: ZIP archive
-    example_zip_archive().await?;
-    
-    // Example 5: Direct builder
-    example_direct_builder().await?;
-    
-    Ok(())
-}
-
-async fn example_zstd_compression() -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n=== Example 1: Zstandard Compression ===");
-    
-    let data = b"Large text data that needs to be compressed...".repeat(100);
-    
+/// Zstandard compression example from README
+async fn zstandard_example() -> Result<(), Box<dyn std::error::Error>> {
     // Compress data
     let compressed = Cryypt::compress()
         .zstd()
@@ -38,13 +12,9 @@ async fn example_zstd_compression() -> Result<(), Box<dyn std::error::Error>> {
         .on_result!(|result| {
             result.unwrap_or_else(|e| panic!("Compression error: {}", e))
         })
-        .compress(&data)
-        .await; // Returns Vec<u8> - the compressed bytes, fully unwrapped
-    
-    println!("Original size: {} bytes", data.len());
-    println!("Compressed size: {} bytes", compressed.len());
-    println!("Compression ratio: {:.2}%", (compressed.len() as f64 / data.len() as f64) * 100.0);
-    
+        .compress(b"Large text data...")
+        .await; // Returns fully unwrapped value - no Result wrapper // Returns Vec<u8> - the compressed bytes, fully unwrapped
+
     // Decompress
     let decompressed = Cryypt::compress()
         .zstd()
@@ -52,26 +22,17 @@ async fn example_zstd_compression() -> Result<(), Box<dyn std::error::Error>> {
             result.unwrap_or_else(|e| panic!("Decompression error: {}", e))
         })
         .decompress(&compressed)
-        .await; // Returns Vec<u8> - the decompressed bytes, fully unwrapped
-    
-    println!("Decompressed size: {} bytes", decompressed.len());
-    println!("Decompression successful: {}", data == decompressed);
-    
-    Ok(())
-}
+        .await; // Returns fully unwrapped value - no Result wrapper // Returns Vec<u8> - the decompressed bytes, fully unwrapped
 
-async fn example_stream_compression() -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n=== Example 2: Stream compression ===");
-    
-    // Create input stream
-    let chunks = vec![
-        b"First chunk of data to compress".to_vec(),
-        b"Second chunk of data to compress".to_vec(),
-        b"Third chunk of data to compress".to_vec(),
-    ];
-    let input_stream = tokio_stream::iter(chunks.clone());
-    
+    println!("Decompressed: {:?}", String::from_utf8(decompressed)?);
+
     // Stream compression
+    let input_stream = tokio_stream::iter(vec![
+        Ok(b"Part 1".to_vec()),
+        Ok(b"Part 2".to_vec()),
+        Ok(b"Part 3".to_vec()),
+    ]);
+    
     let mut compressed_stream = Cryypt::compress()
         .zstd()
         .with_level(6)
@@ -83,41 +44,20 @@ async fn example_stream_compression() -> Result<(), Box<dyn std::error::Error>> 
             }
         })
         .compress_stream(input_stream); // Returns Stream<Item = Vec<u8>> - fully unwrapped compressed chunks
-    
+
     // Process compressed chunks
-    let mut compressed_chunks = Vec::new();
+    let mut output = Vec::new();
     while let Some(chunk) = compressed_stream.next().await {
         // chunk is Vec<u8> - compressed bytes ready to write
-        println!("Compressed chunk: {} bytes", chunk.len());
-        compressed_chunks.push(chunk);
+        output.extend_from_slice(&chunk);
     }
-    
-    // Stream decompression
-    let compressed_input = tokio_stream::iter(compressed_chunks);
-    let mut decompressed_stream = Cryypt::compress()
-        .zstd()
-        .on_chunk!(|chunk| {
-            Ok => chunk,
-            Err(e) => {
-                log::error!("Decompression error: {}", e);
-                return;
-            }
-        })
-        .decompress_stream(compressed_input);
-    
-    // Process decompressed chunks
-    println!("\nDecompressed chunks:");
-    while let Some(chunk) = decompressed_stream.next().await {
-        println!("  {}", String::from_utf8_lossy(&chunk));
-    }
-    
+
     Ok(())
 }
 
-async fn example_other_formats() -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n=== Example 3: Other compression formats ===");
-    
-    let data = b"Data to compress with different algorithms";
+/// Other compression formats example from README
+async fn other_formats_example() -> Result<(), Box<dyn std::error::Error>> {
+    let data = b"Test data for compression";
     
     // Gzip
     let compressed = Cryypt::compress()
@@ -128,9 +68,7 @@ async fn example_other_formats() -> Result<(), Box<dyn std::error::Error>> {
         })
         .compress(data)
         .await; // Returns fully unwrapped value - no Result wrapper
-    
-    println!("Gzip compressed: {} bytes", compressed.len());
-    
+
     // Bzip2
     let compressed = Cryypt::compress()
         .bzip2()
@@ -140,19 +78,11 @@ async fn example_other_formats() -> Result<(), Box<dyn std::error::Error>> {
         })
         .compress(data)
         .await; // Returns fully unwrapped value - no Result wrapper
-    
-    println!("Bzip2 compressed: {} bytes", compressed.len());
-    
-    Ok(())
-}
 
-async fn example_zip_archive() -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n=== Example 4: ZIP archive ===");
-    
-    let readme_data = b"This is the README content";
-    let json_data = b"{\"name\": \"example\", \"version\": \"1.0\"}";
-    
     // ZIP archive
+    let readme_data = b"This is the readme";
+    let json_data = b"{\"test\": true}";
+    
     let archive = Cryypt::compress()
         .zip()
         .add_file("readme.txt", readme_data)
@@ -162,17 +92,7 @@ async fn example_zip_archive() -> Result<(), Box<dyn std::error::Error>> {
         })
         .compress()
         .await; // Returns Vec<u8> - the ZIP archive bytes, fully unwrapped
-    
-    println!("ZIP archive created: {} bytes", archive.len());
-    
-    Ok(())
-}
 
-async fn example_direct_builder() -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n=== Example 5: Direct builder API ===");
-    
-    let data = b"Data to compress with direct builder";
-    
     // Alternative: Direct builders work too
     let compressed = Compress::zstd()
         .with_level(3)
@@ -181,8 +101,82 @@ async fn example_direct_builder() -> Result<(), Box<dyn std::error::Error>> {
         })
         .compress(data)
         .await; // Returns fully unwrapped value - no Result wrapper
+
+    println!("All compression formats tested successfully");
+    Ok(())
+}
+
+/// Batch Compress and Encrypt Files example from README
+async fn compress_and_encrypt_files(
+    files: Vec<&str>,
+    output_archive: &str
+) -> Result<(), Box<dyn std::error::Error>> {
+    let master_key = [0u8; 32];
     
-    println!("Direct builder compressed: {} bytes", compressed.len());
+    // Retrieve key
+    let store = FileKeyStore::at("/secure/keys").with_master_key(master_key);
+    let key = KeyRetriever::new()
+        .with_store(store)
+        .with_namespace("my-app")
+        .version(1)
+        .retrieve(|result| {
+            Ok => Ok(result),
+            Err(e) => Err(e)
+        })
+        .await; // Returns fully unwrapped value - no Result wrapper
+    
+    // Create ZIP archive
+    let mut archive = Compress::zip();
+    
+    // Add all files
+    for file_path in files {
+        let content = tokio::fs::read(file_path).await?;
+        let file_name = Path::new(file_path).file_name().unwrap().to_str().unwrap();
+        archive = archive.add_file(file_name, content);
+    }
+    
+    // Compress
+    let compressed = archive
+        .on_result!(|result| {
+            Ok => Ok(result),
+            Err(e) => Err(e)
+        })
+        .compress()
+        .await; // Returns fully unwrapped value - no Result wrapper
+    
+    // Encrypt the archive
+    let encrypted = Cipher::aes()
+        .with_key(key)
+        .on_result!(|result| {
+            Ok => Ok(result),
+            Err(e) => Err(e)
+        })
+        .encrypt(&compressed)
+        .await; // Returns fully unwrapped value - no Result wrapper
+    
+    // Write encrypted archive
+    tokio::fs::write(output_archive, encrypted).await?;
+    
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("=== Zstandard Compression ===");
+    zstandard_example().await?;
+    
+    println!("\n=== Other Compression Formats ===");
+    other_formats_example().await?;
+    
+    // Create test files for batch example
+    tokio::fs::write("/tmp/test1.txt", b"Test file 1").await?;
+    tokio::fs::write("/tmp/test2.txt", b"Test file 2").await?;
+    
+    println!("\n=== Batch Compress and Encrypt ===");
+    compress_and_encrypt_files(
+        vec!["/tmp/test1.txt", "/tmp/test2.txt"],
+        "/tmp/encrypted_archive.zip.enc"
+    ).await?;
     
     Ok(())
 }

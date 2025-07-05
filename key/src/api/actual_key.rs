@@ -1,6 +1,6 @@
 //! Actual cryptographic key that holds key material
 
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::Zeroizing;
 use crate::{KeyResult, traits::KeyProviderBuilder};
 
 /// Actual cryptographic key holding key material

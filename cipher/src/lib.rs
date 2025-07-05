@@ -78,7 +78,7 @@ pub use cipher::api::{Cipher, AesWithKey, ChaChaWithKey, CryptoStream};
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        cipher::api::builder_traits::{
+        cipher::api::cipher_builder_traits::{
             CiphertextBuilder, DataBuilder as CipherDataBuilder, DecryptBuilder, DecryptSecondPass,
             EncryptBuilder, EncryptSecondPass, KeyBuilder, WithCompression,
         },

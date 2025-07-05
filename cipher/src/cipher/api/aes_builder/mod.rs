@@ -4,7 +4,7 @@
 //! Follows the patterns defined in README.md and ARCHITECTURE.md.
 
 use super::{
-    builder_traits::{
+    cipher_builder_traits::{
         AadBuilder, CiphertextBuilder, DataBuilder, DecryptBuilder, EncryptBuilder, KeyBuilder,
         KeyProviderBuilder,
     },

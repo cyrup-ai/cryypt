@@ -4,7 +4,7 @@
 
 use super::{AesWithKey, AesWithKeyAndCiphertext};
 use super::super::{
-    builder_traits::{AadBuilder, DecryptBuilder},
+    cipher_builder_traits::{AadBuilder, DecryptBuilder},
     AsyncDecryptionResult,
 };
 use crate::{CryptError, Result};

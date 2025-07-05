@@ -13,9 +13,9 @@ pub mod encapsulation;
 pub mod decapsulation;
 
 // Re-export key types from submodules for external use
-pub use encapsulation::*;
-pub use decapsulation::*;
-pub use keypair::*;
+// pub use encapsulation::*;
+// pub use decapsulation::*;
+// pub use keypair::*;
 
 /// Main entry point for KEM operations
 pub struct KemBuilder;

@@ -3,7 +3,7 @@
 //! Usage: `let result = Cipher::chachapoly().with_key(key_id).with_data(data).encrypt().await`
 
 mod aes_builder;
-pub mod builder_traits;
+pub mod cipher_builder_traits;
 mod chacha_builder;
 mod cipher;
 mod decryption_builder;
@@ -25,7 +25,7 @@ pub trait AsyncDecryptionResult: Future<Output = Result<Vec<u8>>> + Send {}
 impl<T> AsyncEncryptionResult for T where T: Future<Output = Result<EncodableResult>> + Send {}
 impl<T> AsyncDecryptionResult for T where T: Future<Output = Result<Vec<u8>>> + Send {}
 
-pub use builder_traits::{DataBuilder, EncryptBuilder, KeyBuilder};
+pub use cipher_builder_traits::{DataBuilder, EncryptBuilder, KeyBuilder};
 pub use cipher::Cipher;
 pub use states::{HasData, HasKey, NoData, NoKey};
 pub use on_result_ext::{CipherOnResultExt, CipherProducer};

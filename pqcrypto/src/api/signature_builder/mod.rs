@@ -6,7 +6,7 @@ mod falcon;
 mod sphincs;
 
 use super::super::{SignatureAlgorithm};
-use super::{builder_traits::*, states::*};
+use super::states::*;
 use crate::{PqCryptoError, Result};
 use std::marker::PhantomData;
 
