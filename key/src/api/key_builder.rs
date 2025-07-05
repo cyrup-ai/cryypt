@@ -1,141 +1,111 @@
-//! Minimal key builder implementation
+//! Key builder implementation following README.md patterns exactly
 
-use crate::{
-    traits::KeyProviderBuilder, KeyImport, KeyResult, KeyRetrieval, KeyStorage, SimpleKeyId,
-};
+use crate::KeyResult;
 
-/// 256-bit key builder
-pub struct Key256Builder;
-
-/// 256-bit key builder with store configured
-pub struct Key256BuilderWithStore<S: KeyStorage> {
-    store: S,
+/// Key builder for creating and retrieving keys
+pub struct KeyBuilder {
+    size_bits: u32,
 }
 
-/// 256-bit key builder with store and namespace configured  
-pub struct Key256BuilderWithStoreAndNamespace<S: KeyStorage> {
-    store: S,
+/// Key builder with store configured
+pub struct KeyBuilderWithStore {
+    size_bits: u32,
+    store: Box<dyn KeyStore>,
+}
+
+/// Key builder with store and namespace configured  
+pub struct KeyBuilderWithStoreAndNamespace {
+    size_bits: u32,
+    store: Box<dyn KeyStore>,
     namespace: String,
 }
 
-/// 256-bit key builder with store, namespace, and version configured
-pub struct Key256BuilderWithStoreNamespaceAndVersion<S: KeyStorage> {
-    store: S,
+/// Key builder with store, namespace, and version - ready for operations
+pub struct KeyBuilderReady {
+    size_bits: u32,
+    store: Box<dyn KeyStore>,
     namespace: String,
     version: u32,
+    result_handler: Option<Box<dyn Fn(KeyResult) -> KeyResult + Send + Sync>>,
 }
 
-impl Key256Builder {
-    /// Set the key storage backend for this key builder
-    pub fn with_store<S: KeyStorage + 'static>(self, store: S) -> Key256BuilderWithStore<S> {
-        Key256BuilderWithStore { store }
+/// Trait for key storage backends
+pub trait KeyStore: Send + Sync {
+    /// Generate a new key
+    fn generate_key(&self, size_bits: u32, namespace: &str, version: u32) -> KeyResult;
+    
+    /// Retrieve an existing key
+    fn retrieve_key(&self, namespace: &str, version: u32) -> KeyResult;
+}
+
+impl KeyBuilder {
+    /// Create new key builder with specified size
+    pub fn new(size_bits: u32) -> Self {
+        Self { size_bits }
+    }
+    
+    /// Set the key storage backend - README.md pattern
+    pub fn with_store<S: KeyStore + 'static>(self, store: S) -> KeyBuilderWithStore {
+        KeyBuilderWithStore {
+            size_bits: self.size_bits,
+            store: Box::new(store),
+        }
     }
 }
 
-impl<S: KeyStorage> Key256BuilderWithStore<S> {
-    /// Set the namespace for organizing keys
-    pub fn with_namespace(
-        self,
-        namespace: impl Into<String>,
-    ) -> Key256BuilderWithStoreAndNamespace<S> {
-        Key256BuilderWithStoreAndNamespace {
+impl KeyBuilderWithStore {
+    /// Set the namespace - README.md pattern
+    pub fn with_namespace<S: Into<String>>(self, namespace: S) -> KeyBuilderWithStoreAndNamespace {
+        KeyBuilderWithStoreAndNamespace {
+            size_bits: self.size_bits,
             store: self.store,
             namespace: namespace.into(),
         }
     }
 }
 
-impl<S: KeyStorage> Key256BuilderWithStoreAndNamespace<S> {
-    /// Set the version number for key rotation
-    pub fn version(self, version: u32) -> Key256BuilderWithStoreNamespaceAndVersion<S> {
-        Key256BuilderWithStoreNamespaceAndVersion {
+impl KeyBuilderWithStoreAndNamespace {
+    /// Set the version - README.md pattern
+    pub fn version(self, version: u32) -> KeyBuilderReady {
+        KeyBuilderReady {
+            size_bits: self.size_bits,
             store: self.store,
             namespace: self.namespace,
             version,
+            result_handler: None,
         }
     }
 }
 
-impl KeyProviderBuilder for Key256Builder {
-    fn resolve(&self) -> KeyResult {
-        let (tx, rx) = tokio::sync::oneshot::channel();
-
-        tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || {
-                use rand::RngCore;
-                let mut key = vec![0u8; 32];
-                rand::rng().fill_bytes(&mut key);
-                Ok(key)
-            })
-            .await;
-
-            let _ = tx.send(result.unwrap_or_else(|e| {
-                Err(crate::KeyError::internal(format!(
-                    "Key generation task failed: {}",
-                    e
-                )))
-            }));
-        });
-
-        KeyResult::new(rx)
+impl KeyBuilderReady {
+    /// Add on_result handler - README.md pattern
+    pub fn on_result<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(KeyResult) -> KeyResult + Send + Sync + 'static,
+    {
+        self.result_handler = Some(Box::new(handler));
+        self
     }
-}
 
-impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> KeyProviderBuilder
-    for Key256BuilderWithStoreNamespaceAndVersion<S>
-{
-    fn resolve(&self) -> KeyResult {
-        let store = self.store.clone();
-        let namespace = self.namespace.clone();
-        let version = self.version;
+    /// Generate a new key - action method per README.md
+    pub async fn generate(self) -> KeyResult {
+        let result = self.store.generate_key(self.size_bits, &self.namespace, self.version);
+        
+        if let Some(handler) = self.result_handler {
+            handler(result)
+        } else {
+            result
+        }
+    }
 
-        let (tx, rx) = tokio::sync::oneshot::channel();
-
-        // Key generation/retrieval from store logic here
-        let key_id = SimpleKeyId::new(format!("{}:v{}", namespace, version));
-
-        tokio::spawn(async move {
-            // Try to retrieve existing key first
-            match store.retrieve(&key_id).await {
-                Ok(existing_key) => {
-                    let _ = tx.send(Ok(existing_key));
-                }
-                Err(_) => {
-                    // Generate new key and store it
-                    let result = tokio::task::spawn_blocking(move || {
-                        use rand::RngCore;
-                        let mut key = vec![0u8; 32];
-                        rand::rng().fill_bytes(&mut key);
-                        Ok(key)
-                    })
-                    .await;
-
-                    match result {
-                        Ok(Ok(new_key)) => {
-                            // Store the key
-                            if let Err(e) = store.store(&key_id, &new_key).await {
-                                let _ = tx.send(Err(crate::KeyError::internal(format!(
-                                    "Failed to store key: {}",
-                                    e
-                                ))));
-                            } else {
-                                let _ = tx.send(Ok(new_key));
-                            }
-                        }
-                        Ok(Err(e)) => {
-                            let _ = tx.send(Err(e));
-                        }
-                        Err(e) => {
-                            let _ = tx.send(Err(crate::KeyError::internal(format!(
-                                "Key generation task failed: {}",
-                                e
-                            ))));
-                        }
-                    }
-                }
-            }
-        });
-
-        KeyResult::new(rx)
+    /// Retrieve an existing key - action method per README.md
+    pub async fn retrieve(self) -> KeyResult {
+        let result = self.store.retrieve_key(&self.namespace, self.version);
+        
+        if let Some(handler) = self.result_handler {
+            handler(result)
+        } else {
+            result
+        }
     }
 }

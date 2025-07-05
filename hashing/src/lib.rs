@@ -1,4 +1,6 @@
-//! Cryptographic hashing algorithms
+//! Cryptographic hashing algorithms following README.md patterns exactly
+
+#![forbid(unsafe_code)]
 
 pub mod api;
 pub mod error;
@@ -9,13 +11,38 @@ mod chunk_macro;
 // Re-export error types
 pub use error::{HashError, Result};
 
-// Re-export the fluent API
-pub use api::Hash;
+// Re-export the main APIs per README.md
+pub use api::{Hash, Sha256Builder, Sha3_256Builder, Blake2bBuilder};
 
 // Re-export hash result type
 pub use hash_result::HashResult;
 
-// Re-export the on_result! macro
-pub use hash_on_result as on_result;
+/// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
+pub struct Cryypt;
 
-// on_chunk is already exported via #[macro_export]
+impl Cryypt {
+    /// Master builder for hash operations - README.md pattern
+    pub fn hash() -> HashMasterBuilder {
+        HashMasterBuilder
+    }
+}
+
+/// Master builder for hash operations
+pub struct HashMasterBuilder;
+
+impl HashMasterBuilder {
+    /// Use SHA-256 hashing - README.md pattern
+    pub fn sha256(self) -> Sha256Builder {
+        Sha256Builder::new()
+    }
+
+    /// Use SHA3-256 hashing - README.md pattern
+    pub fn sha3_256(self) -> Sha3_256Builder {
+        Sha3_256Builder::new()
+    }
+
+    /// Use Blake2b hashing - README.md pattern
+    pub fn blake2b(self) -> Blake2bBuilder {
+        Blake2bBuilder::new()
+    }
+}

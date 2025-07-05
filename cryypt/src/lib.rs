@@ -46,34 +46,40 @@
 //! ```rust,no_run
 //! # #[cfg(all(feature = "aes", feature = "file-store"))]
 //! # {
-//! use cryypt::prelude::*;
+//! use cryypt::{Cryypt, on_result};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let master_key = [1u8; 32]; // In production, generate this securely
 //!
-//! // Encrypt data
-//! let ciphertext = Cipher::aes()
+//! // Encrypt data - NEW PATTERN: action takes data as argument
+//! let ciphertext = Cryypt::cipher()
+//!     .aes()
 //!     .with_key(
 //!         Key::size(256u32.bits())
 //!             .with_store(FileKeyStore::at("./keys").with_master_key(master_key))
 //!             .with_namespace("my-app")
 //!             .version(1),
 //!     )
-//!     .with_data(b"Hello, World!")
-//!     .encrypt()
-//!     .await?;
+//!     .on_result!(|result| {
+//!         result.unwrap_or_else(|e| panic!("Encryption error: {}", e))
+//!     })
+//!     .encrypt(b"Hello, World!")
+//!     .await;
 //!
-//! // Decrypt data
-//! let decrypted = Cipher::aes()
+//! // Decrypt data - NEW PATTERN: action takes data as argument
+//! let decrypted = Cryypt::cipher()
+//!     .aes()
 //!     .with_key(
 //!         Key::size(256u32.bits())
 //!             .with_store(FileKeyStore::at("./keys").with_master_key(master_key))
 //!             .with_namespace("my-app")
 //!             .version(1),
 //!     )
-//!     .with_ciphertext(ciphertext)
-//!     .decrypt()
-//!     .await?;
+//!     .on_result!(|result| {
+//!         result.unwrap_or_else(|e| panic!("Decryption error: {}", e))
+//!     })
+//!     .decrypt(ciphertext)
+//!     .await;
 //!
 //! assert_eq!(decrypted, b"Hello, World!");
 //! # Ok(())
@@ -86,11 +92,45 @@
 
 // === Core Modules ===
 
-#[cfg(feature = "key")]
+#[cfg(any(
+    feature = "key",
+    feature = "aes", 
+    feature = "chacha20",
+    feature = "sha256", 
+    feature = "sha3", 
+    feature = "blake2b",
+    feature = "zstd", 
+    feature = "gzip", 
+    feature = "bzip2", 
+    feature = "zip"
+))]
 mod master;
 
-#[cfg(feature = "key")]
+#[cfg(any(
+    feature = "key",
+    feature = "aes", 
+    feature = "chacha20",
+    feature = "sha256", 
+    feature = "sha3", 
+    feature = "blake2b",
+    feature = "zstd", 
+    feature = "gzip", 
+    feature = "bzip2", 
+    feature = "zip"
+))]
 pub use master::Cryypt;
+
+#[cfg(any(feature = "aes", feature = "chacha20"))]
+pub use master::CipherMasterBuilder;
+
+#[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
+pub use master::HashMasterBuilder;
+
+#[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
+pub use master::CompressMasterBuilder;
+
+#[cfg(feature = "jwt")]
+pub use cryypt_jwt::api::JwtMasterBuilder;
 
 // === Core Re-exports ===
 
@@ -162,6 +202,10 @@ pub use cryypt_compression::{Compress, CompressionError};
 #[cfg_attr(docsrs, doc(cfg(feature = "jwt")))]
 pub use cryypt_jwt as jwt;
 
+#[cfg(feature = "jwt")]
+#[cfg_attr(docsrs, doc(cfg(feature = "jwt")))]
+pub use cryypt_jwt::{Jwt, JwtError, JwtResult, on_result as jwt_on_result};
+
 #[cfg(feature = "pqcrypto")]
 #[cfg_attr(docsrs, doc(cfg(feature = "pqcrypto")))]
 pub use cryypt_pqcrypto as pqcrypto;
@@ -209,4 +253,7 @@ pub mod prelude {
 
     #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
     pub use cryypt_compression::api::*;
+
+    #[cfg(feature = "jwt")]
+    pub use crate::{Jwt, jwt_on_result};
 }

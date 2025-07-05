@@ -1,8 +1,6 @@
-//! Zstd compression builder - core types and entry point
-//!
-//! Contains the main builder types, type-state markers, and entry points for Zstd compression.
+//! Zstd compression builder following README.md patterns
 
-use crate::{CompressionResult, CompressionAlgorithm, Result};
+use crate::{CompressionResult, Result};
 
 pub mod config;
 pub mod compress;
@@ -18,7 +16,7 @@ pub struct NoLevel;
 /// Type-state marker for level set  
 pub struct HasLevel(pub i32);
 
-/// Builder for Zstd compression operations
+/// Builder for Zstd compression operations - follows README.md patterns
 pub struct ZstdBuilder<L> {
     pub(crate) level: L,
     pub(crate) result_handler: Option<Box<dyn Fn(Result<CompressionResult>) -> Result<CompressionResult> + Send + Sync>>,
@@ -34,11 +32,19 @@ impl ZstdBuilder<NoLevel> {
             chunk_handler: None,
         }
     }
+
+    /// Set compression level - README.md pattern
+    pub fn with_level(self, level: i32) -> ZstdBuilder<HasLevel> {
+        ZstdBuilder {
+            level: HasLevel(level),
+            result_handler: self.result_handler,
+            chunk_handler: self.chunk_handler,
+        }
+    }
 }
 
-// Methods for adding result and chunk handlers
 impl<L> ZstdBuilder<L> {
-    /// Apply on_result! handler
+    /// Apply on_result! handler - hidden implementation per ARCHITECTURE.md
     pub fn on_result<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<CompressionResult>) -> Result<CompressionResult> + Send + Sync + 'static,
@@ -47,7 +53,7 @@ impl<L> ZstdBuilder<L> {
         self
     }
     
-    /// Apply on_chunk! handler for streaming
+    /// Apply on_chunk! handler for streaming - hidden implementation per ARCHITECTURE.md
     pub fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync + 'static,

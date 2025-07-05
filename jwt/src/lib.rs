@@ -1,63 +1,34 @@
-//! JSON Web Token (JWT) implementation with strong typing and security features.
+//! JSON Web Token (JWT) implementation following README.md patterns
 //!
-//! This module provides a comprehensive JWT implementation with:
-//! - Multiple signing algorithms (HS256, ES256)
-//! - Compile-time validated claims builder
-//! - Token revocation with automatic cleanup
+//! This module provides JWT functionality with:
+//! - HS256 and ES256 algorithms  
 //! - Key rotation support
-//! - Comprehensive validation options
-//! - Concrete Future types (no async traits)
-//!
-//! # Example
-//!
-//! ```no_run
-//! use cryypt::jwt::{ClaimsBuilder, Generator, Hs256Key};
-//! use chrono::Duration;
-//!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // Create a signing key
-//! let key = Hs256Key::random();
-//! let generator = Generator::new(key);
-//!
-//! // Build claims with compile-time validation
-//! let claims = ClaimsBuilder::new()
-//!     .subject("user@example.com")
-//!     .expires_in(Duration::hours(24))
-//!     .issued_now()
-//!     .issuer("my-app")
-//!     .build();
-//!
-//! // Generate token
-//! let token = generator.token(&claims).await?;
-//!
-//! // Verify token
-//! let verified = generator.verify(&token).await?;
-//! assert_eq!(verified.sub, "user@example.com");
-//! # Ok(())
-//! # }
-//! ```
+//! - Standard claims handling
+//! - True async with channels (no spawn_blocking)
+//! - README.md compliant API patterns
 
-// Internal modules
+// Internal modules - following README.md patterns  
+pub mod api;
 mod algorithms;
-mod claims;
 mod error;
-mod futures;
-mod generator;
-mod revocation;
-mod rotator;
-mod traits;
-mod validation;
+mod types;
+mod crypto;
+mod rotation;
 
-// Public re-exports
-pub use algorithms::{Es256Key, Hs256Key};
-pub use claims::{Claims, ClaimsBuilder};
-pub use error::{JwtError, JwtResult};
-pub use futures::{CleanupStartFuture, TokenGenerationFuture, TokenVerificationFuture};
-pub use generator::Generator;
-pub use revocation::{Revocation, RevokedToken};
-pub use rotator::Rotator;
-pub use traits::{Header, Signer};
-pub use validation::ValidationOptions;
+// Public re-exports following README.md patterns
+pub use api::*;
+pub use error::*;
+pub use types::*;
 
-// Re-export typestate markers for advanced usage
-pub use claims::ts;
+/// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
+pub struct Cryypt;
+
+impl Cryypt {
+    /// Master builder for JWT operations - README.md pattern
+    pub fn jwt() -> crate::api::JwtMasterBuilder {
+        crate::api::JwtMasterBuilder
+    }
+}
+
+// Direct builder entry point - equivalent to Cryypt::jwt()
+pub use api::Jwt;

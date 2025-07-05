@@ -1,34 +1,21 @@
-//! Macro for handling stream chunk results in hashing operations
+//! Hashing-specific on_chunk! macro implementation (internal use only)
 
-/// Macro for handling stream chunk results in hashing operations
-///
-/// This macro enables the README.md streaming pattern:
-/// ```rust,no_run
-/// # use cryypt_hashing::*;
-/// # async fn example() {
-/// // let mut hash_stream = Hash::sha256()
-/// //     .on_chunk!(|chunk| {
-/// //         Ok => chunk,
-/// //         Err(e) => {
-/// //             log::error!("Hash chunk error: {}", e);
-/// //             return;
-/// //         }
-/// //     })
-/// //     .compute_stream(file_stream);
-/// # }
-/// ```
-#[macro_export]
-macro_rules! on_chunk {
-    // Standard pattern: Ok => chunk, Err(e) => { ... return; }
-    (|$chunk:ident| {
-        Ok => $ok_expr:expr,
-        Err($err:ident) => {
-            $($err_body:tt)*
-        }
-    }) => {
-        |$chunk: Result<Vec<u8>, $crate::HashError>| -> Option<Vec<u8>> {
+// Internal macro - not exported, only used within the crate
+macro_rules! hash_on_chunk_impl {
+    // Standard README pattern for stream processing
+    (|$chunk:ident| { Ok => $chunk_ident:ident, Err($err:ident) => return }) => {
+        |$chunk: $crate::Result<Vec<u8>>| -> Option<Vec<u8>> {
             match $chunk {
-                Ok($chunk) => Some($ok_expr),
+                Ok($chunk_ident) => Some($chunk_ident),
+                Err(_) => None,
+            }
+        }
+    };
+    // Custom handler with error logging
+    (|$chunk:ident| { Ok => $chunk_ident:ident, Err($err:ident) => { $($err_body:tt)* } }) => {
+        |$chunk: $crate::Result<Vec<u8>>| -> Option<Vec<u8>> {
+            match $chunk {
+                Ok($chunk_ident) => Some($chunk_ident),
                 Err($err) => {
                     $($err_body)*
                     None
@@ -36,16 +23,7 @@ macro_rules! on_chunk {
             }
         }
     };
-    // Alternative pattern with custom error handling
-    (|$chunk:ident| {
-        Ok => $ok_expr:expr,
-        Err($err:ident) => $err_expr:expr
-    }) => {
-        |$chunk: Result<Vec<u8>, $crate::HashError>| -> Option<Vec<u8>> {
-            match $chunk {
-                Ok($chunk) => Some($ok_expr),
-                Err($err) => $err_expr
-            }
-        }
-    };
 }
+
+// Users should use the on_chunk method on builders, not call macros directly
+pub(crate) use hash_on_chunk_impl;

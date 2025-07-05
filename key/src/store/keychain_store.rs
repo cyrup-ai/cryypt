@@ -2,8 +2,9 @@
 
 use crate::KeyError;
 use crate::{
-    AsyncDeleteResult, AsyncExistsResult, AsyncListResult, AsyncRetrieveResult, AsyncStoreResult,
-    KeyEnumeration, KeyId, KeyImport, KeyRetrieval, KeyStorage,
+    traits::{AsyncDeleteResult, AsyncExistsResult, AsyncListResult, AsyncRetrieveResult, AsyncStoreResult,
+    KeyEnumeration, KeyImport, KeyRetrieval, KeyStorage},
+    KeyId,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
 use zeroize::Zeroizing;

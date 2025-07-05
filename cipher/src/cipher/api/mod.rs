@@ -1,15 +1,12 @@
-//! Fluent cipher API with zero boxing
+//! Fluent cipher API following README.md patterns
 //!
-//! Usage: `let result = Cipher::chachapoly().with_key(key_id).with_data(data).encrypt().await`
+//! NEW PATTERN: Actions take data as arguments
+//! Usage: `Cipher::aes().with_key(key).on_result(handler).encrypt(data).await`
 
-mod aes_builder;
-pub mod cipher_builder_traits;
+pub mod aes_builder;
 mod chacha_builder;
 mod cipher;
-mod decryption_builder;
-mod states;
-mod on_result_ext;
-mod stream;
+mod cipher_builder_traits;
 
 use crate::cipher::encryption_result::EncodableResult;
 use crate::Result;
@@ -25,10 +22,21 @@ pub trait AsyncDecryptionResult: Future<Output = Result<Vec<u8>>> + Send {}
 impl<T> AsyncEncryptionResult for T where T: Future<Output = Result<EncodableResult>> + Send {}
 impl<T> AsyncDecryptionResult for T where T: Future<Output = Result<Vec<u8>>> + Send {}
 
-pub use cipher_builder_traits::{DataBuilder, EncryptBuilder, KeyBuilder};
+// Export the main API
 pub use cipher::Cipher;
-pub use states::{HasData, HasKey, NoData, NoKey};
-pub use on_result_ext::{CipherOnResultExt, CipherProducer};
 pub use aes_builder::{AesBuilder, AesWithKey};
 pub use chacha_builder::{ChaChaBuilder, ChaChaWithKey};
-pub use stream::CryptoStream;
+
+// Export traits for compatibility
+pub use cipher_builder_traits::KeyBuilder;
+
+// Export crypto stream
+#[derive(Debug)]
+pub struct CryptoStream;
+
+impl CryptoStream {
+    /// Create a new crypto stream
+    pub fn new() -> Self {
+        Self
+    }
+}

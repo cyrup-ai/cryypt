@@ -1,6 +1,6 @@
 //! Cipher API examples - EXACTLY matching cipher/README.md
 
-use cryypt::{Cryypt, FileKeyStore, on_result, Cipher, KeyRetriever, Bits};
+use cryypt::{Cryypt, FileKeyStore, on_result, Cipher, KeyRetriever, Bits, Key};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -9,14 +9,14 @@ async fn aes_encryption_example() -> Result<(), Box<dyn std::error::Error>> {
     // Retrieve key for encryption/decryption
     let master_key = [0u8; 32]; // Example master key
     let store = FileKeyStore::at("/secure/keys").with_master_key(master_key);
-    let key = Cryypt::key()
-        .retrieve()
+    let key = Key::size(256u32.bits())
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
         .on_result!(|result| {
             result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
         })
+        .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
 
     // Encrypt data
@@ -47,19 +47,19 @@ async fn aes_encryption_example() -> Result<(), Box<dyn std::error::Error>> {
 async fn chacha_encryption_example() -> Result<(), Box<dyn std::error::Error>> {
     let master_key = [0u8; 32];
     let store = FileKeyStore::at("/secure/keys").with_master_key(master_key);
-    let key = Cryypt::key()
-        .retrieve()
+    let key = Key::size(256u32.bits())
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
         .on_result!(|result| {
             result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
         })
+        .retrieve()
         .await;
 
     // Encrypt with ChaCha20
     let encrypted = Cryypt::cipher()
-        .chacha20()
+        .chachapoly()
         .with_key(key)
         .on_result!(|result| {
             result.unwrap_or_else(|e| panic!("Operation error: {}", e))
@@ -69,7 +69,7 @@ async fn chacha_encryption_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Decrypt with custom error handling
     let plaintext = Cryypt::cipher()
-        .chacha20()
+        .chachapoly()
         .with_key(key) 
         .on_result!(|result| {
             result.unwrap_or_else(|e| {
@@ -90,14 +90,14 @@ async fn encrypt_file(input_path: &str, output_path: &str) -> Result<(), Box<dyn
     
     // Retrieve key
     let store = FileKeyStore::at("/secure/keys").with_master_key(master_key);
-    let key = KeyRetriever::new()
+    let key = Key::size(256u32.bits())
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .retrieve(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result!(|result| {
+            result.unwrap_or_else(|e| panic!("Key retrieval error: {}", e))
         })
+        .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
     
     // Read entire file
@@ -128,14 +128,14 @@ async fn encrypt_large_file(input_path: &str, output_path: &str) -> Result<(), B
     
     // Retrieve key
     let store = FileKeyStore::at("/secure/keys").with_master_key(master_key);
-    let key = KeyRetriever::new()
+    let key = Key::size(256u32.bits())
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .retrieve(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result!(|result| {
+            result.unwrap_or_else(|e| panic!("Key retrieval error: {}", e))
         })
+        .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
     
     // Open files
@@ -167,14 +167,14 @@ async fn pipeline_example() -> Result<(), Box<dyn std::error::Error>> {
     let data = b"Large text data...";
     let master_key = [0u8; 32];
     let store = FileKeyStore::at("/secure/keys").with_master_key(master_key);
-    let key = Cryypt::key()
-        .retrieve()
+    let key = Key::size(256u32.bits())
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
         .on_result!(|result| {
             result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
         })
+        .retrieve()
         .await;
 
     // Hash -> Compress -> Encrypt pipeline

@@ -1,25 +1,6 @@
-//! AES encryption builders core module
-//!
-//! Contains the main builder structures and core implementations for AES encryption.
-//! Follows the patterns defined in README.md and ARCHITECTURE.md.
+//! AES encryption builders following README.md patterns exactly
 
-use super::{
-    cipher_builder_traits::{
-        AadBuilder, CiphertextBuilder, DataBuilder, DecryptBuilder, EncryptBuilder, KeyBuilder,
-        KeyProviderBuilder,
-    },
-    AsyncDecryptionResult, AsyncEncryptionResult, CipherOnResultExt, CipherProducer, CryptoStream,
-};
-use crate::{cipher::encryption_result::EncryptionResultImpl, CryptError, Result};
-use aes_gcm::{
-    aead::{generic_array::GenericArray, Aead, KeyInit},
-    Aes256Gcm,
-};
-use rand::RngCore;
-use tokio::sync::oneshot;
-use zeroize::Zeroizing;
-use std::pin::Pin;
-use std::future::Future;
+use crate::{Result, CryptError};
 
 // Declare submodules
 pub mod encrypt;
@@ -27,76 +8,144 @@ pub mod decrypt;
 pub mod stream;
 pub mod aad;
 
-// Re-export key types from submodules
-pub use encrypt::*;
-pub use decrypt::*; 
-pub use stream::*;
-pub use aad::*;
-
-/// Initial AES builder
+/// Initial AES builder - entry point
 pub struct AesBuilder;
 
 /// AES builder with key
 pub struct AesWithKey {
-    pub(crate) key_builder: Box<dyn KeyProviderBuilder>,
-    pub(crate) chunk_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>>,
-}
-
-/// AES builder with key and data - ready to encrypt
-pub struct AesWithKeyAndData {
-    pub(in crate::cipher) key_builder: Box<dyn KeyProviderBuilder>,
-    pub(in crate::cipher) data: Vec<u8>,
-    pub(in crate::cipher) aad: std::collections::HashMap<String, String>,
-}
-
-/// AES builder with key and ciphertext - ready to decrypt
-pub struct AesWithKeyAndCiphertext {
-    pub(in crate::cipher) key_builder: Box<dyn KeyProviderBuilder>,
-    pub(in crate::cipher) ciphertext: Vec<u8>,
-    pub(in crate::cipher) aad: std::collections::HashMap<String, String>,
+    key: Vec<u8>,
+    result_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Result<Vec<u8>> + Send + Sync>>,
 }
 
 impl AesBuilder {
-    #[doc(hidden)]
+    /// Create new AES builder
     pub fn new() -> Self {
         Self
     }
+
+    /// Add key to builder - README.md pattern
+    pub fn with_key<T: Into<Vec<u8>>>(self, key: T) -> AesWithKey {
+        AesWithKey::new(key.into())
+    }
 }
 
-impl KeyBuilder for AesBuilder {
-    type Output = AesWithKey;
+impl AesWithKey {
+    /// Create AES builder with key
+    pub fn new(key: Vec<u8>) -> Self {
+        Self {
+            key,
+            result_handler: None,
+        }
+    }
 
-    fn with_key<K>(self, key_builder: K) -> Self::Output
+    /// Add on_result! handler - README.md pattern
+    pub fn on_result<F>(mut self, handler: F) -> Self
     where
-        K: KeyProviderBuilder + 'static,
+        F: Fn(Result<Vec<u8>>) -> Result<Vec<u8>> + Send + Sync + 'static,
     {
-        AesWithKey {
-            key_builder: Box::new(key_builder),
-            chunk_handler: None,
+        self.result_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Encrypt data - action takes data as argument per README.md
+    pub async fn encrypt<T: Into<Vec<u8>>>(self, data: T) -> Result<Vec<u8>> {
+        let data = data.into();
+        
+        // Perform AES-GCM encryption
+        let result = aes_encrypt(&self.key, &data).await;
+        
+        // Apply result handler if present
+        if let Some(handler) = self.result_handler {
+            handler(result)
+        } else {
+            result
+        }
+    }
+
+    /// Decrypt data - action takes data as argument per README.md
+    pub async fn decrypt<T: Into<Vec<u8>>>(self, ciphertext: T) -> Result<Vec<u8>> {
+        let ciphertext = ciphertext.into();
+        
+        // Perform AES-GCM decryption
+        let result = aes_decrypt(&self.key, &ciphertext).await;
+        
+        // Apply result handler if present
+        if let Some(handler) = self.result_handler {
+            handler(result)
+        } else {
+            result
         }
     }
 }
 
-impl DataBuilder for AesWithKey {
-    type Output = AesWithKeyAndData;
-
-    fn with_data<T: Into<Vec<u8>>>(self, data: T) -> Self::Output {
-        AesWithKeyAndData {
-            key_builder: self.key_builder,
-            data: data.into(),
-            aad: std::collections::HashMap::new(),
-        }
+// Internal encryption function using true async
+async fn aes_encrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+    if key.len() != 32 {
+        return Err(CryptError::InvalidKeySize {
+            expected: 32,
+            actual: key.len(),
+        });
     }
+
+    let data = data.to_vec();
+    let key = key.to_vec();
+    
+    tokio::task::spawn_blocking(move || {
+        use aes_gcm::{Aes256Gcm, KeyInit, aead::{Aead, generic_array::GenericArray}};
+        use rand::RngCore;
+        
+        let cipher = Aes256Gcm::new(GenericArray::from_slice(&key));
+        
+        // Generate random nonce
+        let mut nonce_bytes = [0u8; 12];
+        rand::rng().fill_bytes(&mut nonce_bytes);
+        let nonce = GenericArray::from_slice(&nonce_bytes);
+        
+        // Encrypt the data
+        let ciphertext = cipher.encrypt(nonce, data.as_ref())
+            .map_err(|e| CryptError::EncryptionFailed(e.to_string()))?;
+        
+        // Prepend nonce to ciphertext
+        let mut result = nonce_bytes.to_vec();
+        result.extend_from_slice(&ciphertext);
+        
+        Ok(result)
+    })
+    .await
+    .map_err(|e| CryptError::InternalError(e.to_string()))?
 }
 
-impl CiphertextBuilder for AesWithKey {
-    type Output = AesWithKeyAndCiphertext;
-
-    fn with_ciphertext<T: Into<Vec<u8>>>(self, ciphertext: T) -> Self::Output {
-        AesWithKeyAndCiphertext {
-            key_builder: self.key_builder,
-            ciphertext: ciphertext.into(),
-            aad: std::collections::HashMap::new(),
-        }
+// Internal decryption function using true async
+async fn aes_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+    if key.len() != 32 {
+        return Err(CryptError::InvalidKeySize {
+            expected: 32,
+            actual: key.len(),
+        });
     }
+
+    if ciphertext.len() < 12 {
+        return Err(CryptError::InvalidEncryptedData("Ciphertext too short".to_string()));
+    }
+
+    let ciphertext = ciphertext.to_vec();
+    let key = key.to_vec();
+    
+    tokio::task::spawn_blocking(move || {
+        use aes_gcm::{Aes256Gcm, KeyInit, aead::{Aead, generic_array::GenericArray}};
+        
+        let cipher = Aes256Gcm::new(GenericArray::from_slice(&key));
+        
+        // Extract nonce and ciphertext
+        let (nonce_bytes, actual_ciphertext) = ciphertext.split_at(12);
+        let nonce = GenericArray::from_slice(nonce_bytes);
+        
+        // Decrypt the data
+        let plaintext = cipher.decrypt(nonce, actual_ciphertext)
+            .map_err(|e| CryptError::DecryptionFailed(e.to_string()))?;
+        
+        Ok(plaintext)
+    })
+    .await
+    .map_err(|e| CryptError::InternalError(e.to_string()))?
 }

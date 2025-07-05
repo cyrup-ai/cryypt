@@ -1,111 +1,143 @@
-//! Bzip2 compression and decompression operations
+//! Bzip2 compression operations
 //!
-//! Contains the main compress/decompress methods for both NoLevel and HasLevel builders.
+//! Contains the compression and decompression implementations for Bzip2.
 
-use super::{Bzip2Builder, NoLevel, HasLevel};
 use crate::{CompressionResult, CompressionAlgorithm, Result};
+use super::{Bzip2Builder, NoLevel, HasLevel};
+use std::future::Future;
+use tokio::sync::oneshot;
 
-// Compression methods for builder without specific level (uses default level 9)
 impl Bzip2Builder<NoLevel> {
-    /// Compress the provided data using default level (9)
-    pub async fn compress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
-        let data = data.into();
-        let original_size = data.len();
-        let level = 9; // Default level (maximum compression)
+    /// Compress data using default compression level
+    pub fn compress(self, data: &[u8]) -> impl Future<Output = Result<CompressionResult>> {
+        let data = data.to_vec();
+        let handler = self.result_handler;
         
-        let result = bzip2_compress(data, level).await.map(|compressed| {
-            CompressionResult::with_original_size(
-                compressed,
-                CompressionAlgorithm::Bzip2 { level: Some(level) },
-                original_size,
-            )
-        });
-        
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
+        async move {
+            let compressed = bzip2_compress_async(data, bzip2::Compression::default()).await?;
+            
+            let result = Ok(CompressionResult::with_original_size(
+                compressed.0,
+                CompressionAlgorithm::Bzip2 { level: Some(6) }, // Default bzip2 level
+                compressed.1,
+            ));
+            
+            if let Some(handler) = handler {
+                handler(result)
+            } else {
+                result
+            }
         }
     }
     
-    /// Decompress the provided data
-    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
-        let data = data.into();
+    /// Decompress data
+    pub fn decompress(self, data: &[u8]) -> impl Future<Output = Result<Vec<u8>>> {
+        let data = data.to_vec();
+        let handler = self.result_handler;
         
-        let result = bzip2_decompress(data).await.map(|decompressed| {
-            CompressionResult::new(
-                decompressed,
+        async move {
+            let decompressed = bzip2_decompress_async(data).await;
+            
+            let result = decompressed.map(|data| CompressionResult::new(
+                data,
                 CompressionAlgorithm::Bzip2 { level: None },
-            )
-        });
-        
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
+            ));
+            
+            if let Some(handler) = handler {
+                handler(result).map(|r| r.to_vec())
+            } else {
+                result.map(|r| r.to_vec())
+            }
         }
     }
 }
 
-// Compression methods for builder with specific level
 impl Bzip2Builder<HasLevel> {
-    /// Compress the provided data using the configured level
-    pub async fn compress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
-        let data = data.into();
-        let original_size = data.len();
+    /// Compress data using specified compression level
+    pub fn compress(self, data: &[u8]) -> impl Future<Output = Result<CompressionResult>> {
+        let data = data.to_vec();
         let level = self.level.0;
+        let handler = self.result_handler;
         
-        let result = bzip2_compress(data, level).await.map(|compressed| {
-            CompressionResult::with_original_size(
-                compressed,
-                CompressionAlgorithm::Bzip2 { level: Some(level) },
-                original_size,
-            )
-        });
-        
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
+        async move {
+            let bz_level = bzip2::Compression::new(level as u32);
+            let compressed = bzip2_compress_async(data, bz_level).await?;
+            
+            let result = Ok(CompressionResult::with_original_size(
+                compressed.0,
+                CompressionAlgorithm::Bzip2 { level: Some(6) }, // Default bzip2 level
+                compressed.1,
+            ));
+            
+            if let Some(handler) = handler {
+                handler(result)
+            } else {
+                result
+            }
         }
     }
     
-    /// Decompress the provided data
-    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
-        let data = data.into();
+    /// Decompress data
+    pub fn decompress(self, data: &[u8]) -> impl Future<Output = Result<Vec<u8>>> {
+        let data = data.to_vec();
+        let handler = self.result_handler;
         
-        let result = bzip2_decompress(data).await.map(|decompressed| {
-            CompressionResult::new(
-                decompressed,
+        async move {
+            let decompressed = bzip2_decompress_async(data).await;
+            
+            let result = decompressed.map(|data| CompressionResult::new(
+                data,
                 CompressionAlgorithm::Bzip2 { level: None },
-            )
-        });
-        
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
+            ));
+            
+            if let Some(handler) = handler {
+                handler(result).map(|r| r.to_vec())
+            } else {
+                result.map(|r| r.to_vec())
+            }
         }
     }
 }
 
-// Internal compression functions
-async fn bzip2_compress(data: Vec<u8>, level: u32) -> Result<Vec<u8>> {
-    tokio::task::spawn_blocking(move || {
-        crate::bzip2::compress(&data, level).map_err(|e| {
-            crate::CompressionError::internal(format!("Bzip2 compression failed: {}", e))
-        })
-    })
-    .await
-    .map_err(|e| crate::CompressionError::internal(e.to_string()))?
+// True async compression using channels
+async fn bzip2_compress_async(data: Vec<u8>, level: bzip2::Compression) -> Result<(Vec<u8>, usize)> {
+    let (tx, rx) = oneshot::channel();
+    let original_size = data.len();
+    
+    std::thread::spawn(move || {
+        let result = (|| {
+            use bzip2::write::BzEncoder;
+            use std::io::Write;
+            
+            let mut encoder = BzEncoder::new(Vec::new(), level);
+            encoder.write_all(&data)?;
+            Ok((encoder.finish()?, original_size))
+        })()
+        .map_err(|e: std::io::Error| crate::CompressionError::internal(e.to_string()));
+        
+        let _ = tx.send(result);
+    });
+    
+    rx.await.map_err(|_| crate::CompressionError::internal("Compression task failed"))?
 }
 
-async fn bzip2_decompress(data: Vec<u8>) -> Result<Vec<u8>> {
-    tokio::task::spawn_blocking(move || {
-        crate::bzip2::decompress(&data).map_err(|e| {
-            crate::CompressionError::internal(format!("Bzip2 decompression failed: {}", e))
-        })
-    })
-    .await
-    .map_err(|e| crate::CompressionError::internal(e.to_string()))?
+async fn bzip2_decompress_async(data: Vec<u8>) -> Result<Vec<u8>> {
+    let (tx, rx) = oneshot::channel();
+    
+    std::thread::spawn(move || {
+        let result = (|| {
+            use bzip2::read::BzDecoder;
+            use std::io::Read;
+            
+            let mut decoder = BzDecoder::new(&data[..]);
+            let mut output = Vec::new();
+            decoder.read_to_end(&mut output)?;
+            Ok(output)
+        })()
+        .map_err(|e: std::io::Error| crate::CompressionError::internal(e.to_string()));
+        
+        let _ = tx.send(result);
+    });
+    
+    rx.await.map_err(|_| crate::CompressionError::internal("Decompression task failed"))?
 }

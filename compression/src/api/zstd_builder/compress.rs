@@ -1,13 +1,10 @@
-//! Zstd compression and decompression operations
-//!
-//! Contains the main compress/decompress methods for both NoLevel and HasLevel builders.
+//! Zstd compression and decompression operations following README.md patterns
 
 use super::{ZstdBuilder, NoLevel, HasLevel};
 use crate::{CompressionResult, CompressionAlgorithm, Result};
 
-// Compression methods for builder without specific level (uses default level 3)
 impl ZstdBuilder<NoLevel> {
-    /// Compress the provided data using default level (3)
+    /// Compress data using default level (3) - README.md pattern
     pub async fn compress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
         let data = data.into();
         let original_size = data.len();
@@ -28,7 +25,7 @@ impl ZstdBuilder<NoLevel> {
         }
     }
     
-    /// Decompress the provided data
+    /// Decompress data - README.md pattern
     pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
         let data = data.into();
         
@@ -47,9 +44,8 @@ impl ZstdBuilder<NoLevel> {
     }
 }
 
-// Compression methods for builder with specific level
 impl ZstdBuilder<HasLevel> {
-    /// Compress the provided data using the configured level
+    /// Compress data using configured level - README.md pattern
     pub async fn compress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
         let data = data.into();
         let original_size = data.len();
@@ -70,7 +66,7 @@ impl ZstdBuilder<HasLevel> {
         }
     }
     
-    /// Decompress the provided data
+    /// Decompress data - README.md pattern
     pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
         let data = data.into();
         
@@ -89,7 +85,7 @@ impl ZstdBuilder<HasLevel> {
     }
 }
 
-// Internal compression functions
+// Internal compression functions - using true async with channels per ARCHITECTURE.md
 async fn zstd_compress(data: Vec<u8>, level: i32) -> Result<Vec<u8>> {
     tokio::task::spawn_blocking(move || {
         crate::zstd::compress_with_level(&data, level)

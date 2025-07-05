@@ -1,88 +1,180 @@
-//! Entry point for the fluent hashing API
+//! Entry point for the fluent hashing API following README.md patterns exactly
 
-use super::{HashBuilder, NoData, NoPasses, NoSalt};
+use crate::{Result, HashResult};
 
-/// Entry point for hash operations
+/// Entry point for hash operations - README.md pattern
 pub struct Hash;
 
 impl Hash {
-    /// Use SHA-256
-    pub fn sha256() -> HashBuilder<Sha256Hash, NoData, NoSalt, NoPasses> {
-        HashBuilder {
-            hasher: Sha256Hash,
-            data: NoData,
-            salt: NoSalt,
-            passes: NoPasses,
+    /// Use SHA-256 - README.md pattern
+    pub fn sha256() -> Sha256Builder {
+        Sha256Builder::new()
+    }
+
+    /// Use SHA3-256 - README.md pattern  
+    pub fn sha3_256() -> Sha3_256Builder {
+        Sha3_256Builder::new()
+    }
+
+    /// Use Blake2b - README.md pattern
+    pub fn blake2b() -> Blake2bBuilder {
+        Blake2bBuilder::new()
+    }
+}
+
+/// SHA-256 hash builder following README.md patterns
+pub struct Sha256Builder {
+    result_handler: Option<Box<dyn Fn(Result<HashResult>) -> Result<HashResult> + Send + Sync>>,
+}
+
+impl Sha256Builder {
+    /// Create new SHA-256 builder
+    pub fn new() -> Self {
+        Self {
             result_handler: None,
-            chunk_handler: None,
         }
     }
 
-    /// Use SHA3-256
-    pub fn sha3_256() -> HashBuilder<Sha3_256Hash, NoData, NoSalt, NoPasses> {
-        HashBuilder {
-            hasher: Sha3_256Hash,
-            data: NoData,
-            salt: NoSalt,
-            passes: NoPasses,
-            result_handler: None,
-            chunk_handler: None,
-        }
+    /// Add on_result! handler - README.md pattern
+    pub fn on_result<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<HashResult>) -> Result<HashResult> + Send + Sync + 'static,
+    {
+        self.result_handler = Some(Box::new(handler));
+        self
     }
 
-    /// Use SHA3-384
-    pub fn sha3_384() -> HashBuilder<Sha3_384Hash, NoData, NoSalt, NoPasses> {
-        HashBuilder {
-            hasher: Sha3_384Hash,
-            data: NoData,
-            salt: NoSalt,
-            passes: NoPasses,
-            result_handler: None,
-            chunk_handler: None,
-        }
-    }
-
-    /// Use SHA3-512
-    pub fn sha3_512() -> HashBuilder<Sha3_512Hash, NoData, NoSalt, NoPasses> {
-        HashBuilder {
-            hasher: Sha3_512Hash,
-            data: NoData,
-            salt: NoSalt,
-            passes: NoPasses,
-            result_handler: None,
-            chunk_handler: None,
-        }
-    }
-
-    /// Use Blake2b
-    pub fn blake2b() -> HashBuilder<Blake2bHash, NoData, NoSalt, NoPasses> {
-        HashBuilder {
-            hasher: Blake2bHash { output_size: 64 },
-            data: NoData,
-            salt: NoSalt,
-            passes: NoPasses,
-            result_handler: None,
-            chunk_handler: None,
+    /// Compute hash - action takes data as argument per README.md
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+        let data = data.into();
+        
+        let result = sha256_hash(&data).await;
+        
+        if let Some(handler) = self.result_handler {
+            handler(result)
+        } else {
+            result
         }
     }
 }
 
-// Marker types for different hash algorithms
-/// SHA-256 hash algorithm implementation
-#[derive(Clone)]
-pub struct Sha256Hash;
-/// SHA3-256 hash algorithm implementation
-#[derive(Clone)]
-pub struct Sha3_256Hash;
-/// SHA3-384 hash algorithm implementation
-#[derive(Clone)]
-pub struct Sha3_384Hash;
-/// SHA3-512 hash algorithm implementation
-#[derive(Clone)]
-pub struct Sha3_512Hash;
-/// BLAKE2b hash algorithm implementation with configurable output size
-#[derive(Clone)]
-pub struct Blake2bHash {
-    /// Output size in bytes (1-64)
-    pub output_size: u8,
+/// SHA3-256 hash builder following README.md patterns
+pub struct Sha3_256Builder {
+    result_handler: Option<Box<dyn Fn(Result<HashResult>) -> Result<HashResult> + Send + Sync>>,
+}
+
+impl Sha3_256Builder {
+    /// Create new SHA3-256 builder
+    pub fn new() -> Self {
+        Self {
+            result_handler: None,
+        }
+    }
+
+    /// Add on_result! handler - README.md pattern
+    pub fn on_result<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<HashResult>) -> Result<HashResult> + Send + Sync + 'static,
+    {
+        self.result_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Compute hash - action takes data as argument per README.md
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+        let data = data.into();
+        
+        let result = sha3_256_hash(&data).await;
+        
+        if let Some(handler) = self.result_handler {
+            handler(result)
+        } else {
+            result
+        }
+    }
+}
+
+/// Blake2b hash builder following README.md patterns
+pub struct Blake2bBuilder {
+    result_handler: Option<Box<dyn Fn(Result<HashResult>) -> Result<HashResult> + Send + Sync>>,
+}
+
+impl Blake2bBuilder {
+    /// Create new Blake2b builder
+    pub fn new() -> Self {
+        Self {
+            result_handler: None,
+        }
+    }
+
+    /// Add on_result! handler - README.md pattern
+    pub fn on_result<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<HashResult>) -> Result<HashResult> + Send + Sync + 'static,
+    {
+        self.result_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Compute hash - action takes data as argument per README.md
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+        let data = data.into();
+        
+        let result = blake2b_hash(&data).await;
+        
+        if let Some(handler) = self.result_handler {
+            handler(result)
+        } else {
+            result
+        }
+    }
+}
+
+// Internal hash functions using true async
+async fn sha256_hash(data: &[u8]) -> Result<HashResult> {
+    let data = data.to_vec();
+    
+    tokio::task::spawn_blocking(move || {
+        use sha2::{Sha256, Digest};
+        
+        let mut hasher = Sha256::new();
+        hasher.update(&data);
+        let result = hasher.finalize();
+        
+        Ok(HashResult::new(result.to_vec()))
+    })
+    .await
+    .map_err(|e| crate::HashError::internal(e.to_string()))?
+}
+
+async fn sha3_256_hash(data: &[u8]) -> Result<HashResult> {
+    let data = data.to_vec();
+    
+    tokio::task::spawn_blocking(move || {
+        use sha3::{Sha3_256, Digest};
+        
+        let mut hasher = Sha3_256::new();
+        hasher.update(&data);
+        let result = hasher.finalize();
+        
+        Ok(HashResult::new(result.to_vec()))
+    })
+    .await
+    .map_err(|e| crate::HashError::internal(e.to_string()))?
+}
+
+async fn blake2b_hash(data: &[u8]) -> Result<HashResult> {
+    let data = data.to_vec();
+    
+    tokio::task::spawn_blocking(move || {
+        use blake2::{Blake2b512, Digest};
+        
+        let mut hasher = Blake2b512::new();
+        hasher.update(&data);
+        let result = hasher.finalize();
+        
+        Ok(HashResult::new(result.to_vec()))
+    })
+    .await
+    .map_err(|e| crate::HashError::internal(e.to_string()))?
 }

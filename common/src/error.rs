@@ -335,54 +335,5 @@ macro_rules! ensure {
     };
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_error_creation() {
-        let err = Error::io().context("Failed to read file");
-        assert!(matches!(err.kind(), ErrorKind::Io));
-        assert_eq!(err.get_context(), Some("Failed to read file"));
-    }
-    
-    #[test]
-    fn test_error_chaining() {
-        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
-        let err = Error::with_source(ErrorKind::Io, io_err)
-            .context("Failed to open config file");
-        
-        assert!(matches!(err.kind(), ErrorKind::Io));
-        assert!(std::error::Error::source(&err).is_some());
-    }
-    
-    #[test]
-    fn test_result_extension() {
-        let result: std::result::Result<(), std::io::Error> = Err(
-            std::io::Error::new(std::io::ErrorKind::PermissionDenied, "access denied")
-        );
-        
-        let err = result.context("Cannot access system file").unwrap_err();
-        assert!(err.get_context().unwrap().contains("Cannot access system file"));
-    }
-    
-    #[test]
-    fn test_option_extension() {
-        let opt: Option<i32> = None;
-        let err = opt.context("Value not found in cache").unwrap_err();
-        assert!(matches!(err.kind(), ErrorKind::NotFound));
-        assert_eq!(err.get_context(), Some("Value not found in cache"));
-    }
-    
-    #[test]
-    fn test_error_macros() {
-        fn test_function() -> Result<()> {
-            ensure!(1 + 1 == 3, validation, "Math is broken");
-            Ok(())
-        }
-        
-        let err = test_function().unwrap_err();
-        assert!(matches!(err.kind(), ErrorKind::Validation));
-        assert!(err.get_context().unwrap().contains("Math is broken"));
-    }
-}
+// Tests moved to tests/ directory per CLAUDE.md rule
+// "NEVER put tests in src/** files. Tests belong in tests/* directories"

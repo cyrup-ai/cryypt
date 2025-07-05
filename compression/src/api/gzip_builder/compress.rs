@@ -1,107 +1,143 @@
-//! Gzip compression and decompression operations
+//! Gzip compression operations
 //!
-//! Contains the main compress/decompress methods for both NoLevel and HasLevel builders.
+//! Contains the compression and decompression implementations for Gzip.
 
-use super::{GzipBuilder, NoLevel, HasLevel};
 use crate::{CompressionResult, CompressionAlgorithm, Result};
+use super::{GzipBuilder, NoLevel, HasLevel};
+use std::future::Future;
+use tokio::sync::oneshot;
 
-// Compression methods for builder without specific level (uses default level 6)
 impl GzipBuilder<NoLevel> {
-    /// Compress the provided data using default level (6)
-    pub async fn compress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
-        let data = data.into();
-        let original_size = data.len();
-        let level = 6; // Default level
+    /// Compress data using default compression level
+    pub fn compress(self, data: &[u8]) -> impl Future<Output = Result<CompressionResult>> {
+        let data = data.to_vec();
+        let handler = self.result_handler;
         
-        let result = gzip_compress(data, level).await.map(|compressed| {
-            CompressionResult::with_original_size(
-                compressed,
-                CompressionAlgorithm::Gzip { level: Some(level) },
-                original_size,
-            )
-        });
-        
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
+        async move {
+            let compressed = gzip_compress_async(data, flate2::Compression::default()).await?;
+            
+            let result = Ok(CompressionResult::with_original_size(
+                compressed.0,
+                CompressionAlgorithm::Gzip { level: Some(6) }, // Default gzip level
+                compressed.1,
+            ));
+            
+            if let Some(handler) = handler {
+                handler(result)
+            } else {
+                result
+            }
         }
     }
     
-    /// Decompress the provided data
-    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
-        let data = data.into();
+    /// Decompress data
+    pub fn decompress(self, data: &[u8]) -> impl Future<Output = Result<Vec<u8>>> {
+        let data = data.to_vec();
+        let handler = self.result_handler;
         
-        let result = gzip_decompress(data).await.map(|decompressed| {
-            CompressionResult::new(
-                decompressed,
+        async move {
+            let decompressed = gzip_decompress_async(data).await;
+            
+            let result = decompressed.map(|data| CompressionResult::new(
+                data,
                 CompressionAlgorithm::Gzip { level: None },
-            )
-        });
-        
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
+            ));
+            
+            if let Some(handler) = handler {
+                handler(result).map(|r| r.to_vec())
+            } else {
+                result.map(|r| r.to_vec())
+            }
         }
     }
 }
 
-// Compression methods for builder with specific level
 impl GzipBuilder<HasLevel> {
-    /// Compress the provided data using the configured level
-    pub async fn compress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
-        let data = data.into();
-        let original_size = data.len();
+    /// Compress data using specified compression level
+    pub fn compress(self, data: &[u8]) -> impl Future<Output = Result<CompressionResult>> {
+        let data = data.to_vec();
         let level = self.level.0;
+        let handler = self.result_handler;
         
-        let result = gzip_compress(data, level).await.map(|compressed| {
-            CompressionResult::with_original_size(
-                compressed,
-                CompressionAlgorithm::Gzip { level: Some(level) },
-                original_size,
-            )
-        });
-        
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
+        async move {
+            let flate_level = flate2::Compression::new(level as u32);
+            let compressed = gzip_compress_async(data, flate_level).await?;
+            
+            let result = Ok(CompressionResult::with_original_size(
+                compressed.0,
+                CompressionAlgorithm::Gzip { level: Some(6) }, // Default gzip level
+                compressed.1,
+            ));
+            
+            if let Some(handler) = handler {
+                handler(result)
+            } else {
+                result
+            }
         }
     }
     
-    /// Decompress the provided data
-    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
-        let data = data.into();
+    /// Decompress data
+    pub fn decompress(self, data: &[u8]) -> impl Future<Output = Result<Vec<u8>>> {
+        let data = data.to_vec();
+        let handler = self.result_handler;
         
-        let result = gzip_decompress(data).await.map(|decompressed| {
-            CompressionResult::new(
-                decompressed,
+        async move {
+            let decompressed = gzip_decompress_async(data).await;
+            
+            let result = decompressed.map(|data| CompressionResult::new(
+                data,
                 CompressionAlgorithm::Gzip { level: None },
-            )
-        });
-        
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
+            ));
+            
+            if let Some(handler) = handler {
+                handler(result).map(|r| r.to_vec())
+            } else {
+                result.map(|r| r.to_vec())
+            }
         }
     }
 }
 
-// Internal compression functions
-async fn gzip_compress(data: Vec<u8>, level: u32) -> Result<Vec<u8>> {
-    tokio::task::spawn_blocking(move || {
-        crate::gzip::compress_with_level(&data, level as i32)
-    })
-    .await
-    .map_err(|e| crate::CompressionError::internal(e.to_string()))?
+// True async compression using channels
+async fn gzip_compress_async(data: Vec<u8>, level: flate2::Compression) -> Result<(Vec<u8>, usize)> {
+    let (tx, rx) = oneshot::channel();
+    let original_size = data.len();
+    
+    std::thread::spawn(move || {
+        let result = (|| {
+            use flate2::write::GzEncoder;
+            use std::io::Write;
+            
+            let mut encoder = GzEncoder::new(Vec::new(), level);
+            encoder.write_all(&data)?;
+            Ok((encoder.finish()?, original_size))
+        })()
+        .map_err(|e: std::io::Error| crate::CompressionError::internal(e.to_string()));
+        
+        let _ = tx.send(result);
+    });
+    
+    rx.await.map_err(|_| crate::CompressionError::internal("Compression task failed"))?
 }
 
-async fn gzip_decompress(data: Vec<u8>) -> Result<Vec<u8>> {
-    tokio::task::spawn_blocking(move || {
-        crate::gzip::decompress(&data)
-    })
-    .await
-    .map_err(|e| crate::CompressionError::internal(e.to_string()))?
+async fn gzip_decompress_async(data: Vec<u8>) -> Result<Vec<u8>> {
+    let (tx, rx) = oneshot::channel();
+    
+    std::thread::spawn(move || {
+        let result = (|| {
+            use flate2::read::GzDecoder;
+            use std::io::Read;
+            
+            let mut decoder = GzDecoder::new(&data[..]);
+            let mut output = Vec::new();
+            decoder.read_to_end(&mut output)?;
+            Ok(output)
+        })()
+        .map_err(|e: std::io::Error| crate::CompressionError::internal(e.to_string()));
+        
+        let _ = tx.send(result);
+    });
+    
+    rx.await.map_err(|_| crate::CompressionError::internal("Decompression task failed"))?
 }
