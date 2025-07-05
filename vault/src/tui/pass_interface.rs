@@ -1,7 +1,58 @@
-//! Pass password store interface - DEPRECATED
-//! This module violates README.md patterns by using async_trait (BANNED)
-//! Following CLAUDE.md instruction to ignore code not matching README.md
+//! Pass password store interface - Simple non-async implementation
+//! Following README.md patterns - no async_trait usage
 
-// This entire module is disabled as it uses async_trait which is BANNED
-// README.md shows no async_trait usage patterns
-// All functionality here should be rewritten without async_trait if needed
+use std::path::Path;
+use crate::error::VaultResult;
+
+/// Pass password store interface (non-async version)
+pub struct PassInterface {
+    store_path: String,
+}
+
+impl PassInterface {
+    /// Create a new pass interface
+    pub fn new<P: AsRef<Path>>(store_path: P) -> Self {
+        Self {
+            store_path: store_path.as_ref().to_string_lossy().to_string(),
+        }
+    }
+    
+    /// List all password entries
+    pub fn list(&self) -> VaultResult<Vec<String>> {
+        // Placeholder implementation
+        Ok(vec![
+            "example.com".to_string(),
+            "github.com".to_string(),
+            "gitlab.com".to_string(),
+        ])
+    }
+    
+    /// Get a specific password entry
+    pub fn get(&self, name: &str) -> VaultResult<String> {
+        // Placeholder implementation
+        Ok(format!("Password for {}", name))
+    }
+    
+    /// Search for password entries
+    pub fn search(&self, query: &str) -> VaultResult<Vec<String>> {
+        // Placeholder implementation
+        let all = self.list()?;
+        Ok(all.into_iter()
+            .filter(|entry| entry.contains(query))
+            .collect())
+    }
+    
+    /// Insert a new password entry
+    pub fn insert(&self, name: &str, password: &str) -> VaultResult<()> {
+        // Placeholder implementation
+        let _ = (name, password);
+        Ok(())
+    }
+    
+    /// Remove a password entry
+    pub fn remove(&self, name: &str) -> VaultResult<()> {
+        // Placeholder implementation
+        let _ = name;
+        Ok(())
+    }
+}

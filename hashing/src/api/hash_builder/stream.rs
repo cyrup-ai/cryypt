@@ -56,9 +56,14 @@ impl HashStream {
             let _ = sender.send(Ok(final_hash)).await;
         });
         
+        // Use the macro-generated handler as default if none provided
+        let handler = handler.unwrap_or_else(|| {
+            Box::new(apply_hash_chunk_handler()) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>
+        });
+        
         HashStream {
             receiver,
-            handler: handler.map(|h| Box::new(h) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
+            handler: Some(Box::new(handler) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
         }
     }
     
@@ -123,10 +128,6 @@ fn create_hasher(algorithm: &HashAlgorithm) -> Box<dyn DynHasher> {
 pub trait AsyncHashResult: Future<Output = Result<Vec<u8>>> + Send {}
 impl<T> AsyncHashResult for T where T: Future<Output = Result<Vec<u8>>> + Send {}
 
-/// Apply chunk handler using hash_on_chunk_impl macro
-pub(crate) fn apply_hash_chunk_handler() -> impl Fn(Result<Vec<u8>>) -> Option<Vec<u8>> {
-    hash_on_chunk_impl!(|chunk| { Ok => chunk, Err(_) => return })
-}
 
 // Dynamic hasher trait for streaming
 pub(super) trait DynHasher: Send {

@@ -5,7 +5,7 @@ pub mod vault_ops;
 pub mod key_ops;
 pub mod run_command;
 
-use commands::{Cli, Commands};
+pub use commands::{Cli, Commands};
 use crate::core::Vault;
 
 /// Process the CLI command

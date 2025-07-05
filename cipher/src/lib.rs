@@ -20,6 +20,7 @@ pub use error::{CryptError, Result};
 
 // Re-export the main APIs per README.md
 pub use cipher::api::{Cipher, aes_builder::{AesBuilder, AesWithKey}};
+pub use cipher::CipherAlgorithm;
 
 /// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
 pub struct Cryypt;

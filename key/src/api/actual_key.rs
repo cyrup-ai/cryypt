@@ -55,6 +55,7 @@ pub struct DirectKeyProvider {
 
 impl DirectKeyProvider {
     /// Create a new direct key provider
+    #[cfg_attr(not(any(feature = "aes", feature = "chacha20")), allow(dead_code))]
     pub fn new(key_bytes: Vec<u8>) -> Self {
         Self {
             key_bytes: Zeroizing::new(key_bytes),

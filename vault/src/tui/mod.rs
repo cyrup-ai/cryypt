@@ -80,7 +80,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         // Create provider with config
-        let provider = LocalVaultProvider::new(config);
+        let provider = LocalVaultProvider::new(config)?;
         
         // Register provider
         vault.register_operation(provider).await;

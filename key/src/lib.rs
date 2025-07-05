@@ -58,6 +58,10 @@ pub use on_result::on_result;
 pub use api::{KeyBuilder, KeyBuilderWithStore, KeyBuilderWithStoreAndNamespace, KeyBuilderReady, ActualKey};
 pub use store::FileKeyStore;
 
+// Export KeyGenerator and KeyRetriever for vault module
+pub use api::{KeyGenerator, KeyRetriever, key_retriever::SecureRetrievedKey};
+pub use traits::KeyStorage;
+
 /// Main entry point - README.md pattern: Key operations
 pub struct Key;
 
@@ -74,6 +78,6 @@ pub mod prelude {
         Key, KeyError, Result,
         api::{KeyBuilder, KeyBuilderReady, ActualKey},
         store::FileKeyStore,
-        bits_macro::Bits,
+        bits_macro::{Bits, BitSize},
     };
 }

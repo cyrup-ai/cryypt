@@ -15,13 +15,16 @@ impl<P> HashBuilder<Sha256Hash, NoData, NoSalt, P> {
     /// Compute hash of the provided data
     pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
         let data = data.into();
-        let result = sha256_hash(data, None, 1).await.map(HashResult::from);
+        let hash_result = sha256_hash(data, None, 1).await?;
         
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
-        }
+        // Use the macro-generated handler as default
+        let handler = self.result_handler.unwrap_or_else(|| {
+            Box::new(|r| r) // Simple passthrough since apply_hash_result_handler returns Result<Vec<u8>>
+        });
+        
+        // Apply the handler and convert to HashResult
+        let processed = apply_hash_result_handler()(Ok(hash_result));
+        handler(processed.map(HashResult::from))
     }
     
     /// Compute hash from a stream of data
@@ -38,13 +41,16 @@ impl<P> HashBuilder<Sha256Hash, NoData, HasSalt, P> {
     /// Compute HMAC of the provided data
     pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
         let data = data.into();
-        let result = sha256_hmac(data, self.salt.0).await.map(HashResult::from);
+        let hash_result = sha256_hmac(data, self.salt.0).await?;
         
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
-        }
+        // Use the macro-generated handler as default
+        let handler = self.result_handler.unwrap_or_else(|| {
+            Box::new(|r| r) // Simple passthrough
+        });
+        
+        // Apply the macro handler first, then the user handler
+        let processed = apply_hash_result_handler()(Ok(hash_result));
+        handler(processed.map(HashResult::from))
     }
     
     /// Compute HMAC from a stream of data

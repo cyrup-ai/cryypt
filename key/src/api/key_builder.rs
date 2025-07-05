@@ -142,3 +142,10 @@ impl KeyProducer for KeyBuilderReady {
 pub async fn generate_key_from_producer<T: KeyProducer>(producer: T) -> Result<ActualKey, KeyError> {
     producer.produce_key().await
 }
+
+/// Generate a random key using the default KeyBuilder
+#[allow(dead_code)]
+pub async fn generate_default_key() -> Result<ActualKey, KeyError> {
+    let builder = KeyBuilder::new(256); // 256-bit key
+    generate_key_from_producer(builder).await
+}

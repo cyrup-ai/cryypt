@@ -99,15 +99,15 @@ pub async fn es256_generate_keys() -> JwtResult<Es256KeyPair> {
     
     tokio::spawn(async move {
         let result = tokio::task::spawn_blocking(move || {
-            // For now, return placeholder keys
-            // In a real implementation, this would use p256 or similar crate
-            let private_key = vec![0u8; 32]; // Placeholder
-            let public_key = vec![0u8; 32];  // Placeholder
+            // Use the algorithms module to generate keys
+            let keypair = crate::algorithms::generate_es256_keypair();
             
-            Ok(Es256KeyPair {
-                private_key,
-                public_key,
-            })
+            // Validate the generated keypair
+            if crate::algorithms::validate_es256_keypair(&keypair) {
+                Ok(keypair)
+            } else {
+                Err(JwtError::KeyGeneration)
+            }
         }).await.unwrap_or_else(|_| Err(JwtError::TaskFailed));
         
         let _ = tx.send(result);

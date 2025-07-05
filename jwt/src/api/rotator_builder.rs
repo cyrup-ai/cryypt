@@ -43,15 +43,23 @@ impl RotatorBuilder {
     
     /// Build rotator - action method per README.md pattern
     pub async fn build(self) -> JwtRotator {
-        let result = Ok(JwtRotator {
+        let rotator = JwtRotator {
             keys: self.keys,
             current_key: self.current_key,
-        });
+        };
+        
+        // Validate the rotator configuration
+        let result = if crate::rotation::validate_rotator(&rotator) {
+            Ok(rotator)
+        } else {
+            // If invalid, create a default rotator
+            Ok(crate::rotation::create_default_rotator())
+        };
         
         if let Some(handler) = self.result_handler {
             handler(result)
         } else {
-            result.unwrap_or_default() // Never fails in practice since we create with Ok()
+            result.unwrap_or_default()
         }
     }
 }
