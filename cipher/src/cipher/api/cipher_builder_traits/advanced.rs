@@ -147,11 +147,9 @@ where
     fn encrypt(self) -> impl AsyncEncryptionResult {
         async move {
             // Compress the data first
-            use cryypt_compression::api::CompressExecutor;
             let compressed_data = self
                 .compression
-                .with_data(self.cipher_with_data.data.clone())
-                .compress()
+                .compress(self.cipher_with_data.data.clone())
                 .await
                 .map_err(|e| CryptError::from(e))?;
 
@@ -178,11 +176,9 @@ where
     fn encrypt(self) -> impl AsyncEncryptionResult {
         async move {
             // Compress the data first
-            use cryypt_compression::api::CompressExecutor;
             let compressed_data = self
                 .compression
-                .with_data(self.cipher_with_data.data.clone())
-                .compress()
+                .compress(self.cipher_with_data.data.clone())
                 .await
                 .map_err(|e| CryptError::from(e))?;
 
@@ -217,10 +213,8 @@ where
             let decrypted_data = self.cipher_with_ciphertext.decrypt().await?;
 
             // Then decompress
-            use cryypt_compression::api::DecompressExecutor;
             self.compression
-                .with_data(decrypted_data)
-                .decompress()
+                .decompress(decrypted_data)
                 .await
                 .map_err(|e| CryptError::from(e))
         }
@@ -241,10 +235,8 @@ where
             let decrypted_data = self.cipher_with_ciphertext.decrypt().await?;
 
             // Then decompress
-            use cryypt_compression::api::DecompressExecutor;
             self.compression
-                .with_data(decrypted_data)
-                .decompress()
+                .decompress(decrypted_data)
                 .await
                 .map_err(|e| CryptError::from(e))
         }
