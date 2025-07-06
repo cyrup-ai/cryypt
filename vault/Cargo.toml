@@ -53,6 +53,3 @@ ratatui = "0.30.0-alpha.5"
 aws-config = "1.8.1"
 aws-sdk-secretsmanager = "1.78.0"
 
-[[bin]]
-name = "cryypt"
-path = "src/tui/main.rs"
