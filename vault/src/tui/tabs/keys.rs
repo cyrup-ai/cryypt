@@ -19,7 +19,7 @@ pub fn render_keys_tab(f: &mut Frame, app: &mut App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, (key, value))| {
-            let content = if let Some(str_val) = value.as_str() {
+            let content = if let Ok(str_val) = value.expose_as_str() {
                 // Truncate long values for display
                 let display_val = if str_val.len() > 50 {
                     format!("{}...", &str_val[..47])

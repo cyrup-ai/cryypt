@@ -35,7 +35,6 @@
 
 // Internal macro implementations (hidden from users per ARCHITECTURE.md)
 mod result_macro;
-mod on_result;
 
 pub mod api;
 pub mod bits_macro;
@@ -44,6 +43,7 @@ pub mod error;
 pub mod key_id;
 pub mod key_result;
 pub mod store;
+pub mod store_results;
 pub mod traits;
 
 // Re-export core types
@@ -51,8 +51,8 @@ pub use error::{KeyError, Result};
 pub use key_id::{KeyId, SimpleKeyId};
 pub use key_result::KeyResult;
 
-// Export on_result for main cryypt crate
-pub use on_result::on_result;
+// Re-export common handlers from cryypt_common
+pub use cryypt_common::{on_result, on_chunk, on_error};
 
 // Re-export the main API
 pub use api::{KeyBuilder, KeyBuilderWithStore, KeyBuilderWithStoreAndNamespace, KeyBuilderReady, ActualKey};

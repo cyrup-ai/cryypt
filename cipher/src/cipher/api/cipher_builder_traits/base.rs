@@ -17,6 +17,8 @@ pub trait KeyBuilder {
 }
 
 /// Builder that can accept AAD (Additional Authenticated Data) for AEAD ciphers
+/// NOTE: Library trait - intended for external implementations
+#[allow(dead_code)]
 pub trait AadBuilder {
     /// The resulting type after adding AAD
     type Output;
@@ -26,12 +28,16 @@ pub trait AadBuilder {
 }
 
 /// Final stage builder that can encrypt
+/// NOTE: Library trait - intended for external implementations
+#[allow(dead_code)]
 pub trait EncryptBuilder {
     /// Perform encryption operation
     fn encrypt(self) -> impl AsyncEncryptionResult;
 }
 
 /// Final stage builder that can decrypt
+/// NOTE: Library trait - intended for external implementations
+#[allow(dead_code)]
 pub trait DecryptBuilder {
     /// Perform decryption operation
     fn decrypt(self) -> impl AsyncDecryptionResult;

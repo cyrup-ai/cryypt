@@ -16,7 +16,7 @@ pub trait KeyProducer {
 ///     })
 ///     .await?
 /// ```
-#[macro_export]
+// Internal macro - NOT PUBLIC API
 macro_rules! on_result {
     // Standard README pattern for identity handler
     (|$result:ident| { Ok => Ok($ok_result:ident), Err($err:ident) => Err($err_ident:ident) }) => {

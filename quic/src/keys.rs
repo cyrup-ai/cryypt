@@ -4,6 +4,8 @@ use std::time::{Duration, Instant};
 use zeroize::Zeroizing;
 
 /// Ephemeral key material with automatic expiration
+/// NOTE: Library code - intended for external use
+#[allow(dead_code)]
 pub struct EphemeralKeyMaterial {
     /// Pre-shared key for additional authentication
     pub psk: Zeroizing<Vec<u8>>,
@@ -15,6 +17,7 @@ pub struct EphemeralKeyMaterial {
     ttl: Duration,
 }
 
+#[allow(dead_code)]
 impl EphemeralKeyMaterial {
     /// Create new ephemeral key material
     pub fn new(psk: Vec<u8>, session_id: String, ttl: Duration) -> Self {
@@ -50,6 +53,8 @@ impl EphemeralKeyMaterial {
 }
 
 /// Generate ephemeral key material using quantum-resistant KDF
+/// NOTE: Library code - intended for external use
+#[allow(dead_code)]
 pub fn generate_ephemeral_keys(
     session_id: &str,
 ) -> Result<EphemeralKeyMaterial, CryptoTransportError> {
@@ -66,10 +71,13 @@ pub fn generate_ephemeral_keys(
 }
 
 /// Key manager for handling ephemeral key lifecycle
+/// NOTE: Library code - intended for external use
+#[allow(dead_code)]
 pub struct KeyManager {
     current_keys: Option<EphemeralKeyMaterial>,
 }
 
+#[allow(dead_code)]
 impl KeyManager {
     /// Create new key manager
     pub fn new() -> Self {

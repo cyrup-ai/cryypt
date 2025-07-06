@@ -13,7 +13,7 @@ use crate::operation::{
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use futures::StreamExt;
 use serde::Deserialize;
-use time::OffsetDateTime;
+use chrono::{DateTime, Utc};
 use tokio::sync::{mpsc, oneshot};
 
 impl SurrealDbVaultProvider {
@@ -48,8 +48,8 @@ impl SurrealDbVaultProvider {
             id: Some(format!("entry:{}", key.replace('/', "_"))),
             key: key.clone(), // Clone key for entry
             value: value_b64,
-            created_at: Some(OffsetDateTime::now_utc()),
-            updated_at: Some(OffsetDateTime::now_utc()),
+            created_at: Some(Utc::now()),
+            updated_at: Some(Utc::now()),
             namespace: None, // Namespace handled separately if needed
         };
 
@@ -263,8 +263,8 @@ impl SurrealDbVaultProvider {
             id: Some(format!("entry:{}:{}", namespace, key.replace('/', "_"))),
             key,
             value: value_b64, // Store encoded string
-            created_at: Some(OffsetDateTime::now_utc()),
-            updated_at: Some(OffsetDateTime::now_utc()),
+            created_at: Some(Utc::now()),
+            updated_at: Some(Utc::now()),
             namespace: Some(namespace),
         };
 

@@ -14,7 +14,7 @@
 /// // }))
 /// # }
 /// ```
-#[macro_export]
+/// Internal macro - NOT PUBLIC API
 macro_rules! on_chunk {
     // Standard pattern: Ok => chunk, Err(e) => { ... return; }
     (|$chunk:ident| {

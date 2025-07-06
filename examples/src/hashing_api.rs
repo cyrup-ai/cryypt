@@ -1,14 +1,20 @@
 //! Hashing API examples - EXACTLY matching hashing/README.md
 
-use cryypt::{Cryypt, on_result, Hash};
+use cryypt::{Cryypt, Hash};
 
 /// Basic Hashing example from README
 async fn basic_hashing_example() -> Result<(), Box<dyn std::error::Error>> {
     // SHA-256 hash
     let hash = Cryypt::hash()
         .sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    panic!("Hash error: {}", e)
+                }
+            }
         })
         .compute(b"Hello, World!")
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -18,8 +24,14 @@ async fn basic_hashing_example() -> Result<(), Box<dyn std::error::Error>> {
     // SHA3-256 hash
     let hash = Cryypt::hash()
         .sha3_256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    panic!("Hash error: {}", e)
+                }
+            }
         })
         .compute(b"Hello, World!")
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -29,8 +41,14 @@ async fn basic_hashing_example() -> Result<(), Box<dyn std::error::Error>> {
     // BLAKE2b hash with custom output size
     let hash = Cryypt::hash()
         .blake2b_512()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    panic!("Hash error: {}", e)
+                }
+            }
         })
         .compute(b"Hello, World!")
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -47,8 +65,14 @@ async fn streaming_hash_example() -> Result<(), Box<dyn std::error::Error>> {
     
     let hash = Cryypt::hash()
         .sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    panic!("Hash error: {}", e)
+                }
+            }
         })
         .compute_stream(file_stream)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -57,8 +81,14 @@ async fn streaming_hash_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Alternative: Direct builders are also available
     let hash = Hash::sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    panic!("Hash error: {}", e)
+                }
+            }
         })
         .compute(b"Hello, World!")
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -73,8 +103,14 @@ async fn multi_pass_hashing_example() -> Result<(), Box<dyn std::error::Error>> 
     // Create hasher for multiple inputs
     let mut hasher = Cryypt::hash()
         .sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    panic!("Hash error: {}", e)
+                }
+            }
         })
         .multi_pass();
 
@@ -93,7 +129,7 @@ async fn multi_pass_hashing_example() -> Result<(), Box<dyn std::error::Error>> 
 
 /// File Integrity Verification example from README
 async fn file_integrity_example() -> Result<(), Box<dyn std::error::Error>> {
-    use cryypt::{Hash, on_result};
+    use cryypt::Hash;
     use tokio::fs::File;
     
     // Calculate file hash
@@ -101,8 +137,14 @@ async fn file_integrity_example() -> Result<(), Box<dyn std::error::Error>> {
         let file = File::open(path).await.unwrap();
         
         Hash::sha256()
-            .on_result!(|result| {
-                result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+            .on_result(|result| {
+                match result {
+                    Ok(data) => data,
+                    Err(e) => {
+                        log::error!("Hash error: {}", e);
+                        panic!("Hash error: {}", e)
+                    }
+                }
             })
             .compute_stream(file)
             .await // Returns fully unwrapped value - no Result wrapper

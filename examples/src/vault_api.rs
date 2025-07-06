@@ -1,6 +1,6 @@
 //! Vault API examples - EXACTLY matching vault/README.md
 
-use cryypt::{Cryypt, on_result, VaultValue};
+use cryypt::{Cryypt, VaultValue};
 
 /// Vault Operations example from README
 async fn vault_operations() -> Result<(), Box<dyn std::error::Error>> {
@@ -10,16 +10,28 @@ async fn vault_operations() -> Result<(), Box<dyn std::error::Error>> {
     let vault = Cryypt::vault()
         .create("./my-vault")
         .with_passphrase(passphrase)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(vault) => vault,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    panic!("Failed to create vault")
+                }
+            }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
 
     // Store secret
     vault
         .with_key("api_key")
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(value) => value,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    ()
+                }
+            }
         })
         .set(VaultValue::Secret("sk-1234567890"))
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -28,16 +40,28 @@ async fn vault_operations() -> Result<(), Box<dyn std::error::Error>> {
     vault
         .with_key("temp_token")
         .with_ttl(3600)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(value) => value,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    ()
+                }
+            }
         })
         .set(VaultValue::Secret("tmp-abc123"))
         .await; // Returns fully unwrapped value - no Result wrapper
 
     // Retrieve secret
     let api_key = vault
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(value) => value,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    ()
+                }
+            }
         })
         .get("api_key")
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -46,11 +70,13 @@ async fn vault_operations() -> Result<(), Box<dyn std::error::Error>> {
 
     // Stream all secrets
     let mut secret_stream = vault
-        .on_chunk!(|chunk| {
-            Ok => chunk,
-            Err(e) => {
-                log::error!("Vault stream error: {}", e);
-                return;
+        .on_chunk(|chunk| {
+            match chunk {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    log::error!("Vault stream error: {}", e);
+                    None
+                }
             }
         })
         .find(".*");
@@ -64,8 +90,14 @@ async fn vault_operations() -> Result<(), Box<dyn std::error::Error>> {
 
     // Batch operations  
     vault
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(value) => value,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    ()
+                }
+            }
         })
         .put_all({
             "db_host" => "localhost",
@@ -78,8 +110,14 @@ async fn vault_operations() -> Result<(), Box<dyn std::error::Error>> {
 
     // Lock vault
     vault
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(value) => value,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    ()
+                }
+            }
         })
         .lock()
         .await; // Returns fully unwrapped value - no Result wrapper

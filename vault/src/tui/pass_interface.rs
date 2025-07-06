@@ -5,8 +5,17 @@ use std::path::Path;
 use crate::error::VaultResult;
 
 /// Pass password store interface (non-async version)
+#[derive(Debug)]
 pub struct PassInterface {
     store_path: String,
+}
+
+impl Default for PassInterface {
+    fn default() -> Self {
+        Self {
+            store_path: String::from("~/.password-store"),
+        }
+    }
 }
 
 impl PassInterface {

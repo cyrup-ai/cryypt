@@ -3,7 +3,7 @@
 //! EXACTLY from pqcrypto/README.md, jwt/README.md, and cipher/README.md
 //! Zero allocation, no locking, blazing-fast performance
 
-use cryypt::{Cryypt, on_result, FileKeyStore, Bits};
+use cryypt::{Cryypt, FileKeyStore, Bits};
 use serde::{Deserialize, Serialize};
 use chrono::{Duration, Utc};
 
@@ -33,8 +33,14 @@ async fn secure_multiparty_communication() -> Result<(), Box<dyn std::error::Err
     // Alice generates keypair - EXACTLY from pqcrypto/README.md
     let (alice_public, alice_secret) = Cryypt::pqcrypto()
         .kyber()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .generate_keypair()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -42,8 +48,14 @@ async fn secure_multiparty_communication() -> Result<(), Box<dyn std::error::Err
     // Bob encapsulates shared secret - EXACTLY from pqcrypto/README.md
     let (ciphertext, bob_shared_secret) = Cryypt::pqcrypto()
         .kyber()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .encapsulate(alice_public)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -52,8 +64,14 @@ async fn secure_multiparty_communication() -> Result<(), Box<dyn std::error::Err
     let alice_shared_secret = Cryypt::pqcrypto()
         .kyber()
         .with_secret_key(alice_secret)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .decapsulate(ciphertext)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -62,8 +80,14 @@ async fn secure_multiparty_communication() -> Result<(), Box<dyn std::error::Err
     let encrypted = Cryypt::cipher()
         .aes()
         .with_key(bob_shared_secret)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .encrypt(b"Secret message")
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -72,8 +96,14 @@ async fn secure_multiparty_communication() -> Result<(), Box<dyn std::error::Err
     let decrypted = Cryypt::cipher()
         .aes()
         .with_key(alice_shared_secret)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .decrypt(&encrypted)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -87,16 +117,28 @@ async fn jwt_key_rotation() -> Result<(), Box<dyn std::error::Error>> {
     // Generate multiple key versions - EXACTLY from jwt/README.md
     let (private_key_v1, public_key_v1) = Cryypt::jwt()
         .es256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(keys) => keys,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .generate_keys()
         .await; // Returns fully unwrapped value - no Result wrapper
     
     let (private_key_v2, public_key_v2) = Cryypt::jwt()
         .es256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(keys) => keys,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .generate_keys()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -147,16 +189,28 @@ async fn pipeline_processing() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(keys) => keys,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .await;
 
     // Hash -> Compress -> Encrypt pipeline - EXACTLY from cipher/README.md
     let hash = Cryypt::hash()
         .sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .compute(data)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -164,8 +218,14 @@ async fn pipeline_processing() -> Result<(), Box<dyn std::error::Error>> {
     let compressed = Cryypt::compress()
         .zstd()
         .with_level(3)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .compress(data)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -174,8 +234,14 @@ async fn pipeline_processing() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(key)
         .with_aad(&hash) // Use hash as additional authenticated data
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .encrypt(&compressed)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -193,8 +259,14 @@ async fn multiparty_pq_signatures() -> Result<(), Box<dyn std::error::Error>> {
     let (party_a_public, party_a_secret) = Cryypt::pqcrypto()
         .dilithium()
         .with_security_level(3)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .generate_keypair()
         .await;
@@ -203,8 +275,14 @@ async fn multiparty_pq_signatures() -> Result<(), Box<dyn std::error::Error>> {
     let (party_b_public, party_b_secret) = Cryypt::pqcrypto()
         .falcon()
         .with_security_level(512)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .generate_keypair()
         .await;
@@ -212,8 +290,14 @@ async fn multiparty_pq_signatures() -> Result<(), Box<dyn std::error::Error>> {
     // Party C: Generate SPHINCS+ keypair
     let (party_c_public, party_c_secret) = Cryypt::pqcrypto()
         .sphincs_plus("sha256-128f-simple")
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .generate_keypair()
         .await;
@@ -222,8 +306,14 @@ async fn multiparty_pq_signatures() -> Result<(), Box<dyn std::error::Error>> {
     let sig_a = Cryypt::pqcrypto()
         .dilithium()
         .with_secret_key(party_a_secret)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .sign(document)
         .await;
@@ -231,8 +321,14 @@ async fn multiparty_pq_signatures() -> Result<(), Box<dyn std::error::Error>> {
     let sig_b = Cryypt::pqcrypto()
         .falcon()
         .with_secret_key(party_b_secret)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .sign(document)
         .await;
@@ -240,8 +336,14 @@ async fn multiparty_pq_signatures() -> Result<(), Box<dyn std::error::Error>> {
     let sig_c = Cryypt::pqcrypto()
         .sphincs_plus("sha256-128f-simple")
         .with_secret_key(party_c_secret)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .sign(document)
         .await;
@@ -251,8 +353,14 @@ async fn multiparty_pq_signatures() -> Result<(), Box<dyn std::error::Error>> {
         .dilithium()
         .with_public_key(party_a_public)
         .with_signature(sig_a)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .verify(document)
         .await;
@@ -261,8 +369,14 @@ async fn multiparty_pq_signatures() -> Result<(), Box<dyn std::error::Error>> {
         .falcon()
         .with_public_key(party_b_public)
         .with_signature(sig_b)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .verify(document)
         .await;
@@ -271,8 +385,14 @@ async fn multiparty_pq_signatures() -> Result<(), Box<dyn std::error::Error>> {
         .sphincs_plus("sha256-128f-simple")
         .with_public_key(party_c_public)
         .with_signature(sig_c)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .verify(document)
         .await;
@@ -289,8 +409,14 @@ async fn hybrid_encryption() -> Result<(), Box<dyn std::error::Error>> {
     // Generate PQ keypair
     let (pq_public, pq_secret) = Cryypt::pqcrypto()
         .kyber()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .generate_keypair()
         .await;
@@ -304,16 +430,28 @@ async fn hybrid_encryption() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store)
         .with_namespace("hybrid")
         .version(1)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(keys) => keys,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .await;
 
     // Encapsulate to get PQ shared secret
     let (ciphertext, pq_shared_secret) = Cryypt::pqcrypto()
         .kyber()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .encapsulate(pq_public)
         .await;
@@ -322,8 +460,14 @@ async fn hybrid_encryption() -> Result<(), Box<dyn std::error::Error>> {
     let layer1 = Cryypt::cipher()
         .chacha20()
         .with_key(pq_shared_secret)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .encrypt(message)
         .await;
@@ -332,8 +476,14 @@ async fn hybrid_encryption() -> Result<(), Box<dyn std::error::Error>> {
     let layer2 = Cryypt::cipher()
         .aes()
         .with_key(classical_key)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Default::default()
+                }
+            }
         })
         .encrypt(&layer1)
         .await;

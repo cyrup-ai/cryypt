@@ -34,7 +34,7 @@ pub fn render_search_tab(f: &mut Frame, app: &mut App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, (key, value))| {
-            let content = if let Some(str_val) = value.as_str() {
+            let content = if let Ok(str_val) = value.expose_as_str() {
                 format!("{}: {}", key, str_val)
             } else {
                 format!("{}: [complex value]", key)

@@ -1,3 +1,6 @@
+#![feature(negative_impls)]
+#![feature(marker_trait_attr)]
+
 //! # Cyrup Cipher
 //!
 //! Encryption library following README.md patterns exactly.
@@ -21,6 +24,9 @@ pub use error::{CryptError, Result};
 // Re-export the main APIs per README.md
 pub use cipher::api::{Cipher, aes_builder::{AesBuilder, AesWithKey}};
 pub use cipher::CipherAlgorithm;
+
+// Re-export common handlers from cryypt_common
+pub use cryypt_common::{on_result, on_chunk, on_error};
 
 /// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
 pub struct Cryypt;

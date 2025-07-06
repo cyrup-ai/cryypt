@@ -3,7 +3,7 @@
 //! EXACTLY from cipher/README.md and compression/README.md
 //! Zero allocation, no locking, blazing-fast performance
 
-use cryypt::{Cipher, KeyRetriever, FileKeyStore, Compress, on_result, on_chunk, Bits};
+use cryypt::{Cipher, KeyRetriever, FileKeyStore, Compress, Bits};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::path::Path;
@@ -18,10 +18,16 @@ async fn encrypt_file(input_path: &str, output_path: &str) -> Result<(), Box<dyn
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .retrieve(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key retrieval error: {}", e);
+                    vec![]
+                }
+            }
         })
+        .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
     
     // Read entire file - EXACTLY from cipher/README.md
@@ -32,9 +38,14 @@ async fn encrypt_file(input_path: &str, output_path: &str) -> Result<(), Box<dyn
     // Encrypt - EXACTLY from cipher/README.md
     let encrypted = Cipher::aes()
         .with_key(key)
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(&plaintext)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -56,10 +67,16 @@ async fn encrypt_large_file(input_path: &str, output_path: &str) -> Result<(), B
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .retrieve(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key retrieval error: {}", e);
+                    vec![]
+                }
+            }
         })
+        .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
     
     // Open files - EXACTLY from cipher/README.md
@@ -69,11 +86,13 @@ async fn encrypt_large_file(input_path: &str, output_path: &str) -> Result<(), B
     // Stream encryption - EXACTLY from cipher/README.md
     let mut encrypted_stream = Cipher::aes()
         .with_key(key)
-        .on_chunk!(|chunk| {
-            Ok => chunk,
-            Err(e) => {
-                log::error!("Encryption error: {}", e);
-                return;
+        .on_chunk(|chunk| {
+            match chunk {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    log::error!("Encryption error: {}", e);
+                    None
+                }
             }
         })
         .encrypt_stream(input_file);
@@ -99,10 +118,16 @@ async fn compress_and_encrypt_files(
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .retrieve(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key retrieval error: {}", e);
+                    vec![]
+                }
+            }
         })
+        .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
     
     // Create ZIP archive - EXACTLY from compression/README.md
@@ -117,9 +142,14 @@ async fn compress_and_encrypt_files(
     
     // Compress - EXACTLY from compression/README.md
     let compressed = archive
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .compress()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -127,9 +157,14 @@ async fn compress_and_encrypt_files(
     // Encrypt the archive - EXACTLY from compression/README.md
     let encrypted = Cipher::aes()
         .with_key(key)
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(&compressed)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -155,10 +190,16 @@ async fn decrypt_file(
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .retrieve(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key retrieval error: {}", e);
+                    vec![]
+                }
+            }
         })
+        .retrieve()
         .await;
     
     // Read encrypted file
@@ -167,9 +208,14 @@ async fn decrypt_file(
     // Decrypt
     let plaintext = Cipher::aes()
         .with_key(key)
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .decrypt(&encrypted)
         .await;
@@ -208,9 +254,14 @@ async fn atomic_encrypt_file(
     // Encrypt
     let encrypted = Cipher::aes()
         .with_key(key)
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(&plaintext)
         .await;
@@ -312,10 +363,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .retrieve(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key retrieval error: {}", e);
+                    vec![]
+                }
+            }
         })
+        .retrieve()
         .await;
     
     let encrypted_files = encrypt_directory(

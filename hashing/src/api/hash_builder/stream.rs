@@ -6,7 +6,6 @@ use std::future::Future;
 use std::pin::Pin;
 use tokio::sync::mpsc;
 use tokio_stream::Stream;
-use crate::hash_on_chunk_impl;
 
 // Hash algorithm enum for streaming
 #[derive(Clone)]
@@ -56,14 +55,9 @@ impl HashStream {
             let _ = sender.send(Ok(final_hash)).await;
         });
         
-        // Use the macro-generated handler as default if none provided
-        let handler = handler.unwrap_or_else(|| {
-            Box::new(apply_hash_chunk_handler()) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>
-        });
-        
         HashStream {
             receiver,
-            handler: Some(Box::new(handler) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
+            handler: handler.map(|h| Box::new(h) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
         }
     }
     
@@ -106,11 +100,6 @@ impl HashStream {
         use tokio_stream::StreamExt;
         StreamExt::next(self).await
     }
-}
-
-/// Apply chunk handler using hash_on_chunk_impl macro
-pub(crate) fn apply_hash_chunk_handler() -> impl Fn(Result<Vec<u8>>) -> Option<Vec<u8>> {
-    hash_on_chunk_impl!(|chunk| { Ok => chunk, Err(e) => return })
 }
 
 // Helper to create hasher based on algorithm

@@ -16,55 +16,83 @@ cryypt_quic = "0.1"
 ```rust
 use cryypt::{Cryypt, on_result};
 
-// QUIC server
-let server = Cryypt::quic()
-    .server()
-    .with_cert(cert)
-    .with_key(private_key)
-    .on_connection!(|conn| {
-        Ok => {
-            tokio::spawn(handle_connection(conn));
-            Ok(())
-        },
-        Err(e) => Err(e)
-    })
-    .bind("127.0.0.1:4433")
-    .await; // Returns fully unwrapped value - no Result wrapper
+// QUIC server with retry on different port
+let mut port = 4433;
+let server = loop {
+    let result = Cryypt::quic()
+        .server()
+        .with_cert(cert.clone())
+        .with_key(private_key.clone())
+        .on_result(|result| result)
+        .bind(format!("127.0.0.1:{}", port))
+        .await;
+    
+    match result {
+        Ok(server) => break server,
+        Err(e) => {
+            log::error!("Server bind failed on port {}: {}", port, e);
+            port += 1;
+            if port > 4440 {
+                log::error!("Failed to bind to any port 4433-4440");
+                break Cryypt::quic().server(); // Return unbound server
+            }
+        }
+    }
+};
 
 // QUIC client
 let client = Cryypt::quic()
     .client()
     .with_server_name("example.com")
-    .on_result!(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+    .on_result(|result| {
+        match result {
+            Ok(client) => client,
+            Err(e) => {
+                log::error!("Connection failed: {}", e);
+                Cryypt::quic().client() // Return unconnected client
+            }
+        }
     })
     .connect("127.0.0.1:4433")
-    .await; // Returns fully unwrapped value - no Result wrapper
+    .await;
 
 // Open bidirectional stream
 let (send, recv) = client
-    .on_result!(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+    .on_result(|result| {
+        match result {
+            Ok(streams) => streams,
+            Err(e) => {
+                log::error!("Failed to open stream: {}", e);
+                (QuicSend::new(), QuicRecv::new()) // Empty streams
+            }
+        }
     })
     .open_bi()
-    .await; // Returns fully unwrapped value - no Result wrapper
+    .await;
 
 // Send data
 send
-    .on_result!(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+    .on_result(|result| {
+        match result {
+            Ok(()) => (),
+            Err(e) => {
+                log::error!("Failed to send data: {}", e);
+            }
+        }
     })
     .write_all(b"Hello QUIC")
-    .await; // Returns fully unwrapped value - no Result wrapper
+    .await;
 
 // Receive streamed data
 let mut data = Vec::new();
 let mut recv_stream = recv
-    .on_chunk!(|chunk| {
-        Ok => chunk,
-        Err(e) => {
-            log::error!("Receive error: {}", e);
-            return;
+    .on_chunk(|chunk| {
+        match chunk {
+            Ok(data) => Some(data),
+            Err(e) => {
+                log::error!("Receive error: {}", e);
+                None
+            }
         }
     })
     .stream();

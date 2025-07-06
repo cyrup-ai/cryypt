@@ -10,6 +10,7 @@ use super::secrets::AwsSecretStream;
 use super::types::{AwsError, SecretSummary};
 
 /// Implement the AWS Secrets Manager interface using the "Hidden Box/Pin" pattern
+#[derive(Debug)]
 pub struct AwsSecretManager {
     interface: AwsSecretsInterface,
     initialized: bool,

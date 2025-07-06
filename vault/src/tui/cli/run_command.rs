@@ -33,7 +33,23 @@ pub async fn handle_run(
     }
     
     // Load all vault values as environment variables
-    let mut stream = vault.find(".*").await;
+    let stream_result = vault.find(".*").await;
+    let mut stream = match stream_result {
+        Ok(s) => s,
+        Err(e) => {
+            log_security_event("CLI_RUN", &format!("Failed to load vault variables: {}", e), false);
+            if use_json {
+                println!("{}", json!({
+                    "success": false,
+                    "operation": "run",
+                    "error": format!("Failed to load vault variables: {}", e)
+                }));
+            } else {
+                return Err(format!("Failed to load vault variables: {}", e).into());
+            }
+            return Ok(());
+        }
+    };
     let mut results = Vec::new();
     
     while let Some(result) = stream.next().await {
@@ -58,7 +74,7 @@ pub async fn handle_run(
     let mut env_vars = HashMap::new();
     
     for (key, value) in results {
-        if let Some(string_value) = value.as_str() {
+        if let Ok(string_value) = value.expose_as_str() {
             env_vars.insert(format!("VAULT_{}", key.to_uppercase()), string_value.to_string());
         }
     }

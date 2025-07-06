@@ -3,7 +3,7 @@
 //! Demonstrates efficient combination of multiple Cryypt operations
 //! with zero allocation, no locking, and blazing-fast performance
 
-use cryypt::{Cryypt, FileKeyStore, on_result, on_chunk, Bits};
+use cryypt::{Cryypt, FileKeyStore, Bits};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter};
 use std::path::Path;
@@ -19,8 +19,14 @@ async fn hash_compress_encrypt_pipeline(
     // Compute hash for authentication
     let hash = Cryypt::hash()
         .sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(hash) => hash,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    vec![]
+                }
+            }
         })
         .compute(data)
         .await;
@@ -29,8 +35,14 @@ async fn hash_compress_encrypt_pipeline(
     let compressed = Cryypt::compress()
         .zstd()
         .with_level(3)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Compression error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Compression error: {}", e);
+                    vec![]
+                }
+            }
         })
         .compress(data)
         .await;
@@ -40,8 +52,14 @@ async fn hash_compress_encrypt_pipeline(
         .aes()
         .with_key(key)
         .with_aad(&hash)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Encryption error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Encryption error: {}", e);
+                    vec![]
+                }
+            }
         })
         .encrypt(&compressed)
         .await;
@@ -61,8 +79,14 @@ async fn decrypt_decompress_verify_pipeline(
         .aes()
         .with_key(key)
         .with_aad(expected_hash)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Decryption error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Decryption error: {}", e);
+                    vec![]
+                }
+            }
         })
         .decrypt(encrypted)
         .await;
@@ -70,8 +94,14 @@ async fn decrypt_decompress_verify_pipeline(
     // Decompress
     let data = Cryypt::compress()
         .zstd()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Decompression error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Decompression error: {}", e);
+                    vec![]
+                }
+            }
         })
         .decompress(&compressed)
         .await;
@@ -79,8 +109,14 @@ async fn decrypt_decompress_verify_pipeline(
     // Verify hash matches
     let actual_hash = Cryypt::hash()
         .sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(hash) => hash,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    vec![]
+                }
+            }
         })
         .compute(&data)
         .await;
@@ -105,8 +141,14 @@ where
     // Create hasher for the entire stream
     let mut hasher = Cryypt::hash()
         .sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(hash) => hash,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    vec![]
+                }
+            }
         })
         .multi_pass();
 
@@ -114,11 +156,13 @@ where
     let compressed_stream = Cryypt::compress()
         .zstd()
         .with_level(6)
-        .on_chunk!(|chunk| {
-            Ok => chunk,
-            Err(e) => {
-                log::error!("Compression error: {}", e);
-                return;
+        .on_chunk(|chunk| {
+            match chunk {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    log::error!("Compression error: {}", e);
+                    None
+                }
             }
         })
         .compress_stream(input_stream);
@@ -127,11 +171,13 @@ where
     let mut encrypted_stream = Cryypt::cipher()
         .aes()
         .with_key(key)
-        .on_chunk!(|chunk| {
-            Ok => chunk,
-            Err(e) => {
-                log::error!("Encryption error: {}", e);
-                return;
+        .on_chunk(|chunk| {
+            match chunk {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    log::error!("Encryption error: {}", e);
+                    None
+                }
             }
         })
         .encrypt_stream(compressed_stream);
@@ -232,8 +278,14 @@ async fn secure_document_pipeline(
     let metadata_bytes = serde_json::to_vec(&metadata)?;
     let metadata_hash = Cryypt::hash()
         .sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(hash) => hash,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    vec![]
+                }
+            }
         })
         .compute(&metadata_bytes)
         .await;
@@ -247,8 +299,14 @@ async fn secure_document_pipeline(
     let compressed = Cryypt::compress()
         .zstd()
         .with_level(9) // Maximum compression for documents
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Compression error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Compression error: {}", e);
+                    vec![]
+                }
+            }
         })
         .compress(&package)
         .await;
@@ -258,8 +316,14 @@ async fn secure_document_pipeline(
         .chacha20() // Use ChaCha20 for better performance on documents
         .with_key(doc_key)
         .with_aad(&metadata_hash)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Encryption error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Encryption error: {}", e);
+                    vec![]
+                }
+            }
         })
         .encrypt(&compressed)
         .await;
@@ -267,8 +331,14 @@ async fn secure_document_pipeline(
     // Stage 6: Sign the package
     let signature = Cryypt::hash()
         .sha3_256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Hash error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(hash) => hash,
+                Err(e) => {
+                    log::error!("Hash error: {}", e);
+                    vec![]
+                }
+            }
         })
         .compute(&encrypted)
         .await;
@@ -296,8 +366,14 @@ async fn migrate_encrypted_data(
     let plaintext = Cryypt::cipher()
         .aes()
         .with_key(old_key)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Decryption error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Decryption error: {}", e);
+                    vec![]
+                }
+            }
         })
         .decrypt(&encrypted_data)
         .await;
@@ -306,8 +382,14 @@ async fn migrate_encrypted_data(
     let new_encrypted = Cryypt::cipher()
         .aes()
         .with_key(new_key)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Encryption error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Encryption error: {}", e);
+                    vec![]
+                }
+            }
         })
         .encrypt(&plaintext)
         .await;

@@ -73,37 +73,19 @@ impl LocalVaultProvider {
 
     /// Encrypt data using the cipher API
     pub(crate) async fn encrypt_data(&self, data: &[u8], key: &[u8]) -> VaultResult<Vec<u8>> {
-        use cryypt_cipher::{Cipher, prelude::*};
-        use cryypt_key::{KeyResult, traits::KeyProviderBuilder};
-
-        // Create a raw key provider that returns the key directly
-        struct RawKeyProvider {
-            key: Vec<u8>,
-        }
-
-        impl KeyProviderBuilder for RawKeyProvider {
-            fn resolve(&self) -> KeyResult {
-                KeyResult::ready(Ok(self.key.clone()))
-            }
-        }
-
-        let key_provider = RawKeyProvider { key: key.to_vec() };
+        use cryypt_cipher::Cipher;
 
         // Use the configured cipher algorithm
         match self.cipher_algorithm {
             CipherAlgorithm::Aes256Gcm => Cipher::aes()
-                .with_key(key_provider)
-                .with_data(data)
-                .encrypt()
+                .with_key(key.to_vec())
+                .encrypt(data)
                 .await
-                .map(|result| result.to_bytes())
                 .map_err(|e| VaultError::Encryption(e.to_string())),
             CipherAlgorithm::ChaCha20Poly1305 => Cipher::chachapoly()
-                .with_key(key_provider)
-                .with_data(data)
-                .encrypt()
+                .with_key(key.to_vec())
+                .encrypt(data)
                 .await
-                .map(|result| result.to_bytes())
                 .map_err(|e| VaultError::Encryption(e.to_string())),
             CipherAlgorithm::Cascade => {
                 // For cascade, we need to split the key for two passes
@@ -116,23 +98,17 @@ impl LocalVaultProvider {
                 let (aes_key, chacha_key) = key.split_at(32);
 
                 // First pass with AES
-                let aes_provider = RawKeyProvider {
-                    key: aes_key.to_vec(),
-                };
-
-                // Second pass with ChaCha
-                let chacha_provider = RawKeyProvider {
-                    key: chacha_key.to_vec(),
-                };
-
-                // Use the two-pass encryption
-                Cipher::aes()
-                    .with_key(aes_provider)
-                    .with_data(data)
-                    .second_pass(Cipher::chachapoly().with_key(chacha_provider))
-                    .encrypt()
+                let intermediate = Cipher::aes()
+                    .with_key(aes_key.to_vec())
+                    .encrypt(data)
                     .await
-                    .map(|result| result.to_bytes())
+                    .map_err(|e| VaultError::Encryption(e.to_string()))?;
+
+                // Second pass with ChaCha  
+                Cipher::chachapoly()
+                    .with_key(chacha_key.to_vec())
+                    .encrypt(intermediate)
+                    .await
                     .map_err(|e| VaultError::Encryption(e.to_string()))
             }
             CipherAlgorithm::Custom(ref name) => Err(VaultError::Encryption(format!(
@@ -144,31 +120,18 @@ impl LocalVaultProvider {
 
     /// Decrypt data using the cipher API
     pub(crate) async fn decrypt_data(&self, encrypted_data: &[u8], key: &[u8]) -> VaultResult<Vec<u8>> {
-        use cryypt_cipher::{Cipher, prelude::*};
-        use cryypt_key::{KeyResult, traits::KeyProviderBuilder};
-
-        // Create a raw key provider that returns the key directly
-        struct RawKeyProvider {
-            key: Vec<u8>,
-        }
-
-        impl KeyProviderBuilder for RawKeyProvider {
-            fn resolve(&self) -> KeyResult {
-                KeyResult::ready(Ok(self.key.clone()))
-            }
-        }
+        use cryypt_cipher::Cipher;
 
         // Use the configured cipher algorithm
         match self.cipher_algorithm {
-            CipherAlgorithm::Aes256Gcm => {
-                // The cipher API handles the encrypted data format internally
-                Cipher::decrypt(encrypted_data.to_vec())
-                    .with_aes_key(key)
-                    .await
-                    .map_err(|e| VaultError::Decryption(e.to_string()))
-            }
-            CipherAlgorithm::ChaCha20Poly1305 => Cipher::decrypt(encrypted_data.to_vec())
-                .with_chacha_key(key)
+            CipherAlgorithm::Aes256Gcm => Cipher::aes()
+                .with_key(key.to_vec())
+                .decrypt(encrypted_data)
+                .await
+                .map_err(|e| VaultError::Decryption(e.to_string())),
+            CipherAlgorithm::ChaCha20Poly1305 => Cipher::chachapoly()
+                .with_key(key.to_vec())
+                .decrypt(encrypted_data)
                 .await
                 .map_err(|e| VaultError::Decryption(e.to_string())),
             CipherAlgorithm::Cascade => {
@@ -182,13 +145,15 @@ impl LocalVaultProvider {
                 let (aes_key, chacha_key) = key.split_at(32);
 
                 // The cascade decryption is done in reverse order: ChaCha first, then AES
-                let intermediate = Cipher::decrypt(encrypted_data.to_vec())
-                    .with_chacha_key(chacha_key)
+                let intermediate = Cipher::chachapoly()
+                    .with_key(chacha_key.to_vec())
+                    .decrypt(encrypted_data)
                     .await
                     .map_err(|e| VaultError::Decryption(e.to_string()))?;
 
-                Cipher::decrypt(intermediate)
-                    .with_aes_key(aes_key)
+                Cipher::aes()
+                    .with_key(aes_key.to_vec())
+                    .decrypt(intermediate)
                     .await
                     .map_err(|e| VaultError::Decryption(e.to_string()))
             }

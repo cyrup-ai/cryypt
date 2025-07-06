@@ -7,16 +7,14 @@ pub mod gzip;
 mod result_macro;
 pub mod zip;
 pub mod zstd;
-mod on_result;
-
 // Re-export error types
 pub use error::{CompressionError, Result};
 
 // Re-export compression result type  
 pub use compression_result::{CompressionResult, CompressionAlgorithm};
 
-// Export on_result function for main cryypt crate
-pub use on_result::on_result;
+// Re-export common handlers from cryypt_common
+pub use cryypt_common::{on_result, on_chunk, on_error};
 
 // Export macros for internal use
 pub(crate) use chunk_macro::compression_on_chunk_impl;

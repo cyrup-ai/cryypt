@@ -100,11 +100,11 @@ where
 }
 
 /// Default implementation helper for find_by_relation trait method
-pub fn default_find_by_relation<D, T>(
-    dao: &D,
+pub fn default_find_by_relation<'a, D, T>(
+    dao: &'a D,
     relation: &str,
     target_id: &str,
-) -> Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + '_>>
+) -> Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + 'a>>
 where
     D: GenericDao<T>,
     T: Serialize + DeserializeOwned + Send + Sync + 'static,
@@ -118,11 +118,11 @@ where
 }
 
 /// Default implementation helper for join trait method
-pub fn default_join<D, T>(
-    dao: &D,
+pub fn default_join<'a, D, T>(
+    dao: &'a D,
     other_table: &str,
     join_field: &str,
-) -> Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + '_>>
+) -> Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + 'a>>
 where
     D: GenericDao<T>,
     T: Serialize + DeserializeOwned + Send + Sync + 'static,

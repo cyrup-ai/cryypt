@@ -91,7 +91,14 @@ impl App {
             return;
         }
 
-        let mut stream = self.vault.find(".*").await;
+        let stream_result = self.vault.find(".*").await;
+        let mut stream = match stream_result {
+            Ok(s) => s,
+            Err(err) => {
+                self.state.error_message = Some(format!("Failed to start search: {}", err));
+                return;
+            }
+        };
         let mut items = Vec::new();
         
         while let Some(result) = stream.next().await {
@@ -117,7 +124,14 @@ impl App {
             return;
         }
 
-        let mut stream = self.vault.find(&self.state.search_pattern).await;
+        let stream_result = self.vault.find(&self.state.search_pattern).await;
+        let mut stream = match stream_result {
+            Ok(s) => s,
+            Err(err) => {
+                self.state.error_message = Some(format!("Failed to start search: {}", err));
+                return;
+            }
+        };
         let mut items = Vec::new();
         
         while let Some(result) = stream.next().await {

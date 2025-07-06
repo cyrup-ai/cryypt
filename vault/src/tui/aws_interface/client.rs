@@ -9,6 +9,7 @@ use aws_sdk_secretsmanager::Client;
 use super::types::AwsError;
 
 /// Interface for interacting with AWS Secrets Manager
+#[derive(Debug)]
 pub struct AwsSecretsInterface {
     pub(crate) client: Option<Client>,
     pub(crate) region: String,

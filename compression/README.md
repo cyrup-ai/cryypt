@@ -29,8 +29,14 @@ let compressed = Cryypt::compress()
 // Decompress
 let decompressed = Cryypt::compress()
     .zstd()
-    .on_result!(|result| {
-        result.unwrap_or_else(|e| panic!("Decompression error: {}", e))
+    .on_result(|result| {
+        match result {
+            Ok(data) => data,
+            Err(e) => {
+                log::error!("Decompression failed: {}", e);
+                Vec::new()
+            }
+        }
     })
     .decompress(&compressed)
     .await; // Returns fully unwrapped value - no Result wrapper // Returns Vec<u8> - the decompressed bytes, fully unwrapped
@@ -39,11 +45,13 @@ let decompressed = Cryypt::compress()
 let mut compressed_stream = Cryypt::compress()
     .zstd()
     .with_level(6)
-    .on_chunk!(|chunk| {
-        Ok => chunk,  // Unwrapped compressed bytes
-        Err(e) => {
-            log::error!("Compression error: {}", e);
-            return;
+    .on_chunk(|chunk| {
+        match chunk {
+            Ok(data) => Some(data),
+            Err(e) => {
+                log::error!("Compression error: {}", e);
+                None
+            }
         }
     })
     .compress_stream(input_stream); // Returns Stream<Item = Vec<u8>> - fully unwrapped compressed chunks
@@ -57,11 +65,13 @@ while let Some(chunk) = compressed_stream.next().await {
 // Stream decompression
 let mut decompressed_stream = Cryypt::compress()
     .zstd()
-    .on_chunk!(|chunk| {
-        Ok => chunk,
-        Err(e) => {
-            log::error!("Decompression error: {}", e);
-            return;
+    .on_chunk(|chunk| {
+        match chunk {
+            Ok(data) => Some(data),
+            Err(e) => {
+                log::error!("Decompression error: {}", e);
+                None
+            }
         }
     })
     .decompress_stream(compressed_input);

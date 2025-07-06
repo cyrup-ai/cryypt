@@ -93,13 +93,18 @@ impl EncryptionResultImpl {
 }
 
 impl Future for EncryptionResultImpl {
-    type Output = Result<EncodableResult>;
+    type Output = EncodableResult;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
-            Poll::Ready(Ok(result)) => Poll::Ready(result.map(EncodableResult::from)),
+            Poll::Ready(Ok(Ok(data))) => Poll::Ready(EncodableResult::from(data)),
+            Poll::Ready(Ok(Err(e))) => {
+                log::error!("Encryption operation error: {}", e);
+                Poll::Ready(EncodableResult::from(Vec::new()))
+            }
             Poll::Ready(Err(_)) => {
-                Poll::Ready(Err(CryptError::internal("Encryption task dropped")))
+                log::error!("Encryption task dropped");
+                Poll::Ready(EncodableResult::from(Vec::new()))
             }
             Poll::Pending => Poll::Pending,
         }
@@ -119,13 +124,18 @@ impl DecryptionResultImpl {
 }
 
 impl Future for DecryptionResultImpl {
-    type Output = Result<Vec<u8>>;
+    type Output = Vec<u8>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
-            Poll::Ready(Ok(result)) => Poll::Ready(result),
+            Poll::Ready(Ok(Ok(data))) => Poll::Ready(data),
+            Poll::Ready(Ok(Err(e))) => {
+                log::error!("Decryption operation error: {}", e);
+                Poll::Ready(Vec::new())
+            }
             Poll::Ready(Err(_)) => {
-                Poll::Ready(Err(CryptError::internal("Decryption task dropped")))
+                log::error!("Decryption task dropped");
+                Poll::Ready(Vec::new())
             }
             Poll::Pending => Poll::Pending,
         }

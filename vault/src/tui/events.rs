@@ -237,6 +237,10 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                                     InputField::Passphrase => app.state.passphrase.push(c),
                                     InputField::NewPassphrase => app.state.new_passphrase.push(c),
                                     InputField::ConfirmPassphrase => app.state.confirm_passphrase.push(c),
+                                    InputField::PassStore => app.state.pass.store_path.push(c),
+                                    InputField::AwsProfile => app.state.aws.profile.push(c),
+                                    InputField::AwsRegion => app.state.aws.region.push(c),
+                                    InputField::AwsSearchPattern => app.state.aws.search_pattern.push(c),
                                 }
                             }
                             KeyCode::Backspace => {
@@ -247,6 +251,10 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                                     InputField::Passphrase => { app.state.passphrase.pop(); }
                                     InputField::NewPassphrase => { app.state.new_passphrase.pop(); }
                                     InputField::ConfirmPassphrase => { app.state.confirm_passphrase.pop(); }
+                                    InputField::PassStore => { app.state.pass.store_path.pop(); }
+                                    InputField::AwsProfile => { app.state.aws.profile.pop(); }
+                                    InputField::AwsRegion => { app.state.aws.region.pop(); }
+                                    InputField::AwsSearchPattern => { app.state.aws.search_pattern.pop(); }
                                 }
                             }
                             _ => {}

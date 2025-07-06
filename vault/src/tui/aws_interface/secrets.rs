@@ -16,7 +16,7 @@ impl AwsSecretsInterface {
         
         let result = client.list_secrets().send().await
             .map_err(|e| AwsError::SdkOperationError(e.to_string()))?;
-        let secrets = result.secret_list().unwrap_or(&[]);
+        let secrets = result.secret_list();
         
         let mut secret_summaries = Vec::new();
         for secret in secrets {
@@ -66,7 +66,7 @@ impl AwsSecretsInterface {
             .await
             .map_err(|e| AwsError::SdkOperationError(e.to_string()))?;
         
-        let secrets = result.secret_list().unwrap_or(&[]);
+        let secrets = result.secret_list();
         
         let mut secret_summaries = Vec::new();
         for secret in secrets {

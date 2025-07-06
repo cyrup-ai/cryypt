@@ -1,6 +1,6 @@
 //! Cipher API examples - EXACTLY matching cipher/README.md
 
-use cryypt::{Cryypt, FileKeyStore, on_result, Cipher, KeyRetriever, Bits, Key};
+use cryypt::{Cryypt, FileKeyStore, Cipher, KeyRetriever, Bits, Key};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -13,8 +13,14 @@ async fn aes_encryption_example() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -23,8 +29,14 @@ async fn aes_encryption_example() -> Result<(), Box<dyn std::error::Error>> {
     let encrypted = Cryypt::cipher()
         .aes()
         .with_key(key)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(b"Secret message")
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -33,8 +45,14 @@ async fn aes_encryption_example() -> Result<(), Box<dyn std::error::Error>> {
     let plaintext = Cryypt::cipher()
         .aes()
         .with_key(key)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .decrypt(&encrypted)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -51,8 +69,14 @@ async fn chacha_encryption_example() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .retrieve()
         .await;
@@ -61,8 +85,14 @@ async fn chacha_encryption_example() -> Result<(), Box<dyn std::error::Error>> {
     let encrypted = Cryypt::cipher()
         .chachapoly()
         .with_key(key)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(b"Secret message")
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -145,11 +175,13 @@ async fn encrypt_large_file(input_path: &str, output_path: &str) -> Result<(), B
     // Stream encryption
     let mut encrypted_stream = Cipher::aes()
         .with_key(key)
-        .on_chunk!(|chunk| {
-            Ok => chunk,
-            Err(e) => {
-                log::error!("Encryption error: {}", e);
-                return;
+        .on_chunk(|chunk| {
+            match chunk {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    log::error!("Encryption error: {}", e);
+                    None
+                }
             }
         })
         .encrypt_stream(input_file);
@@ -171,8 +203,14 @@ async fn pipeline_example() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .retrieve()
         .await;
@@ -180,8 +218,14 @@ async fn pipeline_example() -> Result<(), Box<dyn std::error::Error>> {
     // Hash -> Compress -> Encrypt pipeline
     let hash = Cryypt::hash()
         .sha256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .compute(data)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -189,8 +233,14 @@ async fn pipeline_example() -> Result<(), Box<dyn std::error::Error>> {
     let compressed = Cryypt::compress()
         .zstd()
         .with_level(3)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .compress(data)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -199,8 +249,14 @@ async fn pipeline_example() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(key)
         .with_aad(&hash) // Use hash as additional authenticated data
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(&compressed)
         .await; // Returns fully unwrapped value - no Result wrapper

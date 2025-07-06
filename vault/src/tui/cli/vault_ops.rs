@@ -195,22 +195,54 @@ pub async fn handle_get(vault: &Vault, key: &str, use_json: bool) -> Result<(), 
     }
     
     match vault.get(key).await {
-        Ok(value) => {
-            let value_str = match value {
-                Some(v) => v.as_str().unwrap_or("[non-string value]"),
-                None => "[not found]"
-            };
-            log_security_event("CLI_GET", &format!("Retrieved value for key: {}", key), true);
-            
-            if use_json {
-                println!("{}", json!({
-                    "success": true,
-                    "operation": "get",
-                    "key": key,
-                    "value": value_str
-                }));
-            } else {
-                println!("Value: {}", value_str);
+        Ok(request) => {
+            match request.await {
+                Ok(value) => {
+                    log_security_event("CLI_GET", &format!("Retrieved value for key: {}", key), true);
+                    
+                    match value {
+                        Some(v) => {
+                            let value_str = v.expose_as_str().unwrap_or("[non-string value]");
+                            if use_json {
+                                println!("{}", json!({
+                                    "success": true,
+                                    "operation": "get",
+                                    "key": key,
+                                    "value": value_str
+                                }));
+                            } else {
+                                println!("Value: {}", value_str);
+                            }
+                        },
+                        None => {
+                            if use_json {
+                                println!("{}", json!({
+                                    "success": true,
+                                    "operation": "get",
+                                    "key": key,
+                                    "value": "[not found]"
+                                }));
+                            } else {
+                                println!("Value: [not found]");
+                            }
+                        }
+                    }
+                },
+                Err(e) => {
+                    log_security_event("CLI_GET", &format!("Failed to retrieve value for key {}: {}", key, e), false);
+                    
+                    if use_json {
+                        println!("{}", json!({
+                            "success": false,
+                            "operation": "get",
+                            "key": key,
+                            "error": format!("Failed to retrieve value: {}", e)
+                        }));
+                        return Ok(());
+                    } else {
+                        return Err(format!("Failed to retrieve value: {}", e).into());
+                    }
+                }
             }
         },
         Err(e) => {
@@ -301,7 +333,23 @@ pub async fn handle_list(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
         println!("Listing all keys...");
     }
     
-    let mut stream = vault.find(".*").await;
+    let stream_result = vault.find(".*").await;
+    let mut stream = match stream_result {
+        Ok(s) => s,
+        Err(e) => {
+            log_security_event("CLI_LIST", &format!("Failed to list keys: {}", e), false);
+            if use_json {
+                println!("{}", json!({
+                    "success": false,
+                    "operation": "list",
+                    "error": format!("Failed to list keys: {}", e)
+                }));
+            } else {
+                return Err(format!("Failed to list keys: {}", e).into());
+            }
+            return Ok(());
+        }
+    };
     let mut results = Vec::new();
     
     while let Some(result) = stream.next().await {
@@ -364,7 +412,24 @@ pub async fn handle_find(vault: &Vault, pattern: &str, use_json: bool) -> Result
         println!("Finding keys matching pattern '{}'...", pattern);
     }
     
-    let mut stream = vault.find(pattern).await;
+    let stream_result = vault.find(pattern).await;
+    let mut stream = match stream_result {
+        Ok(s) => s,
+        Err(e) => {
+            log_security_event("CLI_FIND", &format!("Failed to find keys matching pattern {}: {}", pattern, e), false);
+            if use_json {
+                println!("{}", json!({
+                    "success": false,
+                    "operation": "find",
+                    "pattern": pattern,
+                    "error": format!("Failed to find keys: {}", e)
+                }));
+            } else {
+                return Err(format!("Failed to find keys: {}", e).into());
+            }
+            return Ok(());
+        }
+    };
     let mut results = Vec::new();
     
     while let Some(result) = stream.next().await {
@@ -394,7 +459,7 @@ pub async fn handle_find(vault: &Vault, pattern: &str, use_json: bool) -> Result
                     .map(|(k, v)| {
                         json!({
                             "key": k,
-                            "value": v.as_str().unwrap_or("[non-string value]")
+                            "value": v.expose_as_str().unwrap_or("[non-string value]")
                         })
                     })
             .collect();
@@ -412,7 +477,7 @@ pub async fn handle_find(vault: &Vault, pattern: &str, use_json: bool) -> Result
         } else {
             println!("Keys matching pattern:");
             for (key, value) in results {
-                println!("- {}: {}", key, value.as_str().unwrap_or("[non-string value]"));
+                println!("- {}: {}", key, value.expose_as_str().unwrap_or("[non-string value]"));
             }
         }
     }

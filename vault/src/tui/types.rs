@@ -171,6 +171,7 @@ pub struct AwsSecretsManagerState {
     pub new_secret_value: String,
     pub new_secret_description: String,
     pub update_secret_value: String,
+    pub search_pattern: String,
 }
 
 // Zeroizing<String> handles memory clearing automatically

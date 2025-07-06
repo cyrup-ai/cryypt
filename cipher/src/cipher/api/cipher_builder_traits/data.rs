@@ -3,6 +3,8 @@
 //! Contains traits for adding data and ciphertext to cipher builders.
 
 /// Builder that can accept data
+/// NOTE: Library trait - intended for external implementations
+#[allow(dead_code)]
 pub trait DataBuilder {
     /// The resulting type after adding data
     type Output;
@@ -54,6 +56,8 @@ pub trait DataBuilder {
 }
 
 /// Builder that can accept ciphertext
+/// NOTE: Library trait - intended for external implementations
+#[allow(dead_code)]
 pub trait CiphertextBuilder {
     /// The resulting type after adding ciphertext
     type Output;

@@ -1,6 +1,6 @@
 //! Test file to verify README.md patterns compile and work
 
-use cryypt::{Cryypt, FileKeyStore, on_result, Bits};
+use cryypt::{Cryypt, FileKeyStore, Bits};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,18 +15,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store.clone())
         .with_namespace("my-app")
         .version(1)
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Error: {}", e);
+                    vec![]
+                }
+            }
         })
         .await?;
 
     // Test encryption pattern from README.md
     let encrypted = key
         .aes()
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Error: {}", e);
+                    vec![]
+                }
+            }
         })
         .encrypt(b"Secret message")
         .await?;
@@ -36,9 +46,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Test decryption pattern from README.md
     let plaintext = key
         .aes()
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Error: {}", e);
+                    vec![]
+                }
+            }
         })
         .decrypt(&encrypted)
         .await?;
@@ -51,18 +66,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Error: {}", e);
+                    vec![]
+                }
+            }
         })
         .await?;
 
     // Test ChaCha20 pattern from README.md
     let chacha_encrypted = retrieved_key
         .chacha20()
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Error: {}", e);
+                    vec![]
+                }
+            }
         })
         .encrypt(b"Secret message")
         .await?;

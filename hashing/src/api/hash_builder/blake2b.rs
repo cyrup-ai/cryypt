@@ -8,12 +8,6 @@ use super::{HashBuilder, HashStream, HashAlgorithm};
 use super::stream::DynHasher;
 use crate::{HashResult, Result};
 use tokio_stream::Stream;
-use crate::hash_on_result_impl;
-
-/// Apply result handler using hash_on_result_impl macro
-pub(crate) fn apply_hash_result_handler() -> impl Fn(Result<Vec<u8>>) -> Result<Vec<u8>> {
-    hash_on_result_impl!(|result| { Ok => Ok(result), Err(e) => Err(e) })
-}
 
 // BLAKE2b compute methods without key
 impl<P> HashBuilder<Blake2bHash, NoData, NoSalt, P> {
@@ -28,13 +22,10 @@ impl<P> HashBuilder<Blake2bHash, NoData, NoSalt, P> {
         let data = data.into();
         let hash_result = blake2b_hash(data, None, self.hasher.output_size).await?;
         
-        // Apply the macro handler
-        let processed = apply_hash_result_handler()(Ok(hash_result));
-        
         if let Some(handler) = self.result_handler {
-            handler(processed.map(HashResult::from))
+            handler(Ok(HashResult::from(hash_result)))
         } else {
-            processed.map(HashResult::from)
+            Ok(HashResult::from(hash_result))
         }
     }
     

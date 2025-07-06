@@ -67,4 +67,4 @@ hex-literal = "1.0.0"
 
 [[example]]
 name = "pqcrypto"
-path = "../examples/pqcrypto.rs"
+path = "../examples/src/pqcrypto_api.rs"

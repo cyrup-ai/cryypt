@@ -3,7 +3,7 @@
 //! All streaming patterns EXACTLY from README.md files
 //! Zero allocation, no locking, blazing-fast performance
 
-use cryypt::{Cryypt, FileKeyStore, on_result, on_chunk, Bits};
+use cryypt::{Cryypt, FileKeyStore, Bits};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter};
 use tokio_stream::{Stream, StreamExt};
@@ -29,18 +29,20 @@ async fn stream_encrypt_large_file(
     let mut encrypted_stream = Cryypt::cipher()
         .aes()
         .with_key(key)
-        .on_chunk!(|chunk| {
-            Ok => chunk,  // Unwrapped encrypted bytes
-            Err(e) => {
-                log::error!("Encryption chunk error: {}", e);
-                return;
+        .on_chunk(|chunk| {
+            match chunk {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    log::error!("Encryption chunk error: {}", e);
+                    None
+                }
             }
         })
         .encrypt_stream(file_stream); // Returns Stream<Item = Vec<u8>> - fully unwrapped encrypted chunks
 
     // Write encrypted chunks - EXACTLY from cipher/README.md
     while let Some(chunk) = encrypted_stream.next().await {
-        // chunk is Vec<u8> - already unwrapped by on_chunk!
+        // chunk is Vec<u8> - already unwrapped by on_chunk
         output_file.write_all(&chunk).await?;
     }
     
@@ -67,11 +69,13 @@ async fn stream_decrypt_large_file(
     let mut decrypted_stream = Cryypt::cipher()
         .aes()
         .with_key(key)
-        .on_chunk!(|chunk| {
-            Ok => chunk,
-            Err(e) => {
-                log::error!("Decryption chunk error: {}", e);
-                return;
+        .on_chunk(|chunk| {
+            match chunk {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    log::error!("Decryption chunk error: {}", e);
+                    None
+                }
             }
         })
         .decrypt_stream(encrypted_file_stream);
@@ -101,11 +105,13 @@ where
     let mut compressed_stream = Cryypt::compress()
         .zstd()
         .with_level(6)
-        .on_chunk!(|chunk| {
-            Ok => chunk,  // Unwrapped compressed bytes
-            Err(e) => {
-                log::error!("Compression error: {}", e);
-                return;
+        .on_chunk(|chunk| {
+            match chunk {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    log::error!("Compression error: {}", e);
+                    None
+                }
             }
         })
         .compress_stream(input_stream); // Returns Stream<Item = Vec<u8>> - fully unwrapped compressed chunks

@@ -5,7 +5,7 @@ use surrealdb::Surreal;
 use surrealdb::engine::any::Any;
 // Add additional imports if needed
 use futures::StreamExt;
-use time::OffsetDateTime;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 /// Document stored in the vault database
@@ -20,9 +20,9 @@ pub struct Document {
     /// Document metadata (JSON)
     pub metadata: serde_json::Value,
     /// Creation timestamp
-    pub created_at: Option<OffsetDateTime>,
+    pub created_at: Option<DateTime<Utc>>,
     /// Last modification timestamp
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: Option<DateTime<Utc>>,
     /// Optional tags for categorization
     pub tags: Vec<String>,
 }
@@ -46,7 +46,7 @@ impl DocumentDao {
         let mut doc = document;
 
         // Set timestamps if not present
-        let now = OffsetDateTime::now_utc();
+        let now = Utc::now();
         if doc.created_at.is_none() {
             doc.created_at = Some(now);
         }

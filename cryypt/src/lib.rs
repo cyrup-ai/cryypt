@@ -60,8 +60,14 @@
 //!             .with_namespace("my-app")
 //!             .version(1),
 //!     )
-//!     .on_result!(|result| {
-//!         result.unwrap_or_else(|e| panic!("Encryption error: {}", e))
+//!     .on_result(|result| {
+//!         match result {
+//!             Ok(ciphertext) => ciphertext,
+//!             Err(e) => {
+//!                 log::error!("Encryption error: {}", e);
+//!                 Vec::new()
+//!             }
+//!         }
 //!     })
 //!     .encrypt(b"Hello, World!")
 //!     .await;
@@ -75,8 +81,14 @@
 //!             .with_namespace("my-app")
 //!             .version(1),
 //!     )
-//!     .on_result!(|result| {
-//!         result.unwrap_or_else(|e| panic!("Decryption error: {}", e))
+//!     .on_result(|result| {
+//!         match result {
+//!             Ok(decrypted) => decrypted,
+//!             Err(e) => {
+//!                 log::error!("Decryption error: {}", e);
+//!                 Vec::new()
+//!             }
+//!         }
 //!     })
 //!     .decrypt(ciphertext)
 //!     .await;

@@ -19,7 +19,6 @@
 /// # }
 /// ```
 #[doc(hidden)]
-#[macro_export]
 macro_rules! __cipher_on_result_impl {
     // Standard README pattern - just return the cipher for method chaining
     (|$result:ident| { Ok => Ok($ok_result:ident), Err($err:ident) => Err($err_ident:ident) }) => {
@@ -34,8 +33,7 @@ macro_rules! __cipher_on_result_impl {
     };
 }
 
-/// Public macro that users call for cipher operations
-#[macro_export]
+/// Internal macro for cipher operations - NOT PUBLIC API
 macro_rules! cipher_on_result {
     ($($tt:tt)*) => {
         on_result($crate::__cipher_on_result_impl!($($tt)*))

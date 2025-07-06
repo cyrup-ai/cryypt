@@ -10,6 +10,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+cryypt_common = { path = "../common" }
 arc-swap = "1.7.1"
 rand = { version = "0.9.1", features = ["std", "std_rng"] }
 zeroize = "1.8.1"

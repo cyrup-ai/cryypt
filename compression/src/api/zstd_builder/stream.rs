@@ -7,7 +7,6 @@ use crate::{CompressionAlgorithm, Result};
 use std::pin::Pin;
 use tokio::sync::mpsc;
 use tokio_stream::Stream;
-use crate::compression_on_chunk_impl;
 
 // Streaming methods for NoLevel builder
 impl ZstdBuilder<NoLevel> {

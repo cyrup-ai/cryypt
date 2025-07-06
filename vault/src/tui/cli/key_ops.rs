@@ -2,12 +2,7 @@
 
 use crate::logging::log_security_event;
 use serde_json::json;
-use cryypt_key::{
-    KeyGenerator, KeyRetriever,
-    api::SecureRetrievedKey,
-    store::FileKeyStore,
-    bits_macro::{BitSize, Bits},
-};
+use cryypt_key::{Key, KeyRetriever, store::FileKeyStore, bits_macro::Bits, on_result, api::KeyStore};
 
 pub async fn handle_generate_key(
     namespace: &str,
@@ -20,72 +15,71 @@ pub async fn handle_generate_key(
         println!("Generating key with namespace '{}', version {}, {} bits...", namespace, version, bits);
     }
     
-    // Parse store type
-    let store_backend: Box<dyn cryypt_key::traits::KeyStorage + Send + Sync> = if store.starts_with("file:") {
+    // Generate the key using README.md pattern with on_result unwrapping
+    let master_key = [0u8; 32]; // TODO: Get proper master key from context
+    
+    let key_bytes = if store.starts_with("file:") {
         let path = store.strip_prefix("file:").unwrap();
-        Box::new(FileKeyStore::at(path))
+        let store = FileKeyStore::at(path).with_master_key(master_key);
+        
+        store.generate_key(bits, namespace, version)
+            .on_result(|result| {
+                match result {
+                    Ok(key) => key,
+                    Err(e) => {
+                        log::error!("Key generation failed: {}", e);
+                        Vec::new() // Return empty key on error
+                    }
+                }
+            })
+            .await
     } else {
         // Use temporary file store for "memory" option
         let temp_dir = std::env::temp_dir();
         let temp_path = temp_dir.join(".cryypt_temp_keys");
-        Box::new(FileKeyStore::at(temp_path))
+        let store = FileKeyStore::at(temp_path).with_master_key(master_key);
+        
+        store.generate_key(bits, namespace, version)
+            .on_result(|result| {
+                match result {
+                    Ok(key) => key,
+                    Err(e) => {
+                        log::error!("Key generation failed: {}", e);
+                        Vec::new() // Return empty key on error
+                    }
+                }
+            })
+            .await
     };
     
-    // Generate the key
-    match KeyGenerator::new()
-        .size(bits.bits())
-        .with_store(store_backend)
-        .with_namespace(namespace)
-        .and_then(|g| g.version(version))
-    {
-        Ok(generator) => {
-            match generator.generate(|result| result).await {
-                Ok(key_bytes) => {
-                    log_security_event("CLI_GENERATE_KEY", &format!("Generated key: {}:v{}", namespace, version), true);
-                    
-                    if use_json {
-                        println!("{}", json!({
-                            "success": true,
-                            "operation": "generate_key",
-                            "namespace": namespace,
-                            "version": version,
-                            "size_bits": bits,
-                            "size_bytes": key_bytes.len(),
-                            "store": store
-                        }));
-                    } else {
-                        println!("Key generated successfully: {} bytes", key_bytes.len());
-                    }
-                }
-                Err(e) => {
-                    log_security_event("CLI_GENERATE_KEY", &format!("Failed to generate key: {}", e), false);
-                    
-                    if use_json {
-                        println!("{}", json!({
-                            "success": false,
-                            "operation": "generate_key",
-                            "error": format!("Failed to generate key: {}", e)
-                        }));
-                        return Ok(());
-                    } else {
-                        return Err(Box::new(e));
-                    }
-                }
-            }
+    // Key bytes are now fully unwrapped
+    if key_bytes.is_empty() {
+        log_security_event("CLI_GENERATE_KEY", &format!("Failed to generate key: {}:v{}", namespace, version), false);
+        
+        if use_json {
+            println!("{}", json!({
+                "success": false,
+                "operation": "generate_key",
+                "error": "Key generation failed"
+            }));
+        } else {
+            println!("Key generation failed");
         }
-        Err(e) => {
-            log_security_event("CLI_GENERATE_KEY", &format!("Invalid key generation parameters: {}", e), false);
-            
-            if use_json {
-                println!("{}", json!({
-                    "success": false,
-                    "operation": "generate_key",
-                    "error": format!("Invalid parameters: {}", e)
-                }));
-                return Ok(());
-            } else {
-                return Err(Box::new(e));
-            }
+    } else {
+        log_security_event("CLI_GENERATE_KEY", &format!("Generated key: {}:v{}", namespace, version), true);
+        
+        if use_json {
+            println!("{}", json!({
+                "success": true,
+                "operation": "generate_key",
+                "namespace": namespace,
+                "version": version,
+                "size_bits": bits,
+                "size_bytes": key_bytes.len(),
+                "store": store
+            }));
+        } else {
+            println!("Key generated successfully: {} bytes", key_bytes.len());
         }
     }
     Ok(())
@@ -101,71 +95,74 @@ pub async fn handle_retrieve_key(
         println!("Retrieving key with namespace '{}', version {}...", namespace, version);
     }
     
-    // Parse store type
-    let store_backend: Box<dyn cryypt_key::traits::KeyStorage + cryypt_key::traits::KeyRetrieval + Send + Sync> = if store.starts_with("file:") {
+    // Retrieve the key using README.md pattern with on_result unwrapping
+    let master_key = [0u8; 32]; // TODO: Get proper master key from context
+    
+    let key_bytes = if store.starts_with("file:") {
         let path = store.strip_prefix("file:").unwrap();
-        Box::new(FileKeyStore::at(path))
+        let store = FileKeyStore::at(path).with_master_key(master_key);
+        
+        store.retrieve_key(namespace, version)
+            .on_result(|result| {
+                match result {
+                    Ok(key) => key,
+                    Err(e) => {
+                        log::error!("Key retrieval failed: {}", e);
+                        Vec::new() // Return empty key on error
+                    }
+                }
+            })
+            .await
     } else {
         // Use temporary file store for "memory" option
         let temp_dir = std::env::temp_dir();
         let temp_path = temp_dir.join(".cryypt_temp_keys");
-        Box::new(FileKeyStore::at(temp_path))
+        let store = FileKeyStore::at(temp_path).with_master_key(master_key);
+        
+        store.retrieve_key(namespace, version)
+            .on_result(|result| {
+                match result {
+                    Ok(key) => key,
+                    Err(e) => {
+                        log::error!("Key retrieval failed: {}", e);
+                        Vec::new() // Return empty key on error
+                    }
+                }
+            })
+            .await
     };
     
-    // Retrieve the key
-    match KeyRetriever::new()
-        .with_store(store_backend)
-        .with_namespace(namespace)
-        .and_then(|ret| ret.version(version))
-    {
-        Ok(retriever) => {
-            match retriever.retrieve(|result| result).await {
-                Ok(secure_key) => {
-                    log_security_event("CLI_RETRIEVE_KEY", &format!("Retrieved key: {}", secure_key.id().id()), true);
-                    
-                    if use_json {
-                        println!("{}", json!({
-                            "success": true,
-                            "operation": "retrieve_key",
-                            "key_id": secure_key.id().id(),
-                            "size_bytes": secure_key.key_bytes().len(),
-                            "store": store
-                        }));
-                    } else {
-                        println!("Key retrieved successfully:");
-                        println!("  ID: {}", secure_key.id().id());
-                        println!("  Size: {} bytes", secure_key.key_bytes().len());
-                    }
-                }
-                Err(e) => {
-                    log_security_event("CLI_RETRIEVE_KEY", &format!("Failed to retrieve key: {}", e), false);
-                    
-                    if use_json {
-                        println!("{}", json!({
-                            "success": false,
-                            "operation": "retrieve_key",
-                            "error": format!("Failed to retrieve key: {}", e)
-                        }));
-                        return Ok(());
-                    } else {
-                        return Err(Box::new(e));
-                    }
-                }
-            }
+    // Key bytes are now fully unwrapped
+    if key_bytes.is_empty() {
+        let key_id = format!("{}:v{}", namespace, version);
+        log_security_event("CLI_RETRIEVE_KEY", &format!("Failed to retrieve key: {}", key_id), false);
+        
+        if use_json {
+            println!("{}", json!({
+                "success": false,
+                "operation": "retrieve_key",
+                "key_id": key_id,
+                "error": "Key not found or retrieval failed"
+            }));
+        } else {
+            println!("Key retrieval failed: key not found");
         }
-        Err(e) => {
-            log_security_event("CLI_RETRIEVE_KEY", &format!("Invalid key retrieval parameters: {}", e), false);
-            
-            if use_json {
-                println!("{}", json!({
-                    "success": false,
-                    "operation": "retrieve_key",
-                    "error": format!("Invalid parameters: {}", e)
-                }));
-                return Ok(());
-            } else {
-                return Err(Box::new(e));
-            }
+    } else {
+        let key_id = format!("{}:v{}", namespace, version);
+        log_security_event("CLI_RETRIEVE_KEY", &format!("Retrieved key: {}", key_id), true);
+        
+        if use_json {
+            println!("{}", json!({
+                "success": true,
+                "operation": "retrieve_key",
+                "key_id": key_id,
+                "size_bytes": key_bytes.len(),
+                "store": store
+            }));
+        } else {
+            println!("Key retrieved successfully:");
+            println!("  ID: {}", key_id);
+            println!("  Size: {} bytes", key_bytes.len());
         }
     }
     Ok(())
@@ -183,77 +180,89 @@ pub async fn handle_batch_generate_keys(
         println!("Generating {} keys with namespace '{}', version {}, {} bits...", count, namespace, version, bits);
     }
     
-    // Parse store type
-    let store_backend: Box<dyn cryypt_key::traits::KeyStorage + cryypt_key::traits::KeyImport + Send + Sync> = if store.starts_with("file:") {
+    // Generate keys in batch using README.md pattern with on_result unwrapping
+    let master_key = [0u8; 32]; // TODO: Get proper master key from context
+    
+    let keys = if store.starts_with("file:") {
         let path = store.strip_prefix("file:").unwrap();
-        Box::new(FileKeyStore::at(path))
+        let store = FileKeyStore::at(path).with_master_key(master_key);
+        
+        let mut keys = Vec::new();
+        for i in 0..count {
+            let key = store.generate_key(bits, namespace, version + i as u32)
+                .on_result(|result| {
+                    match result {
+                        Ok(key) => key,
+                        Err(e) => {
+                            log::error!("Batch key generation failed for index {}: {}", i, e);
+                            Vec::new() // Skip failed key
+                        }
+                    }
+                })
+                .await;
+            if !key.is_empty() {
+                keys.push(key);
+            }
+        }
+        keys
     } else {
         // Use temporary file store for "memory" option
         let temp_dir = std::env::temp_dir();
         let temp_path = temp_dir.join(".cryypt_temp_keys");
-        Box::new(FileKeyStore::at(temp_path))
-    };
-    
-    // Generate keys in batch
-    match KeyGenerator::new()
-        .size(bits.bits())
-        .with_store(store_backend)
-        .with_namespace(namespace)
-        .and_then(|g| g.version(version))
-        .and_then(|g| g.batch(count))
-    {
-        Ok(batch_gen) => {
-            match batch_gen.generate_collect().await {
-                Ok(keys) => {
-                    log_security_event("CLI_BATCH_GENERATE", &format!("Generated {} keys for {}:v{}", keys.len(), namespace, version), true);
-                    
-                    if use_json {
-                        println!("{}", json!({
-                            "success": true,
-                            "operation": "batch_generate_keys",
-                            "namespace": namespace,
-                            "version": version,
-                            "size_bits": bits,
-                            "count": keys.len(),
-                            "total_bytes": keys.iter().map(|k| k.len()).sum::<usize>(),
-                            "store": store
-                        }));
-                    } else {
-                        println!("Batch generation successful:");
-                        println!("  Keys generated: {}", keys.len());
-                        println!("  Key size: {} bytes each", keys.first().map_or(0, |k| k.len()));
-                        println!("  Total bytes: {}", keys.iter().map(|k| k.len()).sum::<usize>());
+        let store = FileKeyStore::at(temp_path).with_master_key(master_key);
+        
+        let mut keys = Vec::new();
+        for i in 0..count {
+            let key = store.generate_key(bits, namespace, version + i as u32)
+                .on_result(|result| {
+                    match result {
+                        Ok(key) => key,
+                        Err(e) => {
+                            log::error!("Batch key generation failed for index {}: {}", i, e);
+                            Vec::new() // Skip failed key
+                        }
                     }
-                }
-                Err(e) => {
-                    log_security_event("CLI_BATCH_GENERATE", &format!("Failed to generate batch: {}", e), false);
-                    
-                    if use_json {
-                        println!("{}", json!({
-                            "success": false,
-                            "operation": "batch_generate_keys",
-                            "error": format!("Failed to generate batch: {}", e)
-                        }));
-                        return Ok(());
-                    } else {
-                        return Err(Box::new(e));
-                    }
-                }
+                })
+                .await;
+            if !key.is_empty() {
+                keys.push(key);
             }
         }
-        Err(e) => {
-            log_security_event("CLI_BATCH_GENERATE", &format!("Invalid batch generation parameters: {}", e), false);
-            
-            if use_json {
-                println!("{}", json!({
-                    "success": false,
-                    "operation": "batch_generate_keys",
-                    "error": format!("Invalid parameters: {}", e)
-                }));
-                return Ok(());
-            } else {
-                return Err(Box::new(e));
-            }
+        keys
+    };
+    
+    // Keys are now fully unwrapped
+    if keys.is_empty() {
+        log_security_event("CLI_BATCH_GENERATE", &format!("Failed to generate any keys for {}:v{}", namespace, version), false);
+        
+        if use_json {
+            println!("{}", json!({
+                "success": false,
+                "operation": "batch_generate_keys",
+                "error": "No keys could be generated"
+            }));
+        } else {
+            println!("Batch generation failed: no keys could be generated");
+        }
+    } else {
+        log_security_event("CLI_BATCH_GENERATE", &format!("Generated {} keys for {}:v{}", keys.len(), namespace, version), true);
+        
+        if use_json {
+            println!("{}", json!({
+                "success": true,
+                "operation": "batch_generate_keys",
+                "namespace": namespace,
+                "version": version,
+                "size_bits": bits,
+                "count": keys.len(),
+                "total_bytes": keys.iter().map(|k| k.len()).sum::<usize>(),
+                "store": store
+            }));
+        } else {
+            println!("Batch generation successful:");
+            println!("  Keys generated: {}", keys.len());
+            println!("  Key size: {} bytes each", keys.first().map_or(0, |k| k.len()));
+            println!("  Total bytes: {}", keys.iter().map(|k| k.len()).sum::<usize>());
         }
     }
     Ok(())

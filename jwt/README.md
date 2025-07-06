@@ -27,7 +27,13 @@ let token = Cryypt::jwt()
     .with_algorithm("HS256")
     .with_secret(b"secret_key")
     .on_result!(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        match result {
+            Ok(data) => data,
+            Err(e) => {
+                log::error!("JWT operation failed: {}", e);
+                String::new()
+            }
+        }
     })
     .sign(claims)
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -35,11 +41,13 @@ let token = Cryypt::jwt()
 // Verify and decode JWT
 let claims = Cryypt::jwt()
     .with_secret(b"secret_key")
-    .on_result!(|result| {
-        Ok => Ok(result),
-        Err(e) => {
-            log::error!("JWT verification failed: {}", e);
-            Err(e)
+    .on_result(|result| {
+        match result {
+            Ok(claims) => claims,
+            Err(e) => {
+                log::error!("JWT verification failed: {}", e);
+                serde_json::Value::Null
+            }
         }
     })
     .verify(token)
@@ -50,7 +58,13 @@ let token = Cryypt::jwt()
     .with_algorithm("RS256")
     .with_private_key(private_key)
     .on_result!(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        match result {
+            Ok(data) => data,
+            Err(e) => {
+                log::error!("JWT operation failed: {}", e);
+                String::new()
+            }
+        }
     })
     .sign(claims)
     .await; // Returns fully unwrapped value - no Result wrapper

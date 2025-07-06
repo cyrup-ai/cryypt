@@ -10,7 +10,7 @@ use super::super::app::App;
 use super::super::types::{PassState, PassStateMode};
 use super::super::pass_interface::PassInterface;
 
-pub fn render_pass_tab<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+pub fn render_pass_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -38,7 +38,7 @@ pub fn render_pass_tab<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
     }
 }
 
-fn render_pass_list<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_pass_list(f: &mut Frame, app: &mut App, area: Rect) {
     let passwords = app.state.pass.entries.clone();
     let list_items: Vec<ListItem> = passwords
         .iter()
@@ -52,12 +52,12 @@ fn render_pass_list<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
         .highlight_symbol(">> ");
 
     let mut list_state = ListState::default();
-    list_state.select(app.state.pass.selected_index);
+    list_state.select(Some(app.state.pass.selected_index));
 
     f.render_stateful_widget(list, area, &mut list_state);
 }
 
-fn render_pass_view<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_pass_view(f: &mut Frame, app: &mut App, area: Rect) {
     let selected = app.state.pass.selected_index;
     let password_name = if selected < app.state.pass.entries.len() {
         app.state.pass.entries[selected].clone()
@@ -82,7 +82,7 @@ fn render_pass_view<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_widget(paragraph, area);
 }
 
-fn render_pass_search<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_pass_search(f: &mut Frame, app: &mut App, area: Rect) {
     let input = app.state.pass.search_query.clone();
 
     let text = vec![
@@ -104,7 +104,7 @@ fn render_pass_search<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
 pub async fn load_passwords(app: &mut App) {
     let pass = PassInterface::default();
     
-    match pass.get_all_entries() {
+    match pass.list() {
         Ok(entries) => {
             app.state.pass.entries = entries;
             if !app.state.pass.entries.is_empty() && app.state.pass.selected_index == 0 {
@@ -126,9 +126,9 @@ pub async fn load_password_content(app: &mut App) {
     let password_name = app.state.pass.entries[app.state.pass.selected_index].clone();
     let pass = PassInterface::default();
     
-    match pass.get_password(&password_name) {
+    match pass.get(&password_name) {
         Ok(content) => {
-            app.state.pass.content = Some(content);
+            app.state.pass.content = Some(content.into());
         }
         Err(e) => {
             app.state.pass.status_message = format!("Error loading password: {}", e);
@@ -141,7 +141,7 @@ pub async fn search_passwords(app: &mut App) {
     let query = app.state.pass.search_query.clone();
     let pass = PassInterface::default();
     
-    match pass.search_entries(&query) {
+    match pass.search(&query) {
         Ok(entries) => {
             app.state.pass.entries = entries;
             app.state.pass.selected_index = 0;

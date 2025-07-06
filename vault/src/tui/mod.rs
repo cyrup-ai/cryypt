@@ -27,7 +27,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     
     // Create vault
-    let vault = rt.block_on(async {
+    let vault = rt.block_on(async move {
         // Initialize basic vault
         let vault = Vault::new();
         
@@ -85,8 +85,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         // Register provider
         vault.register_operation(provider).await;
         
-        vault
-    });
+        Ok::<Vault, Box<dyn std::error::Error>>(vault)
+    })?;
     
     // Use match option pattern to run TUI mode by default
     if let Some(command) = cli.command.clone() {

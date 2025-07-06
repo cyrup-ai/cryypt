@@ -1,6 +1,6 @@
 //! Key API examples - EXACTLY matching key/README.md
 
-use cryypt::{Cryypt, FileKeyStore, on_result, Bits, KeyGenerator, KeyRetriever};
+use cryypt::{Cryypt, FileKeyStore, Bits, KeyGenerator, KeyRetriever};
 
 /// Key Generation and Retrieval example from README
 async fn key_generation_and_retrieval() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,8 +14,14 @@ async fn key_generation_and_retrieval() -> Result<(), Box<dyn std::error::Error>
         .with_store(store.clone())
         .with_namespace("my-app")
         .version(1)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    vec![]
+                }
+            }
         })
         .await; // Returns Key - the actual key object, fully unwrapped
 
@@ -25,16 +31,28 @@ async fn key_generation_and_retrieval() -> Result<(), Box<dyn std::error::Error>
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    vec![]
+                }
+            }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
 
     // Use key directly for encryption
     let encrypted = key
         .aes()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(b"Secret message")
         .await; // Returns Vec<u8> - the encrypted bytes, fully unwrapped
@@ -42,8 +60,14 @@ async fn key_generation_and_retrieval() -> Result<(), Box<dyn std::error::Error>
     // Use key directly for decryption
     let plaintext = key
         .aes()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .decrypt(&encrypted)
         .await; // Returns Vec<u8> - the decrypted plaintext bytes, fully unwrapped
@@ -51,8 +75,14 @@ async fn key_generation_and_retrieval() -> Result<(), Box<dyn std::error::Error>
     // Or use ChaCha20
     let encrypted = key
         .chacha20()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(b"Secret message")
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -62,9 +92,16 @@ async fn key_generation_and_retrieval() -> Result<(), Box<dyn std::error::Error>
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .retrieve(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    vec![]
+                }
+            }
         })
+        .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
 
     println!("Key operations completed successfully");
@@ -83,8 +120,14 @@ async fn key_rotation_example() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store.clone())
         .with_namespace("my-app")
         .version(2) // New version
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    vec![]
+                }
+            }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
 
@@ -94,16 +137,28 @@ async fn key_rotation_example() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store)
         .with_namespace("my-app")
         .version(1) // Old version
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(key) => key,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    vec![]
+                }
+            }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
 
     // Example ciphertext (in real app, this would be loaded from storage)
     let ciphertext = old_key
         .aes()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(b"Secret data")
         .await;
@@ -112,8 +167,14 @@ async fn key_rotation_example() -> Result<(), Box<dyn std::error::Error>> {
     let plaintext = Cryypt::cipher()
         .aes()
         .with_key(old_key)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .decrypt(ciphertext)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -122,8 +183,14 @@ async fn key_rotation_example() -> Result<(), Box<dyn std::error::Error>> {
     let new_ciphertext = Cryypt::cipher()
         .aes()
         .with_key(new_key)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Operation error: {}", e);
+                    Vec::new()
+                }
+            }
         })
         .encrypt(plaintext)
         .await; // Returns fully unwrapped value - no Result wrapper

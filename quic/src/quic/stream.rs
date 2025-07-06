@@ -156,7 +156,7 @@ impl FileTransferBuilder {
 }
 
 impl std::future::Future for FileTransferBuilder {
-    type Output = Result<FileTransferResult>;
+    type Output = FileTransferResult;
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
@@ -194,7 +194,7 @@ impl std::future::Future for FileTransferBuilder {
             duration: Duration::from_secs(1),
             success: true,
         };
-        std::task::Poll::Ready(Ok(result))
+        std::task::Poll::Ready(result)
     }
 }
 
@@ -235,7 +235,7 @@ impl MessageBuilder {
 }
 
 impl std::future::Future for MessageBuilder {
-    type Output = Result<()>;
+    type Output = ();
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
@@ -307,7 +307,7 @@ impl RpcBuilder {
 }
 
 impl std::future::Future for RpcBuilder {
-    type Output = Result<String>;
+    type Output = String;
 
     fn poll(
         self: std::pin::Pin<&mut Self>,

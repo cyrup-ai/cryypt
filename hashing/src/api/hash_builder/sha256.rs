@@ -8,23 +8,19 @@ use super::{HashBuilder, HashStream, HashAlgorithm};
 use super::stream::DynHasher;
 use crate::{HashResult, Result};
 use tokio_stream::Stream;
-use crate::hash_on_result_impl;
 
 // SHA-256 compute methods without key
 impl<P> HashBuilder<Sha256Hash, NoData, NoSalt, P> {
     /// Compute hash of the provided data
     pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
         let data = data.into();
-        let hash_result = sha256_hash(data, None, 1).await?;
+        let result = sha256_hash(data, None, 1).await.map(HashResult::from);
         
-        // Use the macro-generated handler as default
-        let handler = self.result_handler.unwrap_or_else(|| {
-            Box::new(|r| r) // Simple passthrough since apply_hash_result_handler returns Result<Vec<u8>>
-        });
-        
-        // Apply the handler and convert to HashResult
-        let processed = apply_hash_result_handler()(Ok(hash_result));
-        handler(processed.map(HashResult::from))
+        if let Some(handler) = self.result_handler {
+            handler(result)
+        } else {
+            result
+        }
     }
     
     /// Compute hash from a stream of data
@@ -41,16 +37,13 @@ impl<P> HashBuilder<Sha256Hash, NoData, HasSalt, P> {
     /// Compute HMAC of the provided data
     pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
         let data = data.into();
-        let hash_result = sha256_hmac(data, self.salt.0).await?;
+        let result = sha256_hmac(data, self.salt.0).await.map(HashResult::from);
         
-        // Use the macro-generated handler as default
-        let handler = self.result_handler.unwrap_or_else(|| {
-            Box::new(|r| r) // Simple passthrough
-        });
-        
-        // Apply the macro handler first, then the user handler
-        let processed = apply_hash_result_handler()(Ok(hash_result));
-        handler(processed.map(HashResult::from))
+        if let Some(handler) = self.result_handler {
+            handler(result)
+        } else {
+            result
+        }
     }
     
     /// Compute HMAC from a stream of data
@@ -107,11 +100,6 @@ pub(super) async fn sha256_hash(data: Vec<u8>, salt: Option<Vec<u8>>, passes: u3
     }
 
     Ok(result)
-}
-
-/// Apply result handler using hash_on_result_impl macro
-pub(crate) fn apply_hash_result_handler() -> impl Fn(Result<Vec<u8>>) -> Result<Vec<u8>> {
-    hash_on_result_impl!(|result| { Ok => Ok(result), Err(e) => Err(e) })
 }
 
 // SHA-256 HMAC function

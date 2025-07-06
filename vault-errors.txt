@@ -1,0 +1,791 @@
+warning: unused import: `advanced::*`
+  --> cipher/src/cipher/api/cipher_builder_traits/mod.rs:10:9
+   |
+10 | pub use advanced::*;
+   |         ^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `data::*`
+  --> cipher/src/cipher/api/cipher_builder_traits/mod.rs:12:9
+   |
+12 | pub use data::*;
+   |         ^^^^^^^
+
+warning: associated function `new` is never used
+  --> cipher/src/cipher/encryption_result.rs:90:19
+   |
+88 | impl EncryptionResultImpl {
+   | ------------------------- associated function in this implementation
+89 |     /// Create a new EncryptionResult from a oneshot receiver
+90 |     pub(crate) fn new(receiver: oneshot::Receiver<Result<Vec<u8>>>) -> Self {
+   |                   ^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: associated function `new` is never used
+   --> cipher/src/cipher/encryption_result.rs:116:19
+    |
+114 | impl DecryptionResultImpl {
+    | ------------------------- associated function in this implementation
+115 |     /// Create a new DecryptionResult from a oneshot receiver
+116 |     pub(crate) fn new(receiver: oneshot::Receiver<Result<Vec<u8>>>) -> Self {
+    |                   ^^^
+
+warning: missing documentation for a struct
+  --> cipher/src/cipher/api/mod.rs:35:1
+   |
+35 | pub struct CryptoStream;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> cipher/src/lib.rs:6:9
+   |
+6  | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: `cryypt_cipher` (lib) generated 5 warnings (run `cargo fix --lib -p cryypt_cipher` to apply 2 suggestions)
+    Checking cryypt_vault v0.1.0 (/Volumes/samsung_t9/projects/y/cryypt/vault)
+warning: unused import: `VaultResult`
+ --> vault/src/core/types.rs:5:32
+  |
+5 | use crate::error::{VaultError, VaultResult};
+  |                                ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `tokio::sync::mpsc`
+  --> vault/src/db/dao/mod.rs:15:5
+   |
+15 | use tokio::sync::mpsc;
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `tokio_stream::wrappers::ReceiverStream`
+  --> vault/src/db/dao/mod.rs:16:5
+   |
+16 | use tokio_stream::wrappers::ReceiverStream;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::core::VaultValue`
+ --> vault/src/db/vault_store/mod.rs:5:5
+  |
+5 | use crate::core::VaultValue;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `GenericDao`
+ --> vault/src/db/vault_store/mod.rs:6:41
+  |
+6 | use crate::db::dao::{Error as DaoError, GenericDao, SurrealDbDao, TableType};
+  |                                         ^^^^^^^^^^
+
+warning: unused import: `VaultResult`
+ --> vault/src/db/vault_store/mod.rs:7:32
+  |
+7 | use crate::error::{VaultError, VaultResult};
+  |                                ^^^^^^^^^^^
+
+warning: unused imports: `Passphrase`, `VaultBoolRequest`, `VaultChangePassphraseRequest`, `VaultFindRequest`, `VaultGetRequest`, `VaultListRequest`, `VaultOperation`, `VaultPutAllRequest`, `VaultSaveRequest`, and `VaultUnitRequest`
+  --> vault/src/db/vault_store/mod.rs:9:5
+   |
+9  |     Passphrase, VaultBoolRequest, VaultChangePassphraseRequest, VaultFindRequest, VaultGetRequest,
+   |     ^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^
+10 |     VaultListRequest, VaultOperation, VaultPutAllRequest, VaultSaveRequest, VaultUnitRequest,
+   |     ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Engine as _` and `engine::general_purpose::STANDARD as BASE64_STANDARD`
+  --> vault/src/db/vault_store/mod.rs:12:14
+   |
+12 | use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+   |              ^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `futures::StreamExt`
+  --> vault/src/db/vault_store/mod.rs:13:5
+   |
+13 | use futures::StreamExt;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `mpsc` and `oneshot`
+  --> vault/src/db/vault_store/mod.rs:19:19
+   |
+19 | use tokio::sync::{mpsc, oneshot};
+   |                   ^^^^  ^^^^^^^
+
+warning: unused import: `DateTime`
+  --> vault/src/db/vault_store/backend.rs:16:14
+   |
+16 | use chrono::{DateTime, Utc};
+   |              ^^^^^^^^
+
+warning: unused import: `backend::*`
+  --> vault/src/db/vault_store/mod.rs:27:9
+   |
+27 | pub use backend::*;
+   |         ^^^^^^^^^^
+
+warning: glob import doesn't reexport anything with visibility `pub` because no imported item is public enough
+  --> vault/src/db/vault_store/mod.rs:28:9
+   |
+28 | pub use cache::*;
+   |         ^^^^^^^^
+   |
+note: the most public imported item is `pub(crate)`
+  --> vault/src/db/vault_store/mod.rs:28:9
+   |
+28 | pub use cache::*;
+   |         ^^^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+
+warning: unused import: `cache::*`
+  --> vault/src/db/vault_store/mod.rs:28:9
+   |
+28 | pub use cache::*;
+   |         ^^^^^^^^
+
+warning: glob import doesn't reexport anything with visibility `pub` because no imported item is public enough
+  --> vault/src/db/vault_store/mod.rs:29:9
+   |
+29 | pub use transactions::*;
+   |         ^^^^^^^^^^^^^^^
+   |
+note: the most public imported item is `pub(crate)`
+  --> vault/src/db/vault_store/mod.rs:29:9
+   |
+29 | pub use transactions::*;
+   |         ^^^^^^^^^^^^^^^
+   = help: reduce the glob import's visibility or increase visibility of imported items
+
+warning: unused import: `transactions::*`
+  --> vault/src/db/vault_store/mod.rs:29:9
+   |
+29 | pub use transactions::*;
+   |         ^^^^^^^^^^^^^^^
+
+warning: unused import: `error`
+ --> vault/src/logging.rs:1:23
+  |
+1 | use log::{info, warn, error};
+  |                       ^^^^^
+
+warning: unused import: `super::commands::Commands`
+ --> vault/src/tui/cli/vault_ops.rs:3:5
+  |
+3 | use super::commands::Commands;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `zeroize::Zeroizing`
+ --> vault/src/tui/tabs/aws_secrets.rs:1:5
+  |
+1 | use zeroize::Zeroizing;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `AppTab`
+ --> vault/src/tui/tabs/aws_secrets.rs:3:36
+  |
+3 | use super::super::types::{AppMode, AppTab, InputField, AwsSecretsStateMode};
+  |                                    ^^^^^^
+
+warning: unused imports: `AwsError`, `AwsSecretManager`, and `SecretSummary`
+ --> vault/src/tui/tabs/aws_secrets.rs:4:35
+  |
+4 | use super::super::aws_interface::{AwsSecretManager, SecretSummary, AwsError};
+  |                                   ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^
+
+warning: unused import: `Text`
+ --> vault/src/tui/tabs/aws_secrets.rs:8:33
+  |
+8 | use ratatui::text::{Line, Span, Text};
+  |                                 ^^^^
+
+warning: unused import: `PassState`
+  --> vault/src/tui/tabs/pass.rs:10:27
+   |
+10 | use super::super::types::{PassState, PassStateMode};
+   |                           ^^^^^^^^^
+
+warning: use of deprecated function `aws_config::from_env`: Use the `aws_config::defaults` function. If you don't care about future default behavior changes, you can continue to use this function by enabling the `behavior-version-latest` feature. Doing so will make this deprecation notice go away.
+  --> vault/src/tui/aws_interface/client.rs:46:34
+   |
+46 |         let config = aws_config::from_env()
+   |                                  ^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+error[E0277]: the trait bound `u32: std::convert::From<cryypt_key::bits_macro::BitSize>` is not satisfied
+  --> vault/src/tui/cli/key_ops.rs:25:29
+   |
+25 |         let key = Key::size(bits.bits())
+   |                   --------- ^^^^^^^^^^^ the trait `std::convert::From<cryypt_key::bits_macro::BitSize>` is not implemented for `u32`
+   |                   |
+   |                   required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `std::convert::From<T>`:
+             `u32` implements `std::convert::From<Ipv4Addr>`
+             `u32` implements `std::convert::From<argon2::Version>`
+             `u32` implements `std::convert::From<aws_lc_rs::aead::aead_ctx::AeadDirection>`
+             `u32` implements `std::convert::From<aws_lc_rs::endian::BigEndian<u32>>`
+             `u32` implements `std::convert::From<aws_lc_rs::endian::LittleEndian<u32>>`
+             `u32` implements `std::convert::From<aws_smithy_runtime_api::client::retries::RequestAttempts>`
+             `u32` implements `std::convert::From<bool>`
+             `u32` implements `std::convert::From<char>`
+           and 17 others
+   = note: required for `cryypt_key::bits_macro::BitSize` to implement `std::convert::Into<u32>`
+note: required by a bound in `cryypt_key::Key::size`
+  --> /Volumes/samsung_t9/projects/y/cryypt/key/src/lib.rs:70:33
+   |
+70 |     pub fn size(size_bits: impl Into<u32>) -> KeyBuilder {
+   |                                 ^^^^^^^^^ required by this bound in `Key::size`
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> vault/src/tui/cli/key_ops.rs:25:19
+   |
+25 |           let key = Key::size(bits.bits())
+   |  ___________________^
+26 | |             .with_store(store)
+27 | |             .with_namespace(namespace)
+28 | |             .version(version)
+29 | |             .generate()
+30 | |             .await?;
+   | |___________________^ the `?` operator cannot be applied to type `KeyResult`
+   |
+   = help: the trait `Try` is not implemented for `KeyResult`
+help: consider `await`ing on the `Future`
+   |
+30 |             .await.await?;
+   |                   ++++++
+
+error[E0277]: the trait bound `u32: std::convert::From<cryypt_key::bits_macro::BitSize>` is not satisfied
+  --> vault/src/tui/cli/key_ops.rs:39:29
+   |
+39 |         let key = Key::size(bits.bits())
+   |                   --------- ^^^^^^^^^^^ the trait `std::convert::From<cryypt_key::bits_macro::BitSize>` is not implemented for `u32`
+   |                   |
+   |                   required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `std::convert::From<T>`:
+             `u32` implements `std::convert::From<Ipv4Addr>`
+             `u32` implements `std::convert::From<argon2::Version>`
+             `u32` implements `std::convert::From<aws_lc_rs::aead::aead_ctx::AeadDirection>`
+             `u32` implements `std::convert::From<aws_lc_rs::endian::BigEndian<u32>>`
+             `u32` implements `std::convert::From<aws_lc_rs::endian::LittleEndian<u32>>`
+             `u32` implements `std::convert::From<aws_smithy_runtime_api::client::retries::RequestAttempts>`
+             `u32` implements `std::convert::From<bool>`
+             `u32` implements `std::convert::From<char>`
+           and 17 others
+   = note: required for `cryypt_key::bits_macro::BitSize` to implement `std::convert::Into<u32>`
+note: required by a bound in `cryypt_key::Key::size`
+  --> /Volumes/samsung_t9/projects/y/cryypt/key/src/lib.rs:70:33
+   |
+70 |     pub fn size(size_bits: impl Into<u32>) -> KeyBuilder {
+   |                                 ^^^^^^^^^ required by this bound in `Key::size`
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+  --> vault/src/tui/cli/key_ops.rs:39:19
+   |
+39 |           let key = Key::size(bits.bits())
+   |  ___________________^
+40 | |             .with_store(store)
+41 | |             .with_namespace(namespace)
+42 | |             .version(version)
+43 | |             .generate()
+44 | |             .await?;
+   | |___________________^ the `?` operator cannot be applied to type `KeyResult`
+   |
+   = help: the trait `Try` is not implemented for `KeyResult`
+help: consider `await`ing on the `Future`
+   |
+44 |             .await.await?;
+   |                   ++++++
+
+error[E0277]: the trait bound `FileKeyStore: KeyStorage` is not satisfied
+   --> vault/src/tui/cli/key_ops.rs:103:25
+    |
+103 |             .with_store(store)
+    |              ---------- ^^^^^ the trait `KeyStorage` is not implemented for `FileKeyStore`
+    |              |
+    |              required by a bound introduced by this call
+    |
+    = help: the trait `KeyStorage` is implemented for `KeychainStore`
+note: required by a bound in `KeyRetriever::with_store`
+   --> /Volumes/samsung_t9/projects/y/cryypt/key/src/api/key_retriever/mod.rs:136:26
+    |
+136 |     pub fn with_store<S: KeyStorage + 'static>(self, store: S) -> KeyRetrieverWithStore<S> {
+    |                          ^^^^^^^^^^ required by this bound in `KeyRetriever::with_store`
+
+error[E0599]: the method `with_namespace` exists for struct `KeyRetrieverWithStore<FileKeyStore>`, but its trait bounds were not satisfied
+   --> vault/src/tui/cli/key_ops.rs:104:14
+    |
+102 |           let key = KeyRetriever::new()
+    |  ___________________-
+103 | |             .with_store(store)
+104 | |             .with_namespace(namespace)
+    | |             -^^^^^^^^^^^^^^ method cannot be called on `KeyRetrieverWithStore<FileKeyStore>` due to unsatisfied trait bounds
+    | |_____________|
+    |
+    |
+   ::: /Volumes/samsung_t9/projects/y/cryypt/key/src/store/file_store.rs:17:1
+    |
+17  |   pub struct FileKeyStore {
+    |   ----------------------- doesn't satisfy `FileKeyStore: KeyStorage`
+    |
+    = note: the following trait bounds were not satisfied:
+            `FileKeyStore: KeyStorage`
+
+error[E0277]: the trait bound `FileKeyStore: KeyStorage` is not satisfied
+   --> vault/src/tui/cli/key_ops.rs:117:25
+    |
+117 |             .with_store(store)
+    |              ---------- ^^^^^ the trait `KeyStorage` is not implemented for `FileKeyStore`
+    |              |
+    |              required by a bound introduced by this call
+    |
+    = help: the trait `KeyStorage` is implemented for `KeychainStore`
+note: required by a bound in `KeyRetriever::with_store`
+   --> /Volumes/samsung_t9/projects/y/cryypt/key/src/api/key_retriever/mod.rs:136:26
+    |
+136 |     pub fn with_store<S: KeyStorage + 'static>(self, store: S) -> KeyRetrieverWithStore<S> {
+    |                          ^^^^^^^^^^ required by this bound in `KeyRetriever::with_store`
+
+error[E0599]: the method `with_namespace` exists for struct `KeyRetrieverWithStore<FileKeyStore>`, but its trait bounds were not satisfied
+   --> vault/src/tui/cli/key_ops.rs:118:14
+    |
+116 |           let key = KeyRetriever::new()
+    |  ___________________-
+117 | |             .with_store(store)
+118 | |             .with_namespace(namespace)
+    | |             -^^^^^^^^^^^^^^ method cannot be called on `KeyRetrieverWithStore<FileKeyStore>` due to unsatisfied trait bounds
+    | |_____________|
+    |
+    |
+   ::: /Volumes/samsung_t9/projects/y/cryypt/key/src/store/file_store.rs:17:1
+    |
+17  |   pub struct FileKeyStore {
+    |   ----------------------- doesn't satisfy `FileKeyStore: KeyStorage`
+    |
+    = note: the following trait bounds were not satisfied:
+            `FileKeyStore: KeyStorage`
+
+error[E0277]: the trait bound `u32: std::convert::From<cryypt_key::bits_macro::BitSize>` is not satisfied
+   --> vault/src/tui/cli/key_ops.rs:183:33
+    |
+183 |             let key = Key::size(bits.bits())
+    |                       --------- ^^^^^^^^^^^ the trait `std::convert::From<cryypt_key::bits_macro::BitSize>` is not implemented for `u32`
+    |                       |
+    |                       required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `std::convert::From<T>`:
+              `u32` implements `std::convert::From<Ipv4Addr>`
+              `u32` implements `std::convert::From<argon2::Version>`
+              `u32` implements `std::convert::From<aws_lc_rs::aead::aead_ctx::AeadDirection>`
+              `u32` implements `std::convert::From<aws_lc_rs::endian::BigEndian<u32>>`
+              `u32` implements `std::convert::From<aws_lc_rs::endian::LittleEndian<u32>>`
+              `u32` implements `std::convert::From<aws_smithy_runtime_api::client::retries::RequestAttempts>`
+              `u32` implements `std::convert::From<bool>`
+              `u32` implements `std::convert::From<char>`
+            and 17 others
+    = note: required for `cryypt_key::bits_macro::BitSize` to implement `std::convert::Into<u32>`
+note: required by a bound in `cryypt_key::Key::size`
+   --> /Volumes/samsung_t9/projects/y/cryypt/key/src/lib.rs:70:33
+    |
+70  |     pub fn size(size_bits: impl Into<u32>) -> KeyBuilder {
+    |                                 ^^^^^^^^^ required by this bound in `Key::size`
+
+error[E0308]: mismatched types
+   --> vault/src/tui/cli/key_ops.rs:186:36
+    |
+186 |                 .version(version + i) // Increment version for each key
+    |                                    ^ expected `u32`, found `usize`
+
+error[E0277]: cannot add `usize` to `u32`
+   --> vault/src/tui/cli/key_ops.rs:186:34
+    |
+186 |                 .version(version + i) // Increment version for each key
+    |                                  ^ no implementation for `u32 + usize`
+    |
+    = help: the trait `std::ops::Add<usize>` is not implemented for `u32`
+    = help: the following other types implement trait `std::ops::Add<Rhs>`:
+              `&u32` implements `std::ops::Add<&num_bigint::bigint::BigInt>`
+              `&u32` implements `std::ops::Add<&num_bigint::biguint::BigUint>`
+              `&u32` implements `std::ops::Add<&num_complex::Complex<u32>>`
+              `&u32` implements `std::ops::Add<num_bigint::bigint::BigInt>`
+              `&u32` implements `std::ops::Add<num_bigint::biguint::BigUint>`
+              `&u32` implements `std::ops::Add<num_complex::Complex<u32>>`
+              `&u32` implements `std::ops::Add<u32>`
+              `&u32` implements `std::ops::Add`
+            and 11 others
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+   --> vault/src/tui/cli/key_ops.rs:183:23
+    |
+183 |               let key = Key::size(bits.bits())
+    |  _______________________^
+184 | |                 .with_store(store.clone())
+185 | |                 .with_namespace(namespace)
+186 | |                 .version(version + i) // Increment version for each key
+187 | |                 .generate()
+188 | |                 .await?;
+    | |_______________________^ the `?` operator cannot be applied to type `KeyResult`
+    |
+    = help: the trait `Try` is not implemented for `KeyResult`
+help: consider `await`ing on the `Future`
+    |
+188 |                 .await.await?;
+    |                       ++++++
+
+error[E0277]: the trait bound `u32: std::convert::From<cryypt_key::bits_macro::BitSize>` is not satisfied
+   --> vault/src/tui/cli/key_ops.rs:200:33
+    |
+200 |             let key = Key::size(bits.bits())
+    |                       --------- ^^^^^^^^^^^ the trait `std::convert::From<cryypt_key::bits_macro::BitSize>` is not implemented for `u32`
+    |                       |
+    |                       required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `std::convert::From<T>`:
+              `u32` implements `std::convert::From<Ipv4Addr>`
+              `u32` implements `std::convert::From<argon2::Version>`
+              `u32` implements `std::convert::From<aws_lc_rs::aead::aead_ctx::AeadDirection>`
+              `u32` implements `std::convert::From<aws_lc_rs::endian::BigEndian<u32>>`
+              `u32` implements `std::convert::From<aws_lc_rs::endian::LittleEndian<u32>>`
+              `u32` implements `std::convert::From<aws_smithy_runtime_api::client::retries::RequestAttempts>`
+              `u32` implements `std::convert::From<bool>`
+              `u32` implements `std::convert::From<char>`
+            and 17 others
+    = note: required for `cryypt_key::bits_macro::BitSize` to implement `std::convert::Into<u32>`
+note: required by a bound in `cryypt_key::Key::size`
+   --> /Volumes/samsung_t9/projects/y/cryypt/key/src/lib.rs:70:33
+    |
+70  |     pub fn size(size_bits: impl Into<u32>) -> KeyBuilder {
+    |                                 ^^^^^^^^^ required by this bound in `Key::size`
+
+error[E0308]: mismatched types
+   --> vault/src/tui/cli/key_ops.rs:203:36
+    |
+203 |                 .version(version + i) // Increment version for each key
+    |                                    ^ expected `u32`, found `usize`
+
+error[E0277]: cannot add `usize` to `u32`
+   --> vault/src/tui/cli/key_ops.rs:203:34
+    |
+203 |                 .version(version + i) // Increment version for each key
+    |                                  ^ no implementation for `u32 + usize`
+    |
+    = help: the trait `std::ops::Add<usize>` is not implemented for `u32`
+    = help: the following other types implement trait `std::ops::Add<Rhs>`:
+              `&u32` implements `std::ops::Add<&num_bigint::bigint::BigInt>`
+              `&u32` implements `std::ops::Add<&num_bigint::biguint::BigUint>`
+              `&u32` implements `std::ops::Add<&num_complex::Complex<u32>>`
+              `&u32` implements `std::ops::Add<num_bigint::bigint::BigInt>`
+              `&u32` implements `std::ops::Add<num_bigint::biguint::BigUint>`
+              `&u32` implements `std::ops::Add<num_complex::Complex<u32>>`
+              `&u32` implements `std::ops::Add<u32>`
+              `&u32` implements `std::ops::Add`
+            and 11 others
+
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+   --> vault/src/tui/cli/key_ops.rs:200:23
+    |
+200 |               let key = Key::size(bits.bits())
+    |  _______________________^
+201 | |                 .with_store(store.clone())
+202 | |                 .with_namespace(namespace)
+203 | |                 .version(version + i) // Increment version for each key
+204 | |                 .generate()
+205 | |                 .await?;
+    | |_______________________^ the `?` operator cannot be applied to type `KeyResult`
+    |
+    = help: the trait `Try` is not implemented for `KeyResult`
+help: consider `await`ing on the `Future`
+    |
+205 |                 .await.await?;
+    |                       ++++++
+
+error[E0282]: type annotations needed
+   --> vault/src/tui/cli/key_ops.rs:183:17
+    |
+183 |             let key = Key::size(bits.bits())
+    |                 ^^^
+...
+223 |                     "total_bytes": keys.iter().map(|k| k.len()).sum::<usize>(),
+    |                                                          --- type must be known at this point
+    |
+help: consider giving `key` an explicit type
+    |
+183 |             let key: /* Type */ = Key::size(bits.bits())
+    |                    ++++++++++++
+
+error[E0308]: mismatched types
+   --> vault/src/tui/tabs/pass.rs:131:43
+    |
+131 |             app.state.pass.content = Some(content);
+    |                                      ---- ^^^^^^^ expected `Zeroizing<String>`, found `String`
+    |                                      |
+    |                                      arguments to this enum variant are incorrect
+    |
+    = note: expected struct `Zeroizing<std::string::String>`
+               found struct `std::string::String`
+help: the type constructed contains `std::string::String` due to the type of the argument passed
+   --> vault/src/tui/tabs/pass.rs:131:38
+    |
+131 |             app.state.pass.content = Some(content);
+    |                                      ^^^^^-------^
+    |                                           |
+    |                                           this argument influences the type of `Some`
+note: tuple variant defined here
+   --> /Users/davidmaple/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:597:5
+    |
+597 |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ^^^^
+help: call `Into::into` on this expression to convert `std::string::String` into `Zeroizing<std::string::String>`
+    |
+131 |             app.state.pass.content = Some(content.into());
+    |                                                  +++++++
+
+error[E0599]: no method named `search_entries` found for struct `PassInterface` in the current scope
+   --> vault/src/tui/tabs/pass.rs:144:16
+    |
+144 |     match pass.search_entries(&query) {
+    |                ^^^^^^^^^^^^^^ method not found in `PassInterface`
+    |
+   ::: vault/src/tui/pass_interface.rs:9:1
+    |
+9   | pub struct PassInterface {
+    | ------------------------ method `search_entries` not found for this struct
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+   --> vault/src/db/dao/mod.rs:185:34
+    |
+185 |         default_find_by_relation(self, relation, target_id)
+    |         ------------------------ ^^^^ doesn't have a size known at compile-time
+    |         |
+    |         required by a bound introduced by this call
+    |
+note: required by an implicit `Sized` bound in `default_find_by_relation`
+   --> vault/src/db/dao/queries.rs:103:37
+    |
+103 | pub fn default_find_by_relation<'a, D, T>(
+    |                                     ^ required by the implicit `Sized` requirement on this type parameter in `default_find_by_relation`
+help: consider further restricting `Self`
+    |
+183 |         'life2: 'fut, Self: Sized
+    |                       +++++++++++
+help: consider relaxing the implicit `Sized` restriction
+   --> vault/src/db/dao/queries.rs:109:21
+    |
+109 |     D: GenericDao<T> + ?Sized,
+    |                      ++++++++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+   --> vault/src/db/dao/mod.rs:199:22
+    |
+199 |         default_join(self, other_table, join_field)
+    |         ------------ ^^^^ doesn't have a size known at compile-time
+    |         |
+    |         required by a bound introduced by this call
+    |
+note: required by an implicit `Sized` bound in `default_join`
+   --> vault/src/db/dao/queries.rs:121:25
+    |
+121 | pub fn default_join<'a, D, T>(
+    |                         ^ required by the implicit `Sized` requirement on this type parameter in `default_join`
+help: consider further restricting `Self`
+    |
+197 |         'life2: 'fut, Self: Sized
+    |                       +++++++++++
+help: consider relaxing the implicit `Sized` restriction
+   --> vault/src/db/dao/queries.rs:127:21
+    |
+127 |     D: GenericDao<T> + ?Sized,
+    |                      ++++++++
+
+error[E0283]: type annotations needed
+  --> vault/src/tui/tabs/aws_secrets.rs:28:38
+   |
+28 |         AwsSecretsStateMode::List => render_aws_secrets_list(f, app, chunks[1]),
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `B` declared on the function `render_aws_secrets_list`
+   |
+   = note: cannot satisfy `_: Backend`
+   = help: the following types implement trait `Backend`:
+             CrosstermBackend<W>
+             TestBackend
+note: required by a bound in `render_aws_secrets_list`
+  --> vault/src/tui/tabs/aws_secrets.rs:51:31
+   |
+51 | fn render_aws_secrets_list<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+   |                               ^^^^^^^ required by this bound in `render_aws_secrets_list`
+help: consider specifying the generic argument
+   |
+28 |         AwsSecretsStateMode::List => render_aws_secrets_list::<B>(f, app, chunks[1]),
+   |                                                             +++++
+
+error[E0283]: type annotations needed
+   --> vault/src/tui/tabs/aws_secrets.rs:80:5
+    |
+80  |     render_aws_help_text(f, chunks[1]);
+    |     ^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `B` declared on the function `render_aws_help_text`
+    |
+    = note: cannot satisfy `_: Backend`
+    = help: the following types implement trait `Backend`:
+              CrosstermBackend<W>
+              TestBackend
+note: required by a bound in `render_aws_help_text`
+   --> vault/src/tui/tabs/aws_secrets.rs:241:28
+    |
+241 | fn render_aws_help_text<B: Backend>(f: &mut Frame, area: Rect) {
+    |                            ^^^^^^^ required by this bound in `render_aws_help_text`
+help: consider specifying the generic argument
+    |
+80  |     render_aws_help_text::<B>(f, chunks[1]);
+    |                         +++++
+
+error[E0283]: type annotations needed
+   --> vault/src/tui/tabs/aws_secrets.rs:104:5
+    |
+104 |     render_aws_help_text(f, chunks[1]);
+    |     ^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `B` declared on the function `render_aws_help_text`
+    |
+    = note: cannot satisfy `_: Backend`
+    = help: the following types implement trait `Backend`:
+              CrosstermBackend<W>
+              TestBackend
+note: required by a bound in `render_aws_help_text`
+   --> vault/src/tui/tabs/aws_secrets.rs:241:28
+    |
+241 | fn render_aws_help_text<B: Backend>(f: &mut Frame, area: Rect) {
+    |                            ^^^^^^^ required by this bound in `render_aws_help_text`
+help: consider specifying the generic argument
+    |
+104 |     render_aws_help_text::<B>(f, chunks[1]);
+    |                         +++++
+
+error[E0283]: type annotations needed
+   --> vault/src/tui/tabs/aws_secrets.rs:153:5
+    |
+153 |     render_aws_help_text(f, chunks[2]);
+    |     ^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `B` declared on the function `render_aws_help_text`
+    |
+    = note: cannot satisfy `_: Backend`
+    = help: the following types implement trait `Backend`:
+              CrosstermBackend<W>
+              TestBackend
+note: required by a bound in `render_aws_help_text`
+   --> vault/src/tui/tabs/aws_secrets.rs:241:28
+    |
+241 | fn render_aws_help_text<B: Backend>(f: &mut Frame, area: Rect) {
+    |                            ^^^^^^^ required by this bound in `render_aws_help_text`
+help: consider specifying the generic argument
+    |
+153 |     render_aws_help_text::<B>(f, chunks[2]);
+    |                         +++++
+
+error[E0283]: type annotations needed
+   --> vault/src/tui/tabs/aws_secrets.rs:203:5
+    |
+203 |     render_aws_create_help_text(f, chunks[4]);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `B` declared on the function `render_aws_create_help_text`
+    |
+    = note: cannot satisfy `_: Backend`
+    = help: the following types implement trait `Backend`:
+              CrosstermBackend<W>
+              TestBackend
+note: required by a bound in `render_aws_create_help_text`
+   --> vault/src/tui/tabs/aws_secrets.rs:262:35
+    |
+262 | fn render_aws_create_help_text<B: Backend>(f: &mut Frame, area: Rect) {
+    |                                   ^^^^^^^ required by this bound in `render_aws_create_help_text`
+help: consider specifying the generic argument
+    |
+203 |     render_aws_create_help_text::<B>(f, chunks[4]);
+    |                                +++++
+
+error[E0283]: type annotations needed
+   --> vault/src/tui/tabs/aws_secrets.rs:237:5
+    |
+237 |     render_aws_update_help_text(f, chunks[3]);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `B` declared on the function `render_aws_update_help_text`
+    |
+    = note: cannot satisfy `_: Backend`
+    = help: the following types implement trait `Backend`:
+              CrosstermBackend<W>
+              TestBackend
+note: required by a bound in `render_aws_update_help_text`
+   --> vault/src/tui/tabs/aws_secrets.rs:277:35
+    |
+277 | fn render_aws_update_help_text<B: Backend>(f: &mut Frame, area: Rect) {
+    |                                   ^^^^^^^ required by this bound in `render_aws_update_help_text`
+help: consider specifying the generic argument
+    |
+237 |     render_aws_update_help_text::<B>(f, chunks[3]);
+    |                                +++++
+
+error[E0283]: type annotations needed
+  --> vault/src/tui/tabs/pass.rs:35:32
+   |
+35 |         PassStateMode::List => render_pass_list(f, app, chunks[1]),
+   |                                ^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `B` declared on the function `render_pass_list`
+   |
+   = note: cannot satisfy `_: Backend`
+   = help: the following types implement trait `Backend`:
+             CrosstermBackend<W>
+             TestBackend
+note: required by a bound in `render_pass_list`
+  --> vault/src/tui/tabs/pass.rs:41:24
+   |
+41 | fn render_pass_list<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+   |                        ^^^^^^^ required by this bound in `render_pass_list`
+help: consider specifying the generic argument
+   |
+35 |         PassStateMode::List => render_pass_list::<B>(f, app, chunks[1]),
+   |                                                +++++
+
+error[E0308]: mismatched types
+   --> vault/src/tui/tabs/pass.rs:55:23
+    |
+55  |     list_state.select(app.state.pass.selected_index);
+    |                ------ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<usize>`, found `usize`
+    |                |
+    |                arguments to this method are incorrect
+    |
+    = note: expected enum `std::option::Option<usize>`
+               found type `usize`
+note: method defined here
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-widgets-0.3.0-alpha.5/src/list/state.rs:157:18
+    |
+157 |     pub const fn select(&mut self, index: Option<usize>) {
+    |                  ^^^^^^
+help: try wrapping the expression in `Some`
+    |
+55  |     list_state.select(Some(app.state.pass.selected_index));
+    |                       +++++                             +
+
+error[E0283]: type annotations needed
+  --> vault/src/tui/ui.rs:68:25
+   |
+68 |         AppTab::Pass => render_pass_tab(f, app, chunks[1]),
+   |                         ^^^^^^^^^^^^^^^ cannot infer type of the type parameter `B` declared on the function `render_pass_tab`
+   |
+   = note: cannot satisfy `_: Backend`
+   = help: the following types implement trait `Backend`:
+             CrosstermBackend<W>
+             TestBackend
+note: required by a bound in `pass::render_pass_tab`
+  --> vault/src/tui/tabs/pass.rs:13:27
+   |
+13 | pub fn render_pass_tab<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+   |                           ^^^^^^^ required by this bound in `render_pass_tab`
+help: consider specifying the generic argument
+   |
+68 |         AppTab::Pass => render_pass_tab::<B>(f, app, chunks[1]),
+   |                                        +++++
+
+error[E0277]: the `?` operator can only be used in an async block that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> vault/src/tui/mod.rs:83:55
+   |
+30 |     let vault = rt.block_on(async {
+   |                             ----- this function should return `Result` or `Option` to accept `?`
+...
+83 |         let provider = LocalVaultProvider::new(config)?;
+   |                                                       ^ cannot use the `?` operator in an async block that returns `Vault`
+
+Some errors have detailed explanations: E0277, E0282, E0283, E0308, E0599.
+For more information about an error, try `rustc --explain E0277`.
+warning: `cryypt_vault` (lib) generated 24 warnings
+error: could not compile `cryypt_vault` (lib) due to 31 previous errors; 24 warnings emitted

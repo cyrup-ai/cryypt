@@ -7,11 +7,11 @@ pub mod compress;
 pub mod stream;
 
 // Re-export configuration methods for builder pattern
-pub use config::*;
+// pub use config::*; // Commented out - unused
 // Re-export compression operations  
-pub use compress::*;
+// pub use compress::*; // Commented out - unused
 // Re-export streaming types
-pub use stream::ZstdStream;
+// pub use stream::ZstdStream; // Commented out - unused
 
 /// Type-state marker for no level set
 pub struct NoLevel;

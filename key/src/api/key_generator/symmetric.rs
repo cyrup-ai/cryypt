@@ -42,10 +42,17 @@ impl<S: KeyStorage + KeyImport> KeyGeneratorReady<S> {
         let key_bytes = secure_buffer.into_key_bytes();
 
         // Store the key using the configured storage backend
-        match self.store.store(&key_id, &key_bytes).await {
-            Ok(_) => Ok(key_bytes),
-            Err(e) => Err(KeyError::internal(format!("Failed to store key: {}", e))),
-        }
+        self.store.store(&key_id, &key_bytes)
+            .on_result(|result| {
+                match result {
+                    Ok(()) => {},
+                    Err(e) => {
+                        log::error!("Failed to store generated key: {}", e);
+                    }
+                }
+            })
+            .await;
+        Ok(key_bytes)
     }
 }
 

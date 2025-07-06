@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::Surreal;
 use surrealdb::engine::any::Any;
-use time::OffsetDateTime;
+use chrono::{DateTime, Utc};
 use tokio::sync::{mpsc, oneshot};
 
 // Declare submodules
@@ -38,9 +38,9 @@ pub struct VaultEntry {
     /// Encrypted value
     pub value: String,
     /// Creation timestamp
-    pub created_at: Option<OffsetDateTime>,
+    pub created_at: Option<DateTime<Utc>>,
     /// Last modification timestamp
-    pub updated_at: Option<OffsetDateTime>,
+    pub updated_at: Option<DateTime<Utc>>,
     /// Optional namespace for organizing entries
     pub namespace: Option<String>,
 }

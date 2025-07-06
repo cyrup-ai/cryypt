@@ -34,7 +34,7 @@ pub async fn process_command(vault: &Vault, command: Commands, use_json: bool) -
         }
         
         Commands::RetrieveKey { namespace, version, store } => {
-            key_ops::handle_retrieve_key(&namespace, version, store, use_json).await
+            key_ops::handle_retrieve_key(&namespace, version, &store, use_json).await
         }
         
         Commands::BatchGenerateKeys { namespace, version, bits, count, store } => {

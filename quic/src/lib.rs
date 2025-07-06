@@ -1,10 +1,17 @@
+#![feature(negative_impls)]
+#![feature(marker_trait_attr)]
+
 //! QUIC encrypted transport protocol implementation
 //!
 //! This module provides encrypted transport using QUIC protocol with quantum-resistant
 //! key exchange and post-quantum TLS configurations.
 
 // New beautiful QUIC API (primary public API)
-pub mod quic;
+// TODO: Fix to use new patterns
+// pub mod quic;
+
+// New cryypt-pattern API
+pub mod api;
 
 // Legacy high-level protocol builders
 pub mod protocols;
@@ -18,7 +25,11 @@ mod quic_conn;
 mod server;
 
 // Export the new beautiful QUIC API (what users should use)
-pub use quic::{Auth, Protocol, Quic, Transport};
+// TODO: Fix to use new patterns
+// pub use quic::{Auth, Protocol, Quic as QuicOld, Transport};
+
+// Export the new cryypt-pattern API
+pub use api::{quic, Quic, QuicServer, QuicClient, QuicSend, QuicRecv};
 
 // Export legacy protocol builders for backwards compatibility
 pub use protocols::{

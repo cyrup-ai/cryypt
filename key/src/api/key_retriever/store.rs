@@ -40,15 +40,26 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
             ));
         }
 
-        match self.store.retrieve(key_id).await {
-            Ok(key_bytes) => {
-                // Wrap in secure buffer for automatic cleanup
-                Ok(SecureRetrievedKey::new(key_id.clone(), key_bytes))
-            }
-            Err(_) => Err(KeyError::KeyNotFound {
+        let key_bytes = self.store.retrieve(key_id)
+            .on_result(|result| {
+                match result {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        log::error!("Key retrieval failed: {}", e);
+                        Vec::new()
+                    }
+                }
+            })
+            .await;
+            
+        if key_bytes.is_empty() {
+            Err(KeyError::KeyNotFound {
                 id: key_id.id().to_string(),
                 version: Some(self.version),
-            }),
+            })
+        } else {
+            // Wrap in secure buffer for automatic cleanup
+            Ok(SecureRetrievedKey::new(key_id.clone(), key_bytes))
         }
     }
 

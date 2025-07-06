@@ -11,7 +11,7 @@ use std::sync::Arc;
 use surrealdb::Surreal;
 use surrealdb::engine::any::Any;
 use thiserror::Error;
-use time::OffsetDateTime;
+use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -91,7 +91,7 @@ pub enum ForeignKeyAction {
 }
 
 /// Generic DAO trait for SurrealDB operations
-pub trait GenericDao<T>: Send + Sync + 'static
+pub trait GenericDao<T>: Send + Sync + Sized + 'static
 where
     T: Serialize + DeserializeOwned + Send + Sync + 'static,
 {
@@ -165,8 +165,8 @@ where
     /// Query time series data
     fn query_time_range<'life0, 'fut>(
         &'life0 self,
-        start: OffsetDateTime,
-        end: OffsetDateTime,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
     ) -> Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + 'fut>>
     where
         'life0: 'fut;

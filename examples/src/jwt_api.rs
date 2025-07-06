@@ -1,6 +1,6 @@
 //! JWT API examples - EXACTLY matching jwt/README.md
 
-use cryypt::{Cryypt, on_result};
+use cryypt::Cryypt;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -26,8 +26,14 @@ async fn jwt_example() -> Result<(), Box<dyn std::error::Error>> {
         .with_secret(b"your-256-bit-secret")
         .with_claims(claims)
         .with_expiry(Duration::from_secs(3600))
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("JWT creation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("JWT creation error: {}", e);
+                    panic!("JWT creation error: {}", e)
+                }
+            }
         })
         .sign()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -38,8 +44,14 @@ async fn jwt_example() -> Result<(), Box<dyn std::error::Error>> {
     let decoded: Claims = Cryypt::jwt()
         .hs256()
         .with_secret(b"your-256-bit-secret")
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("JWT verification error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("JWT verification error: {}", e);
+                    panic!("JWT verification error: {}", e)
+                }
+            }
         })
         .verify(&jwt)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -49,8 +61,14 @@ async fn jwt_example() -> Result<(), Box<dyn std::error::Error>> {
     // Use ES256 (elliptic curve)
     let (private_key, public_key) = Cryypt::jwt()
         .es256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    panic!("Key generation error: {}", e)
+                }
+            }
         })
         .generate_keys()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -59,8 +77,14 @@ async fn jwt_example() -> Result<(), Box<dyn std::error::Error>> {
         .es256()
         .with_private_key(&private_key)
         .with_claims(claims)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("JWT creation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("JWT creation error: {}", e);
+                    panic!("JWT creation error: {}", e)
+                }
+            }
         })
         .sign()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -68,8 +92,14 @@ async fn jwt_example() -> Result<(), Box<dyn std::error::Error>> {
     let decoded: Claims = Cryypt::jwt()
         .es256()
         .with_public_key(&public_key)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("JWT verification error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("JWT verification error: {}", e);
+                    panic!("JWT verification error: {}", e)
+                }
+            }
         })
         .verify(&jwt)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -114,8 +144,14 @@ async fn standard_claims_example() -> Result<(), Box<dyn std::error::Error>> {
         .hs256()
         .with_secret(b"your-256-bit-secret")
         .with_claims(claims)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("JWT creation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("JWT creation error: {}", e);
+                    panic!("JWT creation error: {}", e)
+                }
+            }
         })
         .sign()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -126,21 +162,33 @@ async fn standard_claims_example() -> Result<(), Box<dyn std::error::Error>> {
 
 /// JWT Key Rotation example from README
 async fn key_rotation_example() -> Result<(), Box<dyn std::error::Error>> {
-    use cryypt::{Cryypt, on_result};
+    use cryypt::Cryypt;
     
     // Generate multiple key versions
     let (private_key_v1, public_key_v1) = Cryypt::jwt()
         .es256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    panic!("Key generation error: {}", e)
+                }
+            }
         })
         .generate_keys()
         .await; // Returns fully unwrapped value - no Result wrapper
     
     let (private_key_v2, public_key_v2) = Cryypt::jwt()
         .es256()
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Key generation error: {}", e);
+                    panic!("Key generation error: {}", e)
+                }
+            }
         })
         .generate_keys()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -151,8 +199,14 @@ async fn key_rotation_example() -> Result<(), Box<dyn std::error::Error>> {
         .add_key("v1", public_key_v1)
         .add_key("v2", public_key_v2)
         .with_current_key("v2", private_key_v2)
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("Rotator creation error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("Rotator creation error: {}", e);
+                    panic!("Rotator creation error: {}", e)
+                }
+            }
         })
         .build()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -164,15 +218,27 @@ async fn key_rotation_example() -> Result<(), Box<dyn std::error::Error>> {
             name: "Test User".to_string(),
             admin: false,
         })
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("JWT signing error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("JWT signing error: {}", e);
+                    panic!("JWT signing error: {}", e)
+                }
+            }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
     
     // Verify (automatically tries all keys)
     let decoded: Claims = rotator
-        .on_result!(|result| {
-            result.unwrap_or_else(|e| panic!("JWT verification error: {}", e))
+        .on_result(|result| {
+            match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("JWT verification error: {}", e);
+                    panic!("JWT verification error: {}", e)
+                }
+            }
         })
         .verify(&jwt)
         .await; // Returns fully unwrapped value - no Result wrapper

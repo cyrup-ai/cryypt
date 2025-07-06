@@ -58,8 +58,7 @@ impl Jwt {
     }
 }
 
-/// Macro to handle results - hidden from users per README.md
-#[macro_export]
+/// Internal macro - NOT PUBLIC API
 macro_rules! on_result {
     ($handler:expr) => {
         $handler

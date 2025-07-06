@@ -10,7 +10,7 @@ use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wra
 use ratatui::Frame;
 
 /// Renders the AWS Secrets Manager tab
-pub fn render_aws_secrets_tab<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+pub fn render_aws_secrets_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)])
@@ -48,7 +48,7 @@ pub fn render_aws_secrets_tab<B: Backend>(f: &mut Frame, app: &mut App, area: Re
 }
 
 /// Render the AWS Secrets list view
-fn render_aws_secrets_list<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_aws_secrets_list(f: &mut Frame, app: &mut App, area: Rect) {
     // Split into two sections: secrets list and help
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -81,7 +81,7 @@ fn render_aws_secrets_list<B: Backend>(f: &mut Frame, app: &mut App, area: Rect)
 }
 
 /// Render the AWS Secrets view mode
-fn render_aws_secrets_view<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_aws_secrets_view(f: &mut Frame, app: &mut App, area: Rect) {
     // Split area into content and help sections
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -105,7 +105,7 @@ fn render_aws_secrets_view<B: Backend>(f: &mut Frame, app: &mut App, area: Rect)
 }
 
 /// Render the AWS Secrets search view
-fn render_aws_secrets_search<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_aws_secrets_search(f: &mut Frame, app: &mut App, area: Rect) {
     // Split area into search input, results, and help sections
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -154,7 +154,7 @@ fn render_aws_secrets_search<B: Backend>(f: &mut Frame, app: &mut App, area: Rec
 }
 
 /// Render the AWS Secrets create view
-fn render_aws_secrets_create<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_aws_secrets_create(f: &mut Frame, app: &mut App, area: Rect) {
     // Split area into form fields and help
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -204,7 +204,7 @@ fn render_aws_secrets_create<B: Backend>(f: &mut Frame, app: &mut App, area: Rec
 }
 
 /// Render the AWS Secrets update view
-fn render_aws_secrets_update<B: Backend>(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_aws_secrets_update(f: &mut Frame, app: &mut App, area: Rect) {
     // Split area into info, value input, and help
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -238,7 +238,7 @@ fn render_aws_secrets_update<B: Backend>(f: &mut Frame, app: &mut App, area: Rec
 }
 
 /// Render standard AWS help text
-fn render_aws_help_text<B: Backend>(f: &mut Frame, area: Rect) {
+fn render_aws_help_text(f: &mut Frame, area: Rect) {
     let help_text = vec![
         Span::raw("↑/↓: Navigate | "),
         Span::raw("p: Set profile | "),
@@ -259,7 +259,7 @@ fn render_aws_help_text<B: Backend>(f: &mut Frame, area: Rect) {
 }
 
 /// Render AWS create mode help text
-fn render_aws_create_help_text<B: Backend>(f: &mut Frame, area: Rect) {
+fn render_aws_create_help_text(f: &mut Frame, area: Rect) {
     let help_text = vec![
         Span::raw("Tab: Next field | "),
         Span::raw("Enter: Submit | "),
@@ -274,7 +274,7 @@ fn render_aws_create_help_text<B: Backend>(f: &mut Frame, area: Rect) {
 }
 
 /// Render AWS update mode help text
-fn render_aws_update_help_text<B: Backend>(f: &mut Frame, area: Rect) {
+fn render_aws_update_help_text(f: &mut Frame, area: Rect) {
     let help_text = vec![
         Span::raw("Enter: Submit | "),
         Span::raw("Esc: Cancel")
