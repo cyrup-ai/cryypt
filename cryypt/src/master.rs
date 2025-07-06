@@ -60,8 +60,8 @@ impl CipherMasterBuilder {
     
     /// Use ChaCha20-Poly1305 encryption - README.md pattern
     #[cfg(feature = "chacha20")]
-    pub fn chachapoly(self) -> cryypt_cipher::cipher::api::chacha_builder::ChaChaBuilder {
-        Cipher::chachapoly()
+    pub fn chachapoly(self) -> cryypt_cipher::ChaChaBuilder {
+        cryypt_cipher::Cipher::chachapoly()
     }
 }
 
@@ -73,20 +73,20 @@ pub struct HashMasterBuilder;
 impl HashMasterBuilder {
     /// Use SHA-256 hashing - README.md pattern
     #[cfg(feature = "sha256")]
-    pub fn sha256(self) -> cryypt_hashing::api::hash_builder::Sha256Builder {
-        Hash::sha256()
+    pub fn sha256(self) -> cryypt_hashing::Sha256Builder {
+        cryypt_hashing::Hash::sha256()
     }
     
     /// Use SHA3-256 hashing - README.md pattern
     #[cfg(feature = "sha3")]
-    pub fn sha3(self) -> cryypt_hashing::api::hash_builder::Sha3Builder {
-        Hash::sha3()
+    pub fn sha3_256(self) -> cryypt_hashing::Sha3_256Builder {
+        cryypt_hashing::Hash::sha3_256()
     }
     
     /// Use BLAKE2b hashing - README.md pattern
     #[cfg(feature = "blake2b")]
-    pub fn blake2b(self) -> cryypt_hashing::api::hash_builder::Blake2bBuilder {
-        Hash::blake2b()
+    pub fn blake2b(self) -> cryypt_hashing::Blake2bBuilder {
+        cryypt_hashing::Hash::blake2b()
     }
 }
 
@@ -98,19 +98,19 @@ pub struct CompressMasterBuilder;
 impl CompressMasterBuilder {
     /// Use Zstandard compression - README.md pattern
     #[cfg(feature = "zstd")]
-    pub fn zstd(self) -> cryypt_compression::api::zstd_builder::ZstdBuilder {
-        Compress::zstd()
+    pub fn zstd(self) -> cryypt_compression::ZstdBuilder<cryypt_compression::api::zstd_builder::NoLevel> {
+        cryypt_compression::Compress::zstd()
     }
     
     /// Use Gzip compression - README.md pattern
     #[cfg(feature = "gzip")]
-    pub fn gzip(self) -> cryypt_compression::api::gzip_builder::GzipBuilder {
-        Compress::gzip()
+    pub fn gzip(self) -> cryypt_compression::GzipBuilder<cryypt_compression::api::gzip_builder::NoLevel> {
+        cryypt_compression::Compress::gzip()
     }
     
     /// Use Bzip2 compression - README.md pattern
     #[cfg(feature = "bzip2")]
-    pub fn bzip2(self) -> cryypt_compression::api::bzip2_builder::Bzip2Builder {
-        Compress::bzip2()
+    pub fn bzip2(self) -> cryypt_compression::Bzip2Builder<cryypt_compression::api::bzip2_builder::NoLevel> {
+        cryypt_compression::Compress::bzip2()
     }
 }

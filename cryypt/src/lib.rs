@@ -174,7 +174,7 @@ pub use cryypt_key::store::KeychainStore;
 
 #[cfg(any(feature = "aes", feature = "chacha20"))]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "aes", feature = "chacha20"))))]
-pub use cryypt_cipher::{Cipher, CryptError, EncodableResult};
+pub use cryypt_cipher::{Cipher, CryptError};
 
 // === Hashing Re-exports ===
 
@@ -216,7 +216,7 @@ pub use cryypt_jwt as jwt;
 
 #[cfg(feature = "jwt")]
 #[cfg_attr(docsrs, doc(cfg(feature = "jwt")))]
-pub use cryypt_jwt::{Jwt, JwtError, JwtResult, on_result as jwt_on_result};
+pub use cryypt_jwt::{Jwt, JwtError, JwtResult};
 
 #[cfg(feature = "pqcrypto")]
 #[cfg_attr(docsrs, doc(cfg(feature = "pqcrypto")))]

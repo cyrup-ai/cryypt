@@ -46,11 +46,11 @@ impl Vault {
         guard.push(Arc::new(provider));
     }
 
-    pub async fn unlock(&self, passphrase: &str) -> VaultResult<VaultUnitRequest> {
+    pub async fn unlock(&self, passphrase: &str) -> VaultResult<()> {
         let secure_passphrase = Passphrase::from(passphrase.to_string());
         let providers = self.providers.lock().await;
         if let Some(provider) = providers.first() {
-            Ok(provider.unlock(&secure_passphrase))
+            provider.unlock(&secure_passphrase).await
         } else {
             Err(VaultError::Configuration(
                 "No provider configured".to_string(),
@@ -58,10 +58,10 @@ impl Vault {
         }
     }
 
-    pub async fn lock(&self) -> VaultResult<VaultUnitRequest> {
+    pub async fn lock(&self) -> VaultResult<()> {
         let providers = self.providers.lock().await;
         if let Some(provider) = providers.first() {
-            Ok(provider.lock())
+            provider.lock().await
         } else {
             Err(VaultError::Configuration(
                 "No provider configured".to_string(),
