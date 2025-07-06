@@ -46,7 +46,12 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
             .interact()?;
         
         app.state.passphrase = Zeroizing::new(passphrase);
-        let _ = app.unlock().await;
+        
+        // Try to unlock and handle errors properly
+        if let Err(err) = app.unlock().await {
+            eprintln!("Failed to unlock vault: {}", err);
+            return Err(Box::new(err));
+        }
         
         enable_raw_mode()?;
         execute!(terminal.backend_mut(), EnterAlternateScreen, EnableMouseCapture)?;
@@ -184,7 +189,7 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                             KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
                             KeyCode::Char('d') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
                             KeyCode::Enter => {
-                                match *field {
+                                match field {
                                     InputField::Search => {
                                         // Check for command inputs
                                         if app.state.search_pattern == ":q" || app.state.search_pattern == "/quit" {
@@ -216,7 +221,7 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                             }
                             KeyCode::Char(c) => {
                                 // Check for command input
-                                match *field {
+                                match field {
                                     InputField::Search if app.state.search_pattern.starts_with(":") => {
                                         app.state.search_pattern.push(c);
                                         // Immediately process :q command
@@ -244,7 +249,7 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                             KeyCode::Backspace => {
-                                match *field {
+                                match field {
                                     InputField::Search => { app.state.search_pattern.pop(); }
                                     InputField::NewKey => { app.state.new_key.pop(); }
                                     InputField::NewValue => { app.state.new_value.pop(); }

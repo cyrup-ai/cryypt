@@ -88,6 +88,7 @@ impl App {
 
     pub async fn reload_items(&mut self) {
         if self.state.is_vault_locked {
+            self.state.error_message = Some("Failed to load items: Vault locked".to_string());
             return;
         }
 
