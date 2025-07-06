@@ -245,7 +245,7 @@ pub mod prelude {
     pub use crate::KeychainStore;
 
     #[cfg(any(feature = "aes", feature = "chacha20"))]
-    pub use crate::{Cipher, EncodableResult};
+    pub use crate::Cipher;
 
     #[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
     pub use crate::{Hash, HashResult, hash_on_result, hash_on_chunk};
@@ -267,5 +267,5 @@ pub mod prelude {
     pub use cryypt_compression::api::*;
 
     #[cfg(feature = "jwt")]
-    pub use crate::{Jwt, jwt_on_result};
+    pub use crate::Jwt;
 }

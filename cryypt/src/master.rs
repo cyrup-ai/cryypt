@@ -54,13 +54,13 @@ pub struct CipherMasterBuilder;
 impl CipherMasterBuilder {
     /// Use AES-256-GCM encryption - README.md pattern
     #[cfg(feature = "aes")]
-    pub fn aes(self) -> cryypt_cipher::cipher::api::aes_builder::AesBuilder {
-        Cipher::aes()
+    pub fn aes(self) -> cryypt_cipher::AesBuilder {
+        cryypt_cipher::Cipher::aes()
     }
     
     /// Use ChaCha20-Poly1305 encryption - README.md pattern
     #[cfg(feature = "chacha20")]
-    pub fn chachapoly(self) -> cryypt_cipher::ChaChaBuilder {
+    pub fn chachapoly(self) -> cryypt_cipher::cipher::api::ChaChaBuilder {
         cryypt_cipher::Cipher::chachapoly()
     }
 }

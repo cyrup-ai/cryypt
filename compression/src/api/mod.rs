@@ -2,10 +2,10 @@
 //!
 //! Usage: `let compressed = Compress::zstd().on_result!(|result| { ... }).compress(data).await`
 
-mod bzip2_builder;
-mod gzip_builder;
-mod zip_builder;
-mod zstd_builder;
+pub mod bzip2_builder;
+pub mod gzip_builder;
+pub mod zip_builder;
+pub mod zstd_builder;
 
 pub use bzip2_builder::{Bzip2Builder, stream::Bzip2Stream};
 pub use gzip_builder::{GzipBuilder, stream::GzipStream}; 
