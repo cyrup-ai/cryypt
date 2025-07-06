@@ -248,7 +248,7 @@ use cryypt::{Cryypt, on_result};
 // Hash -> Compress -> Encrypt pipeline
 let hash = Cryypt::hash()
     .sha256()
-    .on_result!(|result| {
+    .on_result(|result| {
         match result {
             Ok(data) => data,
             Err(e) => {
@@ -263,7 +263,7 @@ let hash = Cryypt::hash()
 let compressed = Cryypt::compress()
     .zstd()
     .with_level(3)
-    .on_result!(|result| {
+    .on_result(|result| {
         match result {
             Ok(data) => data,
             Err(e) => {
@@ -279,7 +279,7 @@ let encrypted = Cryypt::cipher()
     .aes()
     .with_key(key)
     .with_aad(&hash) // Use hash as additional authenticated data
-    .on_result!(|result| {
+    .on_result(|result| {
         match result {
             Ok(data) => data,
             Err(e) => {

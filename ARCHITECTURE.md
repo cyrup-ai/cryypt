@@ -30,14 +30,14 @@ Both are first-class. Neither is preferred.
 
 ### 3. Future Operations
 
-Future operations return a single result and use `on_result!`:
+Future operations return a single result and use `on_result`:
 
 ```rust
 // Using Cryypt:: master builder
 let encrypted = Cryypt::cipher()
     .aes()
     .with_key(key)
-    .on_result!(|result| {
+    .on_result(|result| {
         Ok => Ok(result),
         Err(e) => Err(e)
     })
@@ -47,7 +47,7 @@ let encrypted = Cryypt::cipher()
 // Using direct builder (same result)
 let encrypted = Cipher::aes()
     .with_key(key)
-    .on_result!(|result| {
+    .on_result(|result| {
         Ok => Ok(result),
         Err(e) => Err(e)
     })
@@ -56,19 +56,19 @@ let encrypted = Cipher::aes()
 ```
 
 - Returns `Future<Output = Result<T>>`
-- `on_result!` handles `Result<T>` and returns `Result<T>`
+- `on_result` handles `Result<T>` and returns `Result<T>`
 - Use `.await?` to get the final value
 
 ### 4. Stream Operations
 
-Stream operations return multiple chunks and use `on_chunk!`:
+Stream operations return multiple chunks and use `on_chunk`:
 
 ```rust
 // Using Cryypt:: master builder
 let mut encrypted_stream = Cryypt::cipher()
     .aes()
     .with_key(key)
-    .on_chunk!(|chunk| {
+    .on_chunk(|chunk| {
         Ok => chunk,
         Err(e) => {
             log::error!("Error: {}", e);
@@ -80,7 +80,7 @@ let mut encrypted_stream = Cryypt::cipher()
 // Using direct builder (same result)
 let mut encrypted_stream = Cipher::aes()
     .with_key(key)
-    .on_chunk!(|chunk| {
+    .on_chunk(|chunk| {
         Ok => chunk,
         Err(e) => {
             log::error!("Error: {}", e);
@@ -91,13 +91,13 @@ let mut encrypted_stream = Cipher::aes()
 
 // Process chunks
 while let Some(chunk) = encrypted_stream.next().await {
-    // chunk is already unwrapped by on_chunk!
+    // chunk is already unwrapped by on_chunk
     output_file.write_all(&chunk).await?;
 }
 ```
 
 - Returns `Stream<Item = T>` (not `Stream<Item = Result<T>>`)
-- `on_chunk!` unwraps each chunk - you get `T` not `Result<T>`
+- `on_chunk` unwraps each chunk - you get `T` not `Result<T>`
 - Bad chunks are skipped with `return`
 
 ### 5. Actions Take Arguments
@@ -110,8 +110,8 @@ The action method (final verb) always takes the data:
 ### 6. Error Handling Before Action
 
 Error handling is configured BEFORE the action method:
-- `on_result!(...)` comes before `.encrypt(data).await?`
-- `on_chunk!(...)` comes before `.encrypt_stream(data)`
+- `on_result(...)` comes before `.encrypt(data).await?`
+- `on_chunk(...)` comes before `.encrypt_stream(data)`
 
 ### 7. No Exposed Macros
 

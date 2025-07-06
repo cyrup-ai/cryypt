@@ -20,7 +20,7 @@ use cryypt::{Cryypt, on_result};
 let compressed = Cryypt::compress()
     .zstd()
     .with_level(3)
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Compression error: {}", e))
     })
     .compress(b"Large text data...")
@@ -86,7 +86,7 @@ use cryypt::{Cryypt, on_result};
 let compressed = Cryypt::compress()
     .gzip()
     .with_level(6)
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Compression error: {}", e))
     })
     .compress(data)
@@ -96,7 +96,7 @@ let compressed = Cryypt::compress()
 let compressed = Cryypt::compress()
     .bzip2()
     .with_level(9)
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Operation error: {}", e))
     })
     .compress(data)
@@ -107,7 +107,7 @@ let archive = Cryypt::compress()
     .zip()
     .add_file("readme.txt", readme_data)
     .add_file("data.json", json_data)
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Operation error: {}", e))
     })
     .compress()
@@ -117,7 +117,7 @@ let archive = Cryypt::compress()
 use cryypt::Compress;
 let compressed = Compress::zstd()
     .with_level(3)
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Operation error: {}", e))
     })
     .compress(data)
@@ -157,9 +157,11 @@ async fn compress_and_encrypt_files(
     
     // Compress
     let compressed = archive
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => Ok(data),
+                Err(e) => Err(e)
+            }
         })
         .compress()
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -167,9 +169,11 @@ async fn compress_and_encrypt_files(
     // Encrypt the archive
     let encrypted = Cipher::aes()
         .with_key(key)
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            match result {
+                Ok(data) => Ok(data),
+                Err(e) => Err(e)
+            }
         })
         .encrypt(&compressed)
         .await; // Returns fully unwrapped value - no Result wrapper

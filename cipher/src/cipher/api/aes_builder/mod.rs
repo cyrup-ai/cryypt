@@ -1,6 +1,7 @@
 //! AES encryption builders following README.md patterns exactly
 
-use crate::{Result, CryptError};
+use crate::{Result, CryptError, CipherResult, CipherResultWithHandler};
+use tokio::sync::oneshot;
 
 // Declare submodules
 pub mod encrypt;
@@ -14,7 +15,13 @@ pub struct AesBuilder;
 /// AES builder with key
 pub struct AesWithKey {
     key: Vec<u8>,
-    result_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Result<Vec<u8>> + Send + Sync>>,
+}
+
+/// AES builder with key and result handler
+pub struct AesWithKeyAndHandler<F, T> {
+    key: Vec<u8>,
+    result_handler: F,
+    _phantom: std::marker::PhantomData<T>,
 }
 
 impl AesBuilder {
@@ -32,49 +39,83 @@ impl AesBuilder {
 impl AesWithKey {
     /// Create AES builder with key
     pub fn new(key: Vec<u8>) -> Self {
-        Self {
-            key,
-            result_handler: None,
+        Self { key }
+    }
+
+    /// Add on_result handler - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> AesWithKeyAndHandler<F, T>
+    where
+        F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,
+        T: cryypt_common::NotResult + Send + 'static,
+    {
+        AesWithKeyAndHandler {
+            key: self.key,
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
         }
     }
 
-    /// Add on_result! handler - README.md pattern
-    pub fn on_result<F>(mut self, handler: F) -> Self
-    where
-        F: Fn(Result<Vec<u8>>) -> Result<Vec<u8>> + Send + Sync + 'static,
-    {
-        self.result_handler = Some(Box::new(handler));
-        self
-    }
 
     /// Encrypt data - action takes data as argument per README.md
-    pub async fn encrypt<T: Into<Vec<u8>>>(self, data: T) -> Result<Vec<u8>> {
+    pub fn encrypt<T: Into<Vec<u8>>>(self, data: T) -> CipherResult {
         let data = data.into();
+        let key = self.key;
         
-        // Perform AES-GCM encryption
-        let result = aes_encrypt(&self.key, &data).await;
+        let (tx, rx) = oneshot::channel();
         
-        // Apply result handler if present
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
-        }
+        tokio::spawn(async move {
+            let result = aes_encrypt(&key, &data).await;
+            let _ = tx.send(result);
+        });
+        
+        CipherResult::new(rx)
     }
 
     /// Decrypt data - action takes data as argument per README.md
-    pub async fn decrypt<T: Into<Vec<u8>>>(self, ciphertext: T) -> Result<Vec<u8>> {
+    pub fn decrypt<T: Into<Vec<u8>>>(self, ciphertext: T) -> CipherResult {
         let ciphertext = ciphertext.into();
+        let key = self.key;
+        
+        let (tx, rx) = oneshot::channel();
+        
+        tokio::spawn(async move {
+            let result = aes_decrypt(&key, &ciphertext).await;
+            let _ = tx.send(result);
+        });
+        
+        CipherResult::new(rx)
+    }
+}
+
+impl<F, T> AesWithKeyAndHandler<F, T>
+where
+    F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,
+    T: cryypt_common::NotResult + Send + 'static,
+{
+    /// Encrypt data - action takes data as argument per README.md
+    pub async fn encrypt<D: Into<Vec<u8>>>(self, data: D) -> T {
+        let data = data.into();
+        let key = self.key;
+        let handler = self.result_handler;
+        
+        // Perform AES-GCM encryption
+        let result = aes_encrypt(&key, &data).await;
+        
+        // Apply result handler
+        handler(result)
+    }
+
+    /// Decrypt data - action takes data as argument per README.md
+    pub async fn decrypt<D: Into<Vec<u8>>>(self, ciphertext: D) -> T {
+        let ciphertext = ciphertext.into();
+        let key = self.key;
+        let handler = self.result_handler;
         
         // Perform AES-GCM decryption
-        let result = aes_decrypt(&self.key, &ciphertext).await;
+        let result = aes_decrypt(&key, &ciphertext).await;
         
-        // Apply result handler if present
-        if let Some(handler) = self.result_handler {
-            handler(result)
-        } else {
-            result
-        }
+        // Apply result handler
+        handler(result)
     }
 }
 

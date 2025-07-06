@@ -12,6 +12,7 @@
 // Internal macro implementations (hidden from users per ARCHITECTURE.md)
 mod result_macro;
 mod chunk_macro;
+mod cipher_result;
 
 pub mod bits_macro;
 /// Encryption and decryption primitives
@@ -20,9 +21,10 @@ pub mod error;
 
 // Re-export core types
 pub use error::{CryptError, Result};
+pub use cipher_result::{CipherResult, CipherResultWithHandler};
 
 // Re-export the main APIs per README.md
-pub use cipher::api::{Cipher, aes_builder::{AesBuilder, AesWithKey}};
+pub use cipher::api::{Cipher, aes_builder::{AesBuilder, AesWithKey, AesWithKeyAndHandler}};
 pub use cipher::CipherAlgorithm;
 
 // Re-export common handlers from cryypt_common

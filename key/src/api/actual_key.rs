@@ -26,25 +26,10 @@ impl ActualKey {
         &self.key_bytes
     }
 
-    /// Return AES cipher builder using this key
-    /// 
-    /// This enables the README.md pattern: `key.aes().encrypt(data)`
-    #[cfg(feature = "aes")]
-    pub fn aes(&self) -> cryypt_cipher::AesWithKey {
-        // Create AES builder pre-configured with this key
-        let key_provider = DirectKeyProvider::new(self.key_bytes.to_vec());
-        cryypt_cipher::Cipher::aes().with_key(key_provider)
-    }
-
-    /// Return ChaCha20 cipher builder using this key
-    /// 
-    /// This enables the README.md pattern: `key.chacha20().encrypt(data)`
-    #[cfg(feature = "chacha20")]
-    pub fn chacha20(&self) -> cryypt_cipher::ChaChaWithKey {
-        // Create ChaCha builder pre-configured with this key
-        let key_provider = DirectKeyProvider::new(self.key_bytes.to_vec());
-        cryypt_cipher::Cipher::chachapoly().with_key(key_provider)
-    }
+    // Note: AES and ChaCha20 convenience methods moved to main cryypt crate
+    // to avoid circular dependency between key and cipher crates.
+    // The README.md pattern `key.aes().encrypt(data)` will be available
+    // through the main cryypt crate which can depend on both key and cipher.
 }
 
 /// Simple key provider that provides the key bytes directly

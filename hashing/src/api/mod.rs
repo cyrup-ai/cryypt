@@ -5,4 +5,4 @@
 
 pub mod hash;
 
-pub use hash::{Hash, Sha256Builder, Sha3_256Builder, Blake2bBuilder};
+pub use hash::{Hash, Sha256Builder, Sha3_256Builder, Sha3_384Builder, Sha3_512Builder, Blake2bBuilder};

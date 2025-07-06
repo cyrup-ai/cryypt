@@ -20,7 +20,7 @@ use cryypt::{Cryypt, on_result};
 let vault = Cryypt::vault()
     .create("./my-vault")
     .with_passphrase("strong_passphrase")
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
     })
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -28,7 +28,7 @@ let vault = Cryypt::vault()
 // Store secret
 vault
     .with_key("api_key")
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Operation error: {}", e))
     })
     .set(VaultValue::Secret("sk-1234567890"))
@@ -38,7 +38,7 @@ vault
 vault
     .with_key("temp_token")
     .with_ttl(3600)
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Operation error: {}", e))
     })
     .set(VaultValue::Secret("tmp-abc123"))
@@ -46,7 +46,7 @@ vault
 
 // Retrieve secret
 let api_key = vault
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Operation error: {}", e))
     })
     .get("api_key")
@@ -54,7 +54,7 @@ let api_key = vault
 
 // Stream all secrets
 let mut secret_stream = vault
-    .on_chunk!(|chunk| {
+    .on_chunk(|chunk| {
         Ok => chunk,
         Err(e) => {
             log::error!("Vault stream error: {}", e);
@@ -71,7 +71,7 @@ while let Some(secret) = secret_stream.next().await {
 
 // Batch operations  
 vault
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Operation error: {}", e))
     })
     .put_all({
@@ -85,7 +85,7 @@ vault
 
 // Lock vault
 vault
-    .on_result!(|result| {
+    .on_result(|result| {
         result.unwrap_or_else(|e| panic!("Operation error: {}", e))
     })
     .lock()

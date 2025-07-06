@@ -26,7 +26,7 @@ let claims = Claims {
 let token = Cryypt::jwt()
     .with_algorithm("HS256")
     .with_secret(b"secret_key")
-    .on_result!(|result| {
+    .on_result(|result| {
         match result {
             Ok(data) => data,
             Err(e) => {
@@ -57,7 +57,7 @@ let claims = Cryypt::jwt()
 let token = Cryypt::jwt()
     .with_algorithm("RS256")
     .with_private_key(private_key)
-    .on_result!(|result| {
+    .on_result(|result| {
         match result {
             Ok(data) => data,
             Err(e) => {

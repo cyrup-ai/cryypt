@@ -13,6 +13,7 @@
 pub mod error;
 pub mod handlers;
 pub mod traits;
+pub mod builder_traits;
 
 pub use error::*;
 pub use handlers::{on_chunk, on_error, on_result};
@@ -20,4 +21,8 @@ pub use traits::{
     NotResult,
     AsyncExistsResult, AsyncDeleteResult, AsyncRetrieveResult,
     AsyncStoreResult, AsyncGenerateResult, AsyncListResult
+};
+pub use builder_traits::{
+    OnResultBuilder, OnChunkBuilder, OnErrorBuilder,
+    AsyncResultWithHandler, ResultHandler, ChunkHandler, ErrorHandler
 };

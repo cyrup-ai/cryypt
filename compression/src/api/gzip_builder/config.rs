@@ -10,8 +10,8 @@ impl GzipBuilder<NoLevel> {
     pub fn with_level(self, level: u32) -> GzipBuilder<HasLevel> {
         GzipBuilder {
             level: HasLevel(level.clamp(1, 9)),
-            result_handler: self.result_handler,
             chunk_handler: self.chunk_handler,
+            error_handler: self.error_handler,
         }
     }
     

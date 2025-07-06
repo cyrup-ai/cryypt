@@ -1,6 +1,6 @@
 //! Zstd compression builder following README.md patterns
 
-use crate::{CompressionResult, Result};
+use crate::{CompressionResult, CompressionError, Result};
 
 pub mod config;
 pub mod compress;
@@ -22,8 +22,21 @@ pub struct HasLevel(pub i32);
 /// Builder for Zstd compression operations - follows README.md patterns
 pub struct ZstdBuilder<L> {
     pub(crate) level: L,
-    pub(crate) result_handler: Option<Box<dyn Fn(Result<CompressionResult>) -> Result<CompressionResult> + Send + Sync>>,
-    pub(crate) chunk_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>>,
+    pub(crate) error_handler: Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
+}
+
+/// Builder with result handler
+pub struct ZstdBuilderWithHandler<L, F, T> {
+    pub(crate) level: L,
+    pub(crate) result_handler: F,
+    pub(crate) _phantom: std::marker::PhantomData<T>,
+}
+
+/// Builder with chunk handler for streaming pattern
+pub struct ZstdBuilderWithChunk<L, C> {
+    pub(crate) level: L,
+    pub(crate) chunk_handler: C,
+    pub(crate) error_handler: Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
 }
 
 impl ZstdBuilder<NoLevel> {
@@ -31,8 +44,7 @@ impl ZstdBuilder<NoLevel> {
     pub fn new() -> Self {
         Self {
             level: NoLevel,
-            result_handler: None,
-            chunk_handler: None,
+            error_handler: None,
         }
     }
 
@@ -40,28 +52,43 @@ impl ZstdBuilder<NoLevel> {
     pub fn with_level(self, level: i32) -> ZstdBuilder<HasLevel> {
         ZstdBuilder {
             level: HasLevel(level),
-            result_handler: self.result_handler,
-            chunk_handler: self.chunk_handler,
+            error_handler: self.error_handler,
         }
     }
 }
 
 impl<L> ZstdBuilder<L> {
-    /// Apply on_result! handler - hidden implementation per ARCHITECTURE.md
-    pub fn on_result<F>(mut self, handler: F) -> Self
+    /// Apply on_result handler - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> ZstdBuilderWithHandler<L, F, T>
     where
-        F: Fn(Result<CompressionResult>) -> Result<CompressionResult> + Send + Sync + 'static,
+        F: FnOnce(Result<CompressionResult>) -> T + Send + 'static,
+        T: cryypt_common::NotResult + Send + 'static,
     {
-        self.result_handler = Some(Box::new(handler));
-        self
+        ZstdBuilderWithHandler {
+            level: self.level,
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
+        }
     }
     
-    /// Apply on_chunk! handler for streaming - hidden implementation per ARCHITECTURE.md
-    pub fn on_chunk<F>(mut self, handler: F) -> Self
+    /// Apply on_chunk handler for streaming - README.md pattern
+    pub fn on_chunk<C>(self, handler: C) -> ZstdBuilderWithChunk<L, C>
     where
-        F: Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync + 'static,
+        C: Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync + 'static,
     {
-        self.chunk_handler = Some(Box::new(handler));
+        ZstdBuilderWithChunk {
+            level: self.level,
+            chunk_handler: handler,
+            error_handler: self.error_handler,
+        }
+    }
+    
+    /// Apply on_error handler - README.md pattern
+    pub fn on_error<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(CompressionError) -> CompressionError + Send + Sync + 'static,
+    {
+        self.error_handler = Some(Box::new(handler));
         self
     }
 }

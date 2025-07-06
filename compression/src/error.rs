@@ -34,6 +34,19 @@ pub enum CompressionError {
     InternalError(String),
 }
 
+impl Clone for CompressionError {
+    fn clone(&self) -> Self {
+        match self {
+            Self::CompressionFailed(s) => Self::CompressionFailed(s.clone()),
+            Self::DecompressionFailed(s) => Self::DecompressionFailed(s.clone()),
+            Self::InvalidLevel(s) => Self::InvalidLevel(s.clone()),
+            Self::InvalidFormat(s) => Self::InvalidFormat(s.clone()),
+            Self::IoError(e) => Self::InternalError(e.to_string()),
+            Self::InternalError(s) => Self::InternalError(s.clone()),
+        }
+    }
+}
+
 impl CompressionError {
     /// Create a CompressionFailed error with a formatted message
     pub fn compression_failed(msg: impl fmt::Display) -> Self {

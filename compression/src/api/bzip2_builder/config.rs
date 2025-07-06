@@ -10,8 +10,7 @@ impl Bzip2Builder<NoLevel> {
     pub fn with_level(self, level: u32) -> Bzip2Builder<HasLevel> {
         Bzip2Builder {
             level: HasLevel(level.clamp(1, 9)),
-            result_handler: self.result_handler,
-            chunk_handler: self.chunk_handler,
+            error_handler: self.error_handler,
         }
     }
     

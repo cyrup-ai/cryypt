@@ -4,7 +4,7 @@ use super::super::{
     passes::HashPasses,
     HasPasses, HasSalt, NoPasses, NoSalt,
 };
-use crate::{HashResult, Result};
+use crate::{HashResult, Result, HashError};
 
 /// Builder for hash operations
 pub struct HashBuilder<H, D, S, P> {
@@ -14,6 +14,7 @@ pub struct HashBuilder<H, D, S, P> {
     pub(crate) passes: P,
     pub(crate) result_handler: Option<Box<dyn Fn(Result<HashResult>) -> Result<HashResult> + Send + Sync>>,
     pub(crate) chunk_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>>,
+    pub(crate) error_handler: Option<Box<dyn Fn(HashError) -> HashError + Send + Sync>>,
 }
 
 // Methods for adding result handler
@@ -35,6 +36,15 @@ impl<H, D, S, P> HashBuilder<H, D, S, P> {
         self.chunk_handler = Some(Box::new(handler));
         self
     }
+    
+    /// Apply on_error handler - transforms errors but passes through success
+    pub fn on_error<E>(mut self, handler: E) -> Self
+    where
+        E: Fn(HashError) -> HashError + Send + Sync + 'static,
+    {
+        self.error_handler = Some(Box::new(handler));
+        self
+    }
 }
 
 // Methods for adding key (for HMAC)
@@ -48,6 +58,7 @@ impl<H, D, P> HashBuilder<H, D, NoSalt, P> {
             passes: self.passes,
             result_handler: self.result_handler,
             chunk_handler: self.chunk_handler,
+            error_handler: self.error_handler,
         }
     }
 }
@@ -63,6 +74,7 @@ impl<H, D, S> HashBuilder<H, D, S, NoPasses> {
             passes: HasPasses(passes),
             result_handler: self.result_handler,
             chunk_handler: self.chunk_handler,
+            error_handler: self.error_handler,
         }
     }
 }
