@@ -73,12 +73,10 @@ let encrypted = Cryypt::cipher()
     .aes()
     .with_key(key)
     .on_result(|result| {
-        match result {
-            Ok(encrypted) => encrypted,
-            Err(e) => {
-                log::error!("Encryption failed: {}", e);
-                Vec::new() // Return empty on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Encryption failed: {}", e);
+            Vec::new() // Return empty on error
         }
     })
     .encrypt(b"Secret message")
@@ -90,12 +88,10 @@ let encrypted = Cryypt::cipher()
 let hash = Cryypt::hash()
     .sha256()
     .on_result(|result| {
-        match result {
-            Ok(hash) => hash,
-            Err(e) => {
-                log::error!("Hash computation failed: {}", e);
-                Vec::new() // Return empty hash on error
-            }
+        Ok => result.to_vec(),
+        Err(e) => {
+            log::error!("Hash computation failed: {}", e);
+            Vec::new() // Return empty hash on error
         }
     })
     .compute(b"Hello, World!")
@@ -108,12 +104,10 @@ let compressed = Cryypt::compress()
     .zstd()
     .with_level(3)
     .on_result(|result| {
-        match result {
-            Ok(compressed) => compressed,
-            Err(e) => {
-                log::error!("Compression failed: {}", e);
-                b"Large text data...".to_vec() // Return original on error
-            }
+        Ok => result.to_vec(),
+        Err(e) => {
+            log::error!("Compression failed: {}", e);
+            b"Large text data...".to_vec() // Return original on error
         }
     })
     .compress(b"Large text data...")

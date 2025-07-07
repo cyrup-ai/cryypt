@@ -6,9 +6,11 @@ use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use tokio::sync::oneshot;
 
+#[allow(dead_code)]
 type HmacSha256 = Hmac<Sha256>;
 
 /// HS256 signing with HMAC-SHA256
+#[allow(dead_code)]
 pub async fn hs256_sign(secret: &[u8], header: &JwtHeader, claims: &serde_json::Value) -> JwtResult<String> {
     let (tx, rx) = oneshot::channel();
     let secret = secret.to_vec();
@@ -19,12 +21,12 @@ pub async fn hs256_sign(secret: &[u8], header: &JwtHeader, claims: &serde_json::
         let result = tokio::task::spawn_blocking(move || {
             // Encode header
             let header_json = serde_json::to_string(&header)
-                .map_err(|_| JwtError::Serialization)?;
+                .map_err(|e| JwtError::serialization(&e.to_string()))?;
             let header_b64 = URL_SAFE_NO_PAD.encode(header_json.as_bytes());
             
             // Encode claims
             let claims_json = serde_json::to_string(&claims)
-                .map_err(|_| JwtError::Serialization)?;
+                .map_err(|e| JwtError::serialization(&e.to_string()))?;
             let claims_b64 = URL_SAFE_NO_PAD.encode(claims_json.as_bytes());
             
             // Create signing input
@@ -49,6 +51,7 @@ pub async fn hs256_sign(secret: &[u8], header: &JwtHeader, claims: &serde_json::
 }
 
 /// HS256 verification with HMAC-SHA256
+#[allow(dead_code)]
 pub async fn hs256_verify(secret: &[u8], token: &str) -> JwtResult<serde_json::Value> {
     let (tx, rx) = oneshot::channel();
     let secret = secret.to_vec();
@@ -82,7 +85,7 @@ pub async fn hs256_verify(secret: &[u8], token: &str) -> JwtResult<serde_json::V
             let claims_json = URL_SAFE_NO_PAD.decode(claims_b64)
                 .map_err(|_| JwtError::InvalidFormat)?;
             let claims: serde_json::Value = serde_json::from_slice(&claims_json)
-                .map_err(|_| JwtError::Serialization)?;
+                .map_err(|e| JwtError::serialization(&e.to_string()))?;
             
             Ok(claims)
         }).await.unwrap_or_else(|_| Err(JwtError::TaskFailed));
@@ -94,6 +97,7 @@ pub async fn hs256_verify(secret: &[u8], token: &str) -> JwtResult<serde_json::V
 }
 
 /// Generate ES256 key pair
+#[allow(dead_code)]
 pub async fn es256_generate_keys() -> JwtResult<Es256KeyPair> {
     let (tx, rx) = oneshot::channel();
     
@@ -106,7 +110,7 @@ pub async fn es256_generate_keys() -> JwtResult<Es256KeyPair> {
             if crate::algorithms::validate_es256_keypair(&keypair) {
                 Ok(keypair)
             } else {
-                Err(JwtError::KeyGeneration)
+                Err(JwtError::invalid_key("Failed to generate valid ES256 keypair"))
             }
         }).await.unwrap_or_else(|_| Err(JwtError::TaskFailed));
         
@@ -117,6 +121,7 @@ pub async fn es256_generate_keys() -> JwtResult<Es256KeyPair> {
 }
 
 /// ES256 signing (placeholder implementation)
+#[allow(dead_code)]
 pub async fn es256_sign(private_key: &[u8], header: &JwtHeader, claims: &serde_json::Value) -> JwtResult<String> {
     let (tx, rx) = oneshot::channel();
     let private_key = private_key.to_vec();
@@ -137,6 +142,7 @@ pub async fn es256_sign(private_key: &[u8], header: &JwtHeader, claims: &serde_j
 }
 
 /// ES256 verification (placeholder implementation)
+#[allow(dead_code)]
 pub async fn es256_verify(public_key: &[u8], token: &str) -> JwtResult<serde_json::Value> {
     let (tx, rx) = oneshot::channel();
     let public_key = public_key.to_vec();

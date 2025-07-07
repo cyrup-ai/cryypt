@@ -12,6 +12,11 @@ impl Cipher {
     }
 
     /// Use ChaCha20-Poly1305 (recommended for mobile/low-power devices) - README.md pattern
+    pub fn chacha20() -> ChaChaBuilder {
+        ChaChaBuilder::new()
+    }
+    
+    /// Use ChaCha20-Poly1305 (alias) - README.md pattern
     pub fn chachapoly() -> ChaChaBuilder {
         ChaChaBuilder::new()
     }

@@ -4,6 +4,7 @@
 pub use crate::types::Es256KeyPair;
 
 /// Generate a new ES256 key pair for JWT signing
+#[allow(dead_code)]
 pub fn generate_es256_keypair() -> Es256KeyPair {
     // Generate a P-256 key pair (placeholder implementation)
     let private_key = vec![0u8; 32]; // 32-byte private key
@@ -16,6 +17,7 @@ pub fn generate_es256_keypair() -> Es256KeyPair {
 }
 
 /// Validate an ES256 key pair
+#[allow(dead_code)]
 pub fn validate_es256_keypair(keypair: &Es256KeyPair) -> bool {
     keypair.private_key.len() == 32 && keypair.public_key.len() == 64
 }

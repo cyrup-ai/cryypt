@@ -21,7 +21,11 @@ let vault = Cryypt::vault()
     .create("./my-vault")
     .with_passphrase("strong_passphrase")
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Key generation error: {}", e))
+        Ok => result,
+        Err(e) => {
+            log::error!("Vault creation error: {}", e);
+            panic!("Failed to create vault")
+        }
     })
     .await; // Returns fully unwrapped value - no Result wrapper
 
@@ -29,7 +33,11 @@ let vault = Cryypt::vault()
 vault
     .with_key("api_key")
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation error: {}", e);
+            ()
+        }
     })
     .set(VaultValue::Secret("sk-1234567890"))
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -39,7 +47,11 @@ vault
     .with_key("temp_token")
     .with_ttl(3600)
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation error: {}", e);
+            ()
+        }
     })
     .set(VaultValue::Secret("tmp-abc123"))
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -47,7 +59,11 @@ vault
 // Retrieve secret
 let api_key = vault
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation error: {}", e);
+            ()
+        }
     })
     .get("api_key")
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -72,7 +88,11 @@ while let Some(secret) = secret_stream.next().await {
 // Batch operations  
 vault
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation error: {}", e);
+            ()
+        }
     })
     .put_all({
         "db_host" => "localhost",
@@ -86,7 +106,11 @@ vault
 // Lock vault
 vault
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation error: {}", e);
+            ()
+        }
     })
     .lock()
     .await; // Returns fully unwrapped value - no Result wrapper

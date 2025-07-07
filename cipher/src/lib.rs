@@ -25,10 +25,11 @@ pub use cipher_result::{CipherResult, CipherResultWithHandler};
 
 // Re-export the main APIs per README.md
 pub use cipher::api::{Cipher, aes_builder::{AesBuilder, AesWithKey, AesWithKeyAndHandler}};
+pub use cipher::api::chacha_builder::{ChaChaBuilder, ChaChaWithKey};
 pub use cipher::CipherAlgorithm;
 
 // Re-export common handlers from cryypt_common
-pub use cryypt_common::{on_result, on_chunk, on_error};
+pub use cryypt_common::{on_result, on_chunk, on_error, __cryypt_on_result_impl, __cryypt_on_chunk_impl, __cryypt_on_error_impl};
 
 /// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
 pub struct Cryypt;
@@ -47,6 +48,11 @@ impl CipherMasterBuilder {
     /// Use AES-256-GCM encryption - README.md pattern
     pub fn aes(self) -> AesBuilder {
         AesBuilder::new()
+    }
+    
+    /// Use ChaCha20-Poly1305 encryption - README.md pattern
+    pub fn chacha20(self) -> ChaChaBuilder {
+        ChaChaBuilder::new()
     }
 }
 

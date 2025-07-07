@@ -27,6 +27,7 @@ keywords = ["encryption", "cryptography", "postquant", "cipher", "security"]
 categories = ["cryptography", "authentication"]
 rust-version = "1.88"
 
+
 [workspace.lints]
 clippy.all = "warn"
 clippy.pedantic = "warn"

@@ -1,5 +1,4 @@
 use ratatui::{
-    backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
@@ -7,7 +6,7 @@ use ratatui::{
     Frame,
 };
 use super::super::app::App;
-use super::super::types::{PassState, PassStateMode};
+use super::super::types::PassStateMode;
 use super::super::pass_interface::PassInterface;
 
 pub fn render_pass_tab(f: &mut Frame, app: &mut App, area: Rect) {

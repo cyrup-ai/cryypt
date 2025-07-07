@@ -1,0 +1,1 @@
+//! Stream operations for SHA256 builders

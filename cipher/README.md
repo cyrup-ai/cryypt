@@ -24,12 +24,10 @@ let key = Cryypt::key()
     .with_namespace("my-app")
     .version(1)
     .on_result(|result| {
-        match result {
-            Ok(key) => key,
-            Err(e) => {
-                log::error!("Key generation failed: {}", e);
-                Vec::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Key generation failed: {}", e);
+            Vec::new()
         }
     })
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -39,12 +37,10 @@ let encrypted = Cryypt::cipher()
     .aes()
     .with_key(key)
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
-                Vec::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Cipher operation failed: {}", e);
+            Vec::new()
         }
     })
     .encrypt(b"Secret message")
@@ -55,12 +51,10 @@ let plaintext = Cryypt::cipher()
     .aes()
     .with_key(key)
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
-                Vec::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Cipher operation failed: {}", e);
+            Vec::new()
         }
     })
     .decrypt(&encrypted)
@@ -71,12 +65,10 @@ let mut encrypted_stream = Cryypt::cipher()
     .aes()
     .with_key(key)
     .on_chunk(|chunk| {
-        match chunk {
-            Ok(data) => Some(data),
-            Err(e) => {
-                log::error!("Encryption chunk error: {}", e);
-                None
-            }
+        Ok => chunk,
+        Err(e) => {
+            log::error!("Encryption chunk error: {}", e);
+            return
         }
     })
     .encrypt_stream(input_stream); // Returns Stream<Item = Vec<u8>> - fully unwrapped encrypted chunks
@@ -92,12 +84,10 @@ let mut decrypted_stream = Cryypt::cipher()
     .aes()
     .with_key(key)
     .on_chunk(|chunk| {
-        match chunk {
-            Ok(data) => Some(data),
-            Err(e) => {
-                log::error!("Decryption chunk error: {}", e);
-                None
-            }
+        Ok => chunk,
+        Err(e) => {
+            log::error!("Decryption chunk error: {}", e);
+            return
         }
     })
     .decrypt_stream(encrypted_file_stream);
@@ -118,12 +108,10 @@ let encrypted = Cryypt::cipher()
     .chacha20()
     .with_key(key)
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
-                Vec::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Cipher operation failed: {}", e);
+            Vec::new()
         }
     })
     .encrypt(b"Secret message")
@@ -134,12 +122,10 @@ let plaintext = Cryypt::cipher()
     .chacha20()
     .with_key(key) 
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Decryption failed: {}", e);
-                Vec::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Decryption failed: {}", e);
+            Vec::new()
         }
     })
     .decrypt(&encrypted)
@@ -162,12 +148,10 @@ async fn encrypt_file(input_path: &str, output_path: &str) -> Result<(), Box<dyn
         .with_namespace("my-app")
         .version(1)
         .on_result(|result| {
-            match result {
-                Ok(key) => key,
-                Err(e) => {
-                    log::error!("Key retrieval failed: {}", e);
-                    Vec::new()
-                }
+            Ok => result,
+            Err(e) => {
+                log::error!("Key retrieval failed: {}", e);
+                Vec::new()
             }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -181,8 +165,11 @@ async fn encrypt_file(input_path: &str, output_path: &str) -> Result<(), Box<dyn
     let encrypted = Cipher::aes()
         .with_key(key)
         .on_result(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+            Ok => result,
+            Err(e) => {
+                log::error!("Encryption failed: {}", e);
+                Vec::new()
+            }
         })
         .encrypt(&plaintext)
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -203,12 +190,10 @@ async fn encrypt_large_file(input_path: &str, output_path: &str) -> Result<(), B
         .with_namespace("my-app")
         .version(1)
         .on_result(|result| {
-            match result {
-                Ok(key) => key,
-                Err(e) => {
-                    log::error!("Key retrieval failed: {}", e);
-                    Vec::new()
-                }
+            Ok => result,
+            Err(e) => {
+                log::error!("Key retrieval failed: {}", e);
+                Vec::new()
             }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -221,12 +206,10 @@ async fn encrypt_large_file(input_path: &str, output_path: &str) -> Result<(), B
     let mut encrypted_stream = Cipher::aes()
         .with_key(key)
         .on_chunk(|chunk| {
-            match chunk {
-                Ok(data) => Some(data),
-                Err(e) => {
-                    log::error!("Encryption error: {}", e);
-                    None
-                }
+            Ok => chunk,
+            Err(e) => {
+                log::error!("Encryption error: {}", e);
+                return
             }
         })
         .encrypt_stream(input_file);
@@ -249,12 +232,10 @@ use cryypt::{Cryypt, on_result};
 let hash = Cryypt::hash()
     .sha256()
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
-                Vec::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Cipher operation failed: {}", e);
+            Vec::new()
         }
     })
     .compute(data)
@@ -264,12 +245,10 @@ let compressed = Cryypt::compress()
     .zstd()
     .with_level(3)
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
-                Vec::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Cipher operation failed: {}", e);
+            Vec::new()
         }
     })
     .compress(data)
@@ -280,12 +259,10 @@ let encrypted = Cryypt::cipher()
     .with_key(key)
     .with_aad(&hash) // Use hash as additional authenticated data
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
-                Vec::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Cipher operation failed: {}", e);
+            Vec::new()
         }
     })
     .encrypt(&compressed)

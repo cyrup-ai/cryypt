@@ -3,6 +3,7 @@
 use std::marker::PhantomData;
 
 /// Marker trait for builder states
+#[allow(dead_code)]
 pub trait BuilderState: Send + Sync + 'static {}
 
 // KEM States
@@ -60,11 +61,13 @@ pub struct HasSignature;
 impl BuilderState for HasSignature {}
 
 /// Phantom type helper for state tracking
+#[allow(dead_code)]
 pub struct StateMarker<T: BuilderState> {
     _phantom: PhantomData<T>,
 }
 
 impl<T: BuilderState> StateMarker<T> {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             _phantom: PhantomData,

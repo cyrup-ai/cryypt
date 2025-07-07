@@ -14,8 +14,11 @@ pub mod error;
 pub mod handlers;
 pub mod traits;
 pub mod builder_traits;
+#[doc(hidden)]
+pub mod macros;
 
 pub use error::*;
+// Handler functions are placeholders - actual implementation is via internal macros
 pub use handlers::{on_chunk, on_error, on_result};
 pub use traits::{
     NotResult,

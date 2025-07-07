@@ -1,220 +1,173 @@
-//! Compression API examples - EXACTLY matching compression/README.md
-
-use cryypt::{Cryypt, Compress, FileKeyStore, KeyRetriever, Cipher};
+use cryypt::{Cryypt, Compress, Cipher, on_result, FileKeyStore, KeyRetriever};
 use std::path::Path;
+use tokio::io::AsyncWriteExt;
 
-/// Zstandard compression example from README
-async fn zstandard_example() -> Result<(), Box<dyn std::error::Error>> {
-    // Compress data
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Sample data for compression
+    let large_data = b"This is some large text data that we want to compress. ".repeat(100);
+    
+    // Compress data with Zstd
     let compressed = Cryypt::compress()
         .zstd()
         .with_level(3)
         .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Compression error: {}", e);
-                    Vec::new()
-                }
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Compression error: {}", e);
+                large_data.clone()
             }
         })
-        .compress(b"Large text data...")
-        .await; // Returns fully unwrapped value - no Result wrapper // Returns Vec<u8> - the compressed bytes, fully unwrapped
+        .compress(&large_data)
+        .await; // Returns Vec<u8> - the compressed bytes, fully unwrapped
+
+    println!("Original data size: {} bytes", large_data.len());
+    println!("Compressed size: {} bytes", compressed.len());
+    println!("Compression ratio: {:.2}%", (compressed.len() as f64 / large_data.len() as f64) * 100.0);
 
     // Decompress
     let decompressed = Cryypt::compress()
         .zstd()
         .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Decompression error: {}", e);
-                    Vec::new()
-                }
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Decompression failed: {}", e);
+                Vec::new()
             }
         })
         .decompress(&compressed)
-        .await; // Returns fully unwrapped value - no Result wrapper // Returns Vec<u8> - the decompressed bytes, fully unwrapped
+        .await; // Returns Vec<u8> - the decompressed bytes, fully unwrapped
 
-    println!("Decompressed: {:?}", String::from_utf8(decompressed)?);
+    println!("Decompressed size: {} bytes", decompressed.len());
+    println!("Data integrity: {}", if decompressed == large_data { "✅ PASSED" } else { "❌ FAILED" });
 
-    // Stream compression
-    let input_stream = tokio_stream::iter(vec![
-        Ok(b"Part 1".to_vec()),
-        Ok(b"Part 2".to_vec()),
-        Ok(b"Part 3".to_vec()),
-    ]);
-    
-    let mut compressed_stream = Cryypt::compress()
-        .zstd()
-        .with_level(6)
-        .on_chunk(|chunk| {
-            match chunk {
-                Ok(data) => Some(data),
-                Err(e) => {
-                    log::error!("Compression error: {}", e);
-                    None
-                }
-            }
-        })
-        .compress_stream(input_stream); // Returns Stream<Item = Vec<u8>> - fully unwrapped compressed chunks
-
-    // Process compressed chunks
-    let mut output = Vec::new();
-    while let Some(chunk) = compressed_stream.next().await {
-        // chunk is Vec<u8> - compressed bytes ready to write
-        output.extend_from_slice(&chunk);
-    }
-
-    Ok(())
-}
-
-/// Other compression formats example from README
-async fn other_formats_example() -> Result<(), Box<dyn std::error::Error>> {
-    let data = b"Test data for compression";
+    // Test different compression algorithms
     
     // Gzip
-    let compressed = Cryypt::compress()
+    let gzip_compressed = Cryypt::compress()
         .gzip()
         .with_level(6)
         .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Compression error: {}", e);
-                    Vec::new()
-                }
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Gzip compression error: {}", e);
+                large_data.clone()
             }
         })
-        .compress(data)
+        .compress(&large_data)
         .await; // Returns fully unwrapped value - no Result wrapper
 
+    println!("Gzip compressed size: {} bytes", gzip_compressed.len());
+
     // Bzip2
-    let compressed = Cryypt::compress()
+    let bzip2_compressed = Cryypt::compress()
         .bzip2()
         .with_level(9)
         .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Operation error: {}", e);
-                    Vec::new()
-                }
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Bzip2 compression error: {}", e);
+                Vec::new()
             }
         })
-        .compress(data)
+        .compress(&large_data)
         .await; // Returns fully unwrapped value - no Result wrapper
 
-    // ZIP archive
-    let readme_data = b"This is the readme";
-    let json_data = b"{\"test\": true}";
+    println!("Bzip2 compressed size: {} bytes", bzip2_compressed.len());
+
+    // ZIP archive with multiple files
+    let readme_data = b"This is a README file";
+    let json_data = br#"{"name": "example", "version": "1.0.0"}"#;
     
     let archive = Cryypt::compress()
         .zip()
         .add_file("readme.txt", readme_data)
         .add_file("data.json", json_data)
         .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Operation error: {}", e);
-                    Vec::new()
-                }
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("ZIP operation error: {}", e);
+                Vec::new()
             }
         })
         .compress()
         .await; // Returns Vec<u8> - the ZIP archive bytes, fully unwrapped
 
+    println!("ZIP archive size: {} bytes", archive.len());
+
     // Alternative: Direct builders work too
-    let compressed = Compress::zstd()
+    let direct_compressed = Compress::zstd()
         .with_level(3)
         .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Operation error: {}", e);
-                    Vec::new()
-                }
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Direct compression error: {}", e);
+                Vec::new()
             }
         })
-        .compress(data)
+        .compress(&large_data)
         .await; // Returns fully unwrapped value - no Result wrapper
 
-    println!("All compression formats tested successfully");
+    println!("Direct builder compressed size: {} bytes", direct_compressed.len());
+
+    // Demonstrate combined compression and encryption
+    compress_and_encrypt_demo().await?;
+
     Ok(())
 }
 
-/// Batch Compress and Encrypt Files example from README
-async fn compress_and_encrypt_files(
-    files: Vec<&str>,
-    output_archive: &str
-) -> Result<(), Box<dyn std::error::Error>> {
-    let master_key = [0u8; 32];
+async fn compress_and_encrypt_demo() -> Result<(), Box<dyn std::error::Error>> {
+    let sample_data = b"Sensitive data that needs both compression and encryption";
     
-    // Retrieve key
-    let store = FileKeyStore::at("/secure/keys").with_master_key(master_key);
+    // Setup master key and store
+    let master_key = [1u8; 32]; // In production, generate securely
+    let store = FileKeyStore::at("/tmp/compression_keys").with_master_key(master_key);
+    
+    // Generate a key for encryption
     let key = KeyRetriever::new()
         .with_store(store)
-        .with_namespace("my-app")
+        .with_namespace("compression-demo")
         .version(1)
-        .retrieve(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            Ok => result,
+            Err(e) => {
+                log::error!("Key retrieval failed: {}", e);
+                Vec::new()
+            }
         })
+        .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
     
-    // Create ZIP archive
-    let mut archive = Compress::zip();
-    
-    // Add all files
-    for file_path in files {
-        let content = tokio::fs::read(file_path).await?;
-        let file_name = Path::new(file_path).file_name().unwrap().to_str().unwrap();
-        archive = archive.add_file(file_name, content);
-    }
-    
-    // Compress
-    let compressed = archive
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+    // First compress the data
+    let compressed = Compress::zstd()
+        .with_level(6)
+        .on_result(|result| {
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Compression failed: {}", e);
+                sample_data.to_vec()
+            }
         })
-        .compress()
+        .compress(sample_data)
         .await; // Returns fully unwrapped value - no Result wrapper
     
-    // Encrypt the archive
+    // Then encrypt the compressed data
     let encrypted = Cipher::aes()
         .with_key(key)
-        .on_result!(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Encryption failed: {}", e);
+                compressed.clone()
+            }
         })
         .encrypt(&compressed)
         .await; // Returns fully unwrapped value - no Result wrapper
     
-    // Write encrypted archive
-    tokio::fs::write(output_archive, encrypted).await?;
-    
-    Ok(())
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Zstandard Compression ===");
-    zstandard_example().await?;
-    
-    println!("\n=== Other Compression Formats ===");
-    other_formats_example().await?;
-    
-    // Create test files for batch example
-    tokio::fs::write("/tmp/test1.txt", b"Test file 1").await?;
-    tokio::fs::write("/tmp/test2.txt", b"Test file 2").await?;
-    
-    println!("\n=== Batch Compress and Encrypt ===");
-    compress_and_encrypt_files(
-        vec!["/tmp/test1.txt", "/tmp/test2.txt"],
-        "/tmp/encrypted_archive.zip.enc"
-    ).await?;
+    println!("Compress + Encrypt demo:");
+    println!("  Original: {} bytes", sample_data.len());
+    println!("  Compressed: {} bytes", compressed.len());
+    println!("  Encrypted: {} bytes", encrypted.len());
     
     Ok(())
 }

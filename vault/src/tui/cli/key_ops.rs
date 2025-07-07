@@ -2,7 +2,7 @@
 
 use crate::logging::log_security_event;
 use serde_json::json;
-use cryypt_key::{Key, KeyRetriever, store::FileKeyStore, bits_macro::Bits, on_result, api::KeyStore};
+use cryypt_key::{store::FileKeyStore, on_result, api::KeyStore};
 
 pub async fn handle_generate_key(
     namespace: &str,

@@ -323,7 +323,6 @@ impl KeyEnumeration for FileKeyStore {
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let result = async move {
-                use std::path::Path;
                 
                 let mut key_ids: Vec<String> = Vec::new();
                 

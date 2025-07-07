@@ -4,10 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "key_api"
-path = "src/key_api.rs"
-
-[[bin]]
 name = "cipher_api"
 path = "src/cipher_api.rs"
 
@@ -20,36 +16,24 @@ name = "compression_api"
 path = "src/compression_api.rs"
 
 [[bin]]
-name = "combined_operations"
-path = "src/combined_operations.rs"
-
-[[bin]]
-name = "streaming_operations"
-path = "src/streaming_operations.rs"
+name = "key_api"
+path = "src/key_api.rs"
 
 [[bin]]
 name = "jwt_api"
 path = "src/jwt_api.rs"
 
 [[bin]]
-name = "pqcrypto_api"
-path = "src/pqcrypto_api.rs"
-
-[[bin]]
 name = "vault_api"
 path = "src/vault_api.rs"
 
 [[bin]]
+name = "pqcrypto_api"
+path = "src/pqcrypto_api.rs"
+
+[[bin]]
 name = "quic_api"
 path = "src/quic_api.rs"
-
-[[bin]]
-name = "file_operations"
-path = "src/file_operations.rs"
-
-[[bin]]
-name = "advanced_patterns"
-path = "src/advanced_patterns.rs"
 
 [dependencies]
 cryypt = { path = "../cryypt", features = ["full"] }

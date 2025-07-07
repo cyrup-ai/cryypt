@@ -46,7 +46,7 @@ impl VaultValue {
     }
 
     /// Creates a VaultValue by serializing a type `T` to JSON bytes.
-    pub fn from_serializable<T: Serialize>(value: &T) -> Result<Self, VaultError> {
+    pub fn from_serializable<T: Serialize>(value: &T) -> VaultResult<Self> {
         let bytes = serde_json::to_vec(value).map_err(|e| VaultError::Serialization(e))?;
         Ok(Self {
             inner: Zeroizing::new(bytes),
@@ -95,7 +95,7 @@ impl VaultValue {
     }
 
     /// Tries to deserialize the underlying bytes (assuming JSON) into type `T`.
-    pub fn to_serializable<T: for<'de> Deserialize<'de>>(&self) -> Result<T, VaultError> {
+    pub fn to_serializable<T: for<'de> Deserialize<'de>>(&self) -> VaultResult<T> {
         serde_json::from_slice(self.expose_secret()).map_err(|e| VaultError::Serialization(e))
     }
 

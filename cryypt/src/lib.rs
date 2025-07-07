@@ -174,7 +174,7 @@ pub use cryypt_key::store::KeychainStore;
 
 #[cfg(any(feature = "aes", feature = "chacha20"))]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "aes", feature = "chacha20"))))]
-pub use cryypt_cipher::{Cipher, CryptError};
+pub use cryypt_cipher::{Cipher, CryptError, __cryypt_on_result_impl, __cryypt_on_chunk_impl, __cryypt_on_error_impl};
 
 // === Hashing Re-exports ===
 

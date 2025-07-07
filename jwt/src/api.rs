@@ -120,7 +120,7 @@ impl JwtBuilder {
     }
 
     /// Sign JWT without handler - returns AsyncJwtResult for String
-    pub fn sign<C: Serialize>(self, claims: C) -> AsyncJwtResult<String> {
+    pub fn sign<C: Serialize + Send + 'static>(self, claims: C) -> AsyncJwtResult<String> {
         let algorithm = self.algorithm.unwrap_or_else(|| "HS256".to_string());
         let secret = self.secret;
         let private_key = self.private_key;
@@ -158,7 +158,7 @@ where
     T: cryypt_common::NotResult + Send + 'static,
 {
     /// Sign JWT with handler - returns unwrapped type T
-    pub async fn sign<C: Serialize>(self, claims: C) -> T {
+    pub async fn sign<C: Serialize + Send + 'static>(self, claims: C) -> T {
         let algorithm = self.algorithm.unwrap_or_else(|| "HS256".to_string());
         let result = sign_jwt(algorithm, claims, self.secret, self.private_key).await;
         (self.handler)(result)
@@ -225,7 +225,7 @@ where
     }
 
     /// Sign JWT with error handler - returns AsyncJwtResult
-    pub fn sign<C: Serialize>(self, claims: C) -> AsyncJwtResultWithError<String, E> {
+    pub fn sign<C: Serialize + Send + 'static>(self, claims: C) -> AsyncJwtResultWithError<String, E> {
         let algorithm = self.algorithm.unwrap_or_else(|| "HS256".to_string());
         let secret = self.secret;
         let private_key = self.private_key;
@@ -274,7 +274,8 @@ impl<T: Send + 'static> std::future::Future for AsyncJwtResult<T> {
     type Output = Result<T, JwtError>;
 
     fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        match self.receiver.poll(cx) {
+        let receiver = std::pin::Pin::new(&mut self.receiver);
+        match receiver.poll(cx) {
             std::task::Poll::Ready(Ok(result)) => std::task::Poll::Ready(result),
             std::task::Poll::Ready(Err(_)) => std::task::Poll::Ready(Err(JwtError::internal("JWT operation failed"))),
             std::task::Poll::Pending => std::task::Poll::Pending,
@@ -301,7 +302,8 @@ where
     type Output = Result<T, JwtError>;
 
     fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        match self.receiver.poll(cx) {
+        let receiver = std::pin::Pin::new(&mut self.receiver);
+        match receiver.poll(cx) {
             std::task::Poll::Ready(Ok(Ok(value))) => std::task::Poll::Ready(Ok(value)),
             std::task::Poll::Ready(Ok(Err(e))) => std::task::Poll::Ready(Err((self.error_handler)(e))),
             std::task::Poll::Ready(Err(_)) => std::task::Poll::Ready(Err((self.error_handler)(JwtError::internal("JWT operation failed")))),
@@ -311,7 +313,7 @@ where
 }
 
 // Internal JWT operations using true async
-async fn sign_jwt<C: Serialize>(
+async fn sign_jwt<C: Serialize + Send + 'static>(
     algorithm: String,
     claims: C,
     secret: Option<Vec<u8>>,
@@ -553,7 +555,7 @@ fn sign_rs256(message: &str, private_key_der: &[u8]) -> Result<Vec<u8>, JwtError
     hasher.update(message.as_bytes());
     let hash = hasher.finalize();
     
-    key.sign(Pkcs1v15Sign::new::<Sha256>(), &hash)
+    key.sign(Pkcs1v15Sign::new_unprefixed(), &hash)
         .map_err(|e| JwtError::signing_error(&format!("RSA signing failed: {}", e)))
 }
 
@@ -568,7 +570,7 @@ fn sign_rs384(message: &str, private_key_der: &[u8]) -> Result<Vec<u8>, JwtError
     hasher.update(message.as_bytes());
     let hash = hasher.finalize();
     
-    key.sign(Pkcs1v15Sign::new::<Sha384>(), &hash)
+    key.sign(Pkcs1v15Sign::new_unprefixed(), &hash)
         .map_err(|e| JwtError::signing_error(&format!("RSA signing failed: {}", e)))
 }
 
@@ -583,7 +585,7 @@ fn sign_rs512(message: &str, private_key_der: &[u8]) -> Result<Vec<u8>, JwtError
     hasher.update(message.as_bytes());
     let hash = hasher.finalize();
     
-    key.sign(Pkcs1v15Sign::new::<Sha512>(), &hash)
+    key.sign(Pkcs1v15Sign::new_unprefixed(), &hash)
         .map_err(|e| JwtError::signing_error(&format!("RSA signing failed: {}", e)))
 }
 
@@ -599,7 +601,7 @@ fn verify_rs256(message: &str, signature: &[u8], public_key_der: &[u8]) -> Resul
     hasher.update(message.as_bytes());
     let hash = hasher.finalize();
     
-    key.verify(Pkcs1v15Sign::new::<Sha256>(), &hash, signature)
+    key.verify(Pkcs1v15Sign::new_unprefixed(), &hash, signature)
         .map(|_| true)
         .or_else(|_| Ok(false))
 }
@@ -615,7 +617,7 @@ fn verify_rs384(message: &str, signature: &[u8], public_key_der: &[u8]) -> Resul
     hasher.update(message.as_bytes());
     let hash = hasher.finalize();
     
-    key.verify(Pkcs1v15Sign::new::<Sha384>(), &hash, signature)
+    key.verify(Pkcs1v15Sign::new_unprefixed(), &hash, signature)
         .map(|_| true)
         .or_else(|_| Ok(false))
 }
@@ -631,7 +633,7 @@ fn verify_rs512(message: &str, signature: &[u8], public_key_der: &[u8]) -> Resul
     hasher.update(message.as_bytes());
     let hash = hasher.finalize();
     
-    key.verify(Pkcs1v15Sign::new::<Sha512>(), &hash, signature)
+    key.verify(Pkcs1v15Sign::new_unprefixed(), &hash, signature)
         .map(|_| true)
         .or_else(|_| Ok(false))
 }
@@ -686,7 +688,7 @@ fn verify_es256(message: &str, signature: &[u8], public_key_der: &[u8]) -> Resul
         .map_err(|e| JwtError::invalid_key(&format!("Invalid EC public key: {}", e)))?;
     
     let signature = Signature::from_der(signature)
-        .map_err(|e| JwtError::invalid_signature())?;
+        .map_err(|_e| JwtError::invalid_signature())?;
     
     let mut hasher = Sha256::new();
     hasher.update(message.as_bytes());
@@ -708,7 +710,7 @@ fn verify_es384(message: &str, signature: &[u8], public_key_der: &[u8]) -> Resul
         .map_err(|e| JwtError::invalid_key(&format!("Invalid EC public key: {}", e)))?;
     
     let signature = Signature::from_der(signature)
-        .map_err(|e| JwtError::invalid_signature())?;
+        .map_err(|_e| JwtError::invalid_signature())?;
     
     let mut hasher = Sha384::new();
     hasher.update(message.as_bytes());

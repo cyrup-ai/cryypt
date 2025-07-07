@@ -1,6 +1,6 @@
 //! Encryption result type that implements Future for clean async interfaces
 
-use crate::{CryptError, Result};
+use crate::Result;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};

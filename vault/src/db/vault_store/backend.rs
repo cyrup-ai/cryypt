@@ -13,7 +13,7 @@ use crate::operation::{
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use futures::StreamExt;
 use serde::Deserialize;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use tokio::sync::{mpsc, oneshot};
 
 impl SurrealDbVaultProvider {

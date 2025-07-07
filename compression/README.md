@@ -21,7 +21,11 @@ let compressed = Cryypt::compress()
     .zstd()
     .with_level(3)
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Compression error: {}", e))
+        Ok => result.to_vec(),
+        Err(e) => {
+            log::error!("Compression error: {}", e);
+            b"Large text data...".to_vec()
+        }
     })
     .compress(b"Large text data...")
     .await; // Returns fully unwrapped value - no Result wrapper // Returns Vec<u8> - the compressed bytes, fully unwrapped
@@ -30,12 +34,10 @@ let compressed = Cryypt::compress()
 let decompressed = Cryypt::compress()
     .zstd()
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Decompression failed: {}", e);
-                Vec::new()
-            }
+        Ok => result.to_vec(),
+        Err(e) => {
+            log::error!("Decompression failed: {}", e);
+            Vec::new()
         }
     })
     .decompress(&compressed)
@@ -46,12 +48,10 @@ let mut compressed_stream = Cryypt::compress()
     .zstd()
     .with_level(6)
     .on_chunk(|chunk| {
-        match chunk {
-            Ok(data) => Some(data),
-            Err(e) => {
-                log::error!("Compression error: {}", e);
-                None
-            }
+        Ok => chunk,
+        Err(e) => {
+            log::error!("Compression error: {}", e);
+            return
         }
     })
     .compress_stream(input_stream); // Returns Stream<Item = Vec<u8>> - fully unwrapped compressed chunks
@@ -66,12 +66,10 @@ while let Some(chunk) = compressed_stream.next().await {
 let mut decompressed_stream = Cryypt::compress()
     .zstd()
     .on_chunk(|chunk| {
-        match chunk {
-            Ok(data) => Some(data),
-            Err(e) => {
-                log::error!("Decompression error: {}", e);
-                None
-            }
+        Ok => chunk,
+        Err(e) => {
+            log::error!("Decompression error: {}", e);
+            return
         }
     })
     .decompress_stream(compressed_input);
@@ -87,7 +85,11 @@ let compressed = Cryypt::compress()
     .gzip()
     .with_level(6)
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Compression error: {}", e))
+        Ok => result.to_vec(),
+        Err(e) => {
+            log::error!("Compression error: {}", e);
+            b"Large text data...".to_vec()
+        }
     })
     .compress(data)
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -97,7 +99,11 @@ let compressed = Cryypt::compress()
     .bzip2()
     .with_level(9)
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        Ok => result.to_vec(),
+        Err(e) => {
+            log::error!("Operation error: {}", e);
+            Vec::new()
+        }
     })
     .compress(data)
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -108,7 +114,11 @@ let archive = Cryypt::compress()
     .add_file("readme.txt", readme_data)
     .add_file("data.json", json_data)
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        Ok => result.to_vec(),
+        Err(e) => {
+            log::error!("Operation error: {}", e);
+            Vec::new()
+        }
     })
     .compress()
     .await; // Returns Vec<u8> - the ZIP archive bytes, fully unwrapped
@@ -118,7 +128,11 @@ use cryypt::Compress;
 let compressed = Compress::zstd()
     .with_level(3)
     .on_result(|result| {
-        result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+        Ok => result.to_vec(),
+        Err(e) => {
+            log::error!("Operation error: {}", e);
+            Vec::new()
+        }
     })
     .compress(data)
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -139,10 +153,14 @@ async fn compress_and_encrypt_files(
         .with_store(store)
         .with_namespace("my-app")
         .version(1)
-        .retrieve(|result| {
-            Ok => Ok(result),
-            Err(e) => Err(e)
+        .on_result(|result| {
+            Ok => result,
+            Err(e) => {
+                log::error!("Key retrieval failed: {}", e);
+                Vec::new()
+            }
         })
+        .retrieve()
         .await; // Returns fully unwrapped value - no Result wrapper
     
     // Create ZIP archive
@@ -158,9 +176,10 @@ async fn compress_and_encrypt_files(
     // Compress
     let compressed = archive
         .on_result(|result| {
-            match result {
-                Ok(data) => Ok(data),
-                Err(e) => Err(e)
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Compression failed: {}", e);
+                Vec::new()
             }
         })
         .compress()
@@ -170,9 +189,10 @@ async fn compress_and_encrypt_files(
     let encrypted = Cipher::aes()
         .with_key(key)
         .on_result(|result| {
-            match result {
-                Ok(data) => Ok(data),
-                Err(e) => Err(e)
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Compression failed: {}", e);
+                Vec::new()
             }
         })
         .encrypt(&compressed)

@@ -23,7 +23,13 @@ let server = loop {
         .server()
         .with_cert(cert.clone())
         .with_key(private_key.clone())
-        .on_result(|result| result)
+        .on_result(|result| {
+            Ok => result,
+            Err(e) => {
+                log::error!("QUIC error: {}", e);
+                return Err(e)
+            }
+        })
         .bind(format!("127.0.0.1:{}", port))
         .await;
     
@@ -45,12 +51,10 @@ let client = Cryypt::quic()
     .client()
     .with_server_name("example.com")
     .on_result(|result| {
-        match result {
-            Ok(client) => client,
-            Err(e) => {
-                log::error!("Connection failed: {}", e);
-                Cryypt::quic().client() // Return unconnected client
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Connection failed: {}", e);
+            Cryypt::quic().client() // Return unconnected client
         }
     })
     .connect("127.0.0.1:4433")
@@ -59,12 +63,10 @@ let client = Cryypt::quic()
 // Open bidirectional stream
 let (send, recv) = client
     .on_result(|result| {
-        match result {
-            Ok(streams) => streams,
-            Err(e) => {
-                log::error!("Failed to open stream: {}", e);
-                (QuicSend::new(), QuicRecv::new()) // Empty streams
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Failed to open stream: {}", e);
+            (QuicSend::new(), QuicRecv::new()) // Empty streams
         }
     })
     .open_bi()
@@ -73,11 +75,10 @@ let (send, recv) = client
 // Send data
 send
     .on_result(|result| {
-        match result {
-            Ok(()) => (),
-            Err(e) => {
-                log::error!("Failed to send data: {}", e);
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Failed to send data: {}", e);
+            ()
         }
     })
     .write_all(b"Hello QUIC")
@@ -87,12 +88,10 @@ send
 let mut data = Vec::new();
 let mut recv_stream = recv
     .on_chunk(|chunk| {
-        match chunk {
-            Ok(data) => Some(data),
-            Err(e) => {
-                log::error!("Receive error: {}", e);
-                None
-            }
+        Ok => chunk,
+        Err(e) => {
+            log::error!("Receive error: {}", e);
+            return
         }
     })
     .stream();

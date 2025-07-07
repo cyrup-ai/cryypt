@@ -139,6 +139,16 @@ impl QuicServer {
             _handle: None,
         }
     }
+    
+    /// Get the server's bound address
+    pub fn addr(&self) -> &SocketAddr {
+        &self.addr
+    }
+    
+    /// Check if the server is bound
+    pub fn is_bound(&self) -> bool {
+        self.bound
+    }
 }
 
 /// QUIC client builder
@@ -174,6 +184,7 @@ impl QuicClientBuilder {
 
 /// Client builder with error handler  
 pub struct QuicClientWithHandler<F> {
+    #[allow(dead_code)]
     builder: QuicClientBuilder,
     handler: F,
 }
@@ -234,6 +245,16 @@ impl QuicClient {
             connected: false,
             handle: None,
         }
+    }
+    
+    /// Get the client's remote address
+    pub fn addr(&self) -> &SocketAddr {
+        &self.addr
+    }
+    
+    /// Check if the client is connected
+    pub fn is_connected(&self) -> bool {
+        self.connected
     }
     
     /// Open bidirectional stream with error handler

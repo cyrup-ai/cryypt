@@ -27,12 +27,10 @@ let token = Cryypt::jwt()
     .with_algorithm("HS256")
     .with_secret(b"secret_key")
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("JWT operation failed: {}", e);
-                String::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("JWT operation failed: {}", e);
+            String::new()
         }
     })
     .sign(claims)
@@ -42,12 +40,10 @@ let token = Cryypt::jwt()
 let claims = Cryypt::jwt()
     .with_secret(b"secret_key")
     .on_result(|result| {
-        match result {
-            Ok(claims) => claims,
-            Err(e) => {
-                log::error!("JWT verification failed: {}", e);
-                serde_json::Value::Null
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("JWT verification failed: {}", e);
+            serde_json::Value::Null
         }
     })
     .verify(token)
@@ -58,12 +54,10 @@ let token = Cryypt::jwt()
     .with_algorithm("RS256")
     .with_private_key(private_key)
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("JWT operation failed: {}", e);
-                String::new()
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("JWT operation failed: {}", e);
+            String::new()
         }
     })
     .sign(claims)

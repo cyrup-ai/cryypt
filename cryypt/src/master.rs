@@ -1,14 +1,5 @@
 //! Master builder for all cryypt operations following README.md patterns
 
-#[cfg(any(feature = "aes", feature = "chacha20"))]
-use cryypt_cipher::Cipher;
-
-#[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
-use cryypt_hashing::Hash;
-
-#[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
-use cryypt_compression::Compress;
-
 #[cfg(feature = "jwt")]
 use cryypt_jwt::{Cryypt as JwtCryypt};
 
@@ -60,8 +51,14 @@ impl CipherMasterBuilder {
     
     /// Use ChaCha20-Poly1305 encryption - README.md pattern
     #[cfg(feature = "chacha20")]
-    pub fn chachapoly(self) -> cryypt_cipher::cipher::api::ChaChaBuilder {
-        cryypt_cipher::Cipher::chachapoly()
+    pub fn chacha20(self) -> cryypt_cipher::ChaChaBuilder {
+        cryypt_cipher::Cipher::chacha20()
+    }
+    
+    /// Use ChaCha20-Poly1305 encryption (alias) - README.md pattern
+    #[cfg(feature = "chacha20")]
+    pub fn chachapoly(self) -> cryypt_cipher::ChaChaBuilder {
+        cryypt_cipher::Cipher::chacha20()
     }
 }
 

@@ -12,7 +12,7 @@ pub mod api;
 mod algorithms;
 mod error;
 mod types;
-mod crypto;
+pub(crate) mod crypto;
 mod rotation;
 
 // Public re-exports following README.md patterns

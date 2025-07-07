@@ -25,12 +25,10 @@ let key = Cryypt::key()
     .with_namespace("my-app")
     .version(1)
     .on_result(|result| {
-        match result {
-            Ok(key) => key,
-            Err(e) => {
-                log::error!("Key generation failed: {}", e);
-                Vec::new() // Return empty key on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Key generation failed: {}", e);
+            Vec::new() // Return empty key on error
         }
     })
     .await; // Returns Key - the actual key object, fully unwrapped
@@ -42,12 +40,10 @@ let key = Cryypt::key()
     .with_namespace("my-app")
     .version(1)
     .on_result(|result| {
-        match result {
-            Ok(key) => key,
-            Err(e) => {
-                log::error!("Key generation failed: {}", e);
-                Vec::new() // Return empty key on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Key generation failed: {}", e);
+            Vec::new() // Return empty key on error
         }
     })
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -56,12 +52,10 @@ let key = Cryypt::key()
 let encrypted = key
     .aes()
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation failed: {}", e);
+            Vec::new() // Return empty on error
         }
     })
     .encrypt(b"Secret message")
@@ -71,12 +65,10 @@ let encrypted = key
 let plaintext = key
     .aes()
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation failed: {}", e);
+            Vec::new() // Return empty on error
         }
     })
     .decrypt(&encrypted)
@@ -86,12 +78,10 @@ let plaintext = key
 let encrypted = key
     .chacha20()
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation failed: {}", e);
+            Vec::new() // Return empty on error
         }
     })
     .encrypt(b"Secret message")
@@ -103,15 +93,14 @@ let key = KeyRetriever::new()
     .with_store(store)
     .with_namespace("my-app")
     .version(1)
-    .retrieve(|result| {
-        match result {
-            Ok(key) => key,
-            Err(e) => {
-                log::error!("Key retrieval failed: {}", e);
-                Vec::new() // Return empty key on error
-            }
+    .on_result(|result| {
+        Ok => result,
+        Err(e) => {
+            log::error!("Key retrieval failed: {}", e);
+            Vec::new() // Return empty key on error
         }
     })
+    .retrieve()
     .await; // Returns fully unwrapped value - no Result wrapper
 ```
 
@@ -128,12 +117,10 @@ let new_key = Cryypt::key()
     .with_namespace("my-app")
     .version(2) // New version
     .on_result(|result| {
-        match result {
-            Ok(key) => key,
-            Err(e) => {
-                log::error!("Key generation failed: {}", e);
-                Vec::new() // Return empty key on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Key generation failed: {}", e);
+            Vec::new() // Return empty key on error
         }
     })
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -145,12 +132,10 @@ let old_key = Cryypt::key()
     .with_namespace("my-app")
     .version(1) // Old version
     .on_result(|result| {
-        match result {
-            Ok(key) => key,
-            Err(e) => {
-                log::error!("Key generation failed: {}", e);
-                Vec::new() // Return empty key on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Key generation failed: {}", e);
+            Vec::new() // Return empty key on error
         }
     })
     .await; // Returns fully unwrapped value - no Result wrapper
@@ -160,12 +145,10 @@ let plaintext = Cryypt::cipher()
     .aes()
     .with_key(old_key)
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation failed: {}", e);
+            Vec::new() // Return empty on error
         }
     })
     .decrypt(ciphertext)
@@ -176,12 +159,10 @@ let new_ciphertext = Cryypt::cipher()
     .aes()
     .with_key(new_key)
     .on_result(|result| {
-        match result {
-            Ok(data) => data,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
-            }
+        Ok => result,
+        Err(e) => {
+            log::error!("Operation failed: {}", e);
+            Vec::new() // Return empty on error
         }
     })
     .encrypt(plaintext)

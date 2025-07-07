@@ -1,6 +1,5 @@
 //! Vault operations for CLI commands
 
-use super::commands::Commands;
 use crate::core::Vault;
 use crate::logging::log_security_event;
 use dialoguer::{Password, theme::ColorfulTheme};

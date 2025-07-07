@@ -43,7 +43,7 @@ impl AwsSecretsInterface {
             .profile_name(&self.profile)
             .build();
 
-        let config = aws_config::from_env()
+        let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
             .credentials_provider(credentials_provider)
             .region(region)
             .load()

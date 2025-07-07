@@ -8,8 +8,8 @@ pub struct Hash;
 
 impl Hash {
     /// Use SHA-256 - README.md pattern
-    pub fn sha256() -> Sha256Builder {
-        Sha256Builder::new()
+    pub fn sha256() -> crate::api::sha256_builder::Sha256Builder {
+        crate::api::sha256_builder::Sha256Builder::new()
     }
 
     /// Use SHA3-256 - README.md pattern  

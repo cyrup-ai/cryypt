@@ -264,11 +264,11 @@ impl GzipDecompressor {
         // Append new data to our buffer
         self.buffer.extend_from_slice(&chunk);
         
-        // Create new decoder with all data
-        let mut decoder = flate2::read::GzDecoder::new(std::io::Cursor::new(self.buffer.clone()));
+        // Update the decoder with new data
+        self.decoder = flate2::read::GzDecoder::new(std::io::Cursor::new(self.buffer.clone()));
         let mut output = Vec::new();
         
-        match decoder.read_to_end(&mut output) {
+        match self.decoder.read_to_end(&mut output) {
             Ok(_) => Ok(output),
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 // Need more data, return empty for now

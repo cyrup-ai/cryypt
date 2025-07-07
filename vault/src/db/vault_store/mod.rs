@@ -2,31 +2,20 @@
 //!
 //! Contains the main store traits, types, and error handling for vault storage operations.
 
-use crate::core::VaultValue;
-use crate::db::dao::{Error as DaoError, GenericDao, SurrealDbDao, TableType};
-use crate::error::{VaultError, VaultResult};
-use crate::operation::{
-    Passphrase, VaultBoolRequest, VaultChangePassphraseRequest, VaultFindRequest, VaultGetRequest,
-    VaultListRequest, VaultOperation, VaultPutAllRequest, VaultSaveRequest, VaultUnitRequest,
-};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use futures::StreamExt;
+use crate::db::dao::{Error as DaoError, SurrealDbDao, TableType};
+use crate::error::VaultError;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::Surreal;
 use surrealdb::engine::any::Any;
 use chrono::{DateTime, Utc};
-use tokio::sync::{mpsc, oneshot};
 
 // Declare submodules
 pub mod backend;
 pub mod cache;
 pub mod transactions;
 
-// Re-export key types from submodules
-pub use backend::*;
-pub use cache::*;
-pub use transactions::*;
+// Re-export key types from submodules would go here when needed
 
 /// Vault entry stored in SurrealDB
 #[derive(Debug, Clone, Serialize, Deserialize)]

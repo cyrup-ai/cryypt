@@ -4,7 +4,7 @@
 //! Usage: `Cipher::aes().with_key(key).on_result(handler).encrypt(data).await`
 
 pub mod aes_builder;
-mod chacha_builder;
+pub mod chacha_builder;
 mod cipher;
 mod cipher_builder_traits;
 
@@ -30,7 +30,21 @@ pub use chacha_builder::{ChaChaBuilder, ChaChaWithKey};
 // Export traits for compatibility
 pub use cipher_builder_traits::KeyBuilder;
 
-// Export crypto stream
+/// Streaming cryptographic operations for processing large data sets
+///
+/// `CryptoStream` provides an interface for streaming encryption and decryption
+/// operations that can handle data larger than memory in chunks. This is useful
+/// for processing files, network streams, or other large data sources without
+/// loading everything into memory at once.
+///
+/// # Examples
+///
+/// ```no_run
+/// use cryypt_cipher::cipher::api::CryptoStream;
+///
+/// let stream = CryptoStream::new();
+/// // Use stream for chunk-based crypto operations
+/// ```
 #[derive(Debug)]
 pub struct CryptoStream;
 

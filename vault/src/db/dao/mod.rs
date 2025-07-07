@@ -12,8 +12,6 @@ use surrealdb::Surreal;
 use surrealdb::engine::any::Any;
 use thiserror::Error;
 use chrono::{DateTime, Utc};
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
 
 // Import individual implementations
 mod documents;

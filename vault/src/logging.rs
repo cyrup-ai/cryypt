@@ -1,4 +1,4 @@
-use log::{info, warn, error};
+use log::{info, warn};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Logs a security-relevant event with standardized formatting

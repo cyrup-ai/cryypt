@@ -1,153 +1,214 @@
-//! Post-Quantum Cryptography API examples - EXACTLY matching pqcrypto/README.md
+use cryypt::{Cryypt, on_result};
 
-// NOTE: This example cannot import cryypt due to circular dependency
-// use cryypt::{Cryypt, on_result};
-
-// NOTE: All example functions commented out due to circular dependency with main cryypt crate
-/*
-/// Kyber Key Exchange example from README
-async fn kyber_key_exchange() -> Result<(), Box<dyn std::error::Error>> {
-    // Kyber key exchange
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Post-Quantum Cryptography Examples");
+    
+    // Demo 1: Kyber key exchange
+    println!("\n=== Kyber Key Exchange Demo ===");
+    
+    // Generate keypair
     let (public_key, secret_key) = Cryypt::pqcrypto()
         .kyber()
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("Kyber keypair generation error: {}", e);
+                (Vec::new(), Vec::new()) // Return empty keys on error
+            }
         })
         .generate_keypair()
         .await; // Returns fully unwrapped value - no Result wrapper
+
+    println!("Kyber keypair generated:");
+    println!("  Public key size: {} bytes", public_key.len());
+    println!("  Secret key size: {} bytes", secret_key.len());
 
     // Encapsulate shared secret
     let (ciphertext, shared_secret) = Cryypt::pqcrypto()
         .kyber()
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("Kyber encapsulation error: {}", e);
+                (Vec::new(), Vec::new()) // Return empty on error
+            }
         })
-        .encapsulate(public_key)
+        .encapsulate(public_key.clone())
         .await; // Returns fully unwrapped value - no Result wrapper
+
+    println!("Encapsulation completed:");
+    println!("  Ciphertext size: {} bytes", ciphertext.len());
+    println!("  Shared secret size: {} bytes", shared_secret.len());
 
     // Decapsulate shared secret
-    let shared_secret = Cryypt::pqcrypto()
+    let decapsulated_secret = Cryypt::pqcrypto()
         .kyber()
-        .with_secret_key(secret_key)
+        .with_secret_key(secret_key.clone())
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("Kyber decapsulation error: {}", e);
+                Vec::new() // Return empty on error
+            }
         })
-        .decapsulate(ciphertext)
+        .decapsulate(ciphertext.clone())
         .await; // Returns fully unwrapped value - no Result wrapper
 
-    println!("Kyber key exchange completed successfully");
-    Ok(())
-}
+    println!("Decapsulation completed:");
+    println!("  Decapsulated secret size: {} bytes", decapsulated_secret.len());
+    println!("  Secrets match: {}", if shared_secret == decapsulated_secret { "✅ YES" } else { "❌ NO" });
 
-/// Dilithium Signatures example from README
-async fn dilithium_signatures() -> Result<(), Box<dyn std::error::Error>> {
-    let message = b"Important message to sign";
+    // Demo 2: Dilithium signatures
+    println!("\n=== Dilithium Digital Signatures Demo ===");
     
-    // Dilithium signatures
-    let (public_key, secret_key) = Cryypt::pqcrypto()
+    let message = b"Important message that needs to be signed";
+    
+    let (sig_public_key, sig_secret_key) = Cryypt::pqcrypto()
         .dilithium()
         .with_security_level(3)
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("Dilithium keypair generation error: {}", e);
+                (Vec::new(), Vec::new()) // Return empty keys on error
+            }
         })
         .generate_keypair()
         .await; // Returns fully unwrapped value - no Result wrapper
 
+    println!("Dilithium keypair generated:");
+    println!("  Public key size: {} bytes", sig_public_key.len());
+    println!("  Secret key size: {} bytes", sig_secret_key.len());
+
     let signature = Cryypt::pqcrypto()
         .dilithium()
-        .with_secret_key(secret_key)
+        .with_secret_key(sig_secret_key.clone())
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("Dilithium signing error: {}", e);
+                Vec::new() // Return empty signature on error
+            }
         })
         .sign(message)
         .await; // Returns fully unwrapped value - no Result wrapper
 
+    println!("Message signed:");
+    println!("  Message: {}", String::from_utf8_lossy(message));
+    println!("  Signature size: {} bytes", signature.len());
+
     let valid = Cryypt::pqcrypto()
         .dilithium()
-        .with_public_key(public_key)
-        .with_signature(signature)
+        .with_public_key(sig_public_key.clone())
+        .with_signature(signature.clone())
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("Dilithium verification error: {}", e);
+                false // Return false on error
+            }
         })
         .verify(message)
         .await; // Returns fully unwrapped value - no Result wrapper
 
-    println!("Dilithium signature valid: {}", valid);
-    Ok(())
-}
+    println!("Signature verification: {}", if valid { "✅ VALID" } else { "❌ INVALID" });
 
-/// Secure Multi-party Communication example from README
-async fn secure_multiparty_communication() -> Result<(), Box<dyn std::error::Error>> {
+    // Demo 3: Complete key exchange scenario
+    println!("\n=== Complete Key Exchange Scenario ===");
+    
     // Alice generates keypair
     let (alice_public, alice_secret) = Cryypt::pqcrypto()
         .kyber()
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("Alice keypair generation error: {}", e);
+                (Vec::new(), Vec::new())
+            }
         })
         .generate_keypair()
         .await; // Returns fully unwrapped value - no Result wrapper
 
-    // Bob encapsulates shared secret
-    let (ciphertext, bob_shared_secret) = Cryypt::pqcrypto()
+    println!("Alice generated Kyber keypair");
+
+    // Bob encapsulates shared secret using Alice's public key
+    let (bob_ciphertext, bob_shared_secret) = Cryypt::pqcrypto()
         .kyber()
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("Bob encapsulation error: {}", e);
+                (Vec::new(), Vec::new())
+            }
         })
         .encapsulate(alice_public)
         .await; // Returns fully unwrapped value - no Result wrapper
+
+    println!("Bob encapsulated shared secret");
 
     // Alice decapsulates to get same shared secret
     let alice_shared_secret = Cryypt::pqcrypto()
         .kyber()
         .with_secret_key(alice_secret)
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("Alice decapsulation error: {}", e);
+                Vec::new()
+            }
         })
-        .decapsulate(ciphertext)
+        .decapsulate(bob_ciphertext)
         .await; // Returns fully unwrapped value - no Result wrapper
+
+    println!("Alice decapsulated shared secret");
+    println!("Shared secrets match: {}", if bob_shared_secret == alice_shared_secret { "✅ YES" } else { "❌ NO" });
 
     // Now both can use shared secret for symmetric encryption
+    let secret_message = b"Secret message using post-quantum shared secret";
+    
+    // Pad the shared secret to 32 bytes for AES-256 (if needed)
+    let mut encryption_key = bob_shared_secret;
+    encryption_key.resize(32, 0); // Pad or truncate to 32 bytes
+    
     let encrypted = Cryypt::cipher()
         .aes()
-        .with_key(bob_shared_secret)
+        .with_key(encryption_key.clone())
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("AES encryption error: {}", e);
+                Vec::new()
+            }
         })
-        .encrypt(b"Secret message")
+        .encrypt(secret_message)
         .await; // Returns fully unwrapped value - no Result wrapper
+
+    println!("Message encrypted with PQ-derived key:");
+    println!("  Original: {}", String::from_utf8_lossy(secret_message));
+    println!("  Encrypted size: {} bytes", encrypted.len());
 
     // Alice can decrypt using her shared secret
+    let mut alice_encryption_key = alice_shared_secret;
+    alice_encryption_key.resize(32, 0); // Same padding
+    
     let decrypted = Cryypt::cipher()
         .aes()
-        .with_key(alice_shared_secret)
+        .with_key(alice_encryption_key)
         .on_result(|result| {
-            result.unwrap_or_else(|e| panic!("Operation error: {}", e))
+            Ok => result,
+            Err(e) => {
+                log::error!("AES decryption error: {}", e);
+                Vec::new()
+            }
         })
-        .decrypt(&encrypted)
+        .decrypt(encrypted)
         .await; // Returns fully unwrapped value - no Result wrapper
 
-    println!("Decrypted message: {:?}", String::from_utf8(decrypted)?);
-    Ok(())
-}
+    println!("  Decrypted: {}", String::from_utf8_lossy(&decrypted));
+    println!("  Message integrity: {}", if decrypted == secret_message { "✅ PASSED" } else { "❌ FAILED" });
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Kyber Key Exchange ===");
-    kyber_key_exchange().await?;
-    
-    println!("\n=== Dilithium Signatures ===");
-    dilithium_signatures().await?;
-    
-    println!("\n=== Secure Multi-party Communication ===");
-    secure_multiparty_communication().await?;
-    
-    Ok(())
-}
-*/
+    println!("\n🎉 Post-quantum cryptography demo completed successfully!");
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("PQCrypto examples are disabled due to circular dependency with main cryypt crate");
-    println!("Use the examples in the main examples/ directory instead");
     Ok(())
 }

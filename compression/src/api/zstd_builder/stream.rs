@@ -263,12 +263,12 @@ impl ZstdDecompressor {
         // Append new data to buffer
         self.buffer.extend_from_slice(&chunk);
         
-        // Create new decoder with all buffered data
-        let mut decoder = zstd::stream::Decoder::new(std::io::BufReader::new(Cursor::new(self.buffer.clone())))
+        // Update decoder with all buffered data
+        self.decoder = zstd::stream::Decoder::new(std::io::BufReader::new(Cursor::new(self.buffer.clone())))
             .map_err(|e| CompressionError::internal(e.to_string()))?;
         
         let mut output = Vec::new();
-        match decoder.read_to_end(&mut output) {
+        match self.decoder.read_to_end(&mut output) {
             Ok(_) => Ok(output),
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 // Need more data

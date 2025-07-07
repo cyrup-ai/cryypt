@@ -1,11 +1,8 @@
-use zeroize::Zeroizing;
 use super::super::app::App;
-use super::super::types::{AppMode, AppTab, InputField, AwsSecretsStateMode};
-use super::super::aws_interface::{AwsSecretManager, SecretSummary, AwsError};
-use ratatui::backend::Backend;
+use super::super::types::{AppMode, InputField, AwsSecretsStateMode};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span, Text};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
 use ratatui::Frame;
 

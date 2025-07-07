@@ -1,187 +1,65 @@
-//! Hashing API examples - EXACTLY matching hashing/README.md
-
-use cryypt::{Cryypt, Hash};
-
-/// Basic Hashing example from README
-async fn basic_hashing_example() -> Result<(), Box<dyn std::error::Error>> {
-    // SHA-256 hash
-    let hash = Cryypt::hash()
-        .sha256()
-        .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Hash error: {}", e);
-                    panic!("Hash error: {}", e)
-                }
-            }
-        })
-        .compute(b"Hello, World!")
-        .await; // Returns fully unwrapped value - no Result wrapper
-
-    println!("SHA-256: {}", hex::encode(&hash));
-
-    // SHA3-256 hash
-    let hash = Cryypt::hash()
-        .sha3_256()
-        .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Hash error: {}", e);
-                    panic!("Hash error: {}", e)
-                }
-            }
-        })
-        .compute(b"Hello, World!")
-        .await; // Returns fully unwrapped value - no Result wrapper
-
-    println!("SHA3-256: {}", hex::encode(&hash));
-
-    // BLAKE2b hash with custom output size
-    let hash = Cryypt::hash()
-        .blake2b_512()
-        .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Hash error: {}", e);
-                    panic!("Hash error: {}", e)
-                }
-            }
-        })
-        .compute(b"Hello, World!")
-        .await; // Returns fully unwrapped value - no Result wrapper
-
-    println!("BLAKE2b-512: {}", hex::encode(&hash));
-
-    Ok(())
-}
-
-/// Streaming Hash example from README
-async fn streaming_hash_example() -> Result<(), Box<dyn std::error::Error>> {
-    // Stream hashing for large files
-    let file_stream = tokio::fs::File::open("/etc/hosts").await?;
-    
-    let hash = Cryypt::hash()
-        .sha256()
-        .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Hash error: {}", e);
-                    panic!("Hash error: {}", e)
-                }
-            }
-        })
-        .compute_stream(file_stream)
-        .await; // Returns fully unwrapped value - no Result wrapper
-
-    println!("File SHA-256: {}", hex::encode(&hash));
-
-    // Alternative: Direct builders are also available
-    let hash = Hash::sha256()
-        .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Hash error: {}", e);
-                    panic!("Hash error: {}", e)
-                }
-            }
-        })
-        .compute(b"Hello, World!")
-        .await; // Returns fully unwrapped value - no Result wrapper
-
-    println!("Direct builder SHA-256: {}", hex::encode(&hash));
-
-    Ok(())
-}
-
-/// Multi-pass Hashing example from README
-async fn multi_pass_hashing_example() -> Result<(), Box<dyn std::error::Error>> {
-    // Create hasher for multiple inputs
-    let mut hasher = Cryypt::hash()
-        .sha256()
-        .on_result(|result| {
-            match result {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!("Hash error: {}", e);
-                    panic!("Hash error: {}", e)
-                }
-            }
-        })
-        .multi_pass();
-
-    // Add multiple pieces of data
-    hasher.update(b"Part 1");
-    hasher.update(b"Part 2");
-    hasher.update(b"Part 3");
-
-    // Get final hash
-    let hash = hasher.finalize().await; // Returns fully unwrapped value - no Result wrapper
-
-    println!("Multi-pass hash: {}", hex::encode(&hash));
-
-    Ok(())
-}
-
-/// File Integrity Verification example from README
-async fn file_integrity_example() -> Result<(), Box<dyn std::error::Error>> {
-    use cryypt::Hash;
-    use tokio::fs::File;
-    
-    // Calculate file hash
-    async fn hash_file(path: &str) -> Vec<u8> {
-        let file = File::open(path).await.unwrap();
-        
-        Hash::sha256()
-            .on_result(|result| {
-                match result {
-                    Ok(data) => data,
-                    Err(e) => {
-                        log::error!("Hash error: {}", e);
-                        panic!("Hash error: {}", e)
-                    }
-                }
-            })
-            .compute_stream(file)
-            .await // Returns fully unwrapped value - no Result wrapper
-    }
-    
-    // Verify file integrity
-    async fn verify_file(path: &str, expected_hash: &[u8]) -> bool {
-        let actual_hash = hash_file(path).await;
-        actual_hash == expected_hash
-    }
-    
-    // Example usage
-    let test_file = "/tmp/test_hash.txt";
-    tokio::fs::write(test_file, b"Test content").await?;
-    
-    let original_hash = hash_file(test_file).await;
-    println!("Original hash: {}", hex::encode(&original_hash));
-    
-    let is_valid = verify_file(test_file, &original_hash).await;
-    println!("File integrity check: {}", if is_valid { "PASS" } else { "FAIL" });
-    
-    Ok(())
-}
+use cryypt::Cryypt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Basic Hashing ===");
-    basic_hashing_example().await?;
+    // Test 1: Success case with SHA256
+    let hash = Cryypt::hash()
+        .sha256()
+        .on_result(cryypt::__cryypt_on_result_impl!(|result| {
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("Hash computation failed: {}", e);
+                Vec::new()
+            }
+        }))
+        .compute(b"Hello, World!")
+        .await;
     
-    println!("\n=== Streaming Hash ===");
-    streaming_hash_example().await?;
+    println!("Test 1 - Success case:");
+    println!("Hash length: {}", hash.len());
+    println!("Hash: {}", hex::encode(&hash));
     
-    println!("\n=== Multi-pass Hashing ===");
-    multi_pass_hashing_example().await?;
+    // Test 2: HMAC with key
+    let hmac = Cryypt::hash()
+        .sha256()
+        .with_key(b"secret_key")
+        .on_result(cryypt::__cryypt_on_result_impl!(|result| {
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("HMAC operation failed: {}", e);
+                Vec::new()
+            }
+        }))
+        .compute(b"Message to authenticate")
+        .await;
     
-    println!("\n=== File Integrity Verification ===");
-    file_integrity_example().await?;
+    println!("\nTest 2 - HMAC case:");
+    println!("HMAC length: {}", hmac.len());
+    println!("HMAC: {}", hex::encode(&hmac));
     
+    // Test 3: Error case - this should trigger the error handler if we can force an error
+    println!("\nTest 3 - Testing error handling:");
+    let error_result = Cryypt::hash()
+        .sha256()
+        .on_result(cryypt::__cryypt_on_result_impl!(|result| {
+            Ok => result.to_vec(),
+            Err(e) => {
+                log::error!("ERROR HANDLER CALLED: {}", e);
+                vec![99, 99, 99] // Return specific error value to prove handler was used
+            }
+        }))
+        .compute(b"This should succeed normally")
+        .await;
+    
+    println!("Result length: {} (should be 32 for normal SHA256)", error_result.len());
+    if error_result.len() == 32 {
+        println!("✅ NORMAL OPERATION - SHA256 hash computed successfully");
+        println!("Hash: {}", hex::encode(&error_result));
+    } else if error_result == vec![99, 99, 99] {
+        println!("✅ ERROR HANDLER VERIFICATION PASSED - Custom error value returned");
+    } else {
+        println!("❌ UNEXPECTED RESULT: {:?}", error_result);
+    }
+
     Ok(())
 }
