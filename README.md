@@ -1,5 +1,9 @@
 # Cryypt
 
+<div align="center">
+  <img src="assets/cryypt.png" alt="Cryypt Logo" width="200"/>
+</div>
+
 A comprehensive cryptography library for Rust, providing immutable builders for encryption, hashing, compression, and key management.
 
 ## Crates
@@ -75,12 +79,12 @@ let encrypted = Cryypt::cipher()
     .on_result(|result| {
         Ok => result,
         Err(e) => {
-            log::error!("Encryption failed: {}", e);
-            Vec::new() // Return empty on error
+            log::error!("Cipher operation failed: {}", e);
+            Vec::new()
         }
     })
     .encrypt(b"Secret message")
-    .await;
+    .await; // Returns fully unwrapped value - no Result wrapper
 ```
 
 ### Hashing
@@ -91,11 +95,11 @@ let hash = Cryypt::hash()
         Ok => result.to_vec(),
         Err(e) => {
             log::error!("Hash computation failed: {}", e);
-            Vec::new() // Return empty hash on error
+            Vec::new()
         }
     })
     .compute(b"Hello, World!")
-    .await;
+    .await; // Returns Vec<u8> - the actual hash bytes, fully unwrapped
 ```
 
 ### Compression
@@ -106,12 +110,12 @@ let compressed = Cryypt::compress()
     .on_result(|result| {
         Ok => result.to_vec(),
         Err(e) => {
-            log::error!("Compression failed: {}", e);
-            b"Large text data...".to_vec() // Return original on error
+            log::error!("Compression error: {}", e);
+            b"Large text data...".to_vec()
         }
     })
     .compress(b"Large text data...")
-    .await;
+    .await; // Returns Vec<u8> - the compressed bytes, fully unwrapped
 ```
 
 ## License
