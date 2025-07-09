@@ -3,11 +3,12 @@
 //! Contains the main store traits, types, and error handling for vault storage operations.
 
 use crate::db::dao::{Error as DaoError, SurrealDbDao, TableType};
-use crate::error::VaultError;
+use crate::error::{VaultError, VaultResult};
+use crate::config::VaultConfig;
+use crate::operation::Passphrase;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use surrealdb::Surreal;
-use surrealdb::engine::any::Any;
+use tokio::sync::Mutex;
 use chrono::{DateTime, Utc};
 
 // Declare submodules
@@ -49,17 +50,39 @@ pub(crate) fn map_dao_error(e: DaoError) -> VaultError {
     }
 }
 
-/// Vault provider using SurrealDB for storage.
+/// Local vault provider using SurrealDB for storage.
 #[derive(Debug, Clone)]
-pub struct SurrealDbVaultProvider {
+pub struct LocalVaultProvider {
     pub(crate) dao: SurrealDbDao<VaultEntry>,
+    pub(crate) config: VaultConfig,
+    pub(crate) locked: Arc<Mutex<bool>>,
+    pub(crate) passphrase: Arc<Mutex<Option<Passphrase>>>,
+    pub(crate) session_token: Arc<Mutex<Option<String>>>,
+    pub(crate) encryption_key: Arc<Mutex<Option<Vec<u8>>>>,
 }
 
-impl SurrealDbVaultProvider {
-    /// Create a new SurrealDbVaultProvider DAO
-    pub fn new(db: Arc<Surreal<Any>>) -> Self {
-        Self {
+impl LocalVaultProvider {
+    /// Create a new LocalVaultProvider with SurrealKV local storage
+    pub async fn new(config: VaultConfig) -> VaultResult<Self> {
+        // Create SurrealKV connection using the vault_path from config
+        let db_url = format!("surrealkv://{}", config.vault_path.display());
+        let db = surrealdb::engine::any::connect(&db_url)
+            .await
+            .map_err(|e| VaultError::Provider(format!("Failed to connect to SurrealDB: {}", e)))?;
+        
+        // Use a default namespace and database
+        db.use_ns("vault").use_db("vault").await
+            .map_err(|e| VaultError::Provider(format!("Failed to set namespace/database: {}", e)))?;
+        
+        let db = Arc::new(db);
+        
+        Ok(Self {
             dao: SurrealDbDao::new(db, "vault_entries", TableType::Document),
-        }
+            config,
+            locked: Arc::new(Mutex::new(true)), // Start locked
+            passphrase: Arc::new(Mutex::new(None)),
+            session_token: Arc::new(Mutex::new(None)),
+            encryption_key: Arc::new(Mutex::new(None)),
+        })
     }
 }

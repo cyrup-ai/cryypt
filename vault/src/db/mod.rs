@@ -9,5 +9,5 @@ pub mod vault_store;
 #[allow(unused_imports)]
 pub use {
     db::Dao, document::Document, document::DocumentDao, stream::QueryStream,
-    vault_store::SurrealDbVaultProvider, vault_store::VaultEntry,
+    vault_store::LocalVaultProvider, vault_store::VaultEntry,
 };

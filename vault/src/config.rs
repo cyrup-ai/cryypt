@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VaultConfig {
     pub vault_path: PathBuf,
     pub salt_path: PathBuf,
@@ -27,19 +27,19 @@ fn default_parallelism() -> u32 {
 
 impl Default for VaultConfig {
     fn default() -> Self {
-        // Use XDG_DATA_HOME or ~/.local/share for data storage
+        // Use XDG_CONFIG_HOME or ~/.config for configuration storage
         // This follows the XDG Base Directory Specification
-        let data_dir = dirs::data_dir()
+        let config_dir = dirs::config_dir()
             .unwrap_or_else(|| {
                 let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("~"));
-                home.join(".local/share")
+                home.join(".config")
             })
-            .join("cysec");
+            .join("cryypt");
 
         // Create the directory if it doesn't exist
-        if !data_dir.exists() {
-            if let Err(e) = std::fs::create_dir_all(&data_dir) {
-                eprintln!("Warning: Failed to create data directory: {}", e);
+        if !config_dir.exists() {
+            if let Err(e) = std::fs::create_dir_all(&config_dir) {
+                eprintln!("Warning: Failed to create config directory: {}", e);
             }
         }
 
@@ -47,16 +47,16 @@ impl Default for VaultConfig {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            if let Ok(metadata) = std::fs::metadata(&data_dir) {
+            if let Ok(metadata) = std::fs::metadata(&config_dir) {
                 let mut perms = metadata.permissions();
                 perms.set_mode(0o700); // rwx------ (only owner can access)
-                let _ = std::fs::set_permissions(&data_dir, perms);
+                let _ = std::fs::set_permissions(&config_dir, perms);
             }
         }
 
         Self {
-            vault_path: data_dir.join("cysec.db"),
-            salt_path: data_dir.join("cysec.salt"),
+            vault_path: config_dir.join("vault.db"),
+            salt_path: config_dir.join("vault.salt"),
             argon2_memory_cost: default_memory_cost(),
             argon2_time_cost: default_time_cost(),
             argon2_parallelism: default_parallelism(),

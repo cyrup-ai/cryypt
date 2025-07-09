@@ -2,7 +2,6 @@ pub mod config;
 pub mod core;
 pub mod db;
 pub mod error;
-pub mod local;
 pub mod logging;
 pub mod operation;
 pub mod tui;
@@ -15,7 +14,7 @@ pub use tui::pass_interface;
 pub use config::VaultConfig;
 pub use core::{Vault, VaultValue};
 pub use error::{VaultError, VaultResult};
-pub use local::LocalVaultProvider;
+pub use db::LocalVaultProvider;
 pub use operation::{BoxedVaultOperation, VaultOperation};
 
 // For backward compatibility

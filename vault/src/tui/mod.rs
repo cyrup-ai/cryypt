@@ -17,7 +17,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     use cli::Cli;
     use std::path::PathBuf;
     use tokio::runtime::Runtime;
-    use crate::local::LocalVaultProvider;
+    use crate::LocalVaultProvider;
     use crate::core::Vault;
     
     // Create the runtime
@@ -80,7 +80,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         // Create provider with config
-        let provider = LocalVaultProvider::new(config)?;
+        let provider = LocalVaultProvider::new(config).await?;
         
         // Register provider
         vault.register_operation(provider).await;

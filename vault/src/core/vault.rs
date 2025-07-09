@@ -28,15 +28,16 @@ impl Vault {
     /// Creates a new Vault with a LocalVaultProvider using FortressEncrypt (defense-in-depth) encryption
     pub fn with_fortress_encryption(config: crate::config::VaultConfig) -> VaultResult<Self> {
         let vault = Self::new();
-        let provider = crate::local::LocalVaultProvider::new(config)?;
-
+        
         // Register provider (non-async context so we need to block)
         let providers = Arc::clone(&vault.providers);
         let rt = tokio::runtime::Runtime::new().map_err(|e| VaultError::Other(e.to_string()))?;
         rt.block_on(async {
+            let provider = crate::LocalVaultProvider::new(config).await?;
             let mut guard = providers.lock().await;
             guard.push(Arc::new(provider));
-        });
+            Ok::<(), VaultError>(())
+        })?;
 
         Ok(vault)
     }
