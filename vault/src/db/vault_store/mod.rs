@@ -65,10 +65,13 @@ impl LocalVaultProvider {
     /// Create a new LocalVaultProvider with SurrealKV local storage
     pub async fn new(config: VaultConfig) -> VaultResult<Self> {
         // Create SurrealKV connection using the vault_path from config
-        let db_url = format!("surrealkv://{}", config.vault_path.display());
-        let db = surrealdb::engine::any::connect(&db_url)
+        // Use the correct format for SurrealKV: just the file path
+        let db_path = config.vault_path.to_string_lossy();
+        
+        // Connect to SurrealKV database using file path
+        let db = surrealdb::engine::any::connect(format!("surrealkv:{}", db_path))
             .await
-            .map_err(|e| VaultError::Provider(format!("Failed to connect to SurrealDB: {}", e)))?;
+            .map_err(|e| VaultError::Provider(format!("Failed to connect to SurrealKV at {}: {}", db_path, e)))?;
         
         // Use a default namespace and database
         db.use_ns("vault").use_db("vault").await
@@ -76,13 +79,20 @@ impl LocalVaultProvider {
         
         let db = Arc::new(db);
         
-        Ok(Self {
+        // Initialize the vault provider
+        let provider = Self {
             dao: SurrealDbDao::new(db, "vault_entries", TableType::Document),
             config,
             locked: Arc::new(Mutex::new(true)), // Start locked
             passphrase: Arc::new(Mutex::new(None)),
             session_token: Arc::new(Mutex::new(None)),
             encryption_key: Arc::new(Mutex::new(None)),
-        })
+        };
+        
+        // Initialize the database schema
+        provider.initialize_schema().await
+            .map_err(|e| VaultError::Provider(format!("Failed to initialize database schema: {}", e)))?;
+        
+        Ok(provider)
     }
 }
