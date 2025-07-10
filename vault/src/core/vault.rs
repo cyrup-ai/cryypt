@@ -213,4 +213,15 @@ impl Vault {
             ))
         }
     }
+    
+    /// Check if this is a new vault (no passphrase hash stored)
+    pub async fn is_new_vault(&self) -> bool {
+        let providers = self.providers.lock().await;
+        if let Some(provider) = providers.first() {
+            // Check if the provider has a stored passphrase hash
+            provider.is_new_vault()
+        } else {
+            true // No provider means new vault
+        }
+    }
 }

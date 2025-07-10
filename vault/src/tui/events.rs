@@ -33,19 +33,45 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
         disable_raw_mode()?;
         execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
         
-        println!("Secure Vault - Password Requirements:");
-        println!("• Minimum length: 12 characters");
-        println!("• Must contain uppercase and lowercase letters");
-        println!("• Must contain numbers");
-        println!("• Must contain special characters");
-        println!("• Should not contain easily guessable information");
-        println!("");
+        // Check if this is a new vault or existing one
+        let is_new_vault = app.vault.is_new_vault().await;
         
-        let passphrase = Password::with_theme(&ColorfulTheme::default())
-            .with_prompt("Enter vault passphrase")
-            .interact()?;
-        
-        app.state.passphrase = Zeroizing::new(passphrase);
+        if is_new_vault {
+            println!("Welcome! Creating a new secure vault.");
+            println!("");
+            println!("Password Requirements:");
+            println!("• Minimum length: 12 characters");
+            println!("• Must contain uppercase and lowercase letters");
+            println!("• Must contain numbers");
+            println!("• Must contain special characters");
+            println!("• Should not contain easily guessable information");
+            println!("");
+            
+            let passphrase = Password::with_theme(&ColorfulTheme::default())
+                .with_prompt("Create vault passphrase")
+                .interact()?;
+                
+            app.state.passphrase = Zeroizing::new(passphrase.clone());
+            
+            // For new vaults, confirm the passphrase
+            let confirm = Password::with_theme(&ColorfulTheme::default())
+                .with_prompt("Confirm vault passphrase")
+                .interact()?;
+                
+            if passphrase != confirm {
+                eprintln!("Passphrases do not match!");
+                return Err("Passphrases do not match".into());
+            }
+        } else {
+            println!("Secure Vault - Enter passphrase to unlock");
+            println!("");
+            
+            let passphrase = Password::with_theme(&ColorfulTheme::default())
+                .with_prompt("Enter vault passphrase")
+                .interact()?;
+                
+            app.state.passphrase = Zeroizing::new(passphrase);
+        }
         
         // Try to unlock and handle errors properly
         if let Err(err) = app.unlock().await {

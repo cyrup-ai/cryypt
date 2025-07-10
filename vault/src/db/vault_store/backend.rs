@@ -18,7 +18,6 @@ use tokio::sync::{mpsc, oneshot};
 
 // Crypto dependencies  
 use cryypt_cipher::Cryypt;
-use cryypt_hashing::Cryypt as HashCryypt;
 use cryypt_jwt::JwtMasterBuilder;
 use secrecy::ExposeSecret;
 
@@ -47,9 +46,13 @@ impl LocalVaultProvider {
     // --- Internal Async Implementation Helpers ---
 
     pub(crate) async fn check_unlocked(&self) -> VaultResult<()> {
-        let locked_guard = self.locked.lock().await;
-        if *locked_guard {
-            return Err(VaultError::VaultLocked);
+        match self.locked.lock() {
+            Ok(guard) => {
+                if *guard {
+                    return Err(VaultError::VaultLocked);
+                }
+            },
+            Err(_) => return Err(VaultError::VaultLocked), // Poisoned mutex, assume locked
         }
         
         // Validate JWT session token
@@ -73,14 +76,12 @@ impl LocalVaultProvider {
             } else {
                 // Token invalid, lock the vault
                 drop(token_guard);
-                drop(locked_guard);
                 self.lock_impl().await?;
                 Err(VaultError::VaultLocked)
             }
         } else {
             // No token present, vault should be locked
             drop(token_guard);
-            drop(locked_guard);
             self.lock_impl().await?;
             Err(VaultError::VaultLocked)
         }
@@ -89,9 +90,13 @@ impl LocalVaultProvider {
     pub(crate) async fn unlock_impl(&self, passphrase: Passphrase) -> VaultResult<()> {
         // Ensure vault is currently locked before proceeding
         {
-            let locked_guard = self.locked.lock().await;
-            if !*locked_guard {
-                return Err(VaultError::Provider("Vault is already unlocked".to_string()));
+            match self.locked.lock() {
+                Ok(guard) => {
+                    if !*guard {
+                        return Err(VaultError::Provider("Vault is already unlocked".to_string()));
+                    }
+                },
+                Err(_) => {} // Poisoned mutex, proceed as if locked
             }
         }
         
@@ -101,21 +106,48 @@ impl LocalVaultProvider {
         }
         
         // Step 2: Derive encryption key from passphrase using secure key derivation
+        log::debug!("Deriving encryption key from passphrase...");
         let encryption_key = self.derive_encryption_key(&passphrase).await?;
         
         // Step 3: Validate that key derivation was successful
         if encryption_key.is_empty() {
-            return Err(VaultError::KeyDerivation("Key derivation failed".to_string()));
+            return Err(VaultError::KeyDerivation("Key derivation failed - empty key".to_string()));
         }
+        log::debug!("Successfully derived {} byte encryption key", encryption_key.len());
         
         // Step 4: Test encryption/decryption with derived key to ensure it works
         let test_data = b"vault_unlock_test";
-        let encrypted_test = self.encrypt_data(test_data).await?;
-        let decrypted_test = self.decrypt_data(&encrypted_test).await?;
+        log::debug!("Testing encryption with {} byte test data", test_data.len());
+        
+        let encrypted_test = match self.encrypt_data(test_data).await {
+            Ok(encrypted) => {
+                log::debug!("Encryption successful, encrypted size: {} bytes", encrypted.len());
+                encrypted
+            }
+            Err(e) => {
+                log::error!("Encryption test failed: {}", e);
+                return Err(VaultError::Crypto(format!("Encryption test failed: {}", e)));
+            }
+        };
+        
+        let decrypted_test = match self.decrypt_data(&encrypted_test).await {
+            Ok(decrypted) => {
+                log::debug!("Decryption successful, decrypted size: {} bytes", decrypted.len());
+                decrypted
+            }
+            Err(e) => {
+                log::error!("Decryption test failed: {}", e);
+                return Err(VaultError::Crypto(format!("Decryption test failed: {}", e)));
+            }
+        };
         
         if decrypted_test != test_data {
-            return Err(VaultError::Crypto("Encryption/decryption test failed".to_string()));
+            log::error!("Encryption/decryption test data mismatch! Expected {} bytes, got {} bytes", 
+                test_data.len(), decrypted_test.len());
+            return Err(VaultError::Crypto("Encryption/decryption test failed - data mismatch".to_string()));
         }
+        
+        log::debug!("Encryption/decryption test passed successfully");
         
         // Step 5: Generate secure JWT session token with enhanced claims
         let session_claims = serde_json::json!({
@@ -162,8 +194,9 @@ impl LocalVaultProvider {
             drop(token_guard);
             
             // Finally, unlock the vault
-            let mut locked_guard = self.locked.lock().await;
-            *locked_guard = false;
+            if let Ok(mut locked_guard) = self.locked.lock() {
+                *locked_guard = false;
+            }
         }
         
         log::info!("Vault successfully unlocked with full crypto integration");
@@ -172,9 +205,9 @@ impl LocalVaultProvider {
 
     pub(crate) async fn lock_impl(&self) -> VaultResult<()> {
         // Lock the vault and securely clear all sensitive data from memory
-        let mut locked_guard = self.locked.lock().await;
-        *locked_guard = true;
-        drop(locked_guard);
+        if let Ok(mut locked_guard) = self.locked.lock() {
+            *locked_guard = true;
+        }
         
         // Securely clear passphrase from memory (SecretString handles zeroization)
         let mut passphrase_guard = self.passphrase.lock().await;
@@ -198,34 +231,52 @@ impl LocalVaultProvider {
     }
 
     pub(crate) async fn derive_encryption_key(&self, passphrase: &Passphrase) -> VaultResult<Vec<u8>> {
-        // Use secure key derivation from passphrase using SHA256 with salt
-        let salt = self.config.salt_path.to_string_lossy().as_bytes().to_vec();
+        // Read or generate salt from file
+        log::trace!("Getting salt for key derivation...");
+        let salt = self.get_or_create_salt().await?;
+        log::trace!("Using {} byte salt for key derivation", salt.len());
         
-        // Combine passphrase with salt for key derivation
-        let mut input_data = passphrase.expose_secret().as_bytes().to_vec();
-        input_data.extend_from_slice(&salt);
+        // Use Argon2 for secure key derivation with the vault's configured parameters
+        use argon2::{Argon2, password_hash::Salt};
         
-        // Use SHA256 for key derivation with cryypt_hashing
-        let derived_key = HashCryypt::hash()
-            .sha256()
-            .on_result(|result| {
-                match result {
-                    Ok(key) => key.to_vec(),
-                    Err(_) => Vec::new()
-                }
-            })
-            .compute(input_data)
-            .await;
+        log::trace!("Configuring Argon2 with memory_cost={}, time_cost={}, parallelism={}", 
+            self.config.argon2_memory_cost, 
+            self.config.argon2_time_cost, 
+            self.config.argon2_parallelism);
             
-        if derived_key.is_empty() {
-            return Err(VaultError::KeyDerivation("Failed to derive encryption key".to_string()));
-        }
+        let argon2 = Argon2::new(
+            argon2::Algorithm::Argon2id,
+            argon2::Version::V0x13,
+            argon2::Params::new(
+                self.config.argon2_memory_cost,
+                self.config.argon2_time_cost,
+                self.config.argon2_parallelism,
+                Some(32) // 32 bytes for AES-256
+            ).map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params: {}", e)))?
+        );
+        
+        // Create Salt from our salt bytes
+        let salt_b64 = BASE64_STANDARD.encode(&salt);
+        log::trace!("Salt base64 encoded for Argon2: {} chars", salt_b64.len());
+        let salt_str = Salt::from_b64(&salt_b64)
+            .map_err(|e| VaultError::KeyDerivation(format!("Invalid salt: {}", e)))?;
+        
+        // Derive key using Argon2
+        let mut output_key = vec![0u8; 32];
+        log::trace!("Running Argon2 key derivation...");
+        argon2.hash_password_into(
+            passphrase.expose_secret().as_bytes(), 
+            salt_str.as_str().as_bytes(),
+            &mut output_key
+        ).map_err(|e| VaultError::KeyDerivation(format!("Argon2 key derivation failed: {}", e)))?;
+        
+        log::trace!("Successfully derived {} byte key", output_key.len());
         
         // Store derived key in memory for session
         let mut key_guard = self.encryption_key.lock().await;
-        *key_guard = Some(derived_key.clone());
+        *key_guard = Some(output_key.clone());
         
-        Ok(derived_key)
+        Ok(output_key)
     }
 
     pub(crate) async fn encrypt_data(&self, data: &[u8]) -> VaultResult<Vec<u8>> {
@@ -234,21 +285,29 @@ impl LocalVaultProvider {
         let encryption_key = key_guard.as_ref()
             .ok_or_else(|| VaultError::VaultLocked)?;
         
+        log::trace!("Encrypting {} bytes with {} byte key", data.len(), encryption_key.len());
+        
         // Use AES encryption with cryypt_cipher
         let encrypted_data = Cryypt::cipher()
             .aes()
             .with_key(encryption_key.clone())
             .on_result(|result| {
                 match result {
-                    Ok(encrypted) => encrypted,
-                    Err(_) => Vec::new()
+                    Ok(encrypted) => {
+                        log::trace!("cryypt_cipher encryption succeeded, output: {} bytes", encrypted.len());
+                        encrypted
+                    },
+                    Err(e) => {
+                        log::error!("cryypt_cipher encryption failed: {:?}", e);
+                        Vec::new()
+                    }
                 }
             })
             .encrypt(data.to_vec())
             .await;
             
         if encrypted_data.is_empty() {
-            return Err(VaultError::Encryption("Failed to encrypt data".to_string()));
+            return Err(VaultError::Encryption("Failed to encrypt data - empty result".to_string()));
         }
         
         Ok(encrypted_data)
@@ -260,21 +319,29 @@ impl LocalVaultProvider {
         let encryption_key = key_guard.as_ref()
             .ok_or_else(|| VaultError::VaultLocked)?;
         
+        log::trace!("Decrypting {} bytes with {} byte key", encrypted_data.len(), encryption_key.len());
+        
         // Use AES decryption with cryypt_cipher
         let decrypted_data = Cryypt::cipher()
             .aes()
             .with_key(encryption_key.clone())
             .on_result(|result| {
                 match result {
-                    Ok(decrypted) => decrypted,
-                    Err(_) => Vec::new()
+                    Ok(decrypted) => {
+                        log::trace!("cryypt_cipher decryption succeeded, output: {} bytes", decrypted.len());
+                        decrypted
+                    },
+                    Err(e) => {
+                        log::error!("cryypt_cipher decryption failed: {:?}", e);
+                        Vec::new()
+                    }
                 }
             })
             .decrypt(encrypted_data.to_vec())
             .await;
             
         if decrypted_data.is_empty() {
-            return Err(VaultError::Decryption("Failed to decrypt data".to_string()));
+            return Err(VaultError::Decryption("Failed to decrypt data - empty result".to_string()));
         }
         
         Ok(decrypted_data)
@@ -282,50 +349,79 @@ impl LocalVaultProvider {
 
     /// Securely store passphrase hash for verification
     pub(crate) async fn store_passphrase_hash(&self, passphrase: &Passphrase) -> VaultResult<()> {
-        // Generate a secure salt for the passphrase hash
-        let salt = format!("vault_passphrase_salt_{}", self.config.vault_path.to_string_lossy());
+        // Use consistent salt for passphrase hashing
+        let salt = self.get_or_create_salt().await?;
         
-        // Combine passphrase with salt for secure hashing
-        let mut input_data = passphrase.expose_secret().as_bytes().to_vec();
-        input_data.extend_from_slice(salt.as_bytes());
+        // Use Argon2 for passphrase hashing with same parameters
+        use argon2::{Argon2, password_hash::{Salt, PasswordHasher}};
         
-        // Hash the passphrase using SHA256
-        let passphrase_hash = HashCryypt::hash()
-            .sha256()
-            .on_result(|result| {
-                match result {
-                    Ok(hash) => hash.to_vec(),
-                    Err(_) => Vec::new()
-                }
-            })
-            .compute(input_data)
-            .await;
+        let argon2 = Argon2::new(
+            argon2::Algorithm::Argon2id,
+            argon2::Version::V0x13,
+            argon2::Params::new(
+                self.config.argon2_memory_cost,
+                self.config.argon2_time_cost,
+                self.config.argon2_parallelism,
+                None // Default output length for password hashing
+            ).map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params: {}", e)))?
+        );
+        
+        // Create Salt from our salt bytes
+        let salt_b64 = BASE64_STANDARD.encode(&salt);
+        let salt_str = Salt::from_b64(&salt_b64)
+            .map_err(|e| VaultError::KeyDerivation(format!("Invalid salt: {}", e)))?;
+        
+        // Hash the passphrase
+        let passphrase_hash = argon2.hash_password(
+            passphrase.expose_secret().as_bytes(),
+            salt_str
+        ).map_err(|e| VaultError::Crypto(format!("Failed to hash passphrase: {}", e)))?;
+        
+        let passphrase_hash = passphrase_hash.to_string().into_bytes();
             
         if passphrase_hash.is_empty() {
             return Err(VaultError::Crypto("Failed to hash passphrase".to_string()));
         }
         
-        // Store the passphrase hash in the database
+        // Store the passphrase hash in the database using SurrealDB UPSERT
         let hash_b64 = BASE64_STANDARD.encode(passphrase_hash);
-        let query = "INSERT INTO vault_entries (key, value, created_at, updated_at) VALUES ($key, $value, $created_at, $updated_at) ON DUPLICATE KEY UPDATE value = $value, updated_at = $updated_at";
+        
+        // First try to UPDATE, if it doesn't exist, CREATE it
+        let update_query = "UPDATE vault_entries:__vault_passphrase_hash__ SET value = $value, updated_at = $updated_at";
         let db = self.dao.db();
         
-        let result = db
-            .query(query)
-            .bind(("key", "__vault_passphrase_hash__"))
-            .bind(("value", hash_b64))
-            .bind(("created_at", chrono::Utc::now()))
+        let value = hash_b64.clone();
+        let mut update_result = db
+            .query(update_query)
+            .bind(("value", value))
             .bind(("updated_at", chrono::Utc::now()))
-            .await;
+            .await
+            .map_err(|e| VaultError::Provider(format!("Failed to update passphrase hash: {}", e)))?;
             
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(VaultError::Provider(format!("Failed to store passphrase hash: {}", e)))
+        // Check if any record was updated
+        let updated: Option<VaultEntry> = update_result
+            .take(0)
+            .map_err(|e| VaultError::Provider(format!("Failed to check update result: {}", e)))?;
+            
+        if updated.is_none() {
+            // No existing record, create a new one
+            let create_query = "CREATE vault_entries:__vault_passphrase_hash__ SET key = $key, value = $value, created_at = $created_at, updated_at = $updated_at";
+            db.query(create_query)
+                .bind(("key", "__vault_passphrase_hash__"))
+                .bind(("value", hash_b64))
+                .bind(("created_at", chrono::Utc::now()))
+                .bind(("updated_at", chrono::Utc::now()))
+                .await
+                .map_err(|e| VaultError::Provider(format!("Failed to create passphrase hash: {}", e)))?;
         }
+        
+        Ok(())
     }
 
     /// Verify passphrase against stored hash
     pub(crate) async fn verify_passphrase(&self, passphrase: &Passphrase) -> VaultResult<()> {
+        log::debug!("Verifying passphrase against stored hash...");
+        
         // Try to retrieve stored passphrase hash
         let query = "SELECT value FROM vault_entries WHERE key = '__vault_passphrase_hash__' LIMIT 1";
         let db = self.dao.db();
@@ -348,49 +444,41 @@ impl LocalVaultProvider {
         
         match hash_entry {
             Some(entry) => {
+                log::debug!("Found existing passphrase hash in database");
+                
                 // Decode stored hash
                 let stored_hash = BASE64_STANDARD.decode(entry.value)
                     .map_err(|_| VaultError::Crypto("Invalid stored passphrase hash".to_string()))?;
                 
-                // Generate hash of provided passphrase
-                let salt = format!("vault_passphrase_salt_{}", self.config.vault_path.to_string_lossy());
-                let mut input_data = passphrase.expose_secret().as_bytes().to_vec();
-                input_data.extend_from_slice(salt.as_bytes());
+                // Decode stored hash (it's the full Argon2 hash string)
+                let stored_hash_str = String::from_utf8(stored_hash)
+                    .map_err(|_| VaultError::Crypto("Invalid stored passphrase hash encoding".to_string()))?;
                 
-                let provided_hash = HashCryypt::hash()
-                    .sha256()
-                    .on_result(|result| {
-                        match result {
-                            Ok(hash) => hash.to_vec(),
-                            Err(_) => Vec::new()
-                        }
-                    })
-                    .compute(input_data)
-                    .await;
+                log::trace!("Stored hash format: {} chars", stored_hash_str.len());
                 
-                if provided_hash.is_empty() {
-                    return Err(VaultError::Crypto("Failed to hash provided passphrase".to_string()));
-                }
+                // Verify passphrase using Argon2 verify
+                use argon2::{Argon2, PasswordHash, PasswordVerifier};
                 
-                // Secure comparison using constant-time comparison
-                if stored_hash.len() != provided_hash.len() {
-                    return Err(VaultError::InvalidPassphrase);
-                }
+                let parsed_hash = PasswordHash::new(&stored_hash_str)
+                    .map_err(|e| VaultError::Crypto(format!("Invalid stored hash format: {}", e)))?;
                 
-                let mut matches = true;
-                for (a, b) in stored_hash.iter().zip(provided_hash.iter()) {
-                    matches &= a == b;
-                }
+                let argon2 = Argon2::default();
                 
-                if matches {
-                    Ok(())
-                } else {
-                    Err(VaultError::InvalidPassphrase)
+                match argon2.verify_password(passphrase.expose_secret().as_bytes(), &parsed_hash) {
+                    Ok(_) => {
+                        log::debug!("Passphrase verification successful");
+                        Ok(())
+                    },
+                    Err(_) => {
+                        log::warn!("Passphrase verification failed - incorrect passphrase");
+                        Err(VaultError::InvalidPassphrase)
+                    }
                 }
             },
             None => {
                 // No stored hash means this is the first time unlocking
                 // Allow the unlock to proceed, hash will be stored
+                log::info!("No existing passphrase hash found - this appears to be a new vault");
                 Ok(())
             }
         }
@@ -732,6 +820,51 @@ impl LocalVaultProvider {
 
         Ok(results)
     }
+    
+    /// Get or create salt for key derivation
+    pub(crate) async fn get_or_create_salt(&self) -> VaultResult<Vec<u8>> {
+        use tokio::fs;
+        use rand::RngCore;
+        
+        // Try to read existing salt
+        match fs::read(&self.config.salt_path).await {
+            Ok(salt) => {
+                if salt.len() >= 16 {  // Minimum 16 bytes for salt
+                    Ok(salt)
+                } else {
+                    Err(VaultError::Crypto("Salt file corrupted: insufficient length".to_string()))
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                // Generate new salt
+                let mut salt = vec![0u8; 32];  // 32 bytes salt
+                rand::rng().fill_bytes(&mut salt);
+                
+                // Ensure parent directory exists
+                if let Some(parent) = self.config.salt_path.parent() {
+                    fs::create_dir_all(parent).await
+                        .map_err(|e| VaultError::Io(e))?;
+                }
+                
+                // Write salt to file
+                fs::write(&self.config.salt_path, &salt).await
+                    .map_err(|e| VaultError::Io(e))?;
+                    
+                // Set restrictive permissions on Unix
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let perms = std::fs::Permissions::from_mode(0o600);
+                    std::fs::set_permissions(&self.config.salt_path, perms)
+                        .map_err(|e| VaultError::Io(e))?;
+                }
+                
+                log::info!("Generated new salt file at: {}", self.config.salt_path.display());
+                Ok(salt)
+            }
+            Err(e) => Err(VaultError::Io(e))
+        }
+    }
 }
 
 // --- VaultOperation Implementation ---
@@ -743,11 +876,14 @@ impl VaultOperation for LocalVaultProvider {
 
     // Check if the vault is locked
     fn is_locked(&self) -> bool {
-        // This is a blocking operation but should be very fast since it's just checking a mutex
-        let rt = tokio::runtime::Handle::current();
-        rt.block_on(async {
-            *self.locked.lock().await
-        })
+        // Use sync mutex to avoid runtime issues
+        match self.locked.lock() {
+            Ok(guard) => *guard,
+            Err(_) => {
+                // If mutex is poisoned, assume locked for safety
+                true
+            }
+        }
     }
 
     // Unlock the vault with a passphrase
@@ -923,5 +1059,11 @@ impl VaultOperation for LocalVaultProvider {
         });
 
         VaultFindRequest::new(rx)
+    }
+    
+    fn is_new_vault(&self) -> bool {
+        // For sync context, check if vault database file exists
+        // This is a reasonable approximation without requiring async
+        !self.config.vault_path.exists()
     }
 }

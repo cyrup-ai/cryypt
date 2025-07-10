@@ -7,7 +7,7 @@ use crate::error::{VaultError, VaultResult};
 use crate::config::VaultConfig;
 use crate::operation::Passphrase;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as SyncMutex};
 use tokio::sync::Mutex;
 use chrono::{DateTime, Utc};
 
@@ -55,7 +55,7 @@ pub(crate) fn map_dao_error(e: DaoError) -> VaultError {
 pub struct LocalVaultProvider {
     pub(crate) dao: SurrealDbDao<VaultEntry>,
     pub(crate) config: VaultConfig,
-    pub(crate) locked: Arc<Mutex<bool>>,
+    pub(crate) locked: Arc<SyncMutex<bool>>,
     pub(crate) passphrase: Arc<Mutex<Option<Passphrase>>>,
     pub(crate) session_token: Arc<Mutex<Option<String>>>,
     pub(crate) encryption_key: Arc<Mutex<Option<Vec<u8>>>>,
@@ -83,7 +83,7 @@ impl LocalVaultProvider {
         let provider = Self {
             dao: SurrealDbDao::new(db, "vault_entries", TableType::Document),
             config,
-            locked: Arc::new(Mutex::new(true)), // Start locked
+            locked: Arc::new(SyncMutex::new(true)), // Start locked
             passphrase: Arc::new(Mutex::new(None)),
             session_token: Arc::new(Mutex::new(None)),
             encryption_key: Arc::new(Mutex::new(None)),
