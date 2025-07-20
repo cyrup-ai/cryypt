@@ -68,8 +68,14 @@ impl LocalVaultProvider {
         // Use the correct format for SurrealKV: just the file path
         let db_path = config.vault_path.to_string_lossy();
         
-        // Connect to SurrealKV database using file path
-        let db = surrealdb::engine::any::connect(format!("surrealkv:{}", db_path))
+        // Ensure parent directory exists before connecting
+        if let Some(parent) = config.vault_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| VaultError::Provider(format!("Failed to create vault directory: {}", e)))?;
+        }
+        
+        // Use file database - match the working wallpapers example exactly
+        let db = surrealdb::engine::any::connect(&format!("surrealkv://{}", db_path))
             .await
             .map_err(|e| VaultError::Provider(format!("Failed to connect to SurrealKV at {}: {}", db_path, e)))?;
         

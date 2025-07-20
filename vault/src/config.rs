@@ -27,14 +27,8 @@ fn default_parallelism() -> u32 {
 
 impl Default for VaultConfig {
     fn default() -> Self {
-        // Use XDG_CONFIG_HOME or ~/.config for configuration storage
-        // This follows the XDG Base Directory Specification
-        let config_dir = dirs::config_dir()
-            .unwrap_or_else(|| {
-                let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("~"));
-                home.join(".config")
-            })
-            .join("cryypt");
+        // Use ./tmp/cryypt for now (unsigned binary issue)
+        let config_dir = PathBuf::from("./tmp/cryypt");
 
         // Create the directory if it doesn't exist
         if !config_dir.exists() {

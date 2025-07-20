@@ -195,10 +195,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Lock vault (optional - vault auto-locks when dropped)
     vault
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Vault lock error: {}", e);
-                ()
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Vault lock error: {}", e);
+                    ()
+                }
             }
         })
         .lock()

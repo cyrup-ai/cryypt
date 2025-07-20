@@ -287,22 +287,20 @@ impl LocalVaultProvider {
         
         log::trace!("Encrypting {} bytes with {} byte key", data.len(), encryption_key.len());
         
-        // Use AES encryption with cryypt_cipher
+        // Use AES encryption with cryypt_cipher - README.md compliant pattern
         let encrypted_data = Cryypt::cipher()
             .aes()
             .with_key(encryption_key.clone())
-            .on_result(|result| {
-                match result {
-                    Ok(encrypted) => {
-                        log::trace!("cryypt_cipher encryption succeeded, output: {} bytes", encrypted.len());
-                        encrypted
-                    },
-                    Err(e) => {
-                        log::error!("cryypt_cipher encryption failed: {:?}", e);
-                        Vec::new()
-                    }
+            .on_result(cryypt_common::__cryypt_on_result_impl!(|result| {
+                Ok => {
+                    log::trace!("cryypt_cipher encryption succeeded, output: {} bytes", result.len());
+                    result
+                },
+                Err(e) => {
+                    log::error!("cryypt_cipher encryption failed: {:?}", e);
+                    Vec::new()
                 }
-            })
+            }))
             .encrypt(data.to_vec())
             .await;
             
@@ -321,22 +319,20 @@ impl LocalVaultProvider {
         
         log::trace!("Decrypting {} bytes with {} byte key", encrypted_data.len(), encryption_key.len());
         
-        // Use AES decryption with cryypt_cipher
+        // Use AES decryption with cryypt_cipher - README.md compliant pattern
         let decrypted_data = Cryypt::cipher()
             .aes()
             .with_key(encryption_key.clone())
-            .on_result(|result| {
-                match result {
-                    Ok(decrypted) => {
-                        log::trace!("cryypt_cipher decryption succeeded, output: {} bytes", decrypted.len());
-                        decrypted
-                    },
-                    Err(e) => {
-                        log::error!("cryypt_cipher decryption failed: {:?}", e);
-                        Vec::new()
-                    }
+            .on_result(cryypt_common::__cryypt_on_result_impl!(|result| {
+                Ok => {
+                    log::trace!("cryypt_cipher decryption succeeded, output: {} bytes", result.len());
+                    result
+                },
+                Err(e) => {
+                    log::error!("cryypt_cipher decryption failed: {:?}", e);
+                    Vec::new()
                 }
-            })
+            }))
             .decrypt(encrypted_data.to_vec())
             .await;
             
@@ -422,8 +418,8 @@ impl LocalVaultProvider {
     pub(crate) async fn verify_passphrase(&self, passphrase: &Passphrase) -> VaultResult<()> {
         log::debug!("Verifying passphrase against stored hash...");
         
-        // Try to retrieve stored passphrase hash
-        let query = "SELECT value FROM vault_entries WHERE key = '__vault_passphrase_hash__' LIMIT 1";
+        // Try to retrieve stored passphrase hash using SurrealDB syntax
+        let query = "SELECT * FROM vault_entries:__vault_passphrase_hash__";
         let db = self.dao.db();
         
         let mut result = db
@@ -433,12 +429,7 @@ impl LocalVaultProvider {
             .check()
             .map_err(|e| VaultError::Provider(format!("DB check failed: {}", e)))?;
         
-        #[derive(serde::Deserialize)]
-        struct HashEntry {
-            value: String,
-        }
-        
-        let hash_entry: Option<HashEntry> = result
+        let hash_entry: Option<VaultEntry> = result
             .take(0)
             .map_err(|e| VaultError::Provider(format!("DB result take failed: {}", e)))?;
         
@@ -1063,7 +1054,7 @@ impl VaultOperation for LocalVaultProvider {
     
     fn is_new_vault(&self) -> bool {
         // For sync context, check if vault database file exists
-        // This is a reasonable approximation without requiring async
+        // This avoids block_on which causes runtime crashes
         !self.config.vault_path.exists()
     }
 }

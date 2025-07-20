@@ -10,6 +10,7 @@ categories.workspace = true
 
 [dependencies]
 cryypt_cipher = { path = "../cipher" }
+cryypt_common = { path = "../common" }
 cryypt_hashing = { path = "../hashing" }
 cryypt_jwt = { path = "../jwt" }
 cryypt_key = { path = "../key" }
