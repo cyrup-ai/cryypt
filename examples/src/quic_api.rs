@@ -61,10 +61,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Send data
     send
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Failed to send data: {}", e);
-                ()
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Failed to send data: {}", e);
+                    ()
+                }
             }
         })
         .write_all(b"Hello QUIC")
@@ -74,10 +76,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut data = Vec::new();
     let mut recv_stream = recv
         .on_chunk(|chunk| {
-            Ok => chunk,
-            Err(e) => {
-                log::error!("Receive error: {}", e);
-                return
+            match chunk {
+                Ok(chunk) => chunk,
+                Err(e) => {
+                    log::error!("Receive error: {}", e);
+                    return
+                }
             }
         })
         .stream();

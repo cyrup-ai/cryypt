@@ -152,10 +152,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .kyber()
         .with_secret_key(alice_secret)
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Alice decapsulation error: {}", e);
-                Vec::new()
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Alice decapsulation error: {}", e);
+                    Vec::new()
+                }
             }
         })
         .decapsulate(bob_ciphertext)
@@ -175,10 +177,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(encryption_key.clone())
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("AES encryption error: {}", e);
-                Vec::new()
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("AES encryption error: {}", e);
+                    Vec::new()
+                }
             }
         })
         .encrypt(secret_message)
@@ -196,10 +200,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(alice_encryption_key)
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("AES decryption error: {}", e);
-                Vec::new()
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("AES decryption error: {}", e);
+                    Vec::new()
+                }
             }
         })
         .decrypt(encrypted)

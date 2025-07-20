@@ -35,10 +35,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let verified_claims = Cryypt::jwt()
         .with_secret(b"secret_key")
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("JWT verification failed: {}", e);
-                serde_json::Value::Null
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("JWT verification failed: {}", e);
+                    serde_json::Value::Null
+                }
             }
         })
         .verify(token.clone())
@@ -52,10 +54,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_algorithm("RS256")
         .with_private_key(private_key)
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("JWT operation failed: {}", e);
-                String::new()
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("JWT operation failed: {}", e);
+                    String::new()
+                }
             }
         })
         .sign(claims)

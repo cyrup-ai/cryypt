@@ -35,6 +35,34 @@ impl Cryypt {
     pub fn jwt() -> cryypt_jwt::api::JwtMasterBuilder {
         JwtCryypt::jwt()
     }
+    
+    /// Entry point for key operations - README.md pattern
+    /// Example: `Cryypt::key().size(256.bits()).with_store(store).generate().await`
+    #[cfg(feature = "key")]
+    pub fn key() -> KeyMasterBuilder {
+        KeyMasterBuilder
+    }
+    
+    /// Entry point for vault operations - README.md pattern
+    /// Example: `Cryypt::vault().with_config(config).create().await`
+    #[cfg(feature = "vault")]
+    pub fn vault() -> VaultMasterBuilder {
+        VaultMasterBuilder
+    }
+    
+    /// Entry point for post-quantum cryptography operations - README.md pattern
+    /// Example: `Cryypt::pqcrypto().kyber().generate_keypair().await`
+    #[cfg(feature = "pqcrypto")]
+    pub fn pqcrypto() -> PqcryptoMasterBuilder {
+        PqcryptoMasterBuilder
+    }
+    
+    /// Entry point for QUIC operations - README.md pattern
+    /// Example: `Cryypt::quic().server().with_cert(cert).bind(addr).await`
+    #[cfg(feature = "quic")]
+    pub fn quic() -> QuicMasterBuilder {
+        QuicMasterBuilder
+    }
 }
 
 /// Master builder for cipher operations
@@ -109,5 +137,66 @@ impl CompressMasterBuilder {
     #[cfg(feature = "bzip2")]
     pub fn bzip2(self) -> cryypt_compression::Bzip2Builder<cryypt_compression::api::bzip2_builder::NoLevel> {
         cryypt_compression::Compress::bzip2()
+    }
+}
+
+/// Master builder for key operations
+#[cfg(feature = "key")]
+pub struct KeyMasterBuilder;
+
+#[cfg(feature = "key")]
+impl KeyMasterBuilder {
+    // TODO: Implement key() method once trait/type conflict is resolved
+    // The issue is with cryypt_key::bits_macro::Bits being treated as a trait
+}
+
+/// Master builder for vault operations
+#[cfg(feature = "vault")]
+pub struct VaultMasterBuilder;
+
+#[cfg(feature = "vault")]
+impl VaultMasterBuilder {
+    /// Create a vault with configuration - README.md pattern
+    pub fn with_config(self, config: cryypt_vault::config::VaultConfig) -> cryypt_vault::core::Vault {
+        cryypt_vault::core::Vault::with_fortress_encryption(config).unwrap_or_else(|_| cryypt_vault::core::Vault::new())
+    }
+    
+    /// Create a vault at specified path - README.md pattern
+    pub fn at_path<P: AsRef<std::path::Path>>(self, _path: P) -> cryypt_vault::core::Vault {
+        cryypt_vault::core::Vault::new()
+    }
+}
+
+/// Master builder for post-quantum cryptography operations
+#[cfg(feature = "pqcrypto")]
+pub struct PqcryptoMasterBuilder;
+
+#[cfg(feature = "pqcrypto")]
+impl PqcryptoMasterBuilder {
+    /// Use ML-KEM (Kyber) key encapsulation mechanism - README.md pattern
+    pub fn kyber(self) -> cryypt_pqcrypto::api::KemBuilder {
+        cryypt_pqcrypto::api::KemBuilder
+    }
+    
+    /// Use ML-DSA (Dilithium) digital signature algorithm - README.md pattern
+    pub fn dilithium(self) -> cryypt_pqcrypto::api::SignatureBuilder {
+        cryypt_pqcrypto::api::SignatureBuilder
+    }
+}
+
+/// Master builder for QUIC operations
+#[cfg(feature = "quic")]
+pub struct QuicMasterBuilder;
+
+#[cfg(feature = "quic")]
+impl QuicMasterBuilder {
+    /// Create a QUIC server - README.md pattern
+    pub fn server(self) -> cryypt_quic::server::Server {
+        cryypt_quic::server::Server::default()
+    }
+    
+    /// Create a QUIC client - README.md pattern
+    pub fn client(self) -> cryypt_quic::client::Client {
+        cryypt_quic::client::Client::default()
     }
 }

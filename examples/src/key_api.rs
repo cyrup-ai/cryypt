@@ -14,10 +14,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(1)
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Key generation failed: {}", e);
-                Vec::new() // Return empty key on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Key generation failed: {}", e);
+                    Vec::new() // Return empty key on error
+                }
             }
         })
         .await; // Returns Key - the actual key object, fully unwrapped
@@ -29,10 +31,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(1)
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Key generation failed: {}", e);
-                Vec::new() // Return empty key on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Key generation failed: {}", e);
+                    Vec::new() // Return empty key on error
+                }
             }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -41,10 +45,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let encrypted = key
         .aes()
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Operation failed: {}", e);
+                    Vec::new() // Return empty on error
+                }
             }
         })
         .encrypt(b"Secret message")
@@ -54,10 +60,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let plaintext = key
         .aes()
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Operation failed: {}", e);
+                    Vec::new() // Return empty on error
+                }
             }
         })
         .decrypt(&encrypted)
@@ -67,10 +75,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let encrypted_chacha = key
         .chacha20()
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Operation failed: {}", e);
+                    Vec::new() // Return empty on error
+                }
             }
         })
         .encrypt(b"Secret message")
@@ -99,10 +109,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(2) // New version
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Key generation failed: {}", e);
-                Vec::new() // Return empty key on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Key generation failed: {}", e);
+                    Vec::new() // Return empty key on error
+                }
             }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -114,10 +126,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(1) // Old version
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Key generation failed: {}", e);
-                Vec::new() // Return empty key on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Key generation failed: {}", e);
+                    Vec::new() // Return empty key on error
+                }
             }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -128,10 +142,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(old_key)
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Operation failed: {}", e);
+                    Vec::new() // Return empty on error
+                }
             }
         })
         .decrypt(ciphertext)
@@ -142,10 +158,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(new_key)
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Operation failed: {}", e);
-                Vec::new() // Return empty on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Operation failed: {}", e);
+                    Vec::new() // Return empty on error
+                }
             }
         })
         .encrypt(plaintext_old)

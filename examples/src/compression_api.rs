@@ -12,10 +12,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .zstd()
         .with_level(3)
         .on_result(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("Compression error: {}", e);
-                large_data.clone()
+            match result {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    log::error!("Compression error: {}", e);
+                    large_data.clone()
+                }
             }
         })
         .compress(&large_data)
@@ -29,10 +31,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let decompressed = Cryypt::compress()
         .zstd()
         .on_result(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("Decompression failed: {}", e);
-                Vec::new()
+            match result {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    log::error!("Decompression failed: {}", e);
+                    Vec::new()
+                }
             }
         })
         .decompress(&compressed)
@@ -48,10 +52,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .gzip()
         .with_level(6)
         .on_result(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("Gzip compression error: {}", e);
-                large_data.clone()
+            match result {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    log::error!("Gzip compression error: {}", e);
+                    large_data.clone()
+                }
             }
         })
         .compress(&large_data)
@@ -155,10 +161,12 @@ async fn compress_and_encrypt_demo() -> Result<(), Box<dyn std::error::Error>> {
     let encrypted = Cipher::aes()
         .with_key(key)
         .on_result(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("Encryption failed: {}", e);
-                compressed.clone()
+            match result {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    log::error!("Encryption failed: {}", e);
+                    compressed.clone()
+                }
             }
         })
         .encrypt(&compressed)
