@@ -1,7 +1,7 @@
 //! Concrete QUIC result types implementing the unwrapping pattern
 
 use crate::{error::CryptoTransportError, Result};
-use cryypt_common::NotResult;
+// Removed unused import: use cryypt_common::NotResult;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -13,6 +13,7 @@ pub struct QuicResult<T = crate::api::QuicServer> {
 }
 
 /// QUIC result with user-defined error handler
+#[allow(dead_code)]
 pub struct QuicResultWithHandler<T, F> {
     receiver: oneshot::Receiver<Result<T>>,
     handler: Option<F>,

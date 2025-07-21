@@ -1,6 +1,4 @@
-use cryypt::{Cryypt, Compress, Cipher, on_result, FileKeyStore, KeyRetriever};
-use std::path::Path;
-use tokio::io::AsyncWriteExt;
+use cryypt::{Cryypt, Compress, Cipher, FileKeyStore, KeyRetriever};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -8,19 +6,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let large_data = b"This is some large text data that we want to compress. ".repeat(100);
     
     // Compress data with Zstd
+    let data_for_closure = large_data.clone();
     let compressed = Cryypt::compress()
         .zstd()
         .with_level(3)
-        .on_result(|result| {
+        .on_result(move |result| {
             match result {
                 Ok(result) => result.to_vec(),
                 Err(e) => {
                     log::error!("Compression error: {}", e);
-                    large_data.clone()
+                    data_for_closure.clone()
                 }
             }
         })
-        .compress(&large_data)
+        .compress(large_data.clone())
         .await; // Returns Vec<u8> - the compressed bytes, fully unwrapped
 
     println!("Original data size: {} bytes", large_data.len());
@@ -30,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Decompress
     let decompressed = Cryypt::compress()
         .zstd()
-        .on_result(|result| {
+        .on_result(move |result| {
             match result {
                 Ok(result) => result.to_vec(),
                 Err(e) => {
@@ -39,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         })
-        .decompress(&compressed)
+        .decompress(compressed.clone())
         .await; // Returns Vec<u8> - the decompressed bytes, fully unwrapped
 
     println!("Decompressed size: {} bytes", decompressed.len());
@@ -48,70 +47,77 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Test different compression algorithms
     
     // Gzip
+    let data_for_gzip_closure = large_data.clone();
     let gzip_compressed = Cryypt::compress()
         .gzip()
         .with_level(6)
-        .on_result(|result| {
+        .on_result(move |result| {
             match result {
                 Ok(result) => result.to_vec(),
                 Err(e) => {
                     log::error!("Gzip compression error: {}", e);
-                    large_data.clone()
+                    data_for_gzip_closure.clone()
                 }
             }
         })
-        .compress(&large_data)
+        .compress(large_data.clone())
         .await; // Returns fully unwrapped value - no Result wrapper
 
     println!("Gzip compressed size: {} bytes", gzip_compressed.len());
 
-    // Bzip2
-    let bzip2_compressed = Cryypt::compress()
-        .bzip2()
-        .with_level(9)
-        .on_result(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("Bzip2 compression error: {}", e);
-                Vec::new()
-            }
-        })
-        .compress(&large_data)
-        .await; // Returns fully unwrapped value - no Result wrapper
+    // // Bzip2 (disabled - feature not enabled)
+    // let bzip2_compressed = Cryypt::compress()
+    //     .bzip2()
+    //     .with_level(9)
+    //     .on_result(|result| {
+    //         match result {
+    //             Ok(result) => result.to_vec(),
+    //             Err(e) => {
+    //                 log::error!("Bzip2 compression error: {}", e);
+    //                 Vec::new()
+    //             }
+    //         }
+    //     })
+    //     .compress(large_data.clone())
+    //     .await; // Returns fully unwrapped value - no Result wrapper
 
-    println!("Bzip2 compressed size: {} bytes", bzip2_compressed.len());
+    // println!("Bzip2 compressed size: {} bytes", bzip2_compressed.len());
 
-    // ZIP archive with multiple files
-    let readme_data = b"This is a README file";
-    let json_data = br#"{"name": "example", "version": "1.0.0"}"#;
+    // // ZIP archive with multiple files (disabled - feature not enabled)
+    // let readme_data = b"This is a README file";
+    // let json_data = br#"{"name": "example", "version": "1.0.0"}"#;
     
-    let archive = Cryypt::compress()
-        .zip()
-        .add_file("readme.txt", readme_data)
-        .add_file("data.json", json_data)
-        .on_result(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("ZIP operation error: {}", e);
-                Vec::new()
-            }
-        })
-        .compress()
-        .await; // Returns Vec<u8> - the ZIP archive bytes, fully unwrapped
+    // let archive = Cryypt::compress()
+    //     .zip()
+    //     .add_file("readme.txt", readme_data)
+    //     .add_file("data.json", json_data)
+    //     .on_result(|result| {
+    //         match result {
+    //             Ok(result) => result.to_vec(),
+    //             Err(e) => {
+    //                 log::error!("ZIP operation error: {}", e);
+    //                 Vec::new()
+    //             }
+    //         }
+    //     })
+    //     .compress()
+    //     .await; // Returns Vec<u8> - the ZIP archive bytes, fully unwrapped
 
-    println!("ZIP archive size: {} bytes", archive.len());
+    // println!("ZIP archive size: {} bytes", archive.len());
 
     // Alternative: Direct builders work too
     let direct_compressed = Compress::zstd()
         .with_level(3)
-        .on_result(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("Direct compression error: {}", e);
-                Vec::new()
+        .on_result(move |result| {
+            match result {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    log::error!("Direct compression error: {}", e);
+                    Vec::new()
+                }
             }
         })
-        .compress(&large_data)
+        .compress(large_data.clone())
         .await; // Returns fully unwrapped value - no Result wrapper
 
     println!("Direct builder compressed size: {} bytes", direct_compressed.len());
@@ -134,24 +140,28 @@ async fn compress_and_encrypt_demo() -> Result<(), Box<dyn std::error::Error>> {
         .with_store(store)
         .with_namespace("compression-demo")
         .version(1)
-        .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Key retrieval failed: {}", e);
-                Vec::new()
+        .on_result(move |result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Key retrieval failed: {}", e);
+                    Vec::new()
+                }
             }
         })
-        .retrieve()
+        .retrieve("compression-demo-key")
         .await; // Returns fully unwrapped value - no Result wrapper
     
     // First compress the data
     let compressed = Compress::zstd()
         .with_level(6)
-        .on_result(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("Compression failed: {}", e);
-                sample_data.to_vec()
+        .on_result(move |result| {
+            match result {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    log::error!("Compression failed: {}", e);
+                    sample_data.to_vec()
+                }
             }
         })
         .compress(sample_data)
@@ -160,16 +170,16 @@ async fn compress_and_encrypt_demo() -> Result<(), Box<dyn std::error::Error>> {
     // Then encrypt the compressed data
     let encrypted = Cipher::aes()
         .with_key(key)
-        .on_result(|result| {
+        .on_result(move |result| {
             match result {
                 Ok(result) => result.to_vec(),
                 Err(e) => {
                     log::error!("Encryption failed: {}", e);
-                    compressed.clone()
+                    Vec::new()
                 }
             }
         })
-        .encrypt(&compressed)
+        .encrypt(compressed.clone())
         .await; // Returns fully unwrapped value - no Result wrapper
     
     println!("Compress + Encrypt demo:");

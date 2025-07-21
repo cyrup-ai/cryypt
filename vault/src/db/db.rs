@@ -8,6 +8,7 @@ use surrealdb::{
 };
 
 // Use Arc<Mutex<>> for thread-safe global access with mutability
+#[allow(dead_code)]
 static DB: LazyLock<Arc<Mutex<Option<Surreal<Any>>>>> =
     LazyLock::new(|| Arc::new(Mutex::new(None)));
 

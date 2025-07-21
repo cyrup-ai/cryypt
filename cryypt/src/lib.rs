@@ -43,12 +43,11 @@
 //!
 //! ## Example
 //!
-//! ```rust,no_run
-//! # #[cfg(all(feature = "aes", feature = "file-store"))]
-//! # {
-//! use cryypt::{Cryypt, on_result};
+//! ```rust,ignore
+//! use cryypt::{Cryypt, Key, FileKeyStore};
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! 
+//! async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let master_key = [1u8; 32]; // In production, generate this securely
 //!
 //! // Encrypt data - NEW PATTERN: action takes data as argument
@@ -94,9 +93,8 @@
 //!     .await;
 //!
 //! assert_eq!(decrypted, b"Hello, World!");
-//! # Ok(())
-//! # }
-//! # }
+//! Ok(())
+//! }
 //! ```
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -114,7 +112,10 @@
     feature = "zstd", 
     feature = "gzip", 
     feature = "bzip2", 
-    feature = "zip"
+    feature = "zip",
+    feature = "vault",
+    feature = "pqcrypto", 
+    feature = "quic"
 ))]
 mod master;
 
@@ -128,7 +129,10 @@ mod master;
     feature = "zstd", 
     feature = "gzip", 
     feature = "bzip2", 
-    feature = "zip"
+    feature = "zip",
+    feature = "vault",
+    feature = "pqcrypto", 
+    feature = "quic"
 ))]
 pub use master::Cryypt;
 
@@ -143,6 +147,18 @@ pub use master::CompressMasterBuilder;
 
 #[cfg(feature = "jwt")]
 pub use cryypt_jwt::api::JwtMasterBuilder;
+
+#[cfg(feature = "key")]
+pub use master::KeyMasterBuilder;
+
+#[cfg(feature = "vault")]
+pub use master::VaultMasterBuilder;
+
+#[cfg(feature = "pqcrypto")]
+pub use master::PqcryptoMasterBuilder;
+
+#[cfg(feature = "quic")]
+pub use master::QuicMasterBuilder;
 
 // === Core Re-exports ===
 
@@ -174,7 +190,7 @@ pub use cryypt_key::store::KeychainStore;
 
 #[cfg(any(feature = "aes", feature = "chacha20"))]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "aes", feature = "chacha20"))))]
-pub use cryypt_cipher::{Cipher, CryptError, __cryypt_on_result_impl, __cryypt_on_chunk_impl, __cryypt_on_error_impl};
+pub use cryypt_cipher::{Cipher, CryptError};
 
 // === Hashing Re-exports ===
 
@@ -229,6 +245,10 @@ pub use cryypt_quic as quic;
 #[cfg(feature = "vault")]
 #[cfg_attr(docsrs, doc(cfg(feature = "vault")))]
 pub use cryypt_vault as vault;
+
+#[cfg(feature = "quic")]
+#[cfg_attr(docsrs, doc(cfg(feature = "quic")))]
+pub use cryypt_quic::{QuicSend, QuicRecv, QuicServer, QuicClient};
 
 /// Prelude module for convenient imports
 pub mod prelude {

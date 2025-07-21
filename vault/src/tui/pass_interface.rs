@@ -7,6 +7,7 @@ use crate::error::VaultResult;
 /// Pass password store interface (non-async version)
 #[derive(Debug)]
 pub struct PassInterface {
+    #[allow(dead_code)]
     store_path: String,
 }
 

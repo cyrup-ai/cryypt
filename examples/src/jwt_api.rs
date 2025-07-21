@@ -1,8 +1,8 @@
-use cryypt::{Cryypt, on_result};
+use cryypt::Cryypt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Claims {
     sub: String,
     exp: i64,
@@ -22,10 +22,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_algorithm("HS256")
         .with_secret(b"secret_key")
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("JWT operation failed: {}", e);
-                String::new()
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("JWT operation failed: {}", e);
+                    String::new()
+                }
             }
         })
         .sign(claims.clone())

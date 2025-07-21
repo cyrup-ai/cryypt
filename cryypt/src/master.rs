@@ -32,7 +32,7 @@ impl Cryypt {
     /// Entry point for JWT operations - README.md pattern
     /// Example: `Cryypt::jwt().hs256().with_secret(secret).sign().await`
     #[cfg(feature = "jwt")]
-    pub fn jwt() -> cryypt_jwt::api::JwtMasterBuilder {
+    pub fn jwt() -> cryypt_jwt::JwtMasterBuilder {
         JwtCryypt::jwt()
     }
     
@@ -138,6 +138,12 @@ impl CompressMasterBuilder {
     pub fn bzip2(self) -> cryypt_compression::Bzip2Builder<cryypt_compression::api::bzip2_builder::NoLevel> {
         cryypt_compression::Compress::bzip2()
     }
+    
+    /// Use ZIP compression for multi-file archives - README.md pattern
+    #[cfg(feature = "zip")]
+    pub fn zip(self) -> cryypt_compression::ZipBuilder<cryypt_compression::api::zip_builder::NoFiles> {
+        cryypt_compression::Compress::zip()
+    }
 }
 
 /// Master builder for key operations
@@ -146,24 +152,207 @@ pub struct KeyMasterBuilder;
 
 #[cfg(feature = "key")]
 impl KeyMasterBuilder {
-    // TODO: Implement key() method once trait/type conflict is resolved
-    // The issue is with cryypt_key::bits_macro::Bits being treated as a trait
+    /// Generate a new key - README.md pattern
+    pub fn generate(self) -> cryypt_key::api::KeyGenerator {
+        cryypt_key::api::KeyGenerator::new()
+    }
+    
+    /// Retrieve an existing key - README.md pattern
+    pub fn retrieve(self) -> cryypt_key::api::KeyRetriever {
+        cryypt_key::api::KeyRetriever::new()
+    }
 }
 
 /// Master builder for vault operations
 #[cfg(feature = "vault")]
 pub struct VaultMasterBuilder;
 
+/// Vault builder with path configuration
+#[cfg(feature = "vault")]
+pub struct VaultWithPath {
+    path: String,
+    config: Option<cryypt_vault::config::VaultConfig>,
+    passphrase: Option<String>,
+}
+
+/// Vault builder with path and result handler
+#[cfg(feature = "vault")]
+pub struct VaultWithPathAndHandler<F, T> {
+    path: String,
+    config: Option<cryypt_vault::config::VaultConfig>,
+    passphrase: Option<String>,
+    result_handler: F,
+    _phantom: std::marker::PhantomData<T>,
+}
+
 #[cfg(feature = "vault")]
 impl VaultMasterBuilder {
+    /// Create a new vault at path - README.md pattern
+    pub fn create<P: AsRef<str>>(self, path: P) -> VaultWithPath {
+        VaultWithPath {
+            path: path.as_ref().to_string(),
+            config: None,
+            passphrase: None,
+        }
+    }
+
     /// Create a vault with configuration - README.md pattern
-    pub fn with_config(self, config: cryypt_vault::config::VaultConfig) -> cryypt_vault::core::Vault {
-        cryypt_vault::core::Vault::with_fortress_encryption(config).unwrap_or_else(|_| cryypt_vault::core::Vault::new())
+    pub fn with_config(self, config: cryypt_vault::config::VaultConfig) -> VaultWithPath {
+        VaultWithPath {
+            path: "./vault".to_string(),
+            config: Some(config),
+            passphrase: None,
+        }
     }
     
     /// Create a vault at specified path - README.md pattern
-    pub fn at_path<P: AsRef<std::path::Path>>(self, _path: P) -> cryypt_vault::core::Vault {
-        cryypt_vault::core::Vault::new()
+    pub fn at_path<P: AsRef<std::path::Path>>(self, path: P) -> VaultWithPath {
+        VaultWithPath {
+            path: path.as_ref().to_string_lossy().to_string(),
+            config: None,
+            passphrase: None,
+        }
+    }
+}
+
+#[cfg(feature = "vault")]
+impl VaultWithPath {
+    /// Add passphrase to vault builder
+    pub fn with_passphrase<P: AsRef<str>>(mut self, passphrase: P) -> Self {
+        self.passphrase = Some(passphrase.as_ref().to_string());
+        self
+    }
+
+    /// Add configuration to vault builder
+    pub fn with_config(mut self, config: cryypt_vault::config::VaultConfig) -> Self {
+        self.config = Some(config);
+        self
+    }
+
+    /// Add on_result handler - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> VaultWithPathAndHandler<F, T>
+    where
+        F: FnOnce(cryypt_vault::error::VaultResult<cryypt_vault::core::Vault>) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        VaultWithPathAndHandler {
+            path: self.path,
+            config: self.config,
+            passphrase: self.passphrase,
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Convert to future for .await syntax
+    pub async fn create_and_unlock(self) -> cryypt_vault::core::Vault {
+        // Create vault with configuration if provided
+        let result = if let Some(config) = self.config {
+            cryypt_vault::core::Vault::with_fortress_encryption(config)
+        } else {
+            Ok(cryypt_vault::core::Vault::new())
+        };
+
+        // Default unwrapping: Ok(vault) => vault, Err(_) => new empty vault
+        match result {
+            Ok(vault) => vault,
+            Err(_) => cryypt_vault::core::Vault::new(),
+        }
+    }
+}
+
+// Implement IntoFuture for VaultWithPath to enable .await
+#[cfg(feature = "vault")]
+impl std::future::IntoFuture for VaultWithPath {
+    type Output = cryypt_vault::core::Vault;
+    type IntoFuture = std::pin::Pin<Box<dyn std::future::Future<Output = Self::Output> + Send>>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(async move {
+            // Create vault with configuration if provided
+            let result = if let Some(config) = self.config {
+                cryypt_vault::core::Vault::with_fortress_encryption(config)
+            } else {
+                Ok(cryypt_vault::core::Vault::new())
+            };
+
+            // Default unwrapping: Ok(vault) => vault, Err(_) => new empty vault
+            match result {
+                Ok(vault) => vault,
+                Err(_) => cryypt_vault::core::Vault::new(),
+            }
+        })
+    }
+}
+
+
+
+#[cfg(feature = "vault")]
+impl<F, T> VaultWithPathAndHandler<F, T>
+where
+    F: FnOnce(cryypt_vault::error::VaultResult<cryypt_vault::core::Vault>) -> T + Send + 'static,
+    T: Send + 'static,
+{
+    /// Apply result handler and create vault
+    pub async fn execute(self) -> T {
+        let handler = self.result_handler;
+        
+        // Create vault configuration using path if provided
+        let config = if let Some(mut config) = self.config {
+            // Update vault path if provided
+            if !self.path.is_empty() && self.path != "./vault" {
+                config.vault_path = std::path::PathBuf::from(&self.path);
+            }
+            config
+        } else if !self.path.is_empty() {
+            // Create new config with specified path
+            let mut config = cryypt_vault::config::VaultConfig::default();
+            config.vault_path = std::path::PathBuf::from(&self.path);
+            config
+        } else {
+            // Use default config
+            cryypt_vault::config::VaultConfig::default()
+        };
+        
+        // Create vault with configuration
+        let result = cryypt_vault::core::Vault::with_fortress_encryption(config);
+        
+        // If vault creation succeeded and passphrase is provided, unlock it
+        let final_result = match result {
+            Ok(vault) => {
+                if let Some(passphrase) = &self.passphrase {
+                    // Attempt to unlock with provided passphrase
+                    match vault.unlock(passphrase).await {
+                        Ok(()) => Ok(vault),
+                        Err(_unlock_err) => {
+                            // Unlock failed but return vault (user can unlock later)
+                            Ok(vault)
+                        }
+                    }
+                } else {
+                    Ok(vault)
+                }
+            }
+            Err(e) => Err(e),
+        };
+        
+        // Apply result handler
+        handler(final_result)
+    }
+}
+
+// Implement IntoFuture for VaultWithPathAndHandler to enable .await
+#[cfg(feature = "vault")]
+impl<F, T> std::future::IntoFuture for VaultWithPathAndHandler<F, T>
+where
+    F: FnOnce(cryypt_vault::error::VaultResult<cryypt_vault::core::Vault>) -> T + Send + 'static,
+    T: Send + 'static,
+{
+    type Output = T;
+    type IntoFuture = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send>>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(self.execute())
     }
 }
 
@@ -191,12 +380,12 @@ pub struct QuicMasterBuilder;
 #[cfg(feature = "quic")]
 impl QuicMasterBuilder {
     /// Create a QUIC server - README.md pattern
-    pub fn server(self) -> cryypt_quic::server::Server {
-        cryypt_quic::server::Server::default()
+    pub fn server(self) -> cryypt_quic::api::QuicServerBuilder {
+        cryypt_quic::api::QuicServerBuilder::new()
     }
     
     /// Create a QUIC client - README.md pattern
-    pub fn client(self) -> cryypt_quic::client::Client {
-        cryypt_quic::client::Client::default()
+    pub fn client(self) -> cryypt_quic::api::QuicClientBuilder {
+        cryypt_quic::api::QuicClientBuilder::new()
     }
 }

@@ -123,6 +123,29 @@ impl Vault {
         }
     }
 
+    /// Store a value with TTL (Time To Live) expiration
+    pub async fn put_with_ttl(&self, key: &str, value: &str, ttl_seconds: u64) -> VaultResult<VaultUnitRequest> {
+        let providers = self.providers.lock().await;
+        if let Some(provider) = providers.first() {
+            // Check if provider supports TTL
+            if !provider.supports_ttl() {
+                // Fallback to regular put operation with warning log
+                log::warn!("Provider does not support TTL, storing without expiration: key={}", key);
+                return Ok(provider.put(key, VaultValue::from_string(value.to_string())));
+            }
+            
+            // Create VaultValue with TTL metadata for TTL-capable providers
+            let mut metadata = HashMap::new();
+            metadata.insert("ttl_seconds".to_string(), ttl_seconds.to_string());
+            let vault_value = VaultValue::from_string(value.to_string()).with_metadata(metadata);
+            Ok(provider.put(key, vault_value))
+        } else {
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
+        }
+    }
+
     pub async fn put_if_absent(&self, key: &str, value: &str) -> VaultResult<VaultBoolRequest> {
         let providers = self.providers.lock().await;
         if let Some(provider) = providers.first() {

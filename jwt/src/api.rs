@@ -14,6 +14,20 @@ impl JwtMasterBuilder {
     pub fn new() -> JwtBuilder {
         JwtBuilder::new()
     }
+
+    /// Set algorithm - README.md pattern following EXACT pattern from master builders
+    /// SEXY SYNTAX in closures works via CRATE PRIVATE macro transformation
+    #[inline]
+    pub fn with_algorithm(self, algorithm: &str) -> JwtBuilder {
+        JwtBuilder::new().with_algorithm(algorithm)
+    }
+
+    /// Set secret for symmetric algorithms - README.md pattern
+    /// Pattern matching Ok => result in user closures works via INTERNAL MACROS never exposed to users
+    #[inline]
+    pub fn with_secret(self, secret: &[u8]) -> JwtBuilder {
+        JwtBuilder::new().with_secret(secret)
+    }
 }
 
 /// Direct builder entry point - equivalent to Cryypt::jwt()

@@ -31,6 +31,13 @@ impl<T> NotResult for Box<T> {}
 impl<T> NotResult for std::sync::Arc<T> {}
 impl<T> NotResult for std::rc::Rc<T> {}
 
+// Common JSON types for JWT and other serialization
+impl NotResult for serde_json::Value {}
+
+// Tuple implementations for QUIC streams
+impl<T, U> NotResult for (T, U) where T: NotResult, U: NotResult {}
+
+
 // Explicitly exclude Result types
 impl<T, E> !NotResult for Result<T, E> {}
 

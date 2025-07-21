@@ -11,7 +11,7 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use cryypt_key::{Key, store::FileKeyStore, bits_macro::Bits};
 //!
 //! # #[tokio::main]

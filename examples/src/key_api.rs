@@ -1,4 +1,4 @@
-use cryypt::{Cryypt, FileKeyStore, on_result, Bits, KeyGenerator, KeyRetriever};
+use cryypt::{Cryypt, FileKeyStore, Bits, KeyRetriever};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -7,7 +7,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Generate a NEW key (one-time setup)
     let store = FileKeyStore::at("/secure/keys").with_master_key(master_key);
-    let key = Cryypt::key()
+    let generated_key = Cryypt::key()
         .generate()
         .size(256.bits())
         .with_store(store.clone())
@@ -16,16 +16,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_result(|result| {
             match result {
                 Ok(result) => result,
-                Err(e) => {
-                    log::error!("Key generation failed: {}", e);
+                Err(_e) => {
+                    log::error!("Key generation failed");
                     Vec::new() // Return empty key on error
                 }
             }
         })
+        .generate()
         .await; // Returns Key - the actual key object, fully unwrapped
 
     // Retrieve EXISTING key (normal usage)
-    let key = Cryypt::key()
+    let retrieved_key = Cryypt::key()
         .retrieve()
         .with_store(store.clone())
         .with_namespace("my-app")
@@ -33,22 +34,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_result(|result| {
             match result {
                 Ok(result) => result,
-                Err(e) => {
-                    log::error!("Key generation failed: {}", e);
+                Err(_e) => {
+                    log::error!("Key retrieval failed");
                     Vec::new() // Return empty key on error
                 }
             }
         })
+        .retrieve("my-app:v1:default")
         .await; // Returns fully unwrapped value - no Result wrapper
 
-    // Use key directly for encryption
-    let encrypted = key
+    // Use generated key with cipher - README.md pattern: use Cryypt::cipher() not key.aes()
+    let encrypted = Cryypt::cipher()
         .aes()
+        .with_key(generated_key.clone())
         .on_result(|result| {
             match result {
                 Ok(result) => result,
-                Err(e) => {
-                    log::error!("Operation failed: {}", e);
+                Err(_e) => {
+                    log::error!("Operation failed");
                     Vec::new() // Return empty on error
                 }
             }
@@ -56,29 +59,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .encrypt(b"Secret message")
         .await; // Returns Vec<u8> - the encrypted bytes, fully unwrapped
 
-    // Use key directly for decryption
-    let plaintext = key
+    // Use generated key with cipher for decryption - README.md pattern: use Cryypt::cipher() not key.aes()
+    let plaintext: Vec<u8> = Cryypt::cipher()
         .aes()
+        .with_key(generated_key.clone())
         .on_result(|result| {
             match result {
                 Ok(result) => result,
-                Err(e) => {
-                    log::error!("Operation failed: {}", e);
+                Err(_e) => {
+                    log::error!("Operation failed");
                     Vec::new() // Return empty on error
                 }
             }
         })
-        .decrypt(&encrypted)
+        .decrypt(encrypted.clone())
         .await; // Returns Vec<u8> - the decrypted plaintext bytes, fully unwrapped
 
-    // Or use ChaCha20
-    let encrypted_chacha = key
+    // Or use ChaCha20 with retrieved key - README.md pattern: use Cryypt::cipher() not key.chacha20()
+    let encrypted_chacha = Cryypt::cipher()
         .chacha20()
+        .with_key(retrieved_key.clone())
         .on_result(|result| {
             match result {
                 Ok(result) => result,
-                Err(e) => {
-                    log::error!("Operation failed: {}", e);
+                Err(_e) => {
+                    log::error!("Operation failed");
                     Vec::new() // Return empty on error
                 }
             }
@@ -92,13 +97,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(1)
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Key retrieval failed: {}", e);
-                Vec::new() // Return empty key on error
+            match result {
+                Ok(result) => result,
+                Err(_e) => {
+                    log::error!("Key retrieval failed");
+                    Vec::new() // Return empty key on error
+                }
             }
         })
-        .retrieve()
+        .retrieve("my-app:v1:default")
         .await; // Returns fully unwrapped value - no Result wrapper
 
     // Generate new key version
@@ -111,12 +118,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_result(|result| {
             match result {
                 Ok(result) => result,
-                Err(e) => {
-                    log::error!("Key generation failed: {}", e);
+                Err(_e) => {
+                    log::error!("Key generation failed");
                     Vec::new() // Return empty key on error
                 }
             }
         })
+        .generate()
         .await; // Returns fully unwrapped value - no Result wrapper
 
     // Re-encrypt data with new key
@@ -128,12 +136,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_result(|result| {
             match result {
                 Ok(result) => result,
-                Err(e) => {
-                    log::error!("Key generation failed: {}", e);
+                Err(_e) => {
+                    log::error!("Key generation failed");
                     Vec::new() // Return empty key on error
                 }
             }
         })
+        .retrieve("my-app:v1:old")
         .await; // Returns fully unwrapped value - no Result wrapper
 
     // Decrypt with old key (using the encrypted data from earlier)
@@ -144,8 +153,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_result(|result| {
             match result {
                 Ok(result) => result,
-                Err(e) => {
-                    log::error!("Operation failed: {}", e);
+                Err(_e) => {
+                    log::error!("Operation failed");
                     Vec::new() // Return empty on error
                 }
             }
@@ -160,19 +169,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_result(|result| {
             match result {
                 Ok(result) => result,
-                Err(e) => {
-                    log::error!("Operation failed: {}", e);
+                Err(_e) => {
+                    log::error!("Operation failed");
                     Vec::new() // Return empty on error
                 }
             }
         })
         .encrypt(plaintext_old)
         .await; // Returns fully unwrapped value - no Result wrapper
+
+    // Demonstrate alternative key retrieval API with key_alt
+    let alt_encrypted = Cryypt::cipher()
+        .aes()
+        .with_key(key_alt.clone())
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(_e) => {
+                    log::error!("Alternative key encryption failed");
+                    Vec::new() // Return empty on error
+                }
+            }
+        })
+        .encrypt(b"Message using alternative key retrieval API")
+        .await; // Returns fully unwrapped value - no Result wrapper
     
     println!("Key management operations completed successfully");
+    println!("Generated key length: {}", generated_key.len());
+    println!("Retrieved key length: {}", retrieved_key.len());
+    println!("Alternative retrieved key length: {}", key_alt.len());
     println!("Original plaintext: {}", String::from_utf8_lossy(&plaintext));
     println!("ChaCha20 encrypted length: {}", encrypted_chacha.len());
     println!("Re-encrypted data length: {}", new_ciphertext.len());
+    println!("Alternative API encrypted length: {}", alt_encrypted.len());
     
     Ok(())
 }

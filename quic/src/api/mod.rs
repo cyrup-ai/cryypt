@@ -45,6 +45,7 @@ impl QuicMasterBuilder {
 /// QUIC server builder
 pub struct QuicServerBuilder {
     cert: Option<Vec<u8>>,
+    #[allow(dead_code)]
     key: Option<Vec<u8>>,
 }
 
@@ -63,7 +64,7 @@ pub struct QuicServerWithConfigAndHandler<F, T> {
 }
 
 impl QuicServerBuilder {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             cert: None,
             key: None,
@@ -77,7 +78,7 @@ impl QuicServerBuilder {
     }
     
     /// Set server private key
-    pub fn with_key(mut self, key: Vec<u8>) -> QuicServerWithConfig {
+    pub fn with_key(self, key: Vec<u8>) -> QuicServerWithConfig {
         QuicServerWithConfig {
             cert: self.cert.unwrap_or_default(),
             key,
@@ -175,6 +176,7 @@ impl QuicServer {
 
 /// QUIC client builder
 pub struct QuicClientBuilder {
+    #[allow(dead_code)]
     server_name: Option<String>,
 }
 
@@ -191,14 +193,14 @@ pub struct QuicClientWithConfigAndHandler<F, T> {
 }
 
 impl QuicClientBuilder {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             server_name: None,
         }
     }
     
     /// Set server name for TLS
-    pub fn with_server_name(mut self, name: impl Into<String>) -> QuicClientWithConfig {
+    pub fn with_server_name(self, name: impl Into<String>) -> QuicClientWithConfig {
         QuicClientWithConfig {
             server_name: name.into(),
         }
@@ -527,7 +529,7 @@ async fn bind_quic_server(cert: &[u8], key: &[u8], addr: &str) -> crate::Result<
     })
 }
 
-async fn connect_quic_client_internal(server_name: &str, addr: &str) -> crate::Result<QuicClient> {
+async fn connect_quic_client_internal(_server_name: &str, addr: &str) -> crate::Result<QuicClient> {
     // Parse address
     let socket_addr = addr.parse::<SocketAddr>()
         .map_err(|e| crate::error::CryptoTransportError::Internal(

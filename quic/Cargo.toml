@@ -63,6 +63,4 @@ proptest = "1.7.0"
 hex-literal = "1.0.0"
 
 
-[[example]]
-name = "quic"
-path = "../examples/src/quic_api.rs"
+# Removed problematic example configuration - examples are in main examples crate

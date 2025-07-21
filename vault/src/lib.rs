@@ -1,3 +1,4 @@
+pub mod api;
 pub mod config;
 pub mod core;
 pub mod db;
@@ -16,6 +17,12 @@ pub use core::{Vault, VaultValue};
 pub use error::{VaultError, VaultResult};
 pub use db::LocalVaultProvider;
 pub use operation::{BoxedVaultOperation, VaultOperation};
+
+// Re-export vault operation builders
+pub use api::vault_operations::{
+    VaultWithKey, VaultWithKeyAndHandler, VaultWithKeyAndTtl, 
+    VaultWithKeyAndTtlAndHandler, VaultGetHandler
+};
 
 // For backward compatibility
 #[deprecated(since = "0.1.0", note = "Use LocalVaultProvider instead")]

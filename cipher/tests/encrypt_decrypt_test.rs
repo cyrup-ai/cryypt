@@ -1,4 +1,4 @@
-//! Test that encryption and decryption work together correctly
+//! Test encryption and decryption roundtrip using README.md correct patterns
 
 use cryypt_cipher::cipher::api::Cipher;
 
@@ -7,22 +7,35 @@ async fn test_aes_encrypt_decrypt_roundtrip() {
     let key = vec![0u8; 32]; // 256-bit key
     let plaintext = b"Hello, World! This is a test message.";
     
-    // Encrypt
+    // Encrypt using README.md pattern with on_result
     let encrypted = Cipher::aes()
         .with_key(key.clone())
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Encryption failed: {}", e);
+                    Vec::new()
+                }
+            }
+        })
         .encrypt(plaintext)
-        .await
-        .expect("Encryption should succeed");
+        .await; // Returns fully unwrapped Vec<u8>
     
-    // Get bytes from EncodableResult
-    let ciphertext = encrypted.to_bytes();
-    
-    // Decrypt
+    // Decrypt using README.md pattern with on_result
     let decrypted = Cipher::aes()
         .with_key(key)
-        .decrypt(ciphertext)
-        .await
-        .expect("Decryption should succeed");
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Decryption failed: {}", e);
+                    Vec::new()
+                }
+            }
+        })
+        .decrypt(encrypted)
+        .await; // Returns fully unwrapped Vec<u8>
     
     assert_eq!(plaintext.to_vec(), decrypted);
 }
@@ -32,22 +45,35 @@ async fn test_chacha_encrypt_decrypt_roundtrip() {
     let key = vec![0u8; 32]; // 256-bit key
     let plaintext = b"Hello, ChaCha! This is another test message.";
     
-    // Encrypt
+    // Encrypt using README.md pattern with on_result
     let encrypted = Cipher::chachapoly()
         .with_key(key.clone())
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Encryption failed: {}", e);
+                    Vec::new()
+                }
+            }
+        })
         .encrypt(plaintext)
-        .await
-        .expect("Encryption should succeed");
+        .await; // Returns fully unwrapped Vec<u8>
     
-    // Get bytes from EncodableResult
-    let ciphertext = encrypted.to_bytes();
-    
-    // Decrypt
+    // Decrypt using README.md pattern with on_result
     let decrypted = Cipher::chachapoly()
         .with_key(key)
-        .decrypt(ciphertext)
-        .await
-        .expect("Decryption should succeed");
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Decryption failed: {}", e);
+                    Vec::new()
+                }
+            }
+        })
+        .decrypt(encrypted)
+        .await; // Returns fully unwrapped Vec<u8>
     
     assert_eq!(plaintext.to_vec(), decrypted);
 }
@@ -57,26 +83,43 @@ async fn test_aes_encrypt_to_base64_and_back() {
     let key = vec![0u8; 32];
     let plaintext = b"Base64 test message";
     
-    // Encrypt and get base64
+    // Encrypt using README.md pattern
     let encrypted = Cipher::aes()
         .with_key(key.clone())
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Encryption failed: {}", e);
+                    Vec::new()
+                }
+            }
+        })
         .encrypt(plaintext)
-        .await
-        .expect("Encryption should succeed");
+        .await; // Returns fully unwrapped Vec<u8>
     
-    let base64_ciphertext = encrypted.to_base64();
-    
-    // Decode base64 and decrypt
+    // Use standard library for base64 encoding
     use base64::Engine;
+    let base64_ciphertext = base64::engine::general_purpose::STANDARD.encode(&encrypted);
+    
+    // Decode base64 and decrypt using README.md pattern
     let ciphertext = base64::engine::general_purpose::STANDARD
         .decode(&base64_ciphertext)
         .expect("Base64 decode should succeed");
     
     let decrypted = Cipher::aes()
         .with_key(key)
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Decryption failed: {}", e);
+                    Vec::new()
+                }
+            }
+        })
         .decrypt(ciphertext)
-        .await
-        .expect("Decryption should succeed");
+        .await; // Returns fully unwrapped Vec<u8>
     
     assert_eq!(plaintext.to_vec(), decrypted);
 }
@@ -86,24 +129,41 @@ async fn test_aes_encrypt_to_hex_and_back() {
     let key = vec![0u8; 32];
     let plaintext = b"Hex test message";
     
-    // Encrypt and get hex
+    // Encrypt using README.md pattern
     let encrypted = Cipher::aes()
         .with_key(key.clone())
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Encryption failed: {}", e);
+                    Vec::new()
+                }
+            }
+        })
         .encrypt(plaintext)
-        .await
-        .expect("Encryption should succeed");
+        .await; // Returns fully unwrapped Vec<u8>
     
-    let hex_ciphertext = encrypted.to_hex();
+    // Use standard library for hex encoding
+    let hex_ciphertext = hex::encode(&encrypted);
     
-    // Decode hex and decrypt
+    // Decode hex and decrypt using README.md pattern
     let ciphertext = hex::decode(&hex_ciphertext)
         .expect("Hex decode should succeed");
     
     let decrypted = Cipher::aes()
         .with_key(key)
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Decryption failed: {}", e);
+                    Vec::new()
+                }
+            }
+        })
         .decrypt(ciphertext)
-        .await
-        .expect("Decryption should succeed");
+        .await; // Returns fully unwrapped Vec<u8>
     
     assert_eq!(plaintext.to_vec(), decrypted);
 }

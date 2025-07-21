@@ -84,3 +84,13 @@ fn random_16_bytes() -> [u8; 16] {
     rand::rng().fill(&mut buf);
     buf
 }
+
+/// Default QUIC client for master builder pattern
+#[derive(Default)]
+pub struct Client;
+
+impl Client {
+    pub fn default() -> Self {
+        Client
+    }
+}

@@ -69,6 +69,7 @@ impl VaultValue {
     }
 
     /// Sets the associated key and provider for this value
+    #[allow(dead_code)]
     pub(crate) fn with_provider(
         mut self,
         key: String,

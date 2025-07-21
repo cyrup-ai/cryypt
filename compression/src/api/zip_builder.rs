@@ -17,7 +17,7 @@ pub struct HasFiles {
 /// Builder for ZIP archive operations
 pub struct ZipBuilder<F> {
     pub(super) files: F,
-    pub(super) result_handler: Option<Box<dyn Fn(Result<CompressionResult>) -> Result<CompressionResult> + Send + Sync>>,
+    pub(super) result_handler: Option<Box<dyn Fn(Result<CompressionResult>) -> Vec<u8> + Send + Sync>>,
     pub(super) chunk_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>>,
 }
 
@@ -37,7 +37,7 @@ impl<F> ZipBuilder<F> {
     /// Apply on_result! handler
     pub fn on_result<H>(mut self, handler: H) -> Self
     where
-        H: Fn(Result<CompressionResult>) -> Result<CompressionResult> + Send + Sync + 'static,
+        H: Fn(Result<CompressionResult>) -> Vec<u8> + Send + Sync + 'static,
     {
         self.result_handler = Some(Box::new(handler));
         self
@@ -79,46 +79,62 @@ impl ZipBuilder<HasFiles> {
 // Compression methods for ZIP archives with files
 impl ZipBuilder<HasFiles> {
     /// Create the ZIP archive from all added files
-    pub async fn compress(self) -> Result<CompressionResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compress(self) -> Vec<u8> {
         let files_count = self.files.files.len();
         let total_size: usize = self.files.files.values().map(|data| data.len()).sum();
         
-        let compressed = zip_compress(self.files.files).await?;
-        let result = CompressionResult::with_original_size(
-            compressed,
-            CompressionAlgorithm::Zip { 
-                level: Some(6), // Default compression level
-                files_count,
-            },
-            total_size,
-        );
+        let result = async move {
+            let compressed = zip_compress(self.files.files).await?;
+            Ok(CompressionResult::with_original_size(
+                compressed,
+                CompressionAlgorithm::Zip { 
+                    level: Some(6), // Default compression level
+                    files_count,
+                },
+                total_size,
+            ))
+        }.await;
         
         if let Some(handler) = self.result_handler {
-            handler(Ok(result))
+            // User provided handler: give them Result<CompressionResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            Ok(result)
+            // Default unwrapping: Ok(compression_result) => compression_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(compression_result) => compression_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     
     /// Extract files from a ZIP archive (takes compressed data as input)
-    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Result<CompressionResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let original_size = data.len();
         
-        let files = zip_decompress(data.clone()).await?;
-        let result = CompressionResult::with_original_size(
-            data,
-            CompressionAlgorithm::Zip { 
-                level: None,
-                files_count: files.len(),
-            },
-            original_size,
-        );
+        let result = async move {
+            let files = zip_decompress(data.clone()).await?;
+            Ok(CompressionResult::with_original_size(
+                data,
+                CompressionAlgorithm::Zip { 
+                    level: None,
+                    files_count: files.len(),
+                },
+                original_size,
+            ))
+        }.await;
         
         if let Some(handler) = self.result_handler {
-            handler(Ok(result))
+            // User provided handler: give them Result<CompressionResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            Ok(result)
+            // Default unwrapping: Ok(compression_result) => compression_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(compression_result) => compression_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     

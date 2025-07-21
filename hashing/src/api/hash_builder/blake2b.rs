@@ -18,14 +18,20 @@ impl<P> HashBuilder<Blake2bHash, NoData, NoSalt, P> {
     }
     
     /// Compute hash of the provided data
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
-        let hash_result = blake2b_hash(data, None, self.hasher.output_size).await?;
+        let result = blake2b_hash(data, None, self.hasher.output_size).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(Ok(HashResult::from(hash_result)))
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            Ok(HashResult::from(hash_result))
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     
@@ -47,14 +53,20 @@ impl<P> HashBuilder<Blake2bHash, NoData, HasSalt, P> {
     }
     
     /// Compute hash of the provided data with key
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let result = blake2b_hash(data, Some(self.salt.0), self.hasher.output_size).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            result
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     

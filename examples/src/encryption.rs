@@ -4,7 +4,7 @@ let encrypted = Cryypt::cipher()
     .aes()
     .with_key(key)
     .on_result(|result| {
-        Ok => result,
+        Ok(result) => result,
         Err(e) => {
             log::error!("Encryption failed: {}", e);
             Vec::new() // Return empty on error

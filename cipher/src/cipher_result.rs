@@ -19,10 +19,7 @@ pub struct CipherResultWithHandler<F> {
 }
 
 impl CipherResult {
-    /// Create a new CipherResult from a oneshot receiver
-    pub(crate) fn new(receiver: oneshot::Receiver<Result<Vec<u8>>>) -> Self {
-        Self { receiver }
-    }
+
 
     /// Create a CipherResult that's already completed
     pub fn ready(result: Result<Vec<u8>>) -> Self {

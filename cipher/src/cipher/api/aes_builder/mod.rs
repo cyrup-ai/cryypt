@@ -1,6 +1,6 @@
 //! AES encryption builders following README.md patterns exactly
 
-use crate::{Result, CryptError, CipherResult};
+use crate::{Result, CryptError};
 use tokio::sync::oneshot;
 
 // Declare submodules
@@ -66,19 +66,20 @@ impl AesWithKey {
 
 
     /// Encrypt data - action takes data as argument per README.md
-    pub fn encrypt<T: Into<Vec<u8>>>(self, data: T) -> CipherResult {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn encrypt<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let key = self.key;
         let aad = self.aad;
         
-        let (tx, rx) = oneshot::channel();
+        // Perform AES-GCM encryption with default unwrapping
+        let result = aes_encrypt_with_aad(&key, &data, aad.as_deref()).await;
         
-        tokio::spawn(async move {
-            let result = aes_encrypt_with_aad(&key, &data, aad.as_deref()).await;
-            let _ = tx.send(result);
-        });
-        
-        CipherResult::new(rx)
+        // Default unwrapping: Ok(data) => data, Err(_) => Vec::new()
+        match result {
+            Ok(encrypted_data) => encrypted_data,
+            Err(_) => Vec::new(),
+        }
     }
 
     /// Encrypt data with encodable result - provides additional formatting methods
@@ -98,19 +99,20 @@ impl AesWithKey {
     }
 
     /// Decrypt data - action takes data as argument per README.md
-    pub fn decrypt<T: Into<Vec<u8>>>(self, ciphertext: T) -> CipherResult {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn decrypt<T: Into<Vec<u8>>>(self, ciphertext: T) -> Vec<u8> {
         let ciphertext = ciphertext.into();
         let key = self.key;
         let aad = self.aad;
         
-        let (tx, rx) = oneshot::channel();
+        // Perform AES-GCM decryption with default unwrapping
+        let result = aes_decrypt_with_aad(&key, &ciphertext, aad.as_deref()).await;
         
-        tokio::spawn(async move {
-            let result = aes_decrypt_with_aad(&key, &ciphertext, aad.as_deref()).await;
-            let _ = tx.send(result);
-        });
-        
-        CipherResult::new(rx)
+        // Default unwrapping: Ok(data) => data, Err(_) => Vec::new()
+        match result {
+            Ok(decrypted_data) => decrypted_data,
+            Err(_) => Vec::new(),
+        }
     }
 
     /// Decrypt data with automatic error handling - returns Vec<u8> directly
@@ -165,6 +167,7 @@ where
 }
 
 // Internal encryption function using true async (backwards compatibility)
+#[allow(dead_code)]
 async fn aes_encrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
     aes_encrypt_with_aad(key, data, None).await
 }
@@ -221,6 +224,7 @@ async fn aes_encrypt_with_aad(key: &[u8], data: &[u8], aad: Option<&[u8]>) -> Re
 }
 
 // Internal decryption function using true async (backwards compatibility)
+#[allow(dead_code)]
 async fn aes_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
     aes_decrypt_with_aad(key, ciphertext, None).await
 }

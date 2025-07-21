@@ -8,13 +8,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let encrypted = Cryypt::cipher()
         .aes()
         .with_key(key.clone())
-        .on_result(cryypt::__cryypt_on_result_impl!(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
-                Vec::new()
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Cipher operation failed: {}", e);
+                    Vec::new()
+                }
             }
-        }))
+        })
         .encrypt(b"Secret message")
         .await;
     
@@ -24,13 +26,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let plaintext = Cryypt::cipher()
         .aes()
         .with_key(key)
-        .on_result(cryypt::__cryypt_on_result_impl!(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
-                Vec::new()
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Cipher operation failed: {}", e);
+                    Vec::new()
+                }
             }
-        }))
+        })
         .decrypt(encrypted.clone())
         .await;
     
@@ -43,13 +47,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let error_result = Cryypt::cipher()
         .aes()
         .with_key(invalid_key)
-        .on_result(cryypt::__cryypt_on_result_impl!(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("ERROR HANDLER CALLED: {}", e);
-                vec![42, 42, 42] // Return specific error value to prove handler was used
+        .on_result(|result| {
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("ERROR HANDLER CALLED: {}", e);
+                    vec![42, 42, 42] // Return specific error value to prove handler was used
+                }
             }
-        }))
+        })
         .encrypt(b"This should fail")
         .await;
     

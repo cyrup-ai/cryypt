@@ -1,4 +1,4 @@
-use cryypt::{Cryypt, on_result};
+use cryypt::Cryypt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -212,7 +212,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut alice_encryption_key = alice_shared_secret;
     alice_encryption_key.resize(32, 0); // Same padding
     
-    let decrypted = Cryypt::cipher()
+    let decrypted: Vec<u8> = Cryypt::cipher()
         .aes()
         .with_key(alice_encryption_key)
         .on_result(|result| {
@@ -228,7 +228,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await; // Returns fully unwrapped value - no Result wrapper
 
     println!("  Decrypted: {}", String::from_utf8_lossy(&decrypted));
-    println!("  Message integrity: {}", if decrypted == secret_message { "✅ PASSED" } else { "❌ FAILED" });
+    println!("  Message integrity: {}", if decrypted == secret_message.to_vec() { "✅ PASSED" } else { "❌ FAILED" });
 
     println!("\n🎉 Post-quantum cryptography demo completed successfully!");
 

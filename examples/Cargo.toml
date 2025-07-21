@@ -36,7 +36,7 @@ name = "quic_api"
 path = "src/quic_api.rs"
 
 [dependencies]
-cryypt = { path = "../cryypt", features = ["full"] }
+cryypt = { path = "../cryypt", features = ["full", "quic"] }
 tokio = { version = "1.46.1", features = ["full"] }
 tokio-stream = "0.1.17"
 futures = "0.3.31"

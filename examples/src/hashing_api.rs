@@ -5,13 +5,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Test 1: Success case with SHA256
     let hash = Cryypt::hash()
         .sha256()
-        .on_result(cryypt::__cryypt_on_result_impl!(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("Hash computation failed: {}", e);
-                Vec::new()
+        .on_result(|result| {
+            match result {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    log::error!("Hash computation failed: {}", e);
+                    Vec::new()
+                }
             }
-        }))
+        })
         .compute(b"Hello, World!")
         .await;
     
@@ -23,13 +25,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hmac = Cryypt::hash()
         .sha256()
         .with_key(b"secret_key")
-        .on_result(cryypt::__cryypt_on_result_impl!(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("HMAC operation failed: {}", e);
-                Vec::new()
+        .on_result(|result| {
+            match result {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    log::error!("HMAC operation failed: {}", e);
+                    Vec::new()
+                }
             }
-        }))
+        })
         .compute(b"Message to authenticate")
         .await;
     
@@ -41,13 +45,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nTest 3 - Testing error handling:");
     let error_result = Cryypt::hash()
         .sha256()
-        .on_result(cryypt::__cryypt_on_result_impl!(|result| {
-            Ok => result.to_vec(),
-            Err(e) => {
-                log::error!("ERROR HANDLER CALLED: {}", e);
-                vec![99, 99, 99] // Return specific error value to prove handler was used
+        .on_result(|result| {
+            match result {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    log::error!("ERROR HANDLER CALLED: {}", e);
+                    vec![99, 99, 99] // Return specific error value to prove handler was used
+                }
             }
-        }))
+        })
         .compute(b"This should succeed normally")
         .await;
     

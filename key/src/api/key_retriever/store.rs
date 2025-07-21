@@ -84,17 +84,8 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
         Ok(crate::api::ActualKey::from_bytes(key_bytes))
     }
 
-    /// Retrieve key with handler for README.md alternative syntax
-    /// This enables: KeyRetriever::new()...retrieve(|result| match result { Ok(result) => Ok(result), Err(e) => Err(e) }).await?
-    /// Note: The README shows pseudo-syntax, but in actual Rust this needs to be a proper match expression
-    #[inline]
-    pub async fn retrieve<F>(self, handler: F) -> Result<crate::api::ActualKey, KeyError>
-    where
-        F: FnOnce(Result<crate::api::ActualKey, KeyError>) -> Result<crate::api::ActualKey, KeyError>,
-    {
-        let result = self.retrieve_key().await;
-        handler(result)
-    }
+    /// Retrieve key with handler for README.md alternative syntax (REMOVED - replaced by main retrieve method)
+    /// The new retrieve method with default unwrapping is in mod.rs following README.md patterns
 
     /// Retrieve a key with a specific suffix
     #[inline]

@@ -29,7 +29,7 @@ pub use cipher::api::chacha_builder::{ChaChaBuilder, ChaChaWithKey};
 pub use cipher::CipherAlgorithm;
 
 // Re-export common handlers from cryypt_common
-pub use cryypt_common::{on_result, on_chunk, on_error, __cryypt_on_result_impl, __cryypt_on_chunk_impl, __cryypt_on_error_impl};
+pub use cryypt_common::{on_result, on_chunk, on_error};
 
 /// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
 pub struct Cryypt;

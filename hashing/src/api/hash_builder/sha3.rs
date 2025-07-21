@@ -12,14 +12,20 @@ use tokio_stream::Stream;
 // SHA3-256 compute methods without key
 impl<P> HashBuilder<Sha3_256Hash, NoData, NoSalt, P> {
     /// Compute hash of the provided data
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
-        let hash_result = sha3_256_hash(data, None, 1).await?;
+        let result = sha3_256_hash(data, None, 1).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(Ok(HashResult::from(hash_result)))
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            Ok(HashResult::from(hash_result))
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     
@@ -35,14 +41,20 @@ impl<P> HashBuilder<Sha3_256Hash, NoData, NoSalt, P> {
 // SHA3-256 compute methods with key (HMAC)
 impl<P> HashBuilder<Sha3_256Hash, NoData, HasSalt, P> {
     /// Compute HMAC of the provided data
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let result = sha3_256_hmac(data, self.salt.0).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            result
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     
@@ -59,14 +71,20 @@ impl<P> HashBuilder<Sha3_256Hash, NoData, HasSalt, P> {
 // SHA3-384 compute methods without key
 impl<P> HashBuilder<Sha3_384Hash, NoData, NoSalt, P> {
     /// Compute hash of the provided data
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let result = sha3_384_hash(data, None, 1).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            result
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     
@@ -82,14 +100,20 @@ impl<P> HashBuilder<Sha3_384Hash, NoData, NoSalt, P> {
 // SHA3-384 compute methods with key (HMAC)
 impl<P> HashBuilder<Sha3_384Hash, NoData, HasSalt, P> {
     /// Compute HMAC of the provided data
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let result = sha3_384_hmac(data, self.salt.0).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            result
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     
@@ -106,14 +130,20 @@ impl<P> HashBuilder<Sha3_384Hash, NoData, HasSalt, P> {
 // SHA3-512 compute methods without key
 impl<P> HashBuilder<Sha3_512Hash, NoData, NoSalt, P> {
     /// Compute hash of the provided data
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let result = sha3_512_hash(data, None, 1).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            result
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     
@@ -129,14 +159,20 @@ impl<P> HashBuilder<Sha3_512Hash, NoData, NoSalt, P> {
 // SHA3-512 compute methods with key (HMAC)
 impl<P> HashBuilder<Sha3_512Hash, NoData, HasSalt, P> {
     /// Compute HMAC of the provided data
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let result = sha3_512_hmac(data, self.salt.0).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            result
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     

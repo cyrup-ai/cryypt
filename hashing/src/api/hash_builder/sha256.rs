@@ -12,14 +12,20 @@ use tokio_stream::Stream;
 // SHA-256 compute methods without key
 impl<P> HashBuilder<Sha256Hash, NoData, NoSalt, P> {
     /// Compute hash of the provided data
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let result = sha256_hash(data, None, 1).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            result
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     
@@ -35,14 +41,20 @@ impl<P> HashBuilder<Sha256Hash, NoData, NoSalt, P> {
 // SHA-256 compute methods with key (HMAC)
 impl<P> HashBuilder<Sha256Hash, NoData, HasSalt, P> {
     /// Compute HMAC of the provided data
-    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Result<HashResult> {
+    /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
+    pub async fn compute<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let result = sha256_hmac(data, self.salt.0).await.map(HashResult::from);
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            // User provided handler: give them Result<HashResult>, get back Vec<u8>
+            (*handler)(result)
         } else {
-            result
+            // Default unwrapping: Ok(hash_result) => hash_result.to_vec(), Err(_) => Vec::new()
+            match result {
+                Ok(hash_result) => hash_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
         }
     }
     

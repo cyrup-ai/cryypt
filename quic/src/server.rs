@@ -101,3 +101,13 @@ fn server_event_reporter() -> UnboundedSender<QuicConnectionEvent> {
     });
     tx
 }
+
+/// Default QUIC server for master builder pattern
+#[derive(Default)]
+pub struct Server;
+
+impl Server {
+    pub fn default() -> Self {
+        Server
+    }
+}

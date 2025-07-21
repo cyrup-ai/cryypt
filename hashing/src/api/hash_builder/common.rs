@@ -12,7 +12,7 @@ pub struct HashBuilder<H, D, S, P> {
     pub(crate) data: D,
     pub(crate) salt: S,
     pub(crate) passes: P,
-    pub(crate) result_handler: Option<Box<dyn Fn(Result<HashResult>) -> Result<HashResult> + Send + Sync>>,
+    pub(crate) result_handler: Option<Box<dyn Fn(Result<HashResult>) -> Vec<u8> + Send + Sync>>,
     pub(crate) chunk_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>>,
     pub(crate) error_handler: Option<Box<dyn Fn(HashError) -> HashError + Send + Sync>>,
 }
@@ -22,7 +22,7 @@ impl<H, D, S, P> HashBuilder<H, D, S, P> {
     /// Apply on_result! handler
     pub fn on_result<F>(mut self, handler: F) -> Self
     where
-        F: Fn(Result<HashResult>) -> Result<HashResult> + Send + Sync + 'static,
+        F: Fn(Result<HashResult>) -> Vec<u8> + Send + Sync + 'static,
     {
         self.result_handler = Some(Box::new(handler));
         self
