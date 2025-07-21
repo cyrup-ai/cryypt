@@ -11,10 +11,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (public_key, secret_key) = Cryypt::pqcrypto()
         .kyber()
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Kyber keypair generation error: {}", e);
-                (Vec::new(), Vec::new()) // Return empty keys on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Kyber keypair generation error: {}", e);
+                    (Vec::new(), Vec::new()) // Return empty keys on error
+                }
             }
         })
         .generate_keypair()
@@ -28,10 +30,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (ciphertext, shared_secret) = Cryypt::pqcrypto()
         .kyber()
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Kyber encapsulation error: {}", e);
-                (Vec::new(), Vec::new()) // Return empty on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Kyber encapsulation error: {}", e);
+                    (Vec::new(), Vec::new()) // Return empty on error
+                }
             }
         })
         .encapsulate(public_key.clone())
@@ -46,10 +50,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .kyber()
         .with_secret_key(secret_key.clone())
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Kyber decapsulation error: {}", e);
-                Vec::new() // Return empty on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Kyber decapsulation error: {}", e);
+                    Vec::new() // Return empty on error
+                }
             }
         })
         .decapsulate(ciphertext.clone())
@@ -68,10 +74,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .dilithium()
         .with_security_level(3)
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Dilithium keypair generation error: {}", e);
-                (Vec::new(), Vec::new()) // Return empty keys on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Dilithium keypair generation error: {}", e);
+                    (Vec::new(), Vec::new()) // Return empty keys on error
+                }
             }
         })
         .generate_keypair()
@@ -85,10 +93,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .dilithium()
         .with_secret_key(sig_secret_key.clone())
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Dilithium signing error: {}", e);
-                Vec::new() // Return empty signature on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Dilithium signing error: {}", e);
+                    Vec::new() // Return empty signature on error
+                }
             }
         })
         .sign(message)
@@ -103,10 +113,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_public_key(sig_public_key.clone())
         .with_signature(signature.clone())
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Dilithium verification error: {}", e);
-                false // Return false on error
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Dilithium verification error: {}", e);
+                    false // Return false on error
+                }
             }
         })
         .verify(message)
@@ -121,10 +133,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (alice_public, alice_secret) = Cryypt::pqcrypto()
         .kyber()
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Alice keypair generation error: {}", e);
-                (Vec::new(), Vec::new())
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Alice keypair generation error: {}", e);
+                    (Vec::new(), Vec::new())
+                }
             }
         })
         .generate_keypair()
@@ -136,10 +150,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (bob_ciphertext, bob_shared_secret) = Cryypt::pqcrypto()
         .kyber()
         .on_result(|result| {
-            Ok => result,
-            Err(e) => {
-                log::error!("Bob encapsulation error: {}", e);
-                (Vec::new(), Vec::new())
+            match result {
+                Ok(result) => result,
+                Err(e) => {
+                    log::error!("Bob encapsulation error: {}", e);
+                    (Vec::new(), Vec::new())
+                }
             }
         })
         .encapsulate(alice_public)

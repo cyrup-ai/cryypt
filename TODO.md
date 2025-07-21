@@ -88,3 +88,29 @@
 6. Clean up unused imports
 
 **WORK STARTS NOW** 🚀
+
+## PRODUCTION QUALITY IMPLEMENTATION CONSTRAINTS
+
+### Performance & Quality Requirements
+- Zero allocation where possible
+- Blazing-fast performance optimizations
+- No unsafe code
+- No unchecked operations
+- No locking mechanisms
+- Elegant, ergonomic code design
+- Never use unwrap() in src/* or examples/*
+- Never use expect() in src/* or examples/*
+- DO USE expect() in ./tests/*
+
+### Implementation Strategy
+- Copy proven patterns from existing working libraries
+- Examples are correct, main library code needs alignment
+- Reference README.md patterns as source of truth
+- Use Desktop Commander for all CLI operations
+- Make only minimal, surgical changes required
+
+### Architecture Notes
+- Use cyrup-ai/async_task patterns (no async fn or async_trait)
+- Follow SurrealDB patterns for database operations
+- Implement all dead code rather than suppress warnings
+- Update dependencies using cargo commands (not direct Cargo.toml edits)

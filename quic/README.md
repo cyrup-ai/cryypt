@@ -14,7 +14,7 @@ cryypt_quic = "0.1"
 ### QUIC Server and Client
 
 ```rust
-use cryypt::{Cryypt, on_result};
+use cryypt::Cryypt;
 
 // QUIC server with retry on different port
 let mut port = 4433;
@@ -58,7 +58,7 @@ let client = Cryypt::quic()
         }
     })
     .connect("127.0.0.1:4433")
-    .await;
+    .await; // Returns fully unwrapped value - no Result wrapper
 
 // Open bidirectional stream
 let (send, recv) = client
@@ -70,7 +70,7 @@ let (send, recv) = client
         }
     })
     .open_bi()
-    .await;
+    .await; // Returns fully unwrapped value - no Result wrapper
 
 // Send data
 send
@@ -82,7 +82,7 @@ send
         }
     })
     .write_all(b"Hello QUIC")
-    .await;
+    .await; // Returns fully unwrapped value - no Result wrapper
 
 // Receive streamed data
 let mut data = Vec::new();
@@ -94,9 +94,10 @@ let mut recv_stream = recv
             return
         }
     })
-    .stream();
+    .stream(); // Returns Stream<Item = Vec<u8>> - fully unwrapped chunks
 
 while let Some(chunk) = recv_stream.next().await {
+    // chunk is Vec<u8> - already unwrapped by on_chunk handler
     data.extend_from_slice(&chunk);
 }
 ```

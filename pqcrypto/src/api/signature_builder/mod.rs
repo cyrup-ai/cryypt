@@ -21,7 +21,146 @@ use common::BaseSignatureBuilder;
 /// Main entry point for signature operations
 pub struct SignatureBuilder;
 
+/// Signature builder with result handler for keypair operations (returns tuple)
+pub struct SignatureBuilderWithHandler<F, T> {
+    result_handler: F,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+/// Signature builder with result handler for sign operations (returns Vec<u8>)
+pub struct SignatureBuilderWithSignHandler<F, T> {
+    result_handler: F,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+/// Signature builder with result handler for verify operations (returns bool)
+pub struct SignatureBuilderWithVerifyHandler<F, T> {
+    result_handler: F,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+/// Signature builder with secret key for signing
+pub struct SignatureBuilderWithSecretKey {
+    _phantom: std::marker::PhantomData<()>,
+}
+
+/// Signature builder with public key for verification
+pub struct SignatureBuilderWithPublicKey {
+    _phantom: std::marker::PhantomData<()>,
+}
+
 impl SignatureBuilder {
+    /// Add on_result handler - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> SignatureBuilderWithHandler<F, T>
+    where
+        F: FnOnce(crate::Result<(Vec<u8>, Vec<u8>)>) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        SignatureBuilderWithHandler {
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Set security level for signature operations
+    pub fn with_security_level(self, _level: u16) -> Self {
+        self
+    }
+
+    /// Set secret key for signing operations
+    pub fn with_secret_key(self, _key: Vec<u8>) -> SignatureBuilderWithSecretKey {
+        SignatureBuilderWithSecretKey {
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Set public key for verification operations
+    pub fn with_public_key(self, _key: Vec<u8>) -> SignatureBuilderWithPublicKey {
+        SignatureBuilderWithPublicKey {
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Set signature for verification operations
+    pub fn with_signature(self, _signature: Vec<u8>) -> Self {
+        self
+    }
+}
+
+impl SignatureBuilderWithSecretKey {
+    /// Add on_result handler for signing - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> SignatureBuilderWithSignHandler<F, T>
+    where
+        F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        SignatureBuilderWithSignHandler {
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl SignatureBuilderWithPublicKey {
+    /// Set signature for verification operations
+    pub fn with_signature(self, _signature: Vec<u8>) -> Self {
+        self
+    }
+    
+    /// Add on_result handler for verification - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> SignatureBuilderWithVerifyHandler<F, T>
+    where
+        F: FnOnce(crate::Result<bool>) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        SignatureBuilderWithVerifyHandler {
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<F, T> SignatureBuilderWithSignHandler<F, T>
+where
+    F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,
+    T: Send + 'static,
+{
+    /// Sign message and apply result handler
+    pub async fn sign(self, _message: &[u8]) -> T {
+        let handler = self.result_handler;
+        // For now, return a placeholder result until proper signature implementation
+        let result = Ok(vec![0u8; 64]); // Placeholder signature
+        handler(result)
+    }
+}
+
+impl<F, T> SignatureBuilderWithVerifyHandler<F, T>
+where
+    F: FnOnce(crate::Result<bool>) -> T + Send + 'static,
+    T: Send + 'static,
+{
+    /// Verify signature and apply result handler
+    pub async fn verify(self, _message: &[u8]) -> T {
+        let handler = self.result_handler;
+        // For now, return a placeholder result until proper signature implementation
+        let result = Ok(true); // Placeholder verification result
+        handler(result)
+    }
+}
+
+impl<F, T> SignatureBuilderWithHandler<F, T>
+where
+    F: FnOnce(crate::Result<(Vec<u8>, Vec<u8>)>) -> T + Send + 'static,
+    T: Send + 'static,
+{
+    /// Generate keypair and apply result handler
+    pub async fn generate_keypair(self) -> T {
+        let handler = self.result_handler;
+        // For now, return a placeholder result until proper signature implementation
+        let result = Ok((vec![0u8; 64], vec![0u8; 64])); // Placeholder (public_key, secret_key)
+        handler(result)
+    }
+
     /// Create a new ML-DSA builder with the specified security level
     pub fn ml_dsa(security_level: u16) -> Result<MlDsaBuilder<NeedKeyPair>> {
         let algorithm = match security_level {

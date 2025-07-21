@@ -1,10 +1,11 @@
-//! QUIC API following cryypt patterns
+//! QUIC API following cryypt patterns exactly
 
 use cryypt_common::NotResult;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use futures::Stream;
+use tokio::sync::oneshot;
 
 /// Main entry point - following cryypt pattern
 pub struct Quic;
@@ -26,10 +27,39 @@ pub fn quic() -> Quic {
     Quic
 }
 
+/// QUIC master builder for dual API entry points
+pub struct QuicMasterBuilder;
+
+impl QuicMasterBuilder {
+    /// Create a QUIC server builder
+    pub fn server(self) -> QuicServerBuilder {
+        QuicServerBuilder::new()
+    }
+    
+    /// Create a QUIC client builder
+    pub fn client(self) -> QuicClientBuilder {
+        QuicClientBuilder::new()
+    }
+}
+
 /// QUIC server builder
 pub struct QuicServerBuilder {
     cert: Option<Vec<u8>>,
     key: Option<Vec<u8>>,
+}
+
+/// QUIC server builder with cert and key
+pub struct QuicServerWithConfig {
+    cert: Vec<u8>,
+    key: Vec<u8>,
+}
+
+/// QUIC server builder with config and result handler
+pub struct QuicServerWithConfigAndHandler<F, T> {
+    cert: Vec<u8>,
+    key: Vec<u8>,
+    result_handler: F,
+    _phantom: std::marker::PhantomData<T>,
 }
 
 impl QuicServerBuilder {
@@ -47,79 +77,71 @@ impl QuicServerBuilder {
     }
     
     /// Set server private key
-    pub fn with_key(mut self, key: Vec<u8>) -> Self {
-        self.key = Some(key);
+    pub fn with_key(mut self, key: Vec<u8>) -> QuicServerWithConfig {
+        QuicServerWithConfig {
+            cert: self.cert.unwrap_or_default(),
+            key,
+        }
+    }
+}
+
+impl QuicServerWithConfig {
+    /// Set server certificate after key
+    pub fn with_cert(mut self, cert: Vec<u8>) -> Self {
+        self.cert = cert;
         self
     }
     
-    /// Bind to address with error handler
-    pub fn on_result<F, T>(self, handler: F) -> QuicServerWithHandler<F>
+    /// Add on_result handler - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> QuicServerWithConfigAndHandler<F, T>
     where
-        F: FnOnce(Result<QuicServer, crate::error::CryptoTransportError>) -> T,
-        T: NotResult,
+        F: FnOnce(crate::Result<QuicServer>) -> T + Send + 'static,
+        T: NotResult + Send + 'static,
     {
-        QuicServerWithHandler {
-            builder: self,
-            handler,
+        QuicServerWithConfigAndHandler {
+            cert: self.cert,
+            key: self.key,
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
         }
+    }
+    
+    /// Bind server without handler - returns future
+    pub fn bind<A: Into<String>>(self, addr: A) -> crate::QuicResult {
+        use tokio::sync::oneshot;
+        
+        let addr_str = addr.into();
+        let cert = self.cert;
+        let key = self.key;
+        
+        let (tx, rx) = oneshot::channel();
+        
+        tokio::spawn(async move {
+            let result = bind_quic_server(&cert, &key, &addr_str).await;
+            let _ = tx.send(result);
+        });
+        
+        crate::QuicResult::new(rx)
     }
 }
 
-/// Server builder with error handler
-pub struct QuicServerWithHandler<F> {
-    builder: QuicServerBuilder,
-    handler: F,
-}
-
-impl<F, T> QuicServerWithHandler<F>
+impl<F, T> QuicServerWithConfigAndHandler<F, T>
 where
-    F: FnOnce(Result<QuicServer, crate::error::CryptoTransportError>) -> T,
-    T: NotResult,
+    F: FnOnce(crate::Result<QuicServer>) -> T + Send + 'static,
+    T: NotResult + Send + 'static,
 {
-    /// Bind server to address
-    pub async fn bind(self, addr: impl Into<String>) -> T {
+    /// Bind server to address - action takes address as argument per README.md
+    pub async fn bind<A: Into<String>>(self, addr: A) -> T {
         let addr_str = addr.into();
+        let cert = self.cert;
+        let key = self.key;
+        let handler = self.result_handler;
         
-        // Parse address
-        let socket_addr = match addr_str.parse::<SocketAddr>() {
-            Ok(addr) => addr,
-            Err(e) => {
-                let result = Err(crate::error::CryptoTransportError::Internal(
-                    format!("Invalid address {}: {}", addr_str, e)
-                ));
-                return (self.handler)(result);
-            }
-        };
+        // Perform QUIC server binding
+        let result = bind_quic_server(&cert, &key, &addr_str).await;
         
-        // Create server config
-        let mut config = crate::builder::QuicCryptoConfig::new();
-        
-        // Set certificate and key if provided
-        if let Some(cert) = self.builder.cert {
-            config.set_cert_chain(cert);
-        }
-        if let Some(key) = self.builder.key {
-            config.set_private_key(key);
-        }
-        
-        // Create server config
-        let server_config = crate::server::QuicServerConfig {
-            listen_addr: addr_str.clone(),
-            crypto: Arc::new(config),
-        };
-        
-        // Start the server in background
-        let server_future = crate::server::run_quic_server(server_config);
-        let handle = tokio::spawn(server_future);
-        
-        // Server is immediately bound (async bind happens in background)
-        let result = Ok(QuicServer {
-            addr: socket_addr,
-            bound: true,
-            _handle: Some(handle),
-        });
-        
-        (self.handler)(result)
+        // Apply result handler
+        handler(result)
     }
 }
 
@@ -156,6 +178,18 @@ pub struct QuicClientBuilder {
     server_name: Option<String>,
 }
 
+/// QUIC client builder with server name
+pub struct QuicClientWithConfig {
+    server_name: String,
+}
+
+/// QUIC client builder with config and result handler
+pub struct QuicClientWithConfigAndHandler<F, T> {
+    server_name: String,
+    result_handler: F,
+    _phantom: std::marker::PhantomData<T>,
+}
+
 impl QuicClientBuilder {
     pub(crate) fn new() -> Self {
         Self {
@@ -164,69 +198,59 @@ impl QuicClientBuilder {
     }
     
     /// Set server name for TLS
-    pub fn with_server_name(mut self, name: impl Into<String>) -> Self {
-        self.server_name = Some(name.into());
-        self
-    }
-    
-    /// Connect with error handler
-    pub fn on_result<F, T>(self, handler: F) -> QuicClientWithHandler<F>
-    where
-        F: FnOnce(Result<QuicClient, crate::error::CryptoTransportError>) -> T,
-        T: NotResult,
-    {
-        QuicClientWithHandler {
-            builder: self,
-            handler,
+    pub fn with_server_name(mut self, name: impl Into<String>) -> QuicClientWithConfig {
+        QuicClientWithConfig {
+            server_name: name.into(),
         }
     }
 }
 
-/// Client builder with error handler  
-pub struct QuicClientWithHandler<F> {
-    #[allow(dead_code)]
-    builder: QuicClientBuilder,
-    handler: F,
+impl QuicClientWithConfig {
+    /// Add on_result handler - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> QuicClientWithConfigAndHandler<F, T>
+    where
+        F: FnOnce(crate::Result<QuicClient>) -> T + Send + 'static,
+        T: NotResult + Send + 'static,
+    {
+        QuicClientWithConfigAndHandler {
+            server_name: self.server_name,
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+    
+    /// Connect to server without handler - returns future
+    pub fn connect<A: Into<String>>(self, addr: A) -> crate::QuicClientResult {
+        let addr_str = addr.into();
+        let server_name = self.server_name;
+        
+        let (tx, rx) = oneshot::channel();
+        
+        tokio::spawn(async move {
+            let result = connect_quic_client_internal(&server_name, &addr_str).await;
+            let _ = tx.send(result);
+        });
+        
+        crate::QuicResult::new(rx)
+    }
 }
 
-impl<F, T> QuicClientWithHandler<F>
+impl<F, T> QuicClientWithConfigAndHandler<F, T>
 where
-    F: FnOnce(Result<QuicClient, crate::error::CryptoTransportError>) -> T,
-    T: NotResult,
+    F: FnOnce(crate::Result<QuicClient>) -> T + Send + 'static,
+    T: NotResult + Send + 'static,
 {
-    /// Connect to server
-    pub async fn connect(self, addr: impl Into<String>) -> T {
+    /// Connect to server - action takes address as argument per README.md
+    pub async fn connect<A: Into<String>>(self, addr: A) -> T {
         let addr_str = addr.into();
+        let server_name = self.server_name;
+        let handler = self.result_handler;
         
-        // Parse address
-        let socket_addr = match addr_str.parse::<SocketAddr>() {
-            Ok(addr) => addr,
-            Err(e) => {
-                let result = Err(crate::error::CryptoTransportError::Internal(
-                    format!("Invalid address {}: {}", addr_str, e)
-                ));
-                return (self.handler)(result);
-            }
-        };
+        // Perform QUIC client connection
+        let result = connect_quic_client_internal(&server_name, &addr_str).await;
         
-        // Create client config
-        let config = Arc::new(crate::builder::QuicCryptoConfig::new());
-        
-        // Connect to server
-        let result = match crate::client::connect_quic_client(
-            "0.0.0.0:0", // Let OS choose port
-            &addr_str,
-            config
-        ).await {
-            Ok(handle) => Ok(QuicClient {
-                addr: socket_addr,
-                connected: true,
-                handle: Some(handle),
-            }),
-            Err(e) => Err(e),
-        };
-        
-        (self.handler)(result)
+        // Apply result handler
+        handler(result)
     }
 }
 
@@ -257,48 +281,56 @@ impl QuicClient {
         self.connected
     }
     
-    /// Open bidirectional stream with error handler
-    pub fn on_result<F, T>(self, handler: F) -> QuicClientStreamHandler<F>
+    /// Open bidirectional stream with error handler - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> QuicClientWithHandler<F, T>
     where
-        F: FnOnce(Result<(QuicSend, QuicRecv), crate::error::CryptoTransportError>) -> T,
-        T: NotResult,
+        F: FnOnce(crate::Result<(QuicSend, QuicRecv)>) -> T + Send + 'static,
+        T: NotResult + Send + 'static,
     {
-        QuicClientStreamHandler {
+        QuicClientWithHandler {
             client: self,
-            handler,
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
         }
+    }
+    
+    /// Open bidirectional stream without handler - returns future
+    pub fn open_bi(self) -> crate::QuicStreamResult {
+        let handle = self.handle.clone();
+        
+        let (tx, rx) = oneshot::channel();
+        
+        tokio::spawn(async move {
+            let result = open_bi_stream_internal(handle).await;
+            let _ = tx.send(result);
+        });
+        
+        crate::QuicStreamResult::new(rx)
     }
 }
 
-/// Client with stream handler
-pub struct QuicClientStreamHandler<F> {
+/// Client with stream handler following cipher pattern
+pub struct QuicClientWithHandler<F, T> {
     client: QuicClient,
-    handler: F,
+    result_handler: F,
+    _phantom: std::marker::PhantomData<T>,
 }
 
-impl<F, T> QuicClientStreamHandler<F>
+impl<F, T> QuicClientWithHandler<F, T>
 where
-    F: FnOnce(Result<(QuicSend, QuicRecv), crate::error::CryptoTransportError>) -> T,
-    T: NotResult,
+    F: FnOnce(crate::Result<(QuicSend, QuicRecv)>) -> T + Send + 'static,
+    T: NotResult + Send + 'static,
 {
-    /// Open bidirectional stream
+    /// Open bidirectional stream - action per README.md
     pub async fn open_bi(self) -> T {
-        if let Some(ref handle) = self.client.handle {
-            // Wait for handshake to complete
-            if let Err(e) = handle.wait_for_handshake().await {
-                let result = Err(e);
-                return (self.handler)(result);
-            }
-            
-            // Create send/recv pair
-            let result = Ok((QuicSend::new_with_handle(handle.clone()), QuicRecv::new()));
-            (self.handler)(result)
-        } else {
-            let result = Err(crate::error::CryptoTransportError::Internal(
-                "Client not connected".to_string()
-            ));
-            (self.handler)(result)
-        }
+        let handle = self.client.handle.clone();
+        let handler = self.result_handler;
+        
+        // Perform QUIC stream opening
+        let result = open_bi_stream_internal(handle).await;
+        
+        // Apply result handler
+        handler(result)
     }
 }
 
@@ -319,40 +351,58 @@ impl QuicSend {
         Self { handle: None }
     }
     
-    /// Write data with error handler
-    pub fn on_result<F, T>(self, handler: F) -> QuicSendWithHandler<F>
+    /// Write data with error handler - README.md pattern
+    pub fn on_result<F, T>(self, handler: F) -> QuicSendWithHandler<F, T>
     where
-        F: FnOnce(Result<(), crate::error::CryptoTransportError>) -> T,
-        T: NotResult,
+        F: FnOnce(crate::Result<()>) -> T + Send + 'static,
+        T: NotResult + Send + 'static,
     {
         QuicSendWithHandler {
             send: self,
-            handler,
+            result_handler: handler,
+            _phantom: std::marker::PhantomData,
         }
+    }
+    
+    /// Write data without handler - returns future
+    pub fn write_all(self, data: &[u8]) -> crate::QuicWriteResult {
+        let handle = self.handle.clone();
+        let data = data.to_vec();
+        
+        let (tx, rx) = oneshot::channel();
+        
+        tokio::spawn(async move {
+            let result = write_all_internal(handle, &data).await;
+            let _ = tx.send(result);
+        });
+        
+        crate::QuicWriteResult::new(rx)
     }
 }
 
-/// Send stream with handler
-pub struct QuicSendWithHandler<F> {
+/// Send stream with handler following cipher pattern
+pub struct QuicSendWithHandler<F, T> {
     send: QuicSend,
-    handler: F,
+    result_handler: F,
+    _phantom: std::marker::PhantomData<T>,
 }
 
-impl<F, T> QuicSendWithHandler<F>
+impl<F, T> QuicSendWithHandler<F, T>
 where
-    F: FnOnce(Result<(), crate::error::CryptoTransportError>) -> T,
-    T: NotResult,
+    F: FnOnce(crate::Result<()>) -> T + Send + 'static,
+    T: NotResult + Send + 'static,
 {
-    /// Write all data
+    /// Write all data - action takes data as argument per README.md
     pub async fn write_all(self, data: &[u8]) -> T {
-        let result = if let Some(ref handle) = self.send.handle {
-            handle.send_stream_data(data, true)
-        } else {
-            Err(crate::error::CryptoTransportError::Internal(
-                "Send stream not initialized".to_string()
-            ))
-        };
-        (self.handler)(result)
+        let handle = self.send.handle.clone();
+        let data = data.to_vec();
+        let handler = self.result_handler;
+        
+        // Perform QUIC write operation
+        let result = write_all_internal(handle, &data).await;
+        
+        // Apply result handler
+        handler(result)
     }
 }
 
@@ -376,10 +426,10 @@ impl QuicRecv {
         Self { receiver: None }
     }
     
-    /// Set chunk handler for streaming
+    /// Set chunk handler for streaming - README.md pattern
     pub fn on_chunk<F>(self, handler: F) -> QuicRecvStream<F>
     where
-        F: Fn(Result<Vec<u8>, crate::error::CryptoTransportError>) -> Option<Vec<u8>> + Send + 'static,
+        F: Fn(crate::Result<Vec<u8>>) -> Option<Vec<u8>> + Send + 'static,
     {
         QuicRecvStream {
             recv: self,
@@ -396,7 +446,7 @@ pub struct QuicRecvStream<F> {
 
 impl<F> QuicRecvStream<F>
 where
-    F: Fn(Result<Vec<u8>, crate::error::CryptoTransportError>) -> Option<Vec<u8>> + Send + 'static,
+    F: Fn(crate::Result<Vec<u8>>) -> Option<Vec<u8>> + Send + 'static,
 {
     /// Get the stream
     pub fn stream(self) -> impl Stream<Item = Vec<u8>> + Send + 'static {
@@ -409,7 +459,7 @@ where
         
         impl<F> Stream for QuicRecvStreamAdapter<F>
         where
-            F: Fn(Result<Vec<u8>, crate::error::CryptoTransportError>) -> Option<Vec<u8>> + Send + 'static,
+            F: Fn(crate::Result<Vec<u8>>) -> Option<Vec<u8>> + Send + 'static,
         {
             type Item = Vec<u8>;
             
@@ -443,5 +493,85 @@ where
             receiver: self.recv.receiver,
             handler: self.handler,
         }
+    }
+}
+
+// Internal helper functions following cipher pattern
+async fn bind_quic_server(cert: &[u8], key: &[u8], addr: &str) -> crate::Result<QuicServer> {
+    // Parse address
+    let socket_addr = addr.parse::<SocketAddr>()
+        .map_err(|e| crate::error::CryptoTransportError::Internal(
+            format!("Invalid address {}: {}", addr, e)
+        ))?;
+    
+    // Create server config
+    let mut config = crate::builder::QuicCryptoConfig::new();
+    config.set_cert_chain(cert.to_vec());
+    config.set_private_key(key.to_vec());
+    
+    // Create server config
+    let server_config = crate::server::QuicServerConfig {
+        listen_addr: addr.to_string(),
+        crypto: Arc::new(config),
+    };
+    
+    // Start the server in background
+    let server_future = crate::server::run_quic_server(server_config);
+    let handle = tokio::spawn(server_future);
+    
+    // Server is immediately bound (async bind happens in background)
+    Ok(QuicServer {
+        addr: socket_addr,
+        bound: true,
+        _handle: Some(handle),
+    })
+}
+
+async fn connect_quic_client_internal(server_name: &str, addr: &str) -> crate::Result<QuicClient> {
+    // Parse address
+    let socket_addr = addr.parse::<SocketAddr>()
+        .map_err(|e| crate::error::CryptoTransportError::Internal(
+            format!("Invalid address {}: {}", addr, e)
+        ))?;
+    
+    // Create client config
+    let config = Arc::new(crate::builder::QuicCryptoConfig::new());
+    
+    // Connect to server
+    match crate::client::connect_quic_client(
+        "0.0.0.0:0", // Let OS choose port
+        addr,
+        config
+    ).await {
+        Ok(handle) => Ok(QuicClient {
+            addr: socket_addr,
+            connected: true,
+            handle: Some(handle),
+        }),
+        Err(e) => Err(e),
+    }
+}
+
+async fn open_bi_stream_internal(handle: Option<crate::quic_conn::QuicConnectionHandle>) -> crate::Result<(QuicSend, QuicRecv)> {
+    if let Some(ref handle) = handle {
+        // Wait for handshake to complete
+        handle.wait_for_handshake().await?;
+        
+        // Create send/recv pair
+        Ok((QuicSend::new_with_handle(handle.clone()), QuicRecv::new()))
+    } else {
+        Err(crate::error::CryptoTransportError::Internal(
+            "Client not connected".to_string()
+        ))
+    }
+}
+
+async fn write_all_internal(handle: Option<crate::quic_conn::QuicConnectionHandle>, data: &[u8]) -> crate::Result<()> {
+    if let Some(ref handle) = handle {
+        handle.send_stream_data(data, true)
+    } else {
+        Err(crate::error::CryptoTransportError::Internal(
+            "Send stream not initialized".to_string()
+        ))
     }
 }

@@ -12,6 +12,10 @@
 
 // New cryypt-pattern API
 pub mod api;
+mod quic_result;
+
+// Re-export result types
+pub use quic_result::{QuicResult, QuicClientResult, QuicServerResult, QuicStreamResult, QuicWriteResult};
 
 // Legacy high-level protocol builders
 pub mod protocols;
@@ -29,7 +33,20 @@ mod server;
 // pub use quic::{Auth, Protocol, Quic as QuicOld, Transport};
 
 // Export the new cryypt-pattern API
-pub use api::{quic, Quic, QuicServer, QuicClient, QuicSend, QuicRecv};
+pub use api::{quic, Quic, QuicServer, QuicClient, QuicSend, QuicRecv, QuicMasterBuilder};
+
+// Re-export common handlers from cryypt_common
+pub use cryypt_common::{on_result, on_chunk, on_error, __cryypt_on_result_impl, __cryypt_on_chunk_impl, __cryypt_on_error_impl};
+
+/// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
+pub struct Cryypt;
+
+impl Cryypt {
+    /// Master builder for QUIC operations - README.md pattern
+    pub fn quic() -> QuicMasterBuilder {
+        QuicMasterBuilder
+    }
+}
 
 // Export legacy protocol builders for backwards compatibility
 pub use protocols::{
