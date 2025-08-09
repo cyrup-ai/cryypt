@@ -23,7 +23,7 @@ let server = loop {
         .server()
         .with_cert(cert.clone())
         .with_key(private_key.clone())
-        .on_result(|result| {
+        .on_result(|result| match result {
             Ok => result,
             Err(e) => {
                 log::error!("QUIC error: {}", e);
@@ -50,7 +50,7 @@ let server = loop {
 let client = Cryypt::quic()
     .client()
     .with_server_name("example.com")
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Connection failed: {}", e);
@@ -62,7 +62,7 @@ let client = Cryypt::quic()
 
 // Open bidirectional stream
 let (send, recv) = client
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Failed to open stream: {}", e);
@@ -74,7 +74,7 @@ let (send, recv) = client
 
 // Send data
 send
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Failed to send data: {}", e);
@@ -88,10 +88,10 @@ send
 let mut data = Vec::new();
 let mut recv_stream = recv
     .on_chunk(|chunk| {
-        Ok => chunk,
+        Ok => chunk.into(),
         Err(e) => {
             log::error!("Receive error: {}", e);
-            return
+            BadChunk::from_error(e)
         }
     })
     .stream(); // Returns Stream<Item = Vec<u8>> - fully unwrapped chunks

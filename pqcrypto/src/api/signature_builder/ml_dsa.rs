@@ -216,7 +216,7 @@ impl SignBuilder for MlDsaBuilder<HasMessage> {
 
             let signature = match self.algorithm {
                 SignatureAlgorithm::MlDsa44 => {
-                    use pqcrypto_mldsa::mldsa44::{detached_sign, SecretKey};
+                    use pqcrypto_mldsa::mldsa44::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-DSA-44 secret key".to_string())
                     })?;
@@ -224,7 +224,7 @@ impl SignBuilder for MlDsaBuilder<HasMessage> {
                     PqDetachedSignature::as_bytes(&sig).to_vec()
                 }
                 SignatureAlgorithm::MlDsa65 => {
-                    use pqcrypto_mldsa::mldsa65::{detached_sign, SecretKey};
+                    use pqcrypto_mldsa::mldsa65::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-DSA-65 secret key".to_string())
                     })?;
@@ -232,7 +232,7 @@ impl SignBuilder for MlDsaBuilder<HasMessage> {
                     PqDetachedSignature::as_bytes(&sig).to_vec()
                 }
                 SignatureAlgorithm::MlDsa87 => {
-                    use pqcrypto_mldsa::mldsa87::{detached_sign, SecretKey};
+                    use pqcrypto_mldsa::mldsa87::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-DSA-87 secret key".to_string())
                     })?;
@@ -268,7 +268,7 @@ impl VerifyBuilder for MlDsaBuilder<HasSignature> {
             let is_valid = match self.algorithm {
                 SignatureAlgorithm::MlDsa44 => {
                     use pqcrypto_mldsa::mldsa44::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-DSA-44 public key".to_string())
@@ -280,7 +280,7 @@ impl VerifyBuilder for MlDsaBuilder<HasSignature> {
                 }
                 SignatureAlgorithm::MlDsa65 => {
                     use pqcrypto_mldsa::mldsa65::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-DSA-65 public key".to_string())
@@ -292,7 +292,7 @@ impl VerifyBuilder for MlDsaBuilder<HasSignature> {
                 }
                 SignatureAlgorithm::MlDsa87 => {
                     use pqcrypto_mldsa::mldsa87::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-DSA-87 public key".to_string())

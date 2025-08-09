@@ -4,10 +4,7 @@
 //! for the file transfer protocol.
 
 use super::{FileMetadata, TransferResult};
-use crate::{
-    connect_quic_client, QuicConnectionHandle, QuicCryptoBuilder,
-    error::Result,
-};
+use crate::{QuicConnectionHandle, QuicCryptoBuilder, connect_quic_client, error::Result};
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use tokio::time::Duration;

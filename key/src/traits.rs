@@ -2,7 +2,7 @@
 
 use crate::{
     KeyId, KeyResult,
-    store_results::{ExistsResult, DeleteResult, StoreResult, RetrieveResult, ListResult}
+    store_results::{DeleteResult, ExistsResult, ListResult, RetrieveResult, StoreResult},
 };
 use std::future::Future;
 
@@ -61,11 +61,7 @@ pub trait KeyProviderBuilder: Send + Sync {
 #[deprecated(note = "Use capability-specific traits instead")]
 pub trait KeyStore: KeyStorage {
     /// Store key material with the given key ID (DEPRECATED - panics on error)
-    fn store(
-        &self,
-        key_id: &dyn KeyId,
-        key_material: &[u8],
-    ) -> impl Future<Output = ()> + Send;
+    fn store(&self, key_id: &dyn KeyId, key_material: &[u8]) -> impl Future<Output = ()> + Send;
     /// Retrieve key material for the given key ID (DEPRECATED - panics on error)
     fn retrieve(&self, key_id: &dyn KeyId) -> impl Future<Output = Vec<u8>> + Send;
     /// Delete the key with the given key ID (DEPRECATED - panics on error)

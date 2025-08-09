@@ -6,9 +6,6 @@ pub mod vault_operations;
 
 // Re-export the main operation builders
 pub use vault_operations::{
-    VaultWithKey,
-    VaultWithKeyAndHandler,
-    VaultWithKeyAndTtl,
+    VaultGetHandler, VaultWithKey, VaultWithKeyAndHandler, VaultWithKeyAndTtl,
     VaultWithKeyAndTtlAndHandler,
-    VaultGetHandler,
 };

@@ -42,7 +42,8 @@ impl _VaultTransaction {
 
     /// Add a delete operation to the transaction
     pub fn _delete(&mut self, _key: String) {
-        self._operations.push(_TransactionOperation::Delete { key: _key });
+        self._operations
+            .push(_TransactionOperation::Delete { key: _key });
     }
 
     /// Add a put-if-absent operation to the transaction

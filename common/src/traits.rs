@@ -35,8 +35,12 @@ impl<T> NotResult for std::rc::Rc<T> {}
 impl NotResult for serde_json::Value {}
 
 // Tuple implementations for QUIC streams
-impl<T, U> NotResult for (T, U) where T: NotResult, U: NotResult {}
-
+impl<T, U> NotResult for (T, U)
+where
+    T: NotResult,
+    U: NotResult,
+{
+}
 
 // Explicitly exclude Result types
 impl<T, E> !NotResult for Result<T, E> {}
@@ -51,40 +55,76 @@ use std::future::Future;
 pub trait AsyncExistsResult: Future + Send
 where
     Self::Output: NotResult,
-{}
-impl<T> AsyncExistsResult for T where T: Future + Send, T::Output: NotResult {}
+{
+}
+impl<T> AsyncExistsResult for T
+where
+    T: Future + Send,
+    T::Output: NotResult,
+{
+}
 
 /// Async result for operations that return () (like delete, store)
 pub trait AsyncDeleteResult: Future + Send
 where
     Self::Output: NotResult,
-{}
-impl<T> AsyncDeleteResult for T where T: Future + Send, T::Output: NotResult {}
+{
+}
+impl<T> AsyncDeleteResult for T
+where
+    T: Future + Send,
+    T::Output: NotResult,
+{
+}
 
 /// Async result for operations that return Vec<u8> (like retrieve, generate)
 pub trait AsyncRetrieveResult: Future + Send
 where
     Self::Output: NotResult,
-{}
-impl<T> AsyncRetrieveResult for T where T: Future + Send, T::Output: NotResult {}
+{
+}
+impl<T> AsyncRetrieveResult for T
+where
+    T: Future + Send,
+    T::Output: NotResult,
+{
+}
 
 /// Async result for store operations - MUST return unwrapped ()
 pub trait AsyncStoreResult: Future + Send
 where
     Self::Output: NotResult,
-{}
-impl<T> AsyncStoreResult for T where T: Future + Send, T::Output: NotResult {}
+{
+}
+impl<T> AsyncStoreResult for T
+where
+    T: Future + Send,
+    T::Output: NotResult,
+{
+}
 
 /// Async result for key generation - MUST return unwrapped Vec<u8>
 pub trait AsyncGenerateResult: Future + Send
 where
     Self::Output: NotResult,
-{}
-impl<T> AsyncGenerateResult for T where T: Future + Send, T::Output: NotResult {}
+{
+}
+impl<T> AsyncGenerateResult for T
+where
+    T: Future + Send,
+    T::Output: NotResult,
+{
+}
 
 /// Async result for listing operations - MUST return unwrapped Vec<String>
 pub trait AsyncListResult: Future + Send
 where
     Self::Output: NotResult,
-{}
-impl<T> AsyncListResult for T where T: Future + Send, T::Output: NotResult {}
+{
+}
+impl<T> AsyncListResult for T
+where
+    T: Future + Send,
+    T::Output: NotResult,
+{
+}

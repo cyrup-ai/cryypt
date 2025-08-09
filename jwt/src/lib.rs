@@ -7,18 +7,21 @@
 //! - True async with channels (no spawn_blocking)
 //! - README.md compliant API patterns
 
-// Internal modules - following README.md patterns  
-pub mod api;
+// Internal modules - following README.md patterns
 mod algorithms;
-mod error;
-mod types;
+pub mod api;
 pub(crate) mod crypto;
+mod error;
 mod rotation;
+mod types;
 
 // Public re-exports following README.md patterns
 pub use api::*;
 pub use error::*;
 pub use types::*;
+
+// Re-export common macros and handlers from cryypt_common
+pub use cryypt_common::{on_chunk, on_error, on_result};
 
 /// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
 pub struct Cryypt;

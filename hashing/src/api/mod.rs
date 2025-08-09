@@ -6,5 +6,7 @@
 pub mod hash;
 pub mod sha256_builder;
 
-pub use hash::{Hash, Sha3_256Builder, Sha3_384Builder, Sha3_512Builder, Blake2bBuilder};
-pub use sha256_builder::{Sha256Builder, Sha256WithHandler, Sha256WithKey, Sha256WithKeyAndHandler};
+pub use hash::{Blake2bBuilder, Hash, Sha3_256Builder, Sha3_384Builder, Sha3_512Builder};
+pub use sha256_builder::{
+    Sha256Builder, Sha256WithHandler, Sha256WithKey, Sha256WithKeyAndHandler,
+};

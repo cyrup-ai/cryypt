@@ -19,7 +19,7 @@ use cryypt::{Cryypt, on_result};
 // Kyber key exchange
 let (public_key, secret_key) = Cryypt::pqcrypto()
     .kyber()
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);
@@ -32,7 +32,7 @@ let (public_key, secret_key) = Cryypt::pqcrypto()
 // Encapsulate shared secret
 let (ciphertext, shared_secret) = Cryypt::pqcrypto()
     .kyber()
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);
@@ -46,7 +46,7 @@ let (ciphertext, shared_secret) = Cryypt::pqcrypto()
 let shared_secret = Cryypt::pqcrypto()
     .kyber()
     .with_secret_key(secret_key)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);
@@ -64,7 +64,7 @@ let shared_secret = Cryypt::pqcrypto()
 let (public_key, secret_key) = Cryypt::pqcrypto()
     .dilithium()
     .with_security_level(3)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);
@@ -77,7 +77,7 @@ let (public_key, secret_key) = Cryypt::pqcrypto()
 let signature = Cryypt::pqcrypto()
     .dilithium()
     .with_secret_key(secret_key)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);
@@ -91,7 +91,7 @@ let valid = Cryypt::pqcrypto()
     .dilithium()
     .with_public_key(public_key)
     .with_signature(signature)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);
@@ -110,7 +110,7 @@ use cryypt::{Cryypt, on_result};
 // Alice generates keypair
 let (alice_public, alice_secret) = Cryypt::pqcrypto()
     .kyber()
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);
@@ -123,7 +123,7 @@ let (alice_public, alice_secret) = Cryypt::pqcrypto()
 // Bob encapsulates shared secret
 let (ciphertext, bob_shared_secret) = Cryypt::pqcrypto()
     .kyber()
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);
@@ -137,7 +137,7 @@ let (ciphertext, bob_shared_secret) = Cryypt::pqcrypto()
 let alice_shared_secret = Cryypt::pqcrypto()
     .kyber()
     .with_secret_key(alice_secret)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);
@@ -151,7 +151,7 @@ let alice_shared_secret = Cryypt::pqcrypto()
 let encrypted = Cryypt::cipher()
     .aes()
     .with_key(bob_shared_secret)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation error: {}", e);

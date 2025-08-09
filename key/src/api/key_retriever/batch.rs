@@ -4,10 +4,10 @@
 
 use super::{KeyRetrieverReady, SecureRetrievedKey, StreamConfig};
 use crate::{
-    traits::{KeyRetrieval, KeyStorage},
     KeyError,
+    traits::{KeyRetrieval, KeyStorage},
 };
-use crossbeam_channel::{bounded, unbounded, Receiver};
+use crossbeam_channel::{Receiver, bounded, unbounded};
 use zeroize::Zeroize;
 
 /// Batch key retrieval for high-throughput scenarios with security isolation

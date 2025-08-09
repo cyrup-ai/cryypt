@@ -1,8 +1,8 @@
 //! Bzip2 compression implementation
 
 use crate::{CompressionError, Result};
-use bzip2::read::{BzDecoder, BzEncoder};
 use bzip2::Compression;
+use bzip2::read::{BzDecoder, BzEncoder};
 use std::io::Read;
 
 /// Compress data using bzip2 algorithm

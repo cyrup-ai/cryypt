@@ -19,8 +19,6 @@ pub struct CipherResultWithHandler<F> {
 }
 
 impl CipherResult {
-
-
     /// Create a CipherResult that's already completed
     pub fn ready(result: Result<Vec<u8>>) -> Self {
         let (tx, rx) = oneshot::channel();
@@ -32,7 +30,7 @@ impl CipherResult {
     pub fn error(error: CryptError) -> Self {
         Self::ready(Err(error))
     }
-    
+
     /// Add a result handler following README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> CipherResultWithHandler<F>
     where
@@ -51,7 +49,9 @@ impl Future for CipherResult {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptError::InternalError("Cipher resolution task dropped".to_string()))),
+            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptError::InternalError(
+                "Cipher resolution task dropped".to_string(),
+            ))),
             Poll::Pending => Poll::Pending,
         }
     }
@@ -80,7 +80,9 @@ where
             Poll::Ready(Err(_)) => {
                 // Task dropped - this should not happen in normal operation
                 if let Some(handler) = this.handler.take() {
-                    Poll::Ready(handler(Err(CryptError::InternalError("Cipher resolution task dropped".to_string()))))
+                    Poll::Ready(handler(Err(CryptError::InternalError(
+                        "Cipher resolution task dropped".to_string(),
+                    ))))
                 } else {
                     // Handler was already called, this shouldn't happen
                     panic!("CipherResultWithHandler polled after completion")

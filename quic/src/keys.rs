@@ -81,30 +81,29 @@ pub struct KeyManager {
 impl KeyManager {
     /// Create new key manager
     pub fn new() -> Self {
-        Self {
-            current_keys: None,
-        }
+        Self { current_keys: None }
     }
-    
+
     /// Initialize with new ephemeral keys
     pub fn initialize(&mut self, session_id: &str) -> Result<(), CryptoTransportError> {
         let keys = generate_ephemeral_keys(session_id)?;
         self.current_keys = Some(keys);
         Ok(())
     }
-    
+
     /// Get current keys if not expired
     pub fn get_current_keys(&self) -> Option<&EphemeralKeyMaterial> {
         self.current_keys.as_ref().filter(|k| !k.is_expired())
     }
-    
+
     /// Check if keys need rotation
     pub fn needs_rotation(&self) -> bool {
-        self.current_keys.as_ref()
+        self.current_keys
+            .as_ref()
             .map(|k| k.is_expired() || k.remaining_ttl() < Duration::from_secs(5 * 60))
             .unwrap_or(true)
     }
-    
+
     /// Rotate keys if needed
     pub fn maybe_rotate(&mut self, session_id: &str) -> Result<bool, CryptoTransportError> {
         if self.needs_rotation() {
@@ -115,4 +114,3 @@ impl KeyManager {
         }
     }
 }
-

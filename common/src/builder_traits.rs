@@ -6,10 +6,12 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 /// Standard result handler type that transforms Result<T> -> U where U: NotResult
-pub type ResultHandler<T, U> = Box<dyn FnOnce(Result<T, Box<dyn std::error::Error + Send + Sync>>) -> U + Send>;
+pub type ResultHandler<T, U> =
+    Box<dyn FnOnce(Result<T, Box<dyn std::error::Error + Send + Sync>>) -> U + Send>;
 
 /// Standard chunk handler type for streaming operations
-pub type ChunkHandler<T> = Box<dyn Fn(Result<T, Box<dyn std::error::Error + Send + Sync>>) -> Option<T> + Send + Sync>;
+pub type ChunkHandler<T> =
+    Box<dyn Fn(Result<T, Box<dyn std::error::Error + Send + Sync>>) -> Option<T> + Send + Sync>;
 
 /// Standard error handler type for error processing
 pub type ErrorHandler<E> = Box<dyn Fn(E) -> E + Send + Sync>;
@@ -23,7 +25,9 @@ pub struct AsyncResultWithHandler<T, U, F> {
 
 impl<T, U, F> AsyncResultWithHandler<T, U, F> {
     pub fn new(
-        receiver: tokio::sync::oneshot::Receiver<Result<T, Box<dyn std::error::Error + Send + Sync>>>,
+        receiver: tokio::sync::oneshot::Receiver<
+            Result<T, Box<dyn std::error::Error + Send + Sync>>,
+        >,
         handler: F,
     ) -> Self {
         Self {
@@ -54,8 +58,9 @@ where
             }
             Poll::Ready(Err(_)) => {
                 if let Some(handler) = this.handler.take() {
-                    let error: Box<dyn std::error::Error + Send + Sync> = 
-                        Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Task dropped"));
+                    let error: Box<dyn std::error::Error + Send + Sync> = Box::new(
+                        std::io::Error::new(std::io::ErrorKind::Other, "Task dropped"),
+                    );
                     Poll::Ready(handler(Err(error)))
                 } else {
                     panic!("AsyncResultWithHandler polled after completion")
@@ -87,7 +92,10 @@ pub trait OnChunkBuilder<T> {
     /// Add chunk handler for streaming operations
     fn on_chunk<F>(self, handler: F) -> Self::Stream
     where
-        F: Fn(Result<T, Box<dyn std::error::Error + Send + Sync>>) -> Option<T> + Send + Sync + 'static;
+        F: Fn(Result<T, Box<dyn std::error::Error + Send + Sync>>) -> Option<T>
+            + Send
+            + Sync
+            + 'static;
 }
 
 /// Trait for builders that support the standard on_error pattern
@@ -99,14 +107,20 @@ pub trait OnErrorBuilder<E> {
 }
 
 /// Macro to implement standard handler patterns for any builder
+#[doc(hidden)]
 #[macro_export]
 macro_rules! impl_standard_handlers {
     ($builder:ty, $result_type:ty, $error_type:ty) => {
         impl $builder {
             /// Add on_result handler - standard pattern
-            pub fn on_result<F, U>(self, handler: F) -> cryypt_common::builder_traits::AsyncResultWithHandler<$result_type, U, F>
+            pub fn on_result<F, U>(
+                self,
+                handler: F,
+            ) -> cryypt_common::builder_traits::AsyncResultWithHandler<$result_type, U, F>
             where
-                F: FnOnce(Result<$result_type, Box<dyn std::error::Error + Send + Sync>>) -> U + Send + 'static,
+                F: FnOnce(Result<$result_type, Box<dyn std::error::Error + Send + Sync>>) -> U
+                    + Send
+                    + 'static,
                 U: cryypt_common::NotResult + Send + 'static,
             {
                 let (tx, rx) = tokio::sync::oneshot::channel();
@@ -117,13 +131,16 @@ macro_rules! impl_standard_handlers {
             /// Add on_chunk handler - standard pattern
             pub fn on_chunk<F>(mut self, handler: F) -> Self
             where
-                F: Fn(Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>>) -> Option<Vec<u8>> + Send + Sync + 'static,
+                F: Fn(Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>>) -> Option<Vec<u8>>
+                    + Send
+                    + Sync
+                    + 'static,
             {
                 // Implementation would store the handler
                 self
             }
 
-            /// Add on_error handler - standard pattern  
+            /// Add on_error handler - standard pattern
             pub fn on_error<F>(mut self, handler: F) -> Self
             where
                 F: Fn($error_type) -> $error_type + Send + Sync + 'static,

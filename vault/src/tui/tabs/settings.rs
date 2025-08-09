@@ -1,12 +1,12 @@
+use crate::tui::app::App;
+use crate::tui::types::{AppMode, InputField};
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
-use crate::tui::app::App;
-use crate::tui::types::{AppMode, InputField};
 
 pub fn render_settings_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
@@ -24,14 +24,14 @@ pub fn render_settings_tab(f: &mut Frame, app: &mut App, area: Rect) {
         AppMode::Input(InputField::NewPassphrase) => Style::default().fg(Color::Yellow),
         _ => Style::default(),
     };
-    
+
     // Use asterisks to mask the passphrase
     let masked_new_pass = "*".repeat(app.state.new_passphrase.len());
-    let new_pass_input = Paragraph::new(masked_new_pass)
-        .style(new_pass_style)
-        .block(Block::default()
+    let new_pass_input = Paragraph::new(masked_new_pass).style(new_pass_style).block(
+        Block::default()
             .borders(Borders::ALL)
-            .title("New Passphrase"));
+            .title("New Passphrase"),
+    );
     f.render_widget(new_pass_input, chunks[0]);
 
     // Confirm passphrase input
@@ -39,23 +39,32 @@ pub fn render_settings_tab(f: &mut Frame, app: &mut App, area: Rect) {
         AppMode::Input(InputField::ConfirmPassphrase) => Style::default().fg(Color::Yellow),
         _ => Style::default(),
     };
-    
+
     // Use asterisks to mask the passphrase
     let masked_confirm_pass = "*".repeat(app.state.confirm_passphrase.len());
     let confirm_pass_input = Paragraph::new(masked_confirm_pass)
         .style(confirm_pass_style)
-        .block(Block::default()
-            .borders(Borders::ALL)
-            .title("Confirm Passphrase"));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Confirm Passphrase"),
+        );
     f.render_widget(confirm_pass_input, chunks[1]);
-    
+
     // Security status
     let security_status = Paragraph::new(vec![
         Line::from(format!("Session timeout: {} minutes", 5)),
-        Line::from(format!("Argon2 memory: {} KB", app.state.argon2_memory_cost)),
+        Line::from(format!(
+            "Argon2 memory: {} KB",
+            app.state.argon2_memory_cost
+        )),
         Line::from(format!("Argon2 time cost: {}", app.state.argon2_time_cost)),
     ])
-    .block(Block::default().borders(Borders::ALL).title("Security Status"));
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Security Status"),
+    );
     f.render_widget(security_status, chunks[2]);
 
     // Instructions

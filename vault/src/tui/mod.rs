@@ -7,59 +7,59 @@ pub mod tabs;
 pub mod types;
 pub mod ui;
 
-pub use cli::{Cli, Commands};
 pub use crate::core::Vault;
+pub use cli::{Cli, Commands};
 pub use events::run_tui;
 
 // Entry point for the TUI application
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+    use crate::LocalVaultProvider;
+    use crate::core::Vault;
     use clap::Parser;
     use cli::Cli;
     use std::path::PathBuf;
     use tokio::runtime::Runtime;
-    use crate::LocalVaultProvider;
-    use crate::core::Vault;
-    
+
     // Create the runtime
     let rt = Runtime::new()?;
-    
+
     // Parse command line arguments
     let cli = Cli::parse();
-    
+
     // Create vault
     let vault = rt.block_on(async move {
         // Initialize basic vault
         let vault = Vault::new();
-        
+
         // Get default config
         let mut config = crate::config::VaultConfig::default();
-        
+
         // Override with command line options if provided
         if let Some(vault_path) = cli.vault_path {
             config.vault_path = vault_path;
         }
-        
+
         if let Some(salt_path) = cli.salt_path {
             config.salt_path = salt_path;
         }
-        
+
         // Expand home directory if needed (e.g., "~/path" -> "/home/user/path")
         if let Ok(expanded_vault_path) = shellexpand::full(&config.vault_path.to_string_lossy()) {
             config.vault_path = PathBuf::from(expanded_vault_path.to_string());
         }
-        
+
         if let Ok(expanded_salt_path) = shellexpand::full(&config.salt_path.to_string_lossy()) {
             config.salt_path = PathBuf::from(expanded_salt_path.to_string());
         }
-        
+
         // Create the vault provider
         // LocalVaultProvider has its own encryption setup
-        
+
         // Ensure parent directories exist
         if let Some(parent) = config.vault_path.parent() {
             if !parent.exists() {
                 let _ = std::fs::create_dir_all(parent);
-                
+
                 // Set appropriate permissions on Unix systems
                 #[cfg(unix)]
                 {
@@ -72,35 +72,35 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        
+
         if let Some(parent) = config.salt_path.parent() {
             if !parent.exists() {
                 let _ = std::fs::create_dir_all(parent);
             }
         }
-        
+
         // Create provider with config
         let provider = LocalVaultProvider::new(config).await?;
-        
+
         // Register provider
         vault.register_operation(provider).await;
-        
+
         Ok::<Vault, Box<dyn std::error::Error>>(vault)
     })?;
-    
+
     // Use match option pattern to run TUI mode by default
     if let Some(command) = cli.command.clone() {
         // Check if we need to save before executing the command
         let should_save = cli.save || matches!(command, Commands::Save {});
-        
+
         // Execute CLI command
         let result = rt.block_on(cli::process_command(&vault, command, cli.json));
-        
+
         // If save flag is true or the command is Save, explicitly save data to disk
         if should_save {
             // Save vault data by temporarily locking it (which triggers a save)
             let passphrase = std::env::var("CYSEC_PASSPHRASE").ok();
-            
+
             if let Err(e) = rt.block_on(async {
                 vault.lock().await?;
                 if let Some(pass) = &passphrase {
@@ -111,7 +111,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 eprintln!("Error during save operation: {}", e);
             }
         }
-        
+
         result?;
     } else {
         // Default to TUI mode
@@ -122,6 +122,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
         rt.block_on(run_tui(vault))?;
     }
-    
+
     Ok(())
 }

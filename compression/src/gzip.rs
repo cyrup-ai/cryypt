@@ -1,8 +1,8 @@
 //! Gzip compression implementation
 
 use crate::{CompressionError, Result};
-use flate2::read::{GzDecoder, GzEncoder};
 use flate2::Compression;
+use flate2::read::{GzDecoder, GzEncoder};
 use std::io::Read;
 
 /// Compress data using gzip algorithm

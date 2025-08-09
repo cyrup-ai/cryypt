@@ -51,12 +51,13 @@ pub use error::{KeyError, Result};
 pub use key_id::{KeyId, SimpleKeyId};
 pub use key_result::KeyResult;
 
-// Re-export common handlers from cryypt_common
-pub use cryypt_common::{on_result, on_chunk, on_error};
-
+// Re-export common macros and handlers from cryypt_common
+pub use cryypt_common::{on_chunk, on_error, on_result};
 
 // Re-export the main API
-pub use api::{KeyBuilder, KeyBuilderWithStore, KeyBuilderWithStoreAndNamespace, KeyBuilderReady, ActualKey};
+pub use api::{
+    ActualKey, KeyBuilder, KeyBuilderReady, KeyBuilderWithStore, KeyBuilderWithStoreAndNamespace,
+};
 pub use store::FileKeyStore;
 
 // Export KeyGenerator and KeyRetriever for vault module
@@ -77,8 +78,8 @@ impl Key {
 pub mod prelude {
     pub use crate::{
         Key, KeyError, Result,
-        api::{KeyBuilder, KeyBuilderReady, ActualKey},
+        api::{ActualKey, KeyBuilder, KeyBuilderReady},
+        bits_macro::{BitSize, Bits},
         store::FileKeyStore,
-        bits_macro::{Bits, BitSize},
     };
 }

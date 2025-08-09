@@ -1,11 +1,11 @@
+use crate::tui::app::App;
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
-    Frame,
 };
-use crate::tui::app::App;
 
 pub fn render_keys_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
@@ -15,7 +15,8 @@ pub fn render_keys_tab(f: &mut Frame, app: &mut App, area: Rect) {
 
     // Keys list
     let items: Vec<ListItem> = app
-        .state.vault_items
+        .state
+        .vault_items
         .iter()
         .enumerate()
         .map(|(i, (key, value))| {
@@ -30,13 +31,15 @@ pub fn render_keys_tab(f: &mut Frame, app: &mut App, area: Rect) {
             } else {
                 format!("{}: [complex value]", key)
             };
-            
+
             let style = if i == app.state.selected_index {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
-            
+
             ListItem::new(Line::from(vec![Span::styled(content, style)]))
         })
         .collect();
@@ -46,13 +49,13 @@ pub fn render_keys_tab(f: &mut Frame, app: &mut App, area: Rect) {
         .highlight_style(Style::default().add_modifier(Modifier::BOLD));
 
     f.render_widget(keys_list, chunks[0]);
-    
+
     // Instructions
     let instructions = Paragraph::new(vec![
         Line::from("Up/Down - Navigate items"),
         Line::from("d - Delete selected item"),
     ])
     .block(Block::default().borders(Borders::ALL).title("Instructions"));
-    
+
     f.render_widget(instructions, chunks[1]);
 }

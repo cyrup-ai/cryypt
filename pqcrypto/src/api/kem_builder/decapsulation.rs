@@ -2,9 +2,9 @@
 //!
 //! Contains key decapsulation functionality to recover shared secrets from ciphertext.
 
-use super::{MlKemBuilder};
 use super::super::super::{DecapsulationResult, KemAlgorithm, SharedSecret};
 use super::super::{builder_traits::*, states::*};
+use super::MlKemBuilder;
 use crate::PqCryptoError;
 use pqcrypto_traits::kem::{
     Ciphertext as PqCiphertext, SecretKey as PqSecretKey, SharedSecret as PqSharedSecret,
@@ -63,7 +63,7 @@ impl DecapsulateBuilder for MlKemBuilder<HasCiphertext> {
 
             let shared_secret_bytes = match algorithm {
                 KemAlgorithm::MlKem512 => {
-                    use pqcrypto_mlkem::mlkem512::{decapsulate, Ciphertext, SecretKey};
+                    use pqcrypto_mlkem::mlkem512::{Ciphertext, SecretKey, decapsulate};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-KEM-512 secret key".to_string())
                     })?;
@@ -76,7 +76,7 @@ impl DecapsulateBuilder for MlKemBuilder<HasCiphertext> {
                     PqSharedSecret::as_bytes(&ss).to_vec()
                 }
                 KemAlgorithm::MlKem768 => {
-                    use pqcrypto_mlkem::mlkem768::{decapsulate, Ciphertext, SecretKey};
+                    use pqcrypto_mlkem::mlkem768::{Ciphertext, SecretKey, decapsulate};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-KEM-768 secret key".to_string())
                     })?;
@@ -89,7 +89,7 @@ impl DecapsulateBuilder for MlKemBuilder<HasCiphertext> {
                     PqSharedSecret::as_bytes(&ss).to_vec()
                 }
                 KemAlgorithm::MlKem1024 => {
-                    use pqcrypto_mlkem::mlkem1024::{decapsulate, Ciphertext, SecretKey};
+                    use pqcrypto_mlkem::mlkem1024::{Ciphertext, SecretKey, decapsulate};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-KEM-1024 secret key".to_string())
                     })?;

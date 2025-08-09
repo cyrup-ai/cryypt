@@ -8,8 +8,8 @@ pub use crate::types::Es256KeyPair;
 pub fn generate_es256_keypair() -> Es256KeyPair {
     // Generate a P-256 key pair (placeholder implementation)
     let private_key = vec![0u8; 32]; // 32-byte private key
-    let public_key = vec![0u8; 64];  // 64-byte uncompressed public key
-    
+    let public_key = vec![0u8; 64]; // 64-byte uncompressed public key
+
     Es256KeyPair {
         private_key,
         public_key,

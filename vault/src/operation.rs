@@ -192,7 +192,7 @@ pub trait VaultOperation: Send + Sync + 'static {
         )));
         VaultListRequest::new(rx)
     }
-    
+
     /// Check if this is a new vault (no existing data)
     fn is_new_vault(&self) -> bool {
         true // Default to true, providers should override

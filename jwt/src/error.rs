@@ -76,67 +76,67 @@ impl JwtError {
     pub fn invalid_token(msg: &str) -> Self {
         JwtError::InvalidToken(msg.to_string())
     }
-    
+
     /// Create an invalid signature error
     #[inline]
     pub fn invalid_signature() -> Self {
         JwtError::InvalidSignature
     }
-    
+
     /// Create a token expired error
     #[inline]
     pub fn token_expired() -> Self {
         JwtError::TokenExpired
     }
-    
+
     /// Create a token not yet valid error
     #[inline]
     pub fn token_not_yet_valid() -> Self {
         JwtError::TokenNotYetValid
     }
-    
+
     /// Create a missing claim error
     #[inline]
     pub fn missing_claim(claim: &str) -> Self {
         JwtError::MissingClaim(claim.to_string())
     }
-    
+
     /// Create an invalid key error
     #[inline]
     pub fn invalid_key(msg: &str) -> Self {
         JwtError::InvalidKey(msg.to_string())
     }
-    
+
     /// Create a missing key error
     #[inline]
     pub fn missing_key(msg: &str) -> Self {
         JwtError::MissingKey(msg.to_string())
     }
-    
+
     /// Create an unsupported algorithm error
     #[inline]
     pub fn unsupported_algorithm(alg: &str) -> Self {
         JwtError::UnsupportedAlgorithm(alg.to_string())
     }
-    
+
     /// Create a serialization error
     #[inline]
     pub fn serialization(msg: &str) -> Self {
         JwtError::Serialization(msg.to_string())
     }
-    
+
     /// Create a signing error
     #[inline]
     pub fn signing_error(msg: &str) -> Self {
         JwtError::SigningError(msg.to_string())
     }
-    
+
     /// Create an internal error
     #[inline]
     pub fn internal(msg: &str) -> Self {
         JwtError::Internal(msg.to_string())
     }
-    
+
     /// Create an invalid claims error
     #[inline]
     pub fn invalid_claims(msg: &str) -> Self {

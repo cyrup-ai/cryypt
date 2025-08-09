@@ -10,22 +10,40 @@
 #![feature(negative_impls)]
 #![feature(marker_trait_attr)]
 
+pub mod builder_traits;
 pub mod error;
 pub mod handlers;
-pub mod traits;
-pub mod builder_traits;
 #[doc(hidden)]
 pub mod macros;
+// Keep DSL internal only (no public exposure)
+mod dsl;
+pub mod traits;
 
 pub use error::*;
 // Handler functions are placeholders - actual implementation is via internal macros
+pub use builder_traits::{
+    AsyncResultWithHandler, ChunkHandler, ErrorHandler, OnChunkBuilder, OnErrorBuilder,
+    OnResultBuilder, ResultHandler,
+};
+// Do NOT re-export external sugars/macros publicly
 pub use handlers::{on_chunk, on_error, on_result};
 pub use traits::{
-    NotResult,
-    AsyncExistsResult, AsyncDeleteResult, AsyncRetrieveResult,
-    AsyncStoreResult, AsyncGenerateResult, AsyncListResult
+    AsyncDeleteResult, AsyncExistsResult, AsyncGenerateResult, AsyncListResult,
+    AsyncRetrieveResult, AsyncStoreResult, NotResult,
 };
-pub use builder_traits::{
-    OnResultBuilder, OnChunkBuilder, OnErrorBuilder,
-    AsyncResultWithHandler, ResultHandler, ChunkHandler, ErrorHandler
-};
+
+/// BadChunk type for streaming error handling - used in on_chunk handlers
+pub struct BadChunk(Vec<u8>);
+
+impl BadChunk {
+    /// Create a BadChunk from an error
+    pub fn from_error(_e: impl std::error::Error) -> Self {
+        Self(b"BAD_CHUNK".to_vec())
+    }
+}
+
+impl Into<Vec<u8>> for BadChunk {
+    fn into(self) -> Vec<u8> {
+        self.0
+    }
+}

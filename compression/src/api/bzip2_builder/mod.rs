@@ -2,10 +2,10 @@
 //!
 //! Contains the main builder types, type-state markers, and entry points for Bzip2 compression.
 
-use crate::{CompressionResult, CompressionError, Result};
+use crate::{CompressionError, CompressionResult, Result};
 
+pub mod compress;
 pub mod config;
-pub mod compress; 
 pub mod stream;
 
 // Re-export configuration methods for builder pattern
@@ -24,7 +24,8 @@ pub struct HasLevel(pub u32);
 /// Builder for Bzip2 compression operations
 pub struct Bzip2Builder<L> {
     pub(crate) level: L,
-    pub(crate) error_handler: Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
+    pub(crate) error_handler:
+        Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
 }
 
 /// Builder with result handler for unwrapping pattern
@@ -35,10 +36,11 @@ pub struct Bzip2BuilderWithHandler<L, F, T> {
 }
 
 /// Builder with chunk handler for streaming pattern
-pub struct Bzip2BuilderWithChunk<L, C> {
+pub struct Bzip2BuilderWithChunk<L, F> {
     pub(crate) level: L,
-    pub(crate) chunk_handler: C,
-    pub(crate) error_handler: Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
+    pub(crate) chunk_handler: F,
+    pub(crate) error_handler:
+        Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
 }
 
 impl Bzip2Builder<NoLevel> {
@@ -49,17 +51,16 @@ impl Bzip2Builder<NoLevel> {
             error_handler: None,
         }
     }
-    
+
     // with_level method is defined in config.rs
 }
 
 // Methods for adding result and chunk handlers
 impl<L> Bzip2Builder<L> {
-    /// Apply on_result handler - transforms Result<T> -> T for unwrapping pattern
-    pub fn on_result<F, T>(self, handler: F) -> Bzip2BuilderWithHandler<L, F, T>
+    /// Internal implementation for on_result - called by macro
+    fn on_result_impl<F>(self, handler: F) -> Bzip2BuilderWithHandler<L, F, Vec<u8>>
     where
-        F: FnOnce(Result<CompressionResult>) -> T + Send + 'static,
-        T: cryypt_common::NotResult + Send + 'static,
+        F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
     {
         Bzip2BuilderWithHandler {
             level: self.level,
@@ -67,11 +68,11 @@ impl<L> Bzip2Builder<L> {
             _phantom: std::marker::PhantomData,
         }
     }
-    
-    /// Apply on_chunk handler for streaming operations
-    pub fn on_chunk<C>(self, handler: C) -> Bzip2BuilderWithChunk<L, C>
+
+    /// Internal implementation for on_chunk - called by macro
+    fn on_chunk_impl<F>(self, handler: F) -> Bzip2BuilderWithChunk<L, F>
     where
-        C: Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync + 'static,
+        F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
     {
         Bzip2BuilderWithChunk {
             level: self.level,
@@ -79,7 +80,25 @@ impl<L> Bzip2Builder<L> {
             error_handler: self.error_handler,
         }
     }
-    
+
+    /// Add on_result handler - transforms pattern matching internally
+    pub fn on_result<F>(self, handler: F) -> Bzip2BuilderWithHandler<L, F, Vec<u8>>
+    where
+        F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
+    {
+        // Use internal implementation method
+        self.on_result_impl(handler)
+    }
+
+    /// Add on_chunk handler - transforms pattern matching internally
+    pub fn on_chunk<F>(self, handler: F) -> Bzip2BuilderWithChunk<L, F>
+    where
+        F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
+    {
+        // Use internal implementation method
+        self.on_chunk_impl(handler)
+    }
+
     /// Apply on_error handler for error transformation
     pub fn on_error<F>(mut self, handler: F) -> Self
     where

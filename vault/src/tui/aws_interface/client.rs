@@ -2,8 +2,8 @@
 //!
 //! Contains AWS client initialization, credential handling, and region configuration.
 
-use aws_config::profile::ProfileFileCredentialsProvider;
 use aws_config::Region;
+use aws_config::profile::ProfileFileCredentialsProvider;
 use aws_sdk_secretsmanager::Client;
 
 use super::types::AwsError;

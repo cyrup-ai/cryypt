@@ -3,7 +3,7 @@
 //! Provides request/response patterns with automatic timeouts,
 //! retries, and load balancing across multiple connections.
 
-use crate::{quic_conn::QuicConnectionHandle, Result};
+use crate::{Result, quic_conn::QuicConnectionHandle};
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::sync::Arc;

@@ -2,7 +2,7 @@
 //!
 //! Contains streaming operations and related types for Gzip compression.
 
-use super::{GzipBuilderWithChunk, NoLevel, HasLevel};
+use super::{GzipBuilderWithChunk, HasLevel, NoLevel};
 use crate::{CompressionAlgorithm, CompressionError, Result};
 use std::pin::Pin;
 use tokio::sync::mpsc;
@@ -15,18 +15,28 @@ where
 {
     /// Compress data from a stream using default level (6)
     pub fn compress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> GzipStream<C> {
-        GzipStream::new(stream, CompressionAlgorithm::Gzip { level: Some(6) }, self.chunk_handler, self.error_handler)
+        GzipStream::new(
+            stream,
+            CompressionAlgorithm::Gzip { level: Some(6) },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
-    
+
     /// Decompress data from a stream
     pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> GzipStream<C> {
-        GzipStream::new_decompress(stream, CompressionAlgorithm::Gzip { level: None }, self.chunk_handler, self.error_handler)
+        GzipStream::new_decompress(
+            stream,
+            CompressionAlgorithm::Gzip { level: None },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
 }
 
@@ -37,18 +47,30 @@ where
 {
     /// Compress data from a stream using the configured level
     pub fn compress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> GzipStream<C> {
-        GzipStream::new(stream, CompressionAlgorithm::Gzip { level: Some(self.level.0) }, self.chunk_handler, self.error_handler)
+        GzipStream::new(
+            stream,
+            CompressionAlgorithm::Gzip {
+                level: Some(self.level.0),
+            },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
-    
+
     /// Decompress data from a stream
     pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> GzipStream<C> {
-        GzipStream::new_decompress(stream, CompressionAlgorithm::Gzip { level: None }, self.chunk_handler, self.error_handler)
+        GzipStream::new_decompress(
+            stream,
+            CompressionAlgorithm::Gzip { level: None },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
 }
 
@@ -73,13 +95,13 @@ where
         S: Stream<Item = Vec<u8>> + Send + 'static,
     {
         let (sender, receiver) = mpsc::channel(100);
-        
+
         // Spawn task to process stream
         tokio::spawn(async move {
             use tokio_stream::StreamExt;
             let mut stream = Box::pin(stream);
             let mut compressor = create_gzip_compressor(&algorithm);
-            
+
             while let Some(chunk) = stream.next().await {
                 // Compress chunk
                 match compressor.compress_chunk(chunk) {
@@ -95,7 +117,7 @@ where
                     }
                 }
             }
-            
+
             // Send final compressed data
             match compressor.finish() {
                 Ok(final_data) => {
@@ -110,13 +132,10 @@ where
                 }
             }
         });
-        
-        GzipStream {
-            receiver,
-            handler,
-        }
+
+        GzipStream { receiver, handler }
     }
-    
+
     /// Create a new decompression stream
     pub fn new_decompress<S>(
         stream: S,
@@ -128,13 +147,13 @@ where
         S: Stream<Item = Vec<u8>> + Send + 'static,
     {
         let (sender, receiver) = mpsc::channel(100);
-        
+
         // Spawn task to process stream
         tokio::spawn(async move {
             use tokio_stream::StreamExt;
             let mut stream = Box::pin(stream);
             let mut decompressor = create_gzip_decompressor();
-            
+
             while let Some(chunk) = stream.next().await {
                 // Decompress chunk
                 match decompressor.decompress_chunk(chunk) {
@@ -150,7 +169,7 @@ where
                     }
                 }
             }
-            
+
             // Send final decompressed data
             match decompressor.finish() {
                 Ok(final_data) => {
@@ -165,11 +184,8 @@ where
                 }
             }
         });
-        
-        GzipStream {
-            receiver,
-            handler,
-        }
+
+        GzipStream { receiver, handler }
     }
 }
 
@@ -179,7 +195,10 @@ where
 {
     type Item = Vec<u8>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
         match self.receiver.poll_recv(cx) {
             std::task::Poll::Ready(Some(result)) => {
                 // Apply user's chunk handler
@@ -210,34 +229,37 @@ struct GzipCompressor {
 
 impl GzipCompressor {
     fn new(level: u32) -> Self {
-        use flate2::write::GzEncoder;
         use flate2::Compression;
-        
+        use flate2::write::GzEncoder;
+
         Self {
             encoder: GzEncoder::new(Vec::new(), Compression::new(level)),
         }
     }
-    
+
     fn compress_chunk(&mut self, chunk: Vec<u8>) -> Result<Vec<u8>> {
         use std::io::Write;
-        
-        self.encoder.write_all(&chunk)
+
+        self.encoder
+            .write_all(&chunk)
             .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+
         // For streaming, we need to flush to get partial output
-        self.encoder.flush()
+        self.encoder
+            .flush()
             .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+
         // Get any available compressed data
         let inner = self.encoder.get_mut();
         let compressed = inner.clone();
         inner.clear();
-        
+
         Ok(compressed)
     }
-    
+
     fn finish(self) -> Result<Vec<u8>> {
-        self.encoder.finish()
+        self.encoder
+            .finish()
             .map_err(|e| CompressionError::internal(e.to_string()))
     }
 }
@@ -251,23 +273,23 @@ impl GzipDecompressor {
     fn new() -> Self {
         use flate2::read::GzDecoder;
         use std::io::Cursor;
-        
+
         Self {
             decoder: GzDecoder::new(Cursor::new(Vec::new())),
             buffer: Vec::new(),
         }
     }
-    
+
     fn decompress_chunk(&mut self, chunk: Vec<u8>) -> Result<Vec<u8>> {
         use std::io::Read;
-        
+
         // Append new data to our buffer
         self.buffer.extend_from_slice(&chunk);
-        
+
         // Update the decoder with new data
         self.decoder = flate2::read::GzDecoder::new(std::io::Cursor::new(self.buffer.clone()));
         let mut output = Vec::new();
-        
+
         match self.decoder.read_to_end(&mut output) {
             Ok(_) => Ok(output),
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
@@ -277,16 +299,17 @@ impl GzipDecompressor {
             Err(e) => Err(CompressionError::internal(e.to_string())),
         }
     }
-    
+
     fn finish(self) -> Result<Vec<u8>> {
         use std::io::Read;
-        
+
         let mut decoder = flate2::read::GzDecoder::new(std::io::Cursor::new(self.buffer));
         let mut output = Vec::new();
-        
-        decoder.read_to_end(&mut output)
+
+        decoder
+            .read_to_end(&mut output)
             .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+
         Ok(output)
     }
 }

@@ -1,12 +1,12 @@
+use crate::tui::app::App;
+use crate::tui::types::{AppMode, InputField};
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
-use crate::tui::app::App;
-use crate::tui::types::{AppMode, InputField};
 
 pub fn render_add_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
@@ -26,9 +26,7 @@ pub fn render_add_tab(f: &mut Frame, app: &mut App, area: Rect) {
     // Create a temporary String to help with type inference
     let key_input = Paragraph::new(app.state.new_key.as_str())
         .style(key_style)
-        .block(Block::default()
-            .borders(Borders::ALL)
-            .title("Key"));
+        .block(Block::default().borders(Borders::ALL).title("Key"));
     f.render_widget(key_input, chunks[0]);
 
     // Value input
@@ -39,9 +37,7 @@ pub fn render_add_tab(f: &mut Frame, app: &mut App, area: Rect) {
     // Create a temporary String to help with type inference
     let value_input = Paragraph::new(app.state.new_value.as_str())
         .style(value_style)
-        .block(Block::default()
-            .borders(Borders::ALL)
-            .title("Value"));
+        .block(Block::default().borders(Borders::ALL).title("Value"));
     f.render_widget(value_input, chunks[1]);
 
     // Instructions

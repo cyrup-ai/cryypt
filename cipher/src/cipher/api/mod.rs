@@ -8,8 +8,8 @@ pub mod chacha_builder;
 mod cipher;
 mod cipher_builder_traits;
 
-use crate::cipher::encryption_result::EncodableResult;
 use crate::Result;
+use crate::cipher::encryption_result::EncodableResult;
 use std::future::Future;
 
 /// Trait for async encryption results that can be awaited
@@ -23,9 +23,9 @@ impl<T> AsyncEncryptionResult for T where T: Future<Output = Result<EncodableRes
 impl<T> AsyncDecryptionResult for T where T: Future<Output = Result<Vec<u8>>> + Send {}
 
 // Export the main API
-pub use cipher::Cipher;
 pub use aes_builder::{AesBuilder, AesWithKey};
 pub use chacha_builder::{ChaChaBuilder, ChaChaWithKey};
+pub use cipher::Cipher;
 
 // Export traits for compatibility
 pub use cipher_builder_traits::KeyBuilder;

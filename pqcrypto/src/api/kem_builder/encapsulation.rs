@@ -2,9 +2,9 @@
 //!
 //! Contains key encapsulation functionality to generate shared secrets from public keys.
 
-use super::{MlKemBuilder};
 use super::super::super::{EncapsulationResult, KemAlgorithm, SharedSecret};
 use super::super::{builder_traits::*, states::*};
+use super::MlKemBuilder;
 use crate::PqCryptoError;
 use pqcrypto_traits::kem::{
     Ciphertext as PqCiphertext, PublicKey as PqPublicKey, SharedSecret as PqSharedSecret,
@@ -21,7 +21,7 @@ impl EncapsulateBuilder for MlKemBuilder<HasPublicKey> {
 
             let (shared_secret_bytes, ciphertext) = match self.algorithm {
                 KemAlgorithm::MlKem512 => {
-                    use pqcrypto_mlkem::mlkem512::{encapsulate, PublicKey};
+                    use pqcrypto_mlkem::mlkem512::{PublicKey, encapsulate};
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-KEM-512 public key".to_string())
                     })?;
@@ -32,7 +32,7 @@ impl EncapsulateBuilder for MlKemBuilder<HasPublicKey> {
                     )
                 }
                 KemAlgorithm::MlKem768 => {
-                    use pqcrypto_mlkem::mlkem768::{encapsulate, PublicKey};
+                    use pqcrypto_mlkem::mlkem768::{PublicKey, encapsulate};
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-KEM-768 public key".to_string())
                     })?;
@@ -43,7 +43,7 @@ impl EncapsulateBuilder for MlKemBuilder<HasPublicKey> {
                     )
                 }
                 KemAlgorithm::MlKem1024 => {
-                    use pqcrypto_mlkem::mlkem1024::{encapsulate, PublicKey};
+                    use pqcrypto_mlkem::mlkem1024::{PublicKey, encapsulate};
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid ML-KEM-1024 public key".to_string())
                     })?;

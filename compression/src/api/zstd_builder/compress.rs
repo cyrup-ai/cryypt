@@ -1,7 +1,7 @@
 //! Zstd compression and decompression operations following README.md patterns
 
-use super::{ZstdBuilder, ZstdBuilderWithHandler, NoLevel, HasLevel};
-use crate::{CompressionResult, CompressionAlgorithm, Result, AsyncCompressionResult};
+use super::{HasLevel, NoLevel, ZstdBuilder, ZstdBuilderWithHandler};
+use crate::{AsyncCompressionResult, CompressionAlgorithm, CompressionResult, Result};
 use tokio::sync::oneshot;
 
 impl ZstdBuilder<NoLevel> {
@@ -10,9 +10,9 @@ impl ZstdBuilder<NoLevel> {
         let data = data.into();
         let original_size = data.len();
         let level = 3; // Default level
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = zstd_compress(data, level).await.map(|compressed| {
                 CompressionResult::with_original_size(
@@ -23,26 +23,23 @@ impl ZstdBuilder<NoLevel> {
             });
             let _ = tx.send(result);
         });
-        
+
         AsyncCompressionResult::new(rx)
     }
-    
+
     /// Decompress data - README.md pattern
     pub fn decompress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = zstd_decompress(data).await.map(|decompressed| {
-                CompressionResult::new(
-                    decompressed,
-                    CompressionAlgorithm::Zstd { level: None },
-                )
+                CompressionResult::new(decompressed, CompressionAlgorithm::Zstd { level: None })
             });
             let _ = tx.send(result);
         });
-        
+
         AsyncCompressionResult::new(rx)
     }
 }
@@ -53,9 +50,9 @@ impl ZstdBuilder<HasLevel> {
         let data = data.into();
         let original_size = data.len();
         let level = self.level.0;
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = zstd_compress(data, level).await.map(|compressed| {
                 CompressionResult::with_original_size(
@@ -66,26 +63,23 @@ impl ZstdBuilder<HasLevel> {
             });
             let _ = tx.send(result);
         });
-        
+
         AsyncCompressionResult::new(rx)
     }
-    
+
     /// Decompress data - README.md pattern
     pub fn decompress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = zstd_decompress(data).await.map(|decompressed| {
-                CompressionResult::new(
-                    decompressed,
-                    CompressionAlgorithm::Zstd { level: None },
-                )
+                CompressionResult::new(decompressed, CompressionAlgorithm::Zstd { level: None })
             });
             let _ = tx.send(result);
         });
-        
+
         AsyncCompressionResult::new(rx)
     }
 }
@@ -93,24 +87,24 @@ impl ZstdBuilder<HasLevel> {
 // Internal compression functions - using true async with channels per ARCHITECTURE.md
 async fn zstd_compress(data: Vec<u8>, level: i32) -> Result<Vec<u8>> {
     let (tx, rx) = tokio::sync::oneshot::channel();
-    
+
     std::thread::spawn(move || {
         let result = crate::zstd::compress_with_level(&data, level);
         let _ = tx.send(result);
     });
-    
+
     rx.await
         .map_err(|_| crate::CompressionError::internal("Compression task failed"))?
 }
 
 async fn zstd_decompress(data: Vec<u8>) -> Result<Vec<u8>> {
     let (tx, rx) = tokio::sync::oneshot::channel();
-    
+
     std::thread::spawn(move || {
         let result = crate::zstd::decompress(&data);
         let _ = tx.send(result);
     });
-    
+
     rx.await
         .map_err(|_| crate::CompressionError::internal("Decompression task failed"))?
 }
@@ -126,7 +120,7 @@ where
         let data = data.into();
         let original_size = data.len();
         let level = 3;
-        
+
         let result = zstd_compress(data, level).await.map(|compressed| {
             CompressionResult::with_original_size(
                 compressed,
@@ -134,21 +128,18 @@ where
                 original_size,
             )
         });
-        
+
         (self.result_handler)(result)
     }
-    
+
     /// Decompress data - README.md pattern
     pub async fn decompress<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
-        
+
         let result = zstd_decompress(data).await.map(|decompressed| {
-            CompressionResult::new(
-                decompressed,
-                CompressionAlgorithm::Zstd { level: None },
-            )
+            CompressionResult::new(decompressed, CompressionAlgorithm::Zstd { level: None })
         });
-        
+
         (self.result_handler)(result)
     }
 }
@@ -163,7 +154,7 @@ where
         let data = data.into();
         let original_size = data.len();
         let level = self.level.0;
-        
+
         let result = zstd_compress(data, level).await.map(|compressed| {
             CompressionResult::with_original_size(
                 compressed,
@@ -171,21 +162,18 @@ where
                 original_size,
             )
         });
-        
+
         (self.result_handler)(result)
     }
-    
+
     /// Decompress data - README.md pattern
     pub async fn decompress<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
-        
+
         let result = zstd_decompress(data).await.map(|decompressed| {
-            CompressionResult::new(
-                decompressed,
-                CompressionAlgorithm::Zstd { level: None },
-            )
+            CompressionResult::new(decompressed, CompressionAlgorithm::Zstd { level: None })
         });
-        
+
         (self.result_handler)(result)
     }
 }

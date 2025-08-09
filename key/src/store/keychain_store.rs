@@ -2,11 +2,11 @@
 
 use crate::KeyError;
 use crate::{
-    traits::{KeyEnumeration, KeyImport, KeyRetrieval, KeyStorage},
-    store_results::{ExistsResult, DeleteResult, StoreResult, RetrieveResult, ListResult},
     KeyId,
+    store_results::{DeleteResult, ExistsResult, ListResult, RetrieveResult, StoreResult},
+    traits::{KeyEnumeration, KeyImport, KeyRetrieval, KeyStorage},
 };
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use zeroize::Zeroizing;
 
 /// OS Keychain store
@@ -35,7 +35,7 @@ impl KeyStorage for KeychainStore {
         let key_id_str = key_id.full_id();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
                 let keyring = keyring::Entry::new(&service_name, &key_id_str)
@@ -50,10 +50,10 @@ impl KeyStorage for KeychainStore {
             .await
             .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))
             .and_then(|r| r);
-            
+
             let _ = tx.send(result);
         });
-        
+
         ExistsResult::new(rx)
     }
 
@@ -62,24 +62,25 @@ impl KeyStorage for KeychainStore {
         let key_id_str = key_id.full_id();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
                 let keyring = keyring::Entry::new(&service_name, &key_id_str)
                     .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
 
-                keyring.delete_credential()
+                keyring
+                    .delete_credential()
                     .map_err(|e| KeyError::Io(format!("Failed to delete from keychain: {}", e)))?;
-                
+
                 Ok(())
             })
             .await
             .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))
             .and_then(|r| r);
-            
+
             let _ = tx.send(result);
         });
-        
+
         DeleteResult::new(rx)
     }
 }
@@ -91,7 +92,7 @@ impl KeyImport for KeychainStore {
         let encoded = Zeroizing::new(STANDARD.encode(key_material));
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
                 let keyring = keyring::Entry::new(&service_name, &key_id_str)
@@ -106,10 +107,10 @@ impl KeyImport for KeychainStore {
             .await
             .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))
             .and_then(|r| r);
-            
+
             let _ = tx.send(result);
         });
-        
+
         StoreResult::new(rx)
     }
 }
@@ -120,7 +121,7 @@ impl KeyRetrieval for KeychainStore {
         let key_id_str = key_id.full_id();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
                 let keyring = keyring::Entry::new(&service_name, &key_id_str)
@@ -137,10 +138,10 @@ impl KeyRetrieval for KeychainStore {
             .await
             .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))
             .and_then(|r| r);
-            
+
             let _ = tx.send(result);
         });
-        
+
         RetrieveResult::new(rx)
     }
 }
@@ -148,13 +149,15 @@ impl KeyRetrieval for KeychainStore {
 impl KeyEnumeration for KeychainStore {
     fn list(&self, _namespace_pattern: &str) -> ListResult {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             // Most OS keychains don't support listing
-            let result = Err(KeyError::Io("Keychain does not support listing keys".into()));
+            let result = Err(KeyError::Io(
+                "Keychain does not support listing keys".into(),
+            ));
             let _ = tx.send(result);
         });
-        
+
         ListResult::new(rx)
     }
 }

@@ -237,7 +237,7 @@ impl SignBuilder for SphincsBuilder<HasMessage> {
 
             let signature = match self.algorithm {
                 SignatureAlgorithm::SphincsShaSha256_128fSimple => {
-                    use pqcrypto_sphincsplus::sphincssha2128fsimple::{detached_sign, SecretKey};
+                    use pqcrypto_sphincsplus::sphincssha2128fsimple::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
                     })?;
@@ -245,7 +245,7 @@ impl SignBuilder for SphincsBuilder<HasMessage> {
                     PqDetachedSignature::as_bytes(&sig).to_vec()
                 }
                 SignatureAlgorithm::SphincsShaSha256_128sSimple => {
-                    use pqcrypto_sphincsplus::sphincssha2128ssimple::{detached_sign, SecretKey};
+                    use pqcrypto_sphincsplus::sphincssha2128ssimple::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
                     })?;
@@ -253,7 +253,7 @@ impl SignBuilder for SphincsBuilder<HasMessage> {
                     PqDetachedSignature::as_bytes(&sig).to_vec()
                 }
                 SignatureAlgorithm::SphincsShaSha256_192fSimple => {
-                    use pqcrypto_sphincsplus::sphincssha2192fsimple::{detached_sign, SecretKey};
+                    use pqcrypto_sphincsplus::sphincssha2192fsimple::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
                     })?;
@@ -261,7 +261,7 @@ impl SignBuilder for SphincsBuilder<HasMessage> {
                     PqDetachedSignature::as_bytes(&sig).to_vec()
                 }
                 SignatureAlgorithm::SphincsShaSha256_192sSimple => {
-                    use pqcrypto_sphincsplus::sphincssha2192ssimple::{detached_sign, SecretKey};
+                    use pqcrypto_sphincsplus::sphincssha2192ssimple::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
                     })?;
@@ -269,7 +269,7 @@ impl SignBuilder for SphincsBuilder<HasMessage> {
                     PqDetachedSignature::as_bytes(&sig).to_vec()
                 }
                 SignatureAlgorithm::SphincsShaSha256_256fSimple => {
-                    use pqcrypto_sphincsplus::sphincssha2256fsimple::{detached_sign, SecretKey};
+                    use pqcrypto_sphincsplus::sphincssha2256fsimple::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
                     })?;
@@ -277,7 +277,7 @@ impl SignBuilder for SphincsBuilder<HasMessage> {
                     PqDetachedSignature::as_bytes(&sig).to_vec()
                 }
                 SignatureAlgorithm::SphincsShaSha256_256sSimple => {
-                    use pqcrypto_sphincsplus::sphincssha2256ssimple::{detached_sign, SecretKey};
+                    use pqcrypto_sphincsplus::sphincssha2256ssimple::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ secret key".to_string())
                     })?;
@@ -313,7 +313,7 @@ impl VerifyBuilder for SphincsBuilder<HasSignature> {
             let is_valid = match self.algorithm {
                 SignatureAlgorithm::SphincsShaSha256_128fSimple => {
                     use pqcrypto_sphincsplus::sphincssha2128fsimple::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
@@ -325,7 +325,7 @@ impl VerifyBuilder for SphincsBuilder<HasSignature> {
                 }
                 SignatureAlgorithm::SphincsShaSha256_128sSimple => {
                     use pqcrypto_sphincsplus::sphincssha2128ssimple::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
@@ -337,7 +337,7 @@ impl VerifyBuilder for SphincsBuilder<HasSignature> {
                 }
                 SignatureAlgorithm::SphincsShaSha256_192fSimple => {
                     use pqcrypto_sphincsplus::sphincssha2192fsimple::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
@@ -349,7 +349,7 @@ impl VerifyBuilder for SphincsBuilder<HasSignature> {
                 }
                 SignatureAlgorithm::SphincsShaSha256_192sSimple => {
                     use pqcrypto_sphincsplus::sphincssha2192ssimple::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
@@ -361,7 +361,7 @@ impl VerifyBuilder for SphincsBuilder<HasSignature> {
                 }
                 SignatureAlgorithm::SphincsShaSha256_256fSimple => {
                     use pqcrypto_sphincsplus::sphincssha2256fsimple::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())
@@ -373,7 +373,7 @@ impl VerifyBuilder for SphincsBuilder<HasSignature> {
                 }
                 SignatureAlgorithm::SphincsShaSha256_256sSimple => {
                     use pqcrypto_sphincsplus::sphincssha2256ssimple::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid SPHINCS+ public key".to_string())

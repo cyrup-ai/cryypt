@@ -2,17 +2,14 @@
 //!
 //! Contains the main generator traits, builder patterns, and core types for secure key generation.
 
-use crate::{
-    traits::KeyStorage,
-    SimpleKeyId,
-};
-use rand::{rng, RngCore};
+use crate::{SimpleKeyId, traits::KeyStorage};
+use rand::{RngCore, rng};
 use zeroize::Zeroizing;
 
 // Declare submodules
-pub mod symmetric;
-pub mod entropy;
 pub mod derive;
+pub mod entropy;
+pub mod symmetric;
 
 // Re-export key types from submodules for external use
 // pub use derive::*;
@@ -311,7 +308,7 @@ impl<S: KeyStorage> KeyGeneratorReady<S> {
         let size_bits = self.size_bits;
         let namespace = self.namespace;
         let version = self.version;
-        
+
         // Validate key size is secure - return empty Vec on invalid size (default error handling)
         if !matches!(size_bits, 128 | 192 | 256 | 384 | 512) {
             return Vec::new();
@@ -319,14 +316,13 @@ impl<S: KeyStorage> KeyGeneratorReady<S> {
 
         // Generate secure key buffer
         let size_bytes = (size_bits / 8) as usize;
-        let key_buffer = SecureKeyBuffer::new(size_bytes)
-            .fill_secure_random();
-        
+        let key_buffer = SecureKeyBuffer::new(size_bytes).fill_secure_random();
+
         let key_bytes = key_buffer.into_key_bytes();
-        
+
         // Generate secure key ID for future storage operations
         let _key_id = generate_secure_key_id(&namespace, version);
-        
+
         // Note: Storage is handled separately via the store APIs
         // This method focuses on key generation per README.md pattern
         key_bytes
@@ -366,7 +362,7 @@ where
         let namespace = self.namespace;
         let version = self.version;
         let handler = self.result_handler;
-        
+
         // Generate cryptographically secure key using the same pattern as AES
         let result = async move {
             // Validate key size is secure
@@ -379,26 +375,27 @@ where
 
             // Generate secure key buffer
             let size_bytes = (size_bits / 8) as usize;
-            let key_buffer = SecureKeyBuffer::new(size_bytes)
-                .fill_secure_random();
-            
+            let key_buffer = SecureKeyBuffer::new(size_bytes).fill_secure_random();
+
             let key_bytes = key_buffer.into_key_bytes();
-            
+
             // Generate secure key ID for future storage operations
             let _key_id = generate_secure_key_id(&namespace, version);
-            
+
             // Note: Storage is handled separately via the store APIs
             // This method focuses on key generation per README.md pattern
             Ok(key_bytes)
-        }.await;
-        
+        }
+        .await;
+
         // Apply result handler following AES pattern
         handler(result)
     }
 }
 
 // Implement IntoFuture for KeyGeneratorWithHandler to enable .await
-impl<S: KeyStorage + crate::traits::KeyImport, F, T> std::future::IntoFuture for KeyGeneratorWithHandler<S, F, T>
+impl<S: KeyStorage + crate::traits::KeyImport, F, T> std::future::IntoFuture
+    for KeyGeneratorWithHandler<S, F, T>
 where
     F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,
     T: cryypt_common::NotResult + Send + 'static,

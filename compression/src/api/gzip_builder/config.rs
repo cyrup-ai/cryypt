@@ -2,7 +2,7 @@
 //!
 //! Contains methods for configuring compression levels and options.
 
-use super::{GzipBuilder, NoLevel, HasLevel};
+use super::{GzipBuilder, HasLevel, NoLevel};
 
 // Methods for setting compression level
 impl GzipBuilder<NoLevel> {
@@ -14,12 +14,12 @@ impl GzipBuilder<NoLevel> {
             error_handler: self.error_handler,
         }
     }
-    
+
     /// Maximum compression (level 9)
     pub fn max_compression(self) -> GzipBuilder<HasLevel> {
         self.with_level(9)
     }
-    
+
     /// Fast compression (level 1)
     pub fn fast_compression(self) -> GzipBuilder<HasLevel> {
         self.with_level(1)

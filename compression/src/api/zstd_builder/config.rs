@@ -2,7 +2,7 @@
 //!
 //! Contains methods for configuring compression levels and options.
 
-use super::{ZstdBuilder, HasLevel};
+use super::{HasLevel, ZstdBuilder};
 
 // Additional configuration methods for NoLevel builders
 impl ZstdBuilder<super::NoLevel> {
@@ -10,7 +10,7 @@ impl ZstdBuilder<super::NoLevel> {
     pub fn max_compression(self) -> ZstdBuilder<HasLevel> {
         self.with_level(22)
     }
-    
+
     /// Fast compression (level 1)
     pub fn fast_compression(self) -> ZstdBuilder<HasLevel> {
         self.with_level(1)

@@ -1,22 +1,20 @@
-use cryypt::Cryypt;
+use cryypt::{Cryypt, BadChunk};
 use serde_json::json;
 use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Cryypt Vault API Examples");
-    
+
     // Create and unlock vault
     let vault = Cryypt::vault()
         .create("./my-vault")
         .with_passphrase("strong_passphrase")
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("Vault creation error: {}", e);
-                    panic!("Failed to create vault")
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Vault creation error: {}", e);
+                panic!("Failed to create vault")
             }
         })
         .await; // Returns fully unwrapped value - no Result wrapper
@@ -27,12 +25,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     vault
         .with_key("api_key")
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("API key storage error: {}", e);
-                    ()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("API key storage error: {}", e);
+                ()
             }
         })
         .set("sk-1234567890")
@@ -45,12 +41,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_key("temp_token")
         .with_ttl(3600) // Expires in 1 hour
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("Temp token storage error: {}", e);
-                    ()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Temp token storage error: {}", e);
+                ()
             }
         })
         .set("tmp-abc123")
@@ -69,12 +63,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     vault
         .with_key("db_config")
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("Database config storage error: {}", e);
-                    ()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Database config storage error: {}", e);
+                ()
             }
         })
         .set(database_config.to_string())
@@ -85,33 +77,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Retrieve secrets
     let api_key = vault
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("API key retrieval error: {}", e);
-                    String::new()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("API key retrieval error: {}", e);
+                String::new()
             }
         })
         .get("api_key")
         .await; // Returns fully unwrapped value - no Result wrapper
 
-    println!("Retrieved API key: {}", if api_key.is_empty() { "❌ Failed" } else { "✅ Success" });
+    println!(
+        "Retrieved API key: {}",
+        if api_key.is_empty() {
+            "❌ Failed"
+        } else {
+            "✅ Success"
+        }
+    );
 
     let db_config = vault
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("DB config retrieval error: {}", e);
-                    String::new()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("DB config retrieval error: {}", e);
+                String::new()
             }
         })
         .get("db_config")
         .await; // Returns fully unwrapped value - no Result wrapper
 
-    println!("Retrieved DB config: {}", if db_config.is_empty() { "❌ Failed" } else { "✅ Success" });
+    println!(
+        "Retrieved DB config: {}",
+        if db_config.is_empty() {
+            "❌ Failed"
+        } else {
+            "✅ Success"
+        }
+    );
 
     // Batch operations - store multiple values at once
     let mut batch_data = HashMap::new();
@@ -122,12 +124,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     vault
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("Batch storage error: {}", e);
-                    String::new()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Batch storage error: {}", e);
+                String::new()
             }
         })
         .put_all(batch_data)
@@ -138,12 +138,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // List all stored keys
     let keys_string = vault
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("Key listing error: {}", e);
-                    String::new()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Key listing error: {}", e);
+                String::new()
             }
         })
         .list_keys()
@@ -159,12 +157,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Search for secrets with pattern
     let search_results_string = vault
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("Search error: {}", e);
-                    String::new()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Search error: {}", e);
+                String::new()
             }
         })
         .find("db_.*") // Find all keys starting with "db_"
@@ -173,7 +169,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let search_results: Vec<String> = if search_results_string.is_empty() {
         Vec::new()
     } else {
-        search_results_string.split(',').map(|s| s.to_string()).collect()
+        search_results_string
+            .split(',')
+            .map(|s| s.to_string())
+            .collect()
     };
     println!("Database-related keys found: {}", search_results.len());
 
@@ -181,12 +180,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     vault
         .with_key("api_key")
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("API key update error: {}", e);
-                    ()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("API key update error: {}", e);
+                ()
             }
         })
         .set("sk-new-updated-key-9876543210")
@@ -197,12 +194,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Delete a secret
     vault
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("Deletion error: {}", e);
-                    String::new()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Deletion error: {}", e);
+                String::new()
             }
         })
         .delete("temp_token")
@@ -213,12 +208,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Change vault passphrase
     vault
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("Passphrase change error: {}", e);
-                    String::new()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Passphrase change error: {}", e);
+                String::new()
             }
         })
         .change_passphrase("even_stronger_passphrase")
@@ -229,12 +222,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Lock vault (optional - vault auto-locks when dropped)
     vault
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
-                Err(e) => {
-                    log::error!("Vault lock error: {}", e);
-                    String::new()
-                }
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Vault lock error: {}", e);
+                String::new()
             }
         })
         .lock()
@@ -242,7 +233,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("✅ Vault locked");
 
-    println!("\n🎉 Vault operations completed successfully!");
+    // Test streaming vault operations with on_chunk
+    println!("\nStreaming vault key list with on_chunk:");
+    
+    // Unlock vault again for streaming demo
+    let streaming_vault = Cryypt::vault()
+        .open("./my-vault")
+        .with_passphrase("even_stronger_passphrase")
+        .on_result(|result| {
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("Vault unlock for streaming failed: {}", e);
+                panic!("Failed to unlock vault for streaming")
+            }
+        })
+        .await;
+
+    let mut key_stream = streaming_vault
+        .on_chunk(|chunk| {
+            Ok => chunk.into(),
+            Err(e) => {
+                log::error!("Vault stream error: {}", e);
+                BadChunk::from_error(e)
+            }
+        })
+        .list_keys_stream();
+
+    use futures::StreamExt;
+    let mut all_keys = Vec::new();
+    while let Some(chunk) = key_stream.next().await {
+        all_keys.extend_from_slice(&chunk);
+        println!("Key stream chunk received: {} bytes", chunk.len());
+    }
+    
+    let keys_string = String::from_utf8_lossy(&all_keys);
+    println!("All keys from stream: {}", keys_string);
+
+    println!("\n🎉 Vault operations including streaming completed successfully!");
 
     Ok(())
 }

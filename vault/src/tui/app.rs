@@ -1,9 +1,9 @@
+use super::types::{AppMode, AppState, AppTab};
 use crate::core::Vault;
 use crate::error::VaultError;
-use super::types::{AppMode, AppState, AppTab};
 use crate::logging::log_security_event;
-use zeroize::Zeroizing;
 use tokio_stream::StreamExt;
+use zeroize::Zeroizing;
 
 pub struct App {
     pub active_tab: AppTab,
@@ -27,24 +27,31 @@ impl App {
 
     pub async fn unlock(&mut self) -> Result<(), VaultError> {
         self.state.error_message = None;
-        
+
         // Rate limiting for failed unlock attempts
         let now = std::time::Instant::now();
         if self.state.failed_unlock_attempts >= 5 {
             let cooldown = std::time::Duration::from_secs(30);
             if now.duration_since(self.state.last_unlock_attempt) < cooldown {
                 let remaining = cooldown - now.duration_since(self.state.last_unlock_attempt);
-                self.state.error_message = Some(format!("Too many failed attempts. Try again in {} seconds", remaining.as_secs()));
-                log_security_event("TUI_UNLOCK", &format!("Rate limited: too many failed attempts"), false);
+                self.state.error_message = Some(format!(
+                    "Too many failed attempts. Try again in {} seconds",
+                    remaining.as_secs()
+                ));
+                log_security_event(
+                    "TUI_UNLOCK",
+                    &format!("Rate limited: too many failed attempts"),
+                    false,
+                );
                 return Err(VaultError::TooManyAttempts(remaining));
             } else {
                 // Reset counter after cooldown period
                 self.state.failed_unlock_attempts = 0;
             }
         }
-        
+
         self.state.last_unlock_attempt = now;
-        
+
         // Attempt to unlock the vault
         match self.vault.unlock(self.state.passphrase.as_str()).await {
             Ok(_) => {
@@ -62,7 +69,11 @@ impl App {
             Err(err) => {
                 self.state.failed_unlock_attempts += 1;
                 self.state.error_message = Some(format!("Failed to unlock vault: {}", err));
-                log_security_event("TUI_UNLOCK", &format!("Failed to unlock vault: {}", err), false);
+                log_security_event(
+                    "TUI_UNLOCK",
+                    &format!("Failed to unlock vault: {}", err),
+                    false,
+                );
                 Err(err)
             }
         }
@@ -101,7 +112,7 @@ impl App {
             }
         };
         let mut items = Vec::new();
-        
+
         while let Some(result) = stream.next().await {
             match result {
                 Ok(item) => items.push(item),
@@ -111,7 +122,7 @@ impl App {
                 }
             }
         }
-        
+
         self.state.vault_items = items;
     }
 
@@ -134,7 +145,7 @@ impl App {
             }
         };
         let mut items = Vec::new();
-        
+
         while let Some(result) = stream.next().await {
             match result {
                 Ok(item) => items.push(item),
@@ -144,7 +155,7 @@ impl App {
                 }
             }
         }
-        
+
         self.state.search_results = items;
     }
 
@@ -162,11 +173,15 @@ impl App {
         self.state.error_message = None;
         let key_str = self.state.new_key.as_str();
         let value_str = self.state.new_value.as_str();
-        
+
         match self.vault.put(key_str, value_str).await {
             Ok(_) => {
                 self.state.success_message = Some(format!("Added entry for key '{}'", key_str));
-                log_security_event("ADD_ENTRY", &format!("Added entry for key '{}'", key_str), true);
+                log_security_event(
+                    "ADD_ENTRY",
+                    &format!("Added entry for key '{}'", key_str),
+                    true,
+                );
                 self.state.new_key = Zeroizing::new(String::new());
                 self.state.new_value = Zeroizing::new(String::new());
                 self.reload_items().await;
@@ -194,12 +209,16 @@ impl App {
         }
 
         let (key, _) = &items[self.state.selected_index];
-        
+
         self.state.error_message = None;
         match self.vault.delete(key).await {
             Ok(_) => {
                 self.state.success_message = Some(format!("Deleted entry for key '{}'", key));
-                log_security_event("DELETE_ENTRY", &format!("Deleted entry for key '{}'", key), true);
+                log_security_event(
+                    "DELETE_ENTRY",
+                    &format!("Deleted entry for key '{}'", key),
+                    true,
+                );
                 // Store the current items first to avoid borrow issues
                 let was_empty = self.state.vault_items.is_empty();
                 self.reload_items().await;
@@ -210,7 +229,11 @@ impl App {
             }
             Err(err) => {
                 self.state.error_message = Some(format!("Failed to delete entry: {}", err));
-                log_security_event("DELETE_ENTRY", &format!("Failed to delete entry: {}", err), false);
+                log_security_event(
+                    "DELETE_ENTRY",
+                    &format!("Failed to delete entry: {}", err),
+                    false,
+                );
             }
         }
     }
@@ -225,17 +248,22 @@ impl App {
             self.state.error_message = Some("Passphrases don't match".to_string());
             return;
         }
-        
+
         if self.state.new_passphrase.len() < 12 {
-            self.state.error_message = Some("Passphrase must be at least 12 characters".to_string());
+            self.state.error_message =
+                Some("Passphrase must be at least 12 characters".to_string());
             return;
         }
 
         // Use the vault's change_passphrase method
-        match self.vault.change_passphrase(
-            self.state.passphrase.as_str(),
-            self.state.new_passphrase.as_str()
-        ).await {
+        match self
+            .vault
+            .change_passphrase(
+                self.state.passphrase.as_str(),
+                self.state.new_passphrase.as_str(),
+            )
+            .await
+        {
             Ok(_) => {
                 self.state.success_message = Some("Passphrase changed successfully".to_string());
                 self.state.new_passphrase = Zeroizing::new(String::new());
@@ -244,7 +272,11 @@ impl App {
             }
             Err(err) => {
                 self.state.error_message = Some(format!("Failed to change passphrase: {}", err));
-                log_security_event("PASSPHRASE_CHANGE", &format!("Failed to change passphrase: {}", err), false);
+                log_security_event(
+                    "PASSPHRASE_CHANGE",
+                    &format!("Failed to change passphrase: {}", err),
+                    false,
+                );
             }
         }
     }

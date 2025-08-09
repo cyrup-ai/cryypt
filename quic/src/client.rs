@@ -1,13 +1,13 @@
 use futures::Future;
 use std::sync::Arc;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
 use super::builder::QuicCryptoConfig;
 use super::error::{CryptoTransportError, Result};
 use super::quic_conn::{
-    quic_connection_main_loop, QuicConnectionController, QuicConnectionEvent, QuicConnectionHandle,
+    QuicConnectionController, QuicConnectionEvent, QuicConnectionHandle, quic_connection_main_loop,
 };
-use quiche::{connect, ConnectionId};
+use quiche::{ConnectionId, connect};
 
 pub fn connect_quic_client(
     local_addr: &str,

@@ -24,7 +24,7 @@ let key = Cryypt::key()
     .with_store(store.clone())
     .with_namespace("my-app")
     .version(1)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Key generation failed: {}", e);
@@ -39,7 +39,7 @@ let key = Cryypt::key()
     .with_store(store)
     .with_namespace("my-app")
     .version(1)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Key generation failed: {}", e);
@@ -51,7 +51,7 @@ let key = Cryypt::key()
 // Use key directly for encryption
 let encrypted = key
     .aes()
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation failed: {}", e);
@@ -64,7 +64,7 @@ let encrypted = key
 // Use key directly for decryption
 let plaintext = key
     .aes()
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation failed: {}", e);
@@ -77,7 +77,7 @@ let plaintext = key
 // Or use ChaCha20
 let encrypted = key
     .chacha20()
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation failed: {}", e);
@@ -93,7 +93,7 @@ let key = KeyRetriever::new()
     .with_store(store)
     .with_namespace("my-app")
     .version(1)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Key retrieval failed: {}", e);
@@ -116,7 +116,7 @@ let new_key = Cryypt::key()
     .with_store(store)
     .with_namespace("my-app")
     .version(2) // New version
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Key generation failed: {}", e);
@@ -131,7 +131,7 @@ let old_key = Cryypt::key()
     .with_store(store)
     .with_namespace("my-app")
     .version(1) // Old version
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Key generation failed: {}", e);
@@ -144,7 +144,7 @@ let old_key = Cryypt::key()
 let plaintext = Cryypt::cipher()
     .aes()
     .with_key(old_key)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation failed: {}", e);
@@ -158,7 +158,7 @@ let plaintext = Cryypt::cipher()
 let new_ciphertext = Cryypt::cipher()
     .aes()
     .with_key(new_key)
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => result,
         Err(e) => {
             log::error!("Operation failed: {}", e);

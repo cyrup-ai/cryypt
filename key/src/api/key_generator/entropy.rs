@@ -2,7 +2,7 @@
 //!
 //! Contains RNG management and entropy pool functionality for secure key generation.
 
-use rand::{rng, RngCore};
+use rand::{RngCore, rng};
 
 /// Entropy source configuration for key generation
 /// Encapsulates entropy quality and source management
@@ -122,9 +122,7 @@ impl EntropyProvider {
 /// Global entropy provider for convenient access
 /// Uses secure defaults for most use cases
 static GLOBAL_ENTROPY: std::sync::LazyLock<std::sync::Mutex<EntropyProvider>> =
-    std::sync::LazyLock::new(|| {
-        std::sync::Mutex::new(EntropyProvider::default())
-    });
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(EntropyProvider::default()));
 
 /// Fill a buffer with cryptographically secure random bytes using global provider
 /// Convenience function for simple use cases

@@ -283,4 +283,3 @@ mod option_base64_serde {
         }
     }
 }
-

@@ -1,14 +1,14 @@
+use super::app::App;
+use super::tabs::*;
+use super::types::AppTab;
 use ratatui::{
+    Frame,
     backend::Backend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Span, Line},
+    text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Tabs},
-    Frame,
 };
-use super::app::App;
-use super::types::AppTab;
-use super::tabs::*;
 
 pub fn ui<B: Backend>(f: &mut Frame, app: &mut App) {
     // Create layout
@@ -16,9 +16,9 @@ pub fn ui<B: Backend>(f: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(3),  // Tabs
-            Constraint::Min(0),     // Content
-            Constraint::Length(3),  // Status/Messages
+            Constraint::Length(3), // Tabs
+            Constraint::Min(0),    // Content
+            Constraint::Length(3), // Status/Messages
         ])
         .split(f.area());
 
@@ -36,16 +36,12 @@ pub fn ui<B: Backend>(f: &mut Frame, app: &mut App) {
     .map(|t| {
         let tab_str = t.to_string();
         match app.active_tab {
-            current if &current == t => {
-                Line::from(vec![
-                    Span::styled(
-                        tab_str,
-                        Style::default()
-                            .fg(Color::Yellow)
-                            .add_modifier(Modifier::BOLD),
-                    )
-                ])
-            }
+            current if &current == t => Line::from(vec![Span::styled(
+                tab_str,
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )]),
             _ => Line::from(vec![Span::raw(tab_str)]),
         }
     })
@@ -104,8 +100,8 @@ pub fn ui<B: Backend>(f: &mut Frame, app: &mut App) {
         status_text.push(lock_status);
     }
 
-    let status = Paragraph::new(status_text)
-        .block(Block::default().borders(Borders::ALL).title("Status"));
+    let status =
+        Paragraph::new(status_text).block(Block::default().borders(Borders::ALL).title("Status"));
 
     f.render_widget(status, chunks[2]);
 }

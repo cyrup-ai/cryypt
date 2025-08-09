@@ -2,7 +2,10 @@
 //!
 //! Contains traits for executing cryptographic operations (encapsulate, decapsulate, sign, verify).
 
-use super::{AsyncDecapsulationResult, AsyncEncapsulationResult, AsyncSignatureResult, AsyncVerificationResult};
+use super::{
+    AsyncDecapsulationResult, AsyncEncapsulationResult, AsyncSignatureResult,
+    AsyncVerificationResult,
+};
 
 /// Final stage builder that can encapsulate
 pub trait EncapsulateBuilder {

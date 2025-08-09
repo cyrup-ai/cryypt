@@ -4,6 +4,7 @@
 //! with CRUD operations and streaming support.
 
 use super::{Error, GenericDao, TableType};
+use chrono::{DateTime, Utc};
 use futures::Stream;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -11,7 +12,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use surrealdb::Surreal;
 use surrealdb::engine::any::Any;
-use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;

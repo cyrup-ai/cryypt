@@ -69,7 +69,7 @@ let mut encrypted_stream = Cryypt::cipher()
     .aes()
     .with_key(key)
     .on_chunk(|chunk| {
-        Ok => chunk,
+        Ok => chunk.into(),
         Err(e) => {
             log::error!("Error: {}", e);
             return;
@@ -81,7 +81,7 @@ let mut encrypted_stream = Cryypt::cipher()
 let mut encrypted_stream = Cipher::aes()
     .with_key(key)
     .on_chunk(|chunk| {
-        Ok => chunk,
+        Ok => chunk.into(),
         Err(e) => {
             log::error!("Error: {}", e);
             return;
@@ -103,6 +103,7 @@ while let Some(chunk) = encrypted_stream.next().await {
 ### 5. Actions Take Arguments
 
 The action method (final verb) always takes the data:
+
 - `encrypt(data)` not `with_data(data).encrypt()`
 - `compute(data)` not `with_data(data).compute()`
 - `sign(claims)` not `with_claims(claims).sign()`
@@ -110,12 +111,14 @@ The action method (final verb) always takes the data:
 ### 6. Error Handling Before Action
 
 Error handling is configured BEFORE the action method:
+
 - `on_result(...)` comes before `.encrypt(data).await?`
 - `on_chunk(...)` comes before `.encrypt_stream(data)`
 
 ### 7. No Exposed Macros
 
 Macros are implementation details:
+
 - User writes: `vault.put_all({ "key" => "value" })`
 - Implementation uses: `hash_map!` internally
 - User never sees macro syntax
@@ -123,6 +126,7 @@ Macros are implementation details:
 ### 8. Keys Are First-Class
 
 Keys have methods:
+
 ```rust
 // Key as starting point
 key.aes().encrypt(data)
@@ -134,6 +138,7 @@ Cipher::aes().with_key(key).encrypt(data)
 ### 9. Progressive Type Safety
 
 Each builder method returns a new type:
+
 1. Algorithm selection → algorithm-specific builder
 2. Configuration → configured builder  
 3. Error handling → executable builder

@@ -13,6 +13,6 @@ pub fn validate_rotator(rotator: &JwtRotator) -> bool {
     // Check if rotator has at least one key configured
     let key_count = rotator.list_keys().len();
     let has_current_key = rotator.get_current_key().is_some();
-    
+
     key_count > 0 && has_current_key
 }

@@ -35,7 +35,7 @@ impl KeyResult {
     pub fn error(error: KeyError) -> Self {
         Self::ready(Err(error))
     }
-    
+
     /// Add a result handler following README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> KeyResultWithHandler<F>
     where
@@ -54,7 +54,9 @@ impl Future for KeyResult {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(KeyError::internal("Key resolution task dropped"))),
+            Poll::Ready(Err(_)) => {
+                Poll::Ready(Err(KeyError::internal("Key resolution task dropped")))
+            }
             Poll::Pending => Poll::Pending,
         }
     }
@@ -83,7 +85,9 @@ where
             Poll::Ready(Err(_)) => {
                 // Task dropped - this should not happen in normal operation
                 if let Some(handler) = this.handler.take() {
-                    Poll::Ready(handler(Err(KeyError::internal("Key resolution task dropped"))))
+                    Poll::Ready(handler(Err(KeyError::internal(
+                        "Key resolution task dropped",
+                    ))))
                 } else {
                     // Handler was already called, this shouldn't happen
                     panic!("KeyResultWithHandler polled after completion")

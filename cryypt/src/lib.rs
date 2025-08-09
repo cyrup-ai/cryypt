@@ -46,7 +46,7 @@
 //! ```rust,ignore
 //! use cryypt::{Cryypt, Key, FileKeyStore};
 //!
-//! 
+//!
 //! async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let master_key = [1u8; 32]; // In production, generate this securely
 //!
@@ -104,34 +104,34 @@
 
 #[cfg(any(
     feature = "key",
-    feature = "aes", 
+    feature = "aes",
     feature = "chacha20",
-    feature = "sha256", 
-    feature = "sha3", 
+    feature = "sha256",
+    feature = "sha3",
     feature = "blake2b",
-    feature = "zstd", 
-    feature = "gzip", 
-    feature = "bzip2", 
+    feature = "zstd",
+    feature = "gzip",
+    feature = "bzip2",
     feature = "zip",
     feature = "vault",
-    feature = "pqcrypto", 
+    feature = "pqcrypto",
     feature = "quic"
 ))]
 mod master;
 
 #[cfg(any(
     feature = "key",
-    feature = "aes", 
+    feature = "aes",
     feature = "chacha20",
-    feature = "sha256", 
-    feature = "sha3", 
+    feature = "sha256",
+    feature = "sha3",
     feature = "blake2b",
-    feature = "zstd", 
-    feature = "gzip", 
-    feature = "bzip2", 
+    feature = "zstd",
+    feature = "gzip",
+    feature = "bzip2",
     feature = "zip",
     feature = "vault",
-    feature = "pqcrypto", 
+    feature = "pqcrypto",
     feature = "quic"
 ))]
 pub use master::Cryypt;
@@ -161,6 +161,9 @@ pub use master::PqcryptoMasterBuilder;
 pub use master::QuicMasterBuilder;
 
 // === Core Re-exports ===
+
+// Re-export common utilities only (no macros exposed)
+pub use cryypt_common::*;
 
 #[cfg(feature = "key")]
 #[cfg_attr(docsrs, doc(cfg(feature = "key")))]
@@ -248,12 +251,12 @@ pub use cryypt_vault as vault;
 
 #[cfg(feature = "quic")]
 #[cfg_attr(docsrs, doc(cfg(feature = "quic")))]
-pub use cryypt_quic::{QuicSend, QuicRecv, QuicServer, QuicClient};
+pub use cryypt_quic::{QuicClient, QuicRecv, QuicSend, QuicServer};
 
 /// Prelude module for convenient imports
 pub mod prelude {
     #[cfg(feature = "key")]
-    pub use crate::{on_result, Key, KeyBuilder, KeyGenerator, KeyRetriever};
+    pub use crate::{Key, KeyBuilder, KeyGenerator, KeyRetriever, on_result};
 
     #[cfg(feature = "key")]
     pub use crate::Cryypt;
@@ -268,7 +271,7 @@ pub mod prelude {
     pub use crate::Cipher;
 
     #[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
-    pub use crate::{Hash, HashResult, hash_on_result, hash_on_chunk};
+    pub use crate::{Hash, HashResult, hash_on_chunk, hash_on_result};
 
     #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
     pub use crate::Compress;

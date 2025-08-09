@@ -1,7 +1,7 @@
 //! Master builder for all cryypt operations following README.md patterns
 
 #[cfg(feature = "jwt")]
-use cryypt_jwt::{Cryypt as JwtCryypt};
+use cryypt_jwt::Cryypt as JwtCryypt;
 
 /// Master builder providing unified entry point for all cryypt operations
 /// README.md pattern: "Cryypt offers two equivalent APIs"
@@ -14,49 +14,49 @@ impl Cryypt {
     pub fn cipher() -> CipherMasterBuilder {
         CipherMasterBuilder
     }
-    
+
     /// Entry point for hashing operations - README.md pattern
     /// Example: `Cryypt::hash().sha256().compute(data).await`
     #[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
     pub fn hash() -> HashMasterBuilder {
         HashMasterBuilder
     }
-    
+
     /// Entry point for compression operations - README.md pattern
     /// Example: `Cryypt::compress().zstd().compress(data).await`
     #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
     pub fn compress() -> CompressMasterBuilder {
         CompressMasterBuilder
     }
-    
+
     /// Entry point for JWT operations - README.md pattern
     /// Example: `Cryypt::jwt().hs256().with_secret(secret).sign().await`
     #[cfg(feature = "jwt")]
     pub fn jwt() -> cryypt_jwt::JwtMasterBuilder {
         JwtCryypt::jwt()
     }
-    
+
     /// Entry point for key operations - README.md pattern
     /// Example: `Cryypt::key().size(256.bits()).with_store(store).generate().await`
     #[cfg(feature = "key")]
     pub fn key() -> KeyMasterBuilder {
         KeyMasterBuilder
     }
-    
+
     /// Entry point for vault operations - README.md pattern
     /// Example: `Cryypt::vault().with_config(config).create().await`
     #[cfg(feature = "vault")]
     pub fn vault() -> VaultMasterBuilder {
         VaultMasterBuilder
     }
-    
+
     /// Entry point for post-quantum cryptography operations - README.md pattern
     /// Example: `Cryypt::pqcrypto().kyber().generate_keypair().await`
     #[cfg(feature = "pqcrypto")]
     pub fn pqcrypto() -> PqcryptoMasterBuilder {
         PqcryptoMasterBuilder
     }
-    
+
     /// Entry point for QUIC operations - README.md pattern
     /// Example: `Cryypt::quic().server().with_cert(cert).bind(addr).await`
     #[cfg(feature = "quic")]
@@ -76,13 +76,13 @@ impl CipherMasterBuilder {
     pub fn aes(self) -> cryypt_cipher::AesBuilder {
         cryypt_cipher::Cipher::aes()
     }
-    
+
     /// Use ChaCha20-Poly1305 encryption - README.md pattern
     #[cfg(feature = "chacha20")]
     pub fn chacha20(self) -> cryypt_cipher::ChaChaBuilder {
         cryypt_cipher::Cipher::chacha20()
     }
-    
+
     /// Use ChaCha20-Poly1305 encryption (alias) - README.md pattern
     #[cfg(feature = "chacha20")]
     pub fn chachapoly(self) -> cryypt_cipher::ChaChaBuilder {
@@ -101,13 +101,13 @@ impl HashMasterBuilder {
     pub fn sha256(self) -> cryypt_hashing::Sha256Builder {
         cryypt_hashing::Hash::sha256()
     }
-    
+
     /// Use SHA3-256 hashing - README.md pattern
     #[cfg(feature = "sha3")]
     pub fn sha3_256(self) -> cryypt_hashing::Sha3_256Builder {
         cryypt_hashing::Hash::sha3_256()
     }
-    
+
     /// Use BLAKE2b hashing - README.md pattern
     #[cfg(feature = "blake2b")]
     pub fn blake2b(self) -> cryypt_hashing::Blake2bBuilder {
@@ -123,25 +123,33 @@ pub struct CompressMasterBuilder;
 impl CompressMasterBuilder {
     /// Use Zstandard compression - README.md pattern
     #[cfg(feature = "zstd")]
-    pub fn zstd(self) -> cryypt_compression::ZstdBuilder<cryypt_compression::api::zstd_builder::NoLevel> {
+    pub fn zstd(
+        self,
+    ) -> cryypt_compression::ZstdBuilder<cryypt_compression::api::zstd_builder::NoLevel> {
         cryypt_compression::Compress::zstd()
     }
-    
+
     /// Use Gzip compression - README.md pattern
     #[cfg(feature = "gzip")]
-    pub fn gzip(self) -> cryypt_compression::GzipBuilder<cryypt_compression::api::gzip_builder::NoLevel> {
+    pub fn gzip(
+        self,
+    ) -> cryypt_compression::GzipBuilder<cryypt_compression::api::gzip_builder::NoLevel> {
         cryypt_compression::Compress::gzip()
     }
-    
+
     /// Use Bzip2 compression - README.md pattern
     #[cfg(feature = "bzip2")]
-    pub fn bzip2(self) -> cryypt_compression::Bzip2Builder<cryypt_compression::api::bzip2_builder::NoLevel> {
+    pub fn bzip2(
+        self,
+    ) -> cryypt_compression::Bzip2Builder<cryypt_compression::api::bzip2_builder::NoLevel> {
         cryypt_compression::Compress::bzip2()
     }
-    
+
     /// Use ZIP compression for multi-file archives - README.md pattern
     #[cfg(feature = "zip")]
-    pub fn zip(self) -> cryypt_compression::ZipBuilder<cryypt_compression::api::zip_builder::NoFiles> {
+    pub fn zip(
+        self,
+    ) -> cryypt_compression::ZipBuilder<cryypt_compression::api::zip_builder::NoFiles> {
         cryypt_compression::Compress::zip()
     }
 }
@@ -156,7 +164,7 @@ impl KeyMasterBuilder {
     pub fn generate(self) -> cryypt_key::api::KeyGenerator {
         cryypt_key::api::KeyGenerator::new()
     }
-    
+
     /// Retrieve an existing key - README.md pattern
     pub fn retrieve(self) -> cryypt_key::api::KeyRetriever {
         cryypt_key::api::KeyRetriever::new()
@@ -204,7 +212,7 @@ impl VaultMasterBuilder {
             passphrase: None,
         }
     }
-    
+
     /// Create a vault at specified path - README.md pattern
     pub fn at_path<P: AsRef<std::path::Path>>(self, path: P) -> VaultWithPath {
         VaultWithPath {
@@ -232,7 +240,9 @@ impl VaultWithPath {
     /// Add on_result handler - README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> VaultWithPathAndHandler<F, T>
     where
-        F: FnOnce(cryypt_vault::error::VaultResult<cryypt_vault::core::Vault>) -> T + Send + 'static,
+        F: FnOnce(cryypt_vault::error::VaultResult<cryypt_vault::core::Vault>) -> T
+            + Send
+            + 'static,
         T: Send + 'static,
     {
         VaultWithPathAndHandler {
@@ -285,8 +295,6 @@ impl std::future::IntoFuture for VaultWithPath {
     }
 }
 
-
-
 #[cfg(feature = "vault")]
 impl<F, T> VaultWithPathAndHandler<F, T>
 where
@@ -296,7 +304,7 @@ where
     /// Apply result handler and create vault
     pub async fn execute(self) -> T {
         let handler = self.result_handler;
-        
+
         // Create vault configuration using path if provided
         let config = if let Some(mut config) = self.config {
             // Update vault path if provided
@@ -313,10 +321,10 @@ where
             // Use default config
             cryypt_vault::config::VaultConfig::default()
         };
-        
+
         // Create vault with configuration
         let result = cryypt_vault::core::Vault::with_fortress_encryption(config);
-        
+
         // If vault creation succeeded and passphrase is provided, unlock it
         let final_result = match result {
             Ok(vault) => {
@@ -335,7 +343,7 @@ where
             }
             Err(e) => Err(e),
         };
-        
+
         // Apply result handler
         handler(final_result)
     }
@@ -366,7 +374,7 @@ impl PqcryptoMasterBuilder {
     pub fn kyber(self) -> cryypt_pqcrypto::api::KemBuilder {
         cryypt_pqcrypto::api::KemBuilder
     }
-    
+
     /// Use ML-DSA (Dilithium) digital signature algorithm - README.md pattern
     pub fn dilithium(self) -> cryypt_pqcrypto::api::SignatureBuilder {
         cryypt_pqcrypto::api::SignatureBuilder
@@ -383,7 +391,7 @@ impl QuicMasterBuilder {
     pub fn server(self) -> cryypt_quic::api::QuicServerBuilder {
         cryypt_quic::api::QuicServerBuilder::new()
     }
-    
+
     /// Create a QUIC client - README.md pattern
     pub fn client(self) -> cryypt_quic::api::QuicClientBuilder {
         cryypt_quic::api::QuicClientBuilder::new()

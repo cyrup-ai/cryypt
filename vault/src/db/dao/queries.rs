@@ -5,12 +5,12 @@
 
 use super::{Error, GenericDao};
 use futures::Stream;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::pin::Pin;
 use std::sync::Arc;
-use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
+use surrealdb::engine::any::Any;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 

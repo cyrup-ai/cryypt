@@ -14,26 +14,39 @@ pub struct CompressionResult {
 /// Compression algorithm identifier
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CompressionAlgorithm {
-    Zstd { level: Option<i32> },
-    Gzip { level: Option<u32> },
-    Bzip2 { level: Option<u32> },
-    Zip { level: Option<u32>, files_count: usize },
+    Zstd {
+        level: Option<i32>,
+    },
+    Gzip {
+        level: Option<u32>,
+    },
+    Bzip2 {
+        level: Option<u32>,
+    },
+    Zip {
+        level: Option<u32>,
+        files_count: usize,
+    },
 }
 
 impl CompressionResult {
     /// Create a new compression result from raw bytes
     pub fn new(bytes: Vec<u8>, algorithm: CompressionAlgorithm) -> Self {
-        Self { 
-            bytes, 
+        Self {
+            bytes,
             original_size: None,
             algorithm,
         }
     }
 
     /// Create a new compression result with original size metadata
-    pub fn with_original_size(bytes: Vec<u8>, algorithm: CompressionAlgorithm, original_size: usize) -> Self {
-        Self { 
-            bytes, 
+    pub fn with_original_size(
+        bytes: Vec<u8>,
+        algorithm: CompressionAlgorithm,
+        original_size: usize,
+    ) -> Self {
+        Self {
+            bytes,
             original_size: Some(original_size),
             algorithm,
         }

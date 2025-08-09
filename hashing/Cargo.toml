@@ -45,7 +45,7 @@ argon2 = "0.5.3"
 keyring = "3.5"
 flate2 = "1.1.2"
 zstd = "0.13.3"
-zip = "4.2.0"
+zip = { version = "4.2.0", default-features = false, features = ["aes-crypto", "bzip2", "deflate64", "deflate", "time", "zstd"] }
 rand_core = "0.9.3"
 quiche = "0.24.4"
 pqcrypto = "0.18.1"
@@ -56,6 +56,7 @@ pqcrypto-sphincsplus = "0.7.1"
 pqcrypto-traits = "0.3.5"
 uuid = { version = "1.17.0", features = ["serde", "v4"] }
 bincode = "2.0.1"
+cyrup_sugars = "0.2.0"
 
 [dev-dependencies]
 tokio = { version = "1.46.1", features = ["full"] }

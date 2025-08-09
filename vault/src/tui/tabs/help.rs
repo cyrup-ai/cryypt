@@ -1,10 +1,10 @@
-use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
-    widgets::{Block, Borders, Paragraph},
-    text::Line,
-    Frame,
-};
 use crate::tui::app::App;
+use ratatui::{
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect},
+    text::Line,
+    widgets::{Block, Borders, Paragraph},
+};
 
 pub fn render_help_tab(f: &mut Frame, _app: &mut App, area: Rect) {
     let chunks = Layout::default()
@@ -54,8 +54,8 @@ pub fn render_help_tab(f: &mut Frame, _app: &mut App, area: Rect) {
         Line::from("  • Key rotation for enhanced security"),
     ];
 
-    let help = Paragraph::new(help_text)
-        .block(Block::default().borders(Borders::ALL).title("Help"));
+    let help =
+        Paragraph::new(help_text).block(Block::default().borders(Borders::ALL).title("Help"));
 
     f.render_widget(help, chunks[0]);
 }

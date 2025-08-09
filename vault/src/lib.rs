@@ -14,14 +14,14 @@ pub use tui::pass_interface;
 // Re-export the public API
 pub use config::VaultConfig;
 pub use core::{Vault, VaultValue};
-pub use error::{VaultError, VaultResult};
 pub use db::LocalVaultProvider;
+pub use error::{VaultError, VaultResult};
 pub use operation::{BoxedVaultOperation, VaultOperation};
 
 // Re-export vault operation builders
 pub use api::vault_operations::{
-    VaultWithKey, VaultWithKeyAndHandler, VaultWithKeyAndTtl, 
-    VaultWithKeyAndTtlAndHandler, VaultGetHandler
+    VaultGetHandler, VaultWithKey, VaultWithKeyAndHandler, VaultWithKeyAndTtl,
+    VaultWithKeyAndTtlAndHandler,
 };
 
 // For backward compatibility

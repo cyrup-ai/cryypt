@@ -2,7 +2,7 @@
 
 use crate::{CompressionError, Result};
 use std::io::{Read, Write};
-use zip::{write::SimpleFileOptions, CompressionMethod};
+use zip::{CompressionMethod, write::SimpleFileOptions};
 
 /// Compress data using zip algorithm
 ///
@@ -93,13 +93,19 @@ pub fn compress_files(files: std::collections::HashMap<String, Vec<u8>>) -> Resu
 
         for (filename, data) in files {
             zip.start_file(&filename, options).map_err(|e| {
-                CompressionError::compression_failed(format!("Failed to start ZIP file '{}': {}", filename, e))
+                CompressionError::compression_failed(format!(
+                    "Failed to start ZIP file '{}': {}",
+                    filename, e
+                ))
             })?;
             zip.write_all(&data).map_err(|e| {
-                CompressionError::compression_failed(format!("Failed to write to ZIP file '{}': {}", filename, e))
+                CompressionError::compression_failed(format!(
+                    "Failed to write to ZIP file '{}': {}",
+                    filename, e
+                ))
             })?;
         }
-        
+
         zip.finish().map_err(|e| {
             CompressionError::compression_failed(format!("Failed to finish ZIP archive: {}", e))
         })?;
@@ -121,18 +127,24 @@ pub fn decompress_files(data: &[u8]) -> Result<std::collections::HashMap<String,
     })?;
 
     let mut files = std::collections::HashMap::new();
-    
+
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| {
-            CompressionError::decompression_failed(format!("Failed to access ZIP entry {}: {}", i, e))
+            CompressionError::decompression_failed(format!(
+                "Failed to access ZIP entry {}: {}",
+                i, e
+            ))
         })?;
-        
+
         let filename = file.name().to_string();
         let mut content = Vec::new();
         file.read_to_end(&mut content).map_err(|e| {
-            CompressionError::decompression_failed(format!("Failed to read ZIP file '{}': {}", filename, e))
+            CompressionError::decompression_failed(format!(
+                "Failed to read ZIP file '{}': {}",
+                filename, e
+            ))
         })?;
-        
+
         files.insert(filename, content);
     }
 

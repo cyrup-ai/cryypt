@@ -103,10 +103,7 @@ pub struct KeyDerivation {
 impl KeyDerivation {
     /// Create a new key derivation context
     pub fn new(config: KdfConfig) -> Self {
-        Self {
-            config,
-            salt: None,
-        }
+        Self { config, salt: None }
     }
 
     /// Create with default configuration
@@ -133,25 +130,17 @@ impl KeyDerivation {
     /// Derive a key from input material
     /// Returns derived key bytes with automatic cleanup
     pub async fn derive_key(&self, input: &[u8]) -> Result<Vec<u8>, KeyError> {
-        let salt = self.salt.as_ref()
+        let salt = self
+            .salt
+            .as_ref()
             .ok_or_else(|| KeyError::invalid_key("Salt not provided for key derivation"))?;
 
         match self.config.algorithm {
-            KdfAlgorithm::Pbkdf2Sha256 => {
-                self.derive_pbkdf2_sha256(input, salt).await
-            }
-            KdfAlgorithm::Pbkdf2Sha512 => {
-                self.derive_pbkdf2_sha512(input, salt).await
-            }
-            KdfAlgorithm::Argon2id => {
-                self.derive_argon2id(input, salt).await
-            }
-            KdfAlgorithm::HkdfSha256 => {
-                self.derive_hkdf_sha256(input, salt).await
-            }
-            KdfAlgorithm::HkdfSha512 => {
-                self.derive_hkdf_sha512(input, salt).await
-            }
+            KdfAlgorithm::Pbkdf2Sha256 => self.derive_pbkdf2_sha256(input, salt).await,
+            KdfAlgorithm::Pbkdf2Sha512 => self.derive_pbkdf2_sha512(input, salt).await,
+            KdfAlgorithm::Argon2id => self.derive_argon2id(input, salt).await,
+            KdfAlgorithm::HkdfSha256 => self.derive_hkdf_sha256(input, salt).await,
+            KdfAlgorithm::HkdfSha512 => self.derive_hkdf_sha512(input, salt).await,
         }
     }
 

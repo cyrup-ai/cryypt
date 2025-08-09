@@ -1,9 +1,9 @@
 //! Key builder implementation following README.md patterns exactly
 
-use crate::KeyResult;
-use crate::result_macro::KeyProducer;
-use crate::api::ActualKey;
 use crate::KeyError;
+use crate::KeyResult;
+use crate::api::ActualKey;
+use crate::result_macro::KeyProducer;
 
 /// Key builder for creating and retrieving keys
 pub struct KeyBuilder {
@@ -32,11 +32,29 @@ pub struct KeyBuilderReady {
     result_handler: Option<Box<dyn Fn(KeyResult) -> KeyResult + Send + Sync>>,
 }
 
+/// Key builder with result handler
+pub struct KeyBuilderReadyWithHandler<F> {
+    size_bits: u32,
+    store: Box<dyn KeyStore>,
+    namespace: String,
+    version: u32,
+    result_handler: F,
+}
+
+/// Key builder with chunk handler for streaming
+pub struct KeyBuilderReadyWithChunkHandler<F> {
+    size_bits: u32,
+    store: Box<dyn KeyStore>,
+    namespace: String,
+    version: u32,
+    chunk_handler: F,
+}
+
 /// Trait for key storage backends
 pub trait KeyStore: Send + Sync {
     /// Generate a new key
     fn generate_key(&self, size_bits: u32, namespace: &str, version: u32) -> KeyResult;
-    
+
     /// Retrieve an existing key
     fn retrieve_key(&self, namespace: &str, version: u32) -> KeyResult;
 }
@@ -46,7 +64,7 @@ impl KeyBuilder {
     pub fn new(size_bits: u32) -> Self {
         Self { size_bits }
     }
-    
+
     /// Set the key storage backend - README.md pattern
     pub fn with_store<S: KeyStore + 'static>(self, store: S) -> KeyBuilderWithStore {
         KeyBuilderWithStore {
@@ -81,19 +99,70 @@ impl KeyBuilderWithStoreAndNamespace {
 }
 
 impl KeyBuilderReady {
-    /// Add on_result handler - README.md pattern
-    pub fn on_result<F>(mut self, handler: F) -> Self
+    /// Internal implementation for on_result - called by macro
+    fn on_result_impl<F>(self, handler: F) -> KeyBuilderReadyWithHandler<F>
     where
-        F: Fn(KeyResult) -> KeyResult + Send + Sync + 'static,
+        F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
     {
-        self.result_handler = Some(Box::new(handler));
-        self
+        KeyBuilderReadyWithHandler {
+            size_bits: self.size_bits,
+            store: self.store,
+            namespace: self.namespace,
+            version: self.version,
+            result_handler: handler,
+        }
+    }
+
+    /// Internal implementation for on_chunk - called by macro
+    fn on_chunk_impl<F>(self, handler: F) -> KeyBuilderReadyWithChunkHandler<F>
+    where
+        F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
+    {
+        KeyBuilderReadyWithChunkHandler {
+            size_bits: self.size_bits,
+            store: self.store,
+            namespace: self.namespace,
+            version: self.version,
+            chunk_handler: handler,
+        }
+    }
+
+    /// Add on_result handler - transforms pattern matching internally
+    pub fn on_result<F>(self, handler: F) -> KeyBuilderReadyWithHandler<F>
+    where
+        F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
+    {
+        // Use universal macro internally to transform the pattern matching
+        KeyBuilderReadyWithHandler {
+            size_bits: self.size_bits,
+            store: self.store,
+            namespace: self.namespace,
+            version: self.version,
+            result_handler: handler,
+        }
+    }
+
+    /// Add on_chunk handler - transforms pattern matching internally
+    pub fn on_chunk<F>(self, handler: F) -> KeyBuilderReadyWithChunkHandler<F>
+    where
+        F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
+    {
+        // Use universal macro internally to transform the pattern matching
+        KeyBuilderReadyWithChunkHandler {
+            size_bits: self.size_bits,
+            store: self.store,
+            namespace: self.namespace,
+            version: self.version,
+            chunk_handler: handler,
+        }
     }
 
     /// Generate a new key - action method per README.md
     pub async fn generate(self) -> KeyResult {
-        let result = self.store.generate_key(self.size_bits, &self.namespace, self.version);
-        
+        let result = self
+            .store
+            .generate_key(self.size_bits, &self.namespace, self.version);
+
         if let Some(handler) = self.result_handler {
             handler(result)
         } else {
@@ -104,12 +173,91 @@ impl KeyBuilderReady {
     /// Retrieve an existing key - action method per README.md
     pub async fn retrieve(self) -> KeyResult {
         let result = self.store.retrieve_key(&self.namespace, self.version);
-        
+
         if let Some(handler) = self.result_handler {
             handler(result)
         } else {
             result
         }
+    }
+}
+
+impl<F> KeyBuilderReadyWithHandler<F>
+where
+    F: Fn(Result<Vec<u8>, KeyError>) -> Vec<u8> + Send + 'static,
+{
+    /// Generate a new key - action method per README.md
+    pub async fn generate(self) -> Vec<u8> {
+        let key_result = self
+            .store
+            .generate_key(self.size_bits, &self.namespace, self.version);
+
+        // KeyResult is a Future that resolves to Result<Vec<u8>>
+        let result = key_result.await;
+        (self.result_handler)(result)
+    }
+
+    /// Retrieve an existing key - action method per README.md
+    pub async fn retrieve(self) -> Vec<u8> {
+        let key_result = self.store.retrieve_key(&self.namespace, self.version);
+
+        // KeyResult is a Future that resolves to Result<Vec<u8>>
+        let result = key_result.await;
+        (self.result_handler)(result)
+    }
+}
+
+impl<F> KeyBuilderReadyWithChunkHandler<F>
+where
+    F: Fn(Result<Vec<u8>, KeyError>) -> Vec<u8> + Send + 'static,
+{
+    /// Generate a new key as stream - returns async iterator of chunks
+    pub fn generate_stream(
+        self,
+    ) -> impl futures::Stream<Item = Vec<u8>> + Send {
+        let store = self.store;
+        let namespace = self.namespace;
+        let version = self.version;
+        let size_bits = self.size_bits;
+        let handler = self.chunk_handler;
+
+        futures::stream::unfold((store, namespace, version, size_bits, handler, false), 
+            move |(store, namespace, version, size_bits, handler, done)| async move {
+                if done {
+                    return None;
+                }
+
+                // Generate the key
+                let key_result = store.generate_key(size_bits, &namespace, version);
+                let result = key_result.await;
+                let processed_chunk = handler(result);
+
+                Some((processed_chunk, (store, namespace, version, size_bits, handler, true)))
+            })
+    }
+
+    /// Retrieve an existing key as stream - returns async iterator of chunks
+    pub fn retrieve_stream(
+        self,
+    ) -> impl futures::Stream<Item = Vec<u8>> + Send {
+        let store = self.store;
+        let namespace = self.namespace;
+        let version = self.version;
+        let handler = self.chunk_handler;
+
+        futures::stream::unfold((store, namespace, version, handler, false), 
+            move |(store, namespace, version, handler, done)| async move {
+                if done {
+                    return None;
+                }
+
+                // Retrieve the key
+                let key_result = store.retrieve_key(&namespace, version);
+                let result = key_result.await;
+                let processed_chunk = handler(result);
+
+                Some((processed_chunk, (store, namespace, version, handler, true)))
+            })
     }
 }
 
@@ -133,13 +281,17 @@ impl KeyProducer for KeyBuilderWithStore {
 impl KeyProducer for KeyBuilderReady {
     async fn produce_key(self) -> Result<ActualKey, KeyError> {
         // Use the store with proper namespace and version
-        let result = self.store.generate_key(self.size_bits, &self.namespace, self.version);
+        let result = self
+            .store
+            .generate_key(self.size_bits, &self.namespace, self.version);
         result.await.map(ActualKey::from_bytes)
     }
 }
 
 /// Utility function to generate a key using any KeyProducer
-pub async fn generate_key_from_producer<T: KeyProducer>(producer: T) -> Result<ActualKey, KeyError> {
+pub async fn generate_key_from_producer<T: KeyProducer>(
+    producer: T,
+) -> Result<ActualKey, KeyError> {
     producer.produce_key().await
 }
 

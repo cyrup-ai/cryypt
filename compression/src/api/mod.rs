@@ -1,6 +1,6 @@
 //! Fluent compression API following the new pattern from README.md
 //!
-//! Usage: `let compressed = Compress::zstd().on_result!(|result| { ... }).compress(data).await`
+//! Usage: `let compressed = Compress::zstd().on_result(|result| match result { Ok(bytes) => bytes, Err(e) => { /* handle */ Vec::new() } }).compress(data).await`
 
 pub mod bzip2_builder;
 pub mod gzip_builder;
@@ -8,7 +8,7 @@ pub mod zip_builder;
 pub mod zstd_builder;
 
 pub use bzip2_builder::{Bzip2Builder, stream::Bzip2Stream};
-pub use gzip_builder::{GzipBuilder, stream::GzipStream}; 
+pub use gzip_builder::{GzipBuilder, stream::GzipStream};
 pub use zip_builder::{ZipBuilder, ZipStream};
 pub use zstd_builder::{ZstdBuilder, stream::ZstdStream};
 

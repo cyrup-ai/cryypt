@@ -2,14 +2,14 @@
 //!
 //! Contains the main store traits, types, and error handling for vault storage operations.
 
+use crate::config::VaultConfig;
 use crate::db::dao::{Error as DaoError, SurrealDbDao, TableType};
 use crate::error::{VaultError, VaultResult};
-use crate::config::VaultConfig;
 use crate::operation::Passphrase;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex as SyncMutex};
 use tokio::sync::Mutex;
-use chrono::{DateTime, Utc};
 
 // Declare submodules
 pub mod backend;
@@ -67,24 +67,31 @@ impl LocalVaultProvider {
         // Create SurrealKV connection using the vault_path from config
         // Use the correct format for SurrealKV: just the file path
         let db_path = config.vault_path.to_string_lossy();
-        
+
         // Ensure parent directory exists before connecting
         if let Some(parent) = config.vault_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| VaultError::Provider(format!("Failed to create vault directory: {}", e)))?;
+            std::fs::create_dir_all(parent).map_err(|e| {
+                VaultError::Provider(format!("Failed to create vault directory: {}", e))
+            })?;
         }
-        
+
         // Use file database - match the working wallpapers example exactly
         let db = surrealdb::engine::any::connect(&format!("surrealkv://{}", db_path))
             .await
-            .map_err(|e| VaultError::Provider(format!("Failed to connect to SurrealKV at {}: {}", db_path, e)))?;
-        
+            .map_err(|e| {
+                VaultError::Provider(format!(
+                    "Failed to connect to SurrealKV at {}: {}",
+                    db_path, e
+                ))
+            })?;
+
         // Use a default namespace and database
-        db.use_ns("vault").use_db("vault").await
-            .map_err(|e| VaultError::Provider(format!("Failed to set namespace/database: {}", e)))?;
-        
+        db.use_ns("vault").use_db("vault").await.map_err(|e| {
+            VaultError::Provider(format!("Failed to set namespace/database: {}", e))
+        })?;
+
         let db = Arc::new(db);
-        
+
         // Initialize the vault provider
         let provider = Self {
             dao: SurrealDbDao::new(db, "vault_entries", TableType::Document),
@@ -94,11 +101,12 @@ impl LocalVaultProvider {
             session_token: Arc::new(Mutex::new(None)),
             encryption_key: Arc::new(Mutex::new(None)),
         };
-        
+
         // Initialize the database schema
-        provider.initialize_schema().await
-            .map_err(|e| VaultError::Provider(format!("Failed to initialize database schema: {}", e)))?;
-        
+        provider.initialize_schema().await.map_err(|e| {
+            VaultError::Provider(format!("Failed to initialize database schema: {}", e))
+        })?;
+
         Ok(provider)
     }
 }

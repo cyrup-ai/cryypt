@@ -20,8 +20,8 @@ use cryypt::{Cryypt, on_result};
 let compressed = Cryypt::compress()
     .zstd()
     .with_level(3)
-    .on_result(|result| {
-        Ok => result.to_vec(),
+    .on_result(|result| match result {
+        Ok(bytes) => bytes.to_vec(),
         Err(e) => {
             log::error!("Compression error: {}", e);
             b"Large text data...".to_vec()
@@ -48,10 +48,10 @@ let mut compressed_stream = Cryypt::compress()
     .zstd()
     .with_level(6)
     .on_chunk(|chunk| {
-        Ok => chunk,
+        Ok => chunk.into(),
         Err(e) => {
             log::error!("Compression error: {}", e);
-            return
+            BadChunk::from_error(e)
         }
     })
     .compress_stream(input_stream); // Returns Stream<Item = Vec<u8>> - fully unwrapped compressed chunks
@@ -66,10 +66,10 @@ while let Some(chunk) = compressed_stream.next().await {
 let mut decompressed_stream = Cryypt::compress()
     .zstd()
     .on_chunk(|chunk| {
-        Ok => chunk,
+        Ok => chunk.into(),
         Err(e) => {
             log::error!("Decompression error: {}", e);
-            return
+            BadChunk::from_error(e)
         }
     })
     .decompress_stream(compressed_input);
@@ -84,8 +84,8 @@ use cryypt::{Cryypt, on_result};
 let compressed = Cryypt::compress()
     .gzip()
     .with_level(6)
-    .on_result(|result| {
-        Ok => result.to_vec(),
+    .on_result(|result| match result {
+        Ok(bytes) => bytes.to_vec(),
         Err(e) => {
             log::error!("Compression error: {}", e);
             b"Large text data...".to_vec()

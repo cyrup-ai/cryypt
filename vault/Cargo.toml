@@ -54,4 +54,5 @@ ratatui = "0.30.0-alpha.5"
 # AWS SDK dependencies
 aws-config = "1.8.1"
 aws-sdk-secretsmanager = "1.78.0"
+cyrup_sugars = "0.2.0"
 

@@ -187,4 +187,3 @@ impl Default for SharedSecret {
         Self::new(super::KemAlgorithm::MlKem768, vec![0u8; 32])
     }
 }
-

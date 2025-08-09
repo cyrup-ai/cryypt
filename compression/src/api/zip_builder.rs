@@ -1,10 +1,10 @@
 //! ZIP archive builder following the new pattern
 
-use crate::{CompressionResult, CompressionAlgorithm, Result};
+use crate::{CompressionAlgorithm, CompressionResult, Result};
+use std::collections::HashMap;
 use std::pin::Pin;
 use tokio::sync::mpsc;
 use tokio_stream::Stream;
-use std::collections::HashMap;
 
 /// Type-state marker for no files added
 pub struct NoFiles;
@@ -17,7 +17,8 @@ pub struct HasFiles {
 /// Builder for ZIP archive operations
 pub struct ZipBuilder<F> {
     pub(super) files: F,
-    pub(super) result_handler: Option<Box<dyn Fn(Result<CompressionResult>) -> Vec<u8> + Send + Sync>>,
+    pub(super) result_handler:
+        Option<Box<dyn Fn(Result<CompressionResult>) -> Vec<u8> + Send + Sync>>,
     pub(super) chunk_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>>,
 }
 
@@ -42,7 +43,7 @@ impl<F> ZipBuilder<F> {
         self.result_handler = Some(Box::new(handler));
         self
     }
-    
+
     /// Apply on_chunk! handler for streaming
     pub fn on_chunk<H>(mut self, handler: H) -> Self
     where
@@ -56,10 +57,14 @@ impl<F> ZipBuilder<F> {
 // Methods for adding files
 impl ZipBuilder<NoFiles> {
     /// Add the first file to the ZIP archive
-    pub fn add_file<N: Into<String>, T: Into<Vec<u8>>>(self, name: N, data: T) -> ZipBuilder<HasFiles> {
+    pub fn add_file<N: Into<String>, T: Into<Vec<u8>>>(
+        self,
+        name: N,
+        data: T,
+    ) -> ZipBuilder<HasFiles> {
         let mut files = HashMap::new();
         files.insert(name.into(), data.into());
-        
+
         ZipBuilder {
             files: HasFiles { files },
             result_handler: self.result_handler,
@@ -83,19 +88,20 @@ impl ZipBuilder<HasFiles> {
     pub async fn compress(self) -> Vec<u8> {
         let files_count = self.files.files.len();
         let total_size: usize = self.files.files.values().map(|data| data.len()).sum();
-        
+
         let result = async move {
             let compressed = zip_compress(self.files.files).await?;
             Ok(CompressionResult::with_original_size(
                 compressed,
-                CompressionAlgorithm::Zip { 
+                CompressionAlgorithm::Zip {
                     level: Some(6), // Default compression level
                     files_count,
                 },
                 total_size,
             ))
-        }.await;
-        
+        }
+        .await;
+
         if let Some(handler) = self.result_handler {
             // User provided handler: give them Result<CompressionResult>, get back Vec<u8>
             (*handler)(result)
@@ -107,25 +113,26 @@ impl ZipBuilder<HasFiles> {
             }
         }
     }
-    
+
     /// Extract files from a ZIP archive (takes compressed data as input)
     /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
     pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
         let data = data.into();
         let original_size = data.len();
-        
+
         let result = async move {
             let files = zip_decompress(data.clone()).await?;
             Ok(CompressionResult::with_original_size(
                 data,
-                CompressionAlgorithm::Zip { 
+                CompressionAlgorithm::Zip {
                     level: None,
                     files_count: files.len(),
                 },
                 original_size,
             ))
-        }.await;
-        
+        }
+        .await;
+
         if let Some(handler) = self.result_handler {
             // User provided handler: give them Result<CompressionResult>, get back Vec<u8>
             (*handler)(result)
@@ -137,11 +144,11 @@ impl ZipBuilder<HasFiles> {
             }
         }
     }
-    
+
     /// Create ZIP archive from a stream of file data
     pub fn compress_stream<S: Stream<Item = (String, Vec<u8>)> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> ZipStream {
         ZipStream::new(stream, self.chunk_handler)
     }
@@ -163,18 +170,18 @@ impl ZipStream {
         S: Stream<Item = (String, Vec<u8>)> + Send + 'static,
     {
         let (sender, receiver) = mpsc::channel(100);
-        
+
         // Spawn task to process stream
         tokio::spawn(async move {
             use tokio_stream::StreamExt;
             let mut stream = Box::pin(stream);
             let mut files = HashMap::new();
-            
+
             // Collect all files from the stream
             while let Some((name, data)) = stream.next().await {
                 files.insert(name, data);
             }
-            
+
             // Create ZIP archive
             match zip_compress(files).await {
                 Ok(compressed) => {
@@ -185,10 +192,11 @@ impl ZipStream {
                 }
             }
         });
-        
+
         ZipStream {
             receiver,
-            handler: handler.map(|h| Box::new(h) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
+            handler: handler
+                .map(|h| Box::new(h) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
         }
     }
 }
@@ -196,7 +204,10 @@ impl ZipStream {
 impl Stream for ZipStream {
     type Item = Vec<u8>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
         match self.receiver.poll_recv(cx) {
             std::task::Poll::Ready(Some(result)) => {
                 if let Some(handler) = &self.handler {

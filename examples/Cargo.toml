@@ -35,6 +35,10 @@ path = "src/pqcrypto_api.rs"
 name = "quic_api"
 path = "src/quic_api.rs"
 
+[[bin]]
+name = "cipher_streaming"
+path = "src/cipher_streaming.rs"
+
 [dependencies]
 cryypt = { path = "../cryypt", features = ["full", "quic"] }
 tokio = { version = "1.46.1", features = ["full"] }
@@ -47,3 +51,6 @@ env_logger = "0.11.8"
 hex = "0.4.3"
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
 chrono = { version = "0.4.41", features = ["serde"] }
+
+cryypt_common = { version = "0.1.0", path = "../common" }
+cyrup_sugars = "0.2.0"

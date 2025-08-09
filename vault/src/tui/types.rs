@@ -1,9 +1,9 @@
-use std::fmt;
-use crate::core::VaultValue;
-use zeroize::Zeroizing;
-use std::time::Instant;
 use crate::aws_interface::{AwsSecretManager, SecretSummary};
+use crate::core::VaultValue;
 use crate::pass_interface::PassInterface;
+use std::fmt;
+use std::time::Instant;
+use zeroize::Zeroizing;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppTab {
@@ -70,10 +70,10 @@ pub struct AppState {
     pub argon2_memory_cost: u32,
     pub argon2_time_cost: u32,
     pub argon2_parallelism: u32,
-    
+
     // Pass password manager state
     pub pass: PassState,
-    
+
     // AWS Secrets Manager state
     pub aws: AwsSecretsManagerState,
 }
@@ -99,10 +99,10 @@ impl Default for AppState {
             argon2_memory_cost: 16384,
             argon2_time_cost: 3,
             argon2_parallelism: 4,
-            
+
             // Pass password manager state
             pass: PassState::default(),
-            
+
             // AWS Secrets Manager state
             aws: AwsSecretsManagerState::default(),
         }

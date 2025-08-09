@@ -1,10 +1,10 @@
 //! Actual cryptographic key that holds key material
 
-use zeroize::Zeroizing;
 use crate::{KeyResult, traits::KeyProviderBuilder};
+use zeroize::Zeroizing;
 
 /// Actual cryptographic key holding key material
-/// 
+///
 /// This represents a generated or retrieved cryptographic key that can be used
 /// directly for encryption operations as shown in README.md
 #[derive(Debug, Clone)]
@@ -52,11 +52,11 @@ impl KeyProviderBuilder for DirectKeyProvider {
     fn resolve(&self) -> KeyResult {
         let (tx, rx) = tokio::sync::oneshot::channel();
         let key_bytes = self.key_bytes.clone();
-        
+
         tokio::spawn(async move {
             let _ = tx.send(Ok(key_bytes.to_vec()));
         });
-        
+
         KeyResult::new(rx)
     }
 }
@@ -65,11 +65,11 @@ impl KeyProviderBuilder for ActualKey {
     fn resolve(&self) -> KeyResult {
         let (tx, rx) = tokio::sync::oneshot::channel();
         let key_bytes = self.key_bytes.clone();
-        
+
         tokio::spawn(async move {
             let _ = tx.send(Ok(key_bytes.to_vec()));
         });
-        
+
         KeyResult::new(rx)
     }
 }

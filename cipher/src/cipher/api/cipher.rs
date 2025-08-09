@@ -15,7 +15,7 @@ impl Cipher {
     pub fn chacha20() -> ChaChaBuilder {
         ChaChaBuilder::new()
     }
-    
+
     /// Use ChaCha20-Poly1305 (alias) - README.md pattern
     pub fn chachapoly() -> ChaChaBuilder {
         ChaChaBuilder::new()

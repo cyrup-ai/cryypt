@@ -16,7 +16,7 @@ impl ExistsResult {
     pub(crate) fn new(receiver: oneshot::Receiver<Result<bool>>) -> Self {
         Self { receiver }
     }
-    
+
     /// Add a result handler following README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> ExistsResultWithHandler<F>
     where
@@ -54,7 +54,9 @@ where
             }
             Poll::Ready(Err(_)) => {
                 if let Some(handler) = this.handler.take() {
-                    Poll::Ready(handler(Err(KeyError::internal("Exists check task dropped"))))
+                    Poll::Ready(handler(Err(KeyError::internal(
+                        "Exists check task dropped",
+                    ))))
                 } else {
                     panic!("ExistsResultWithHandler polled after completion")
                 }
@@ -73,7 +75,7 @@ impl DeleteResult {
     pub(crate) fn new(receiver: oneshot::Receiver<Result<()>>) -> Self {
         Self { receiver }
     }
-    
+
     /// Add a result handler following README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> DeleteResultWithHandler<F>
     where
@@ -130,7 +132,7 @@ impl StoreResult {
     pub(crate) fn new(receiver: oneshot::Receiver<Result<()>>) -> Self {
         Self { receiver }
     }
-    
+
     /// Add a result handler following README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> StoreResultWithHandler<F>
     where
@@ -187,7 +189,7 @@ impl RetrieveResult {
     pub(crate) fn new(receiver: oneshot::Receiver<Result<Vec<u8>>>) -> Self {
         Self { receiver }
     }
-    
+
     /// Add a result handler following README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> RetrieveResultWithHandler<F>
     where
@@ -244,7 +246,7 @@ impl ListResult {
     pub(crate) fn new(receiver: oneshot::Receiver<Result<Vec<String>>>) -> Self {
         Self { receiver }
     }
-    
+
     /// Add a result handler following README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> ListResultWithHandler<F>
     where

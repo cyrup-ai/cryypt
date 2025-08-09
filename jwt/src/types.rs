@@ -8,20 +8,20 @@ use std::collections::HashMap;
 pub struct JwtClaims {
     // Standard claims
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sub: Option<String>,    // Subject
+    pub sub: Option<String>, // Subject
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub aud: Option<String>,    // Audience
+    pub aud: Option<String>, // Audience
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub exp: Option<i64>,       // Expiration time
+    pub exp: Option<i64>, // Expiration time
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub nbf: Option<i64>,       // Not before
+    pub nbf: Option<i64>, // Not before
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub iat: Option<i64>,       // Issued at
+    pub iat: Option<i64>, // Issued at
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub iss: Option<String>,    // Issuer
+    pub iss: Option<String>, // Issuer
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub jti: Option<String>,    // JWT ID
-    
+    pub jti: Option<String>, // JWT ID
+
     // Custom claims (flattened into root)
     #[serde(flatten)]
     pub custom: HashMap<String, serde_json::Value>,
@@ -65,7 +65,7 @@ impl JwtHeader {
             kid: None,
         }
     }
-    
+
     pub fn with_key_id(mut self, kid: String) -> Self {
         self.kid = Some(kid);
         self

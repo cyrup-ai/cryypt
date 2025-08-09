@@ -7,8 +7,8 @@
 //! - Context attachment for debugging
 
 use std::fmt;
-use thiserror::Error;
 use std::sync::Arc;
+use thiserror::Error;
 
 /// Core error type with context propagation support
 #[derive(Debug, Clone)]
@@ -36,55 +36,55 @@ pub enum ErrorKind {
     /// I/O related errors
     #[error("I/O error")]
     Io,
-    
+
     /// Cryptographic operation errors
     #[error("Cryptographic error")]
     Crypto,
-    
+
     /// Key management errors
     #[error("Key management error")]
     KeyManagement,
-    
+
     /// Compression/decompression errors
     #[error("Compression error")]
     Compression,
-    
+
     /// Network related errors
     #[error("Network error")]
     Network,
-    
+
     /// Configuration errors
     #[error("Configuration error")]
     Configuration,
-    
+
     /// Validation errors
     #[error("Validation error")]
     Validation,
-    
+
     /// Resource exhaustion
     #[error("Resource exhausted")]
     ResourceExhausted,
-    
+
     /// Operation timeout
     #[error("Operation timed out")]
     Timeout,
-    
+
     /// Permission denied
     #[error("Permission denied")]
     PermissionDenied,
-    
+
     /// Not found
     #[error("Not found")]
     NotFound,
-    
+
     /// Already exists
     #[error("Already exists")]
     AlreadyExists,
-    
+
     /// Internal error
     #[error("Internal error")]
     Internal,
-    
+
     /// Other error with custom message
     #[error("{0}")]
     Other(String),
@@ -103,7 +103,7 @@ impl Error {
             }),
         }
     }
-    
+
     /// Create an error with a source error
     pub fn with_source<E>(kind: ErrorKind, source: E) -> Self
     where
@@ -119,7 +119,7 @@ impl Error {
             }),
         }
     }
-    
+
     /// Add context to this error
     pub fn context<C: fmt::Display>(self, context: C) -> Self {
         // Create a new error with context, preserving the original
@@ -127,96 +127,98 @@ impl Error {
             inner: Arc::new(ErrorInner {
                 kind: self.inner.kind.clone(),
                 context: Some(context.to_string()),
-                source: self.inner.source.as_ref().map(|_| {
-                    Box::new(self.clone()) as Box<dyn std::error::Error + Send + Sync>
-                }),
+                source: self
+                    .inner
+                    .source
+                    .as_ref()
+                    .map(|_| Box::new(self.clone()) as Box<dyn std::error::Error + Send + Sync>),
                 #[cfg(feature = "full-backtrace")]
                 backtrace: backtrace::Backtrace::new(),
             }),
         }
     }
-    
+
     /// Get the error kind
     pub fn kind(&self) -> &ErrorKind {
         &self.inner.kind
     }
-    
+
     /// Get the error context if any
     pub fn get_context(&self) -> Option<&str> {
         self.inner.context.as_deref()
     }
-    
+
     /// Get the backtrace
     #[cfg(feature = "full-backtrace")]
     pub fn backtrace(&self) -> &backtrace::Backtrace {
         &self.inner.backtrace
     }
-    
+
     /// Create an I/O error
     pub fn io() -> Self {
         Self::new(ErrorKind::Io)
     }
-    
+
     /// Create a crypto error
     pub fn crypto() -> Self {
         Self::new(ErrorKind::Crypto)
     }
-    
+
     /// Create a key management error
     pub fn key_management() -> Self {
         Self::new(ErrorKind::KeyManagement)
     }
-    
+
     /// Create a compression error
     pub fn compression() -> Self {
         Self::new(ErrorKind::Compression)
     }
-    
+
     /// Create a network error
     pub fn network() -> Self {
         Self::new(ErrorKind::Network)
     }
-    
+
     /// Create a configuration error
     pub fn configuration() -> Self {
         Self::new(ErrorKind::Configuration)
     }
-    
+
     /// Create a validation error
     pub fn validation() -> Self {
         Self::new(ErrorKind::Validation)
     }
-    
+
     /// Create a resource exhausted error
     pub fn resource_exhausted() -> Self {
         Self::new(ErrorKind::ResourceExhausted)
     }
-    
+
     /// Create a timeout error
     pub fn timeout() -> Self {
         Self::new(ErrorKind::Timeout)
     }
-    
+
     /// Create a permission denied error
     pub fn permission_denied() -> Self {
         Self::new(ErrorKind::PermissionDenied)
     }
-    
+
     /// Create a not found error
     pub fn not_found() -> Self {
         Self::new(ErrorKind::NotFound)
     }
-    
+
     /// Create an already exists error
     pub fn already_exists() -> Self {
         Self::new(ErrorKind::AlreadyExists)
     }
-    
+
     /// Create an internal error
     pub fn internal() -> Self {
         Self::new(ErrorKind::Internal)
     }
-    
+
     /// Create an other error with custom message
     pub fn other<S: Into<String>>(msg: S) -> Self {
         Self::new(ErrorKind::Other(msg.into()))
@@ -226,22 +228,25 @@ impl Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.inner.kind)?;
-        
+
         if let Some(context) = &self.inner.context {
             write!(f, ": {}", context)?;
         }
-        
+
         if let Some(source) = &self.inner.source {
             write!(f, "\nCaused by: {}", source)?;
         }
-        
+
         Ok(())
     }
 }
 
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.inner.source.as_ref().map(|e| e.as_ref() as &(dyn std::error::Error + 'static))
+        self.inner
+            .source
+            .as_ref()
+            .map(|e| e.as_ref() as &(dyn std::error::Error + 'static))
     }
 }
 
@@ -252,7 +257,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub trait ResultExt<T> {
     /// Add context to an error
     fn context<C: fmt::Display>(self, context: C) -> Result<T>;
-    
+
     /// Add context with a closure (only called on error)
     fn with_context<C, F>(self, f: F) -> Result<T>
     where
@@ -267,7 +272,7 @@ where
     fn context<C: fmt::Display>(self, context: C) -> Result<T> {
         self.map_err(|e| Error::with_source(ErrorKind::Internal, e).context(context))
     }
-    
+
     fn with_context<C, F>(self, f: F) -> Result<T>
     where
         C: fmt::Display,
@@ -281,7 +286,7 @@ where
 pub trait OptionExt<T> {
     /// Convert None to an error with context
     fn context<C: fmt::Display>(self, context: C) -> Result<T>;
-    
+
     /// Convert None to an error with a closure for context
     fn with_context<C, F>(self, f: F) -> Result<T>
     where
@@ -293,7 +298,7 @@ impl<T> OptionExt<T> for Option<T> {
     fn context<C: fmt::Display>(self, context: C) -> Result<T> {
         self.ok_or_else(|| Error::not_found().context(context))
     }
-    
+
     fn with_context<C, F>(self, f: F) -> Result<T>
     where
         C: fmt::Display,
@@ -304,6 +309,7 @@ impl<T> OptionExt<T> for Option<T> {
 }
 
 /// Macro for creating errors with automatic file/line context
+#[doc(hidden)]
 #[macro_export]
 macro_rules! err {
     ($kind:ident) => {
@@ -318,6 +324,7 @@ macro_rules! err {
 }
 
 /// Macro for bailing out with an error
+#[doc(hidden)]
 #[macro_export]
 macro_rules! bail {
     ($($arg:tt)*) => {
@@ -326,6 +333,7 @@ macro_rules! bail {
 }
 
 /// Macro for ensuring a condition holds
+#[doc(hidden)]
 #[macro_export]
 macro_rules! ensure {
     ($cond:expr, $($arg:tt)*) => {

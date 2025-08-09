@@ -1,6 +1,6 @@
 //! Entry point for the fluent hashing API following README.md patterns exactly
 
-use crate::{Result, HashResult, AsyncHashResult, AsyncHashResultWithError};
+use crate::{AsyncHashResult, AsyncHashResultWithError, HashResult, Result};
 use tokio::sync::oneshot;
 
 /// Entry point for hash operations - README.md pattern
@@ -65,9 +65,7 @@ impl Sha256Builder {
 
     /// Add HMAC key - README.md pattern
     pub fn with_key<K: Into<Vec<u8>>>(self, key: K) -> Sha256BuilderWithKey {
-        Sha256BuilderWithKey {
-            key: key.into(),
-        }
+        Sha256BuilderWithKey { key: key.into() }
     }
 
     /// Add on_result handler - README.md pattern
@@ -81,7 +79,7 @@ impl Sha256Builder {
             _phantom: std::marker::PhantomData,
         }
     }
-    
+
     /// Add on_error handler - transforms errors but passes through success
     pub fn on_error<E>(self, handler: E) -> Sha256BuilderWithError<E>
     where
@@ -91,7 +89,7 @@ impl Sha256Builder {
             error_handler: handler,
         }
     }
-    
+
     /// Add on_chunk handler for streaming - README.md pattern
     pub fn on_chunk<C>(self, handler: C) -> Sha256BuilderWithChunk<C>
     where
@@ -105,14 +103,14 @@ impl Sha256Builder {
     /// Compute hash - action takes data as argument per README.md
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = sha256_hash(&data).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResult::new(rx)
     }
 }
@@ -126,10 +124,10 @@ where
     pub async fn compute<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
         let handler = self.result_handler;
-        
+
         // Perform SHA-256 hashing
         let result = sha256_hash(&data).await;
-        
+
         // Apply result handler
         handler(result)
     }
@@ -150,19 +148,19 @@ where
             _phantom: std::marker::PhantomData,
         }
     }
-    
+
     /// Compute hash with error handler - returns AsyncHashResultWithError
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResultWithError<E> {
         let data = data.into();
         let error_handler = self.error_handler;
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = sha256_hash(&data).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResultWithError::new(rx, error_handler)
     }
 }
@@ -176,18 +174,18 @@ where
     where
         S: tokio_stream::Stream<Item = Vec<u8>> + Send + 'static,
     {
+        use sha2::{Digest, Sha256};
         use tokio_stream::StreamExt;
-        use sha2::{Sha256, Digest};
-        
+
         let chunk_handler = self.chunk_handler;
         let mut hasher = Sha256::new();
         let mut stream = Box::pin(stream);
-        
+
         // Process each chunk through the handler and update the hasher
         while let Some(chunk) = stream.next().await {
             // Apply chunk handler to the chunk
             let processed = (chunk_handler)(Ok(chunk));
-            
+
             // If handler returns Some(data), continue processing
             if let Some(data) = processed {
                 hasher.update(&data);
@@ -196,7 +194,7 @@ where
                 break;
             }
         }
-        
+
         // Return final hash
         hasher.finalize().to_vec()
     }
@@ -220,14 +218,14 @@ impl Sha256BuilderWithKey {
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
         let key = self.key;
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = sha256_hmac(&data, &key).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResult::new(rx)
     }
 }
@@ -249,10 +247,10 @@ where
         let data = data.into();
         let key = self.key;
         let handler = self.result_handler;
-        
+
         // Perform HMAC-SHA256
         let result = sha256_hmac(&data, &key).await;
-        
+
         // Apply result handler
         handler(result)
     }
@@ -294,7 +292,7 @@ impl Sha3_256Builder {
             _phantom: std::marker::PhantomData,
         }
     }
-    
+
     /// Add on_error handler - transforms errors but passes through success
     pub fn on_error<E>(self, handler: E) -> Sha3_256BuilderWithError<E>
     where
@@ -304,7 +302,7 @@ impl Sha3_256Builder {
             error_handler: handler,
         }
     }
-    
+
     /// Add on_chunk handler for streaming - README.md pattern
     pub fn on_chunk<C>(self, handler: C) -> Sha3_256BuilderWithChunk<C>
     where
@@ -318,14 +316,14 @@ impl Sha3_256Builder {
     /// Compute hash - action takes data as argument per README.md
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = sha3_256_hash(&data).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResult::new(rx)
     }
 }
@@ -339,10 +337,10 @@ where
     pub async fn compute<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
         let handler = self.result_handler;
-        
+
         // Perform SHA3-256 hashing
         let result = sha3_256_hash(&data).await;
-        
+
         // Apply result handler
         handler(result)
     }
@@ -363,19 +361,19 @@ where
             _phantom: std::marker::PhantomData,
         }
     }
-    
+
     /// Compute hash with error handler - returns AsyncHashResultWithError
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResultWithError<E> {
         let data = data.into();
         let error_handler = self.error_handler;
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = sha3_256_hash(&data).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResultWithError::new(rx, error_handler)
     }
 }
@@ -389,18 +387,18 @@ where
     where
         S: tokio_stream::Stream<Item = Vec<u8>> + Send + 'static,
     {
+        use sha3::{Digest, Sha3_256};
         use tokio_stream::StreamExt;
-        use sha3::{Sha3_256, Digest};
-        
+
         let chunk_handler = self.chunk_handler;
         let mut hasher = Sha3_256::new();
         let mut stream = Box::pin(stream);
-        
+
         // Process each chunk through the handler and update the hasher
         while let Some(chunk) = stream.next().await {
             // Apply chunk handler to the chunk
             let processed = (chunk_handler)(Ok(chunk));
-            
+
             // If handler returns Some(data), continue processing
             if let Some(data) = processed {
                 hasher.update(&data);
@@ -409,7 +407,7 @@ where
                 break;
             }
         }
-        
+
         // Return final hash
         hasher.finalize().to_vec()
     }
@@ -445,14 +443,14 @@ impl Sha3_384Builder {
     /// Compute hash - action takes data as argument per README.md
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = sha3_384_hash(&data).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResult::new(rx)
     }
 }
@@ -466,10 +464,10 @@ where
     pub async fn compute<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
         let handler = self.result_handler;
-        
+
         // Perform SHA3-384 hashing
         let result = sha3_384_hash(&data).await;
-        
+
         // Apply result handler
         handler(result)
     }
@@ -505,14 +503,14 @@ impl Sha3_512Builder {
     /// Compute hash - action takes data as argument per README.md
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = sha3_512_hash(&data).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResult::new(rx)
     }
 }
@@ -526,10 +524,10 @@ where
     pub async fn compute<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
         let handler = self.result_handler;
-        
+
         // Perform SHA3-512 hashing
         let result = sha3_512_hash(&data).await;
-        
+
         // Apply result handler
         handler(result)
     }
@@ -583,7 +581,7 @@ impl Blake2bBuilder {
             _phantom: std::marker::PhantomData,
         }
     }
-    
+
     /// Add on_error handler - transforms errors but passes through success
     pub fn on_error<E>(self, handler: E) -> Blake2bBuilderWithError<E>
     where
@@ -593,7 +591,7 @@ impl Blake2bBuilder {
             error_handler: handler,
         }
     }
-    
+
     /// Add on_chunk handler for streaming - README.md pattern
     pub fn on_chunk<C>(self, handler: C) -> Blake2bBuilderWithChunk<C>
     where
@@ -607,14 +605,14 @@ impl Blake2bBuilder {
     /// Compute hash - action takes data as argument per README.md
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = blake2b_hash(&data).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResult::new(rx)
     }
 }
@@ -628,10 +626,10 @@ where
     pub async fn compute<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
         let handler = self.result_handler;
-        
+
         // Perform Blake2b hashing
         let result = blake2b_hash(&data).await;
-        
+
         // Apply result handler
         handler(result)
     }
@@ -652,19 +650,19 @@ where
             _phantom: std::marker::PhantomData,
         }
     }
-    
+
     /// Compute hash with error handler - returns AsyncHashResultWithError
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResultWithError<E> {
         let data = data.into();
         let error_handler = self.error_handler;
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = blake2b_hash(&data).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResultWithError::new(rx, error_handler)
     }
 }
@@ -678,18 +676,18 @@ where
     where
         S: tokio_stream::Stream<Item = Vec<u8>> + Send + 'static,
     {
-        use tokio_stream::StreamExt;
         use blake2::{Blake2b512, Digest};
-        
+        use tokio_stream::StreamExt;
+
         let chunk_handler = self.chunk_handler;
         let mut hasher = Blake2b512::new();
         let mut stream = Box::pin(stream);
-        
+
         // Process each chunk through the handler and update the hasher
         while let Some(chunk) = stream.next().await {
             // Apply chunk handler to the chunk
             let processed = (chunk_handler)(Ok(chunk));
-            
+
             // If handler returns Some(data), continue processing
             if let Some(data) = processed {
                 hasher.update(&data);
@@ -698,7 +696,7 @@ where
                 break;
             }
         }
-        
+
         // Return final hash
         hasher.finalize().to_vec()
     }
@@ -722,14 +720,14 @@ impl Blake2bBuilderWithSize {
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
         let output_size = self.output_size;
-        
+
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = blake2b_hash_with_size(&data, output_size).await;
             let _ = tx.send(result);
         });
-        
+
         AsyncHashResult::new(rx)
     }
 }
@@ -751,10 +749,10 @@ where
         let data = data.into();
         let output_size = self.output_size;
         let handler = self.result_handler;
-        
+
         // Perform Blake2b hashing with custom size
         let result = blake2b_hash_with_size(&data, output_size).await;
-        
+
         // Apply result handler
         handler(result)
     }
@@ -764,68 +762,71 @@ where
 async fn sha256_hash(data: &[u8]) -> Result<HashResult> {
     let (tx, rx) = oneshot::channel();
     let data = data.to_vec();
-    
+
     std::thread::spawn(move || {
-        use sha2::{Sha256, Digest};
-        
+        use sha2::{Digest, Sha256};
+
         let mut hasher = Sha256::new();
         hasher.update(&data);
         let result = hasher.finalize();
-        
+
         let _ = tx.send(Ok(HashResult::new(result.to_vec())));
     });
-    
-    rx.await.map_err(|_| crate::HashError::internal("Hashing task failed"))?
+
+    rx.await
+        .map_err(|_| crate::HashError::internal("Hashing task failed"))?
 }
 
 async fn sha3_256_hash(data: &[u8]) -> Result<HashResult> {
     let (tx, rx) = oneshot::channel();
     let data = data.to_vec();
-    
+
     std::thread::spawn(move || {
-        use sha3::{Sha3_256, Digest};
-        
+        use sha3::{Digest, Sha3_256};
+
         let mut hasher = Sha3_256::new();
         hasher.update(&data);
         let result = hasher.finalize();
-        
+
         let _ = tx.send(Ok(HashResult::new(result.to_vec())));
     });
-    
-    rx.await.map_err(|_| crate::HashError::internal("Hashing task failed"))?
+
+    rx.await
+        .map_err(|_| crate::HashError::internal("Hashing task failed"))?
 }
 
 async fn blake2b_hash(data: &[u8]) -> Result<HashResult> {
     let (tx, rx) = oneshot::channel();
     let data = data.to_vec();
-    
+
     std::thread::spawn(move || {
         use blake2::{Blake2b512, Digest};
-        
+
         let mut hasher = Blake2b512::new();
         hasher.update(&data);
         let result = hasher.finalize();
-        
+
         let _ = tx.send(Ok(HashResult::new(result.to_vec())));
     });
-    
-    rx.await.map_err(|_| crate::HashError::internal("Hashing task failed"))?
+
+    rx.await
+        .map_err(|_| crate::HashError::internal("Hashing task failed"))?
 }
 
 async fn sha256_hmac(data: &[u8], key: &[u8]) -> Result<HashResult> {
     let (tx, rx) = oneshot::channel();
     let data = data.to_vec();
     let key = key.to_vec();
-    
+
     std::thread::spawn(move || {
         use hmac::{Hmac, Mac};
         use sha2::Sha256;
-        
+
         type HmacSha256 = Hmac<Sha256>;
-        
+
         let mac = HmacSha256::new_from_slice(&key)
             .map_err(|e| crate::HashError::internal(format!("HMAC key error: {}", e)));
-        
+
         match mac {
             Ok(mut mac) => {
                 mac.update(&data);
@@ -837,59 +838,63 @@ async fn sha256_hmac(data: &[u8], key: &[u8]) -> Result<HashResult> {
             }
         }
     });
-    
-    rx.await.map_err(|_| crate::HashError::internal("HMAC task failed"))?
+
+    rx.await
+        .map_err(|_| crate::HashError::internal("HMAC task failed"))?
 }
 
 async fn sha3_384_hash(data: &[u8]) -> Result<HashResult> {
     let (tx, rx) = oneshot::channel();
     let data = data.to_vec();
-    
+
     std::thread::spawn(move || {
-        use sha3::{Sha3_384, Digest};
-        
+        use sha3::{Digest, Sha3_384};
+
         let mut hasher = Sha3_384::new();
         hasher.update(&data);
         let result = hasher.finalize();
-        
+
         let _ = tx.send(Ok(HashResult::new(result.to_vec())));
     });
-    
-    rx.await.map_err(|_| crate::HashError::internal("Hashing task failed"))?
+
+    rx.await
+        .map_err(|_| crate::HashError::internal("Hashing task failed"))?
 }
 
 async fn sha3_512_hash(data: &[u8]) -> Result<HashResult> {
     let (tx, rx) = oneshot::channel();
     let data = data.to_vec();
-    
+
     std::thread::spawn(move || {
-        use sha3::{Sha3_512, Digest};
-        
+        use sha3::{Digest, Sha3_512};
+
         let mut hasher = Sha3_512::new();
         hasher.update(&data);
         let result = hasher.finalize();
-        
+
         let _ = tx.send(Ok(HashResult::new(result.to_vec())));
     });
-    
-    rx.await.map_err(|_| crate::HashError::internal("Hashing task failed"))?
+
+    rx.await
+        .map_err(|_| crate::HashError::internal("Hashing task failed"))?
 }
 
 async fn blake2b_hash_with_size(data: &[u8], output_size: usize) -> Result<HashResult> {
     let (tx, rx) = oneshot::channel();
     let data = data.to_vec();
-    
+
     std::thread::spawn(move || {
         use blake2::{Blake2b512, Digest};
-        
+
         let mut hasher = Blake2b512::new();
         hasher.update(&data);
         let result = hasher.finalize();
-        
+
         // Truncate to requested size
         let truncated = result[..output_size.min(64)].to_vec();
         let _ = tx.send(Ok(HashResult::new(truncated)));
     });
-    
-    rx.await.map_err(|_| crate::HashError::internal("Hashing task failed"))?
+
+    rx.await
+        .map_err(|_| crate::HashError::internal("Hashing task failed"))?
 }

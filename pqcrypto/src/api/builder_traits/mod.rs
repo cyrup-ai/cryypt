@@ -6,9 +6,9 @@ use crate::Result;
 use std::future::Future;
 
 // Declare submodules
+pub mod execution;
 pub mod keypair;
 pub mod operations;
-pub mod execution;
 
 // Re-export all traits from submodules for external use
 pub use execution::*;

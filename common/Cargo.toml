@@ -13,6 +13,7 @@ backtrace = "0.3.75"
 once_cell = "1.21.3"
 tokio = { version = "1.0", features = ["sync"] }
 futures = "0.3"
+cyrup_sugars = "0.2.0"
 
 [features]
 default = ["full-backtrace"]

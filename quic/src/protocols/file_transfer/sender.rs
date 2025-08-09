@@ -5,16 +5,15 @@
 
 use super::{FileTransferProgress, TransferResult};
 use crate::{
-    run_quic_server, QuicConnectionHandle, QuicCryptoBuilder, QuicServerConfig,
-    error::Result,
+    QuicConnectionHandle, QuicCryptoBuilder, QuicServerConfig, error::Result, run_quic_server,
 };
 use cryypt_hashing::Hash;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs::{create_dir_all, metadata, File};
+use tokio::fs::{File, create_dir_all, metadata};
 use tokio::io::AsyncReadExt;
-use tokio::sync::{mpsc, RwLock, Semaphore};
+use tokio::sync::{RwLock, Semaphore, mpsc};
 use tokio::time::Duration;
 use tokio_stream::Stream;
 use uuid::Uuid;
@@ -195,7 +194,10 @@ pub struct FileUploadBuilder {
 }
 
 impl FileUploadBuilder {
-    pub(crate) fn new(client: super::receiver::FileTransferClientBuilder, file_path: PathBuf) -> Self {
+    pub(crate) fn new(
+        client: super::receiver::FileTransferClientBuilder,
+        file_path: PathBuf,
+    ) -> Self {
         Self {
             client,
             file_path,

@@ -2,15 +2,12 @@
 //!
 //! Contains the main retriever traits, builder patterns, and core types for secure key retrieval.
 
-use crate::{
-    traits::KeyStorage,
-    SimpleKeyId,
-};
+use crate::{SimpleKeyId, traits::KeyStorage};
 use zeroize::Zeroizing;
 
 // Declare submodules
-pub mod store;
 pub mod batch;
+pub mod store;
 pub mod version;
 
 // Re-export key types from submodules for external use
@@ -33,7 +30,7 @@ impl SecureRetrievedKey {
             data: Zeroizing::new(data),
         }
     }
-    
+
     /// Get the key identifier
     #[inline]
     pub fn id(&self) -> &SimpleKeyId {
@@ -45,7 +42,7 @@ impl SecureRetrievedKey {
     pub fn into_key_bytes(self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     /// Get a reference to the key bytes
     #[inline]
     pub fn key_bytes(&self) -> &[u8] {
@@ -229,12 +226,13 @@ impl<S: KeyStorage> KeyRetrieverReady<S> {
     {
         let store = self.store;
         let key_id = key_id.into();
-        
+
         // Convert string to SimpleKeyId
         let simple_key_id = crate::SimpleKeyId::new(key_id);
-        
+
         // Retrieve key using storage backend with default unwrapping
-        store.retrieve(&simple_key_id)
+        store
+            .retrieve(&simple_key_id)
             .on_result(|result| {
                 // Default unwrapping: Ok(data) => data, Err(_) => Vec::new()
                 match result {
@@ -276,20 +274,21 @@ where
         let store = self.store;
         let key_id = key_id.into();
         let handler = self.result_handler;
-        
+
         // Retrieve key securely using the same pattern as AES
         let result = async move {
             // Convert string to SimpleKeyId
             let simple_key_id = crate::SimpleKeyId::new(key_id);
-            
+
             // Retrieve the key securely using the store result pattern
             let _retrieve_result = store.retrieve(&simple_key_id);
-            
+
             // For now, return a placeholder - actual retrieval would use on_result pattern
             // This follows the README.md pattern where storage operations have their own result handling
             Ok(vec![0u8; 32]) // Placeholder key bytes
-        }.await;
-        
+        }
+        .await;
+
         // Apply result handler following AES pattern
         handler(result)
     }
@@ -303,7 +302,8 @@ where
 }
 
 // Implement IntoFuture for KeyRetrieverWithHandler to enable .await
-impl<S: KeyStorage + crate::traits::KeyRetrieval, F, T> std::future::IntoFuture for KeyRetrieverWithHandler<S, F, T>
+impl<S: KeyStorage + crate::traits::KeyRetrieval, F, T> std::future::IntoFuture
+    for KeyRetrieverWithHandler<S, F, T>
 where
     F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,
     T: cryypt_common::NotResult + Send + 'static,

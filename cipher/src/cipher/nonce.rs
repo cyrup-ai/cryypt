@@ -8,11 +8,11 @@
 //! - Domain-separated key derivation
 
 use crate::{CryptError, Result};
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use dashmap::DashMap;
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
-use rand::{rng, CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore, rng};
 use sha3::Sha3_512;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use subtle::ConstantTimeEq;
@@ -191,10 +191,7 @@ impl NonceManager {
         let rand_bytes = &raw[TIMESTAMP_BYTES..TIMESTAMP_BYTES + RANDOM_BYTES];
         let tag_bytes = &raw[TIMESTAMP_BYTES + RANDOM_BYTES..];
 
-        let ts = u64::from_be_bytes(
-            ts_bytes.try_into()
-                .map_err(|_| NonceError::Decode)?
-        );
+        let ts = u64::from_be_bytes(ts_bytes.try_into().map_err(|_| NonceError::Decode)?);
         let mut rand_arr = [0u8; RANDOM_BYTES];
         rand_arr.copy_from_slice(rand_bytes);
         let mut tag_arr = [0u8; MAC_BYTES];

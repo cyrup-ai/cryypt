@@ -4,11 +4,12 @@ let encrypted = Cryypt::cipher()
     .aes()
     .with_key(key)
     .on_result(|result| {
-        Ok(result) => result,
-        Err(e) => {
-            log::error!("Encryption failed: {}", e);
-            Vec::new() // Return empty on error
-        }
+        result
+            .map(|result| result)
+            .unwrap_or_else(|e| {
+                log::error!("Encryption failed: {}", e);
+                Vec::new()
+            })
     })
     .encrypt(b"Secret message")
     .await;

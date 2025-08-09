@@ -1,6 +1,6 @@
 //! Concrete QUIC result types implementing the unwrapping pattern
 
-use crate::{error::CryptoTransportError, Result};
+use crate::{Result, error::CryptoTransportError};
 // Removed unused import: use cryypt_common::NotResult;
 use std::future::Future;
 use std::pin::Pin;
@@ -50,7 +50,9 @@ impl<T> Future for QuicResult<T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptoTransportError::Internal("QUIC resolution task dropped".to_string()))),
+            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptoTransportError::Internal(
+                "QUIC resolution task dropped".to_string(),
+            ))),
             Poll::Pending => Poll::Pending,
         }
     }
@@ -63,7 +65,9 @@ pub struct QuicStreamResult {
 
 impl QuicStreamResult {
     /// Create a new QuicStreamResult from a oneshot receiver
-    pub(crate) fn new(receiver: oneshot::Receiver<Result<(crate::api::QuicSend, crate::api::QuicRecv)>>) -> Self {
+    pub(crate) fn new(
+        receiver: oneshot::Receiver<Result<(crate::api::QuicSend, crate::api::QuicRecv)>>,
+    ) -> Self {
         Self { receiver }
     }
 }
@@ -74,7 +78,9 @@ impl Future for QuicStreamResult {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptoTransportError::Internal("QUIC stream task dropped".to_string()))),
+            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptoTransportError::Internal(
+                "QUIC stream task dropped".to_string(),
+            ))),
             Poll::Pending => Poll::Pending,
         }
     }
@@ -98,7 +104,9 @@ impl Future for QuicWriteResult {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptoTransportError::Internal("QUIC write task dropped".to_string()))),
+            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptoTransportError::Internal(
+                "QUIC write task dropped".to_string(),
+            ))),
             Poll::Pending => Poll::Pending,
         }
     }

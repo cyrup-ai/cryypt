@@ -1,32 +1,31 @@
+use super::super::app::App;
+use super::super::pass_interface::PassInterface;
+use super::super::types::PassStateMode;
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
-    Frame,
 };
-use super::super::app::App;
-use super::super::types::PassStateMode;
-use super::super::pass_interface::PassInterface;
 
 pub fn render_pass_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Store path input
-            Constraint::Min(0),     // List/content area
-            Constraint::Length(3),  // Help text
+            Constraint::Length(3), // Store path input
+            Constraint::Min(0),    // List/content area
+            Constraint::Length(3), // Help text
         ])
         .split(area);
 
     // Pass store path input
-    let pass_store_path_input = Paragraph::new(app.state.pass.store_path.as_str())
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Password Store Path")
-                .style(Style::default()),
-        );
+    let pass_store_path_input = Paragraph::new(app.state.pass.store_path.as_str()).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Password Store Path")
+            .style(Style::default()),
+    );
 
     f.render_widget(pass_store_path_input, chunks[0]);
 
@@ -64,18 +63,31 @@ fn render_pass_view(f: &mut Frame, app: &mut App, area: Rect) {
         String::new()
     };
 
-    let content = app.state.pass.content.as_ref().map(|z| z.as_str()).unwrap_or("").to_string();
+    let content = app
+        .state
+        .pass
+        .content
+        .as_ref()
+        .map(|z| z.as_str())
+        .unwrap_or("")
+        .to_string();
     let lines = vec![
         Line::from(Span::styled(
             format!("Password: {}", password_name),
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
         Line::from(Span::raw(content)),
     ];
 
     let paragraph = Paragraph::new(lines)
-        .block(Block::default().title("Password Details").borders(Borders::ALL))
+        .block(
+            Block::default()
+                .title("Password Details")
+                .borders(Borders::ALL),
+        )
         .wrap(Wrap { trim: false });
 
     f.render_widget(paragraph, area);
@@ -102,7 +114,7 @@ fn render_pass_search(f: &mut Frame, app: &mut App, area: Rect) {
 /// Load passwords from the Pass store
 pub async fn load_passwords(app: &mut App) {
     let pass = PassInterface::default();
-    
+
     match pass.list() {
         Ok(entries) => {
             app.state.pass.entries = entries;
@@ -121,10 +133,10 @@ pub async fn load_password_content(app: &mut App) {
     if app.state.pass.selected_index >= app.state.pass.entries.len() {
         return;
     }
-    
+
     let password_name = app.state.pass.entries[app.state.pass.selected_index].clone();
     let pass = PassInterface::default();
-    
+
     match pass.get(&password_name) {
         Ok(content) => {
             app.state.pass.content = Some(content.into());
@@ -139,7 +151,7 @@ pub async fn load_password_content(app: &mut App) {
 pub async fn search_passwords(app: &mut App) {
     let query = app.state.pass.search_query.clone();
     let pass = PassInterface::default();
-    
+
     match pass.search(&query) {
         Ok(entries) => {
             app.state.pass.entries = entries;
@@ -155,58 +167,57 @@ pub async fn search_passwords(app: &mut App) {
 /// Process keyboard input for the Pass tab
 pub async fn handle_input(app: &mut App, key: crossterm::event::KeyEvent) {
     match app.state.pass.mode {
-        PassStateMode::List => {
-            match key.code {
-                crossterm::event::KeyCode::Down => {
-                    if !app.state.pass.entries.is_empty() {
-                        app.state.pass.selected_index = (app.state.pass.selected_index + 1) % app.state.pass.entries.len();
-                    }
+        PassStateMode::List => match key.code {
+            crossterm::event::KeyCode::Down => {
+                if !app.state.pass.entries.is_empty() {
+                    app.state.pass.selected_index =
+                        (app.state.pass.selected_index + 1) % app.state.pass.entries.len();
                 }
-                crossterm::event::KeyCode::Up => {
-                    if !app.state.pass.entries.is_empty() {
-                        app.state.pass.selected_index = app.state.pass.selected_index.checked_sub(1)
-                            .unwrap_or(app.state.pass.entries.len() - 1);
-                    }
-                }
-                crossterm::event::KeyCode::Enter => {
-                    if !app.state.pass.entries.is_empty() {
-                        app.state.pass.mode = PassStateMode::View;
-                        load_password_content(app).await;
-                    }
-                }
-                crossterm::event::KeyCode::Char('/') => {
-                    app.state.pass.mode = PassStateMode::Search;
-                    app.state.pass.search_query.clear();
-                }
-                _ => {}
             }
-        }
-        PassStateMode::View => {
-            match key.code {
-                crossterm::event::KeyCode::Esc => {
-                    app.state.pass.mode = PassStateMode::List;
-                    app.state.pass.content = None;
+            crossterm::event::KeyCode::Up => {
+                if !app.state.pass.entries.is_empty() {
+                    app.state.pass.selected_index = app
+                        .state
+                        .pass
+                        .selected_index
+                        .checked_sub(1)
+                        .unwrap_or(app.state.pass.entries.len() - 1);
                 }
-                _ => {}
             }
-        }
-        PassStateMode::Search => {
-            match key.code {
-                crossterm::event::KeyCode::Enter => {
-                    search_passwords(app).await;
+            crossterm::event::KeyCode::Enter => {
+                if !app.state.pass.entries.is_empty() {
+                    app.state.pass.mode = PassStateMode::View;
+                    load_password_content(app).await;
                 }
-                crossterm::event::KeyCode::Esc => {
-                    app.state.pass.mode = PassStateMode::List;
-                    app.state.pass.search_query.clear();
-                }
-                crossterm::event::KeyCode::Char(c) => {
-                    app.state.pass.search_query.push(c);
-                }
-                crossterm::event::KeyCode::Backspace => {
-                    app.state.pass.search_query.pop();
-                }
-                _ => {}
             }
-        }
+            crossterm::event::KeyCode::Char('/') => {
+                app.state.pass.mode = PassStateMode::Search;
+                app.state.pass.search_query.clear();
+            }
+            _ => {}
+        },
+        PassStateMode::View => match key.code {
+            crossterm::event::KeyCode::Esc => {
+                app.state.pass.mode = PassStateMode::List;
+                app.state.pass.content = None;
+            }
+            _ => {}
+        },
+        PassStateMode::Search => match key.code {
+            crossterm::event::KeyCode::Enter => {
+                search_passwords(app).await;
+            }
+            crossterm::event::KeyCode::Esc => {
+                app.state.pass.mode = PassStateMode::List;
+                app.state.pass.search_query.clear();
+            }
+            crossterm::event::KeyCode::Char(c) => {
+                app.state.pass.search_query.push(c);
+            }
+            crossterm::event::KeyCode::Backspace => {
+                app.state.pass.search_query.pop();
+            }
+            _ => {}
+        },
     }
 }

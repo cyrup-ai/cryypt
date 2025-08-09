@@ -1,6 +1,6 @@
 //! Async hash result type implementing the unwrapping pattern
 
-use crate::{HashError, Result, HashResult};
+use crate::{HashError, HashResult, Result};
 use cryypt_common::NotResult;
 use std::future::Future;
 use std::pin::Pin;
@@ -41,7 +41,7 @@ impl AsyncHashResult {
     pub fn error(error: HashError) -> Self {
         Self::ready(Err(error))
     }
-    
+
     /// Add a result handler following README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> AsyncHashResultWithHandler<F>
     where
@@ -60,7 +60,9 @@ impl Future for AsyncHashResult {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(HashError::internal("Hash resolution task dropped"))),
+            Poll::Ready(Err(_)) => {
+                Poll::Ready(Err(HashError::internal("Hash resolution task dropped")))
+            }
             Poll::Pending => Poll::Pending,
         }
     }
@@ -89,7 +91,9 @@ where
             Poll::Ready(Err(_)) => {
                 // Task dropped - this should not happen in normal operation
                 if let Some(handler) = this.handler.take() {
-                    Poll::Ready(handler(Err(HashError::internal("Hash resolution task dropped"))))
+                    Poll::Ready(handler(Err(HashError::internal(
+                        "Hash resolution task dropped",
+                    ))))
                 } else {
                     // Handler was already called, this shouldn't happen
                     panic!("AsyncHashResultWithHandler polled after completion")
@@ -103,7 +107,10 @@ where
 impl<E> AsyncHashResultWithError<E> {
     /// Create a new AsyncHashResultWithError
     pub(crate) fn new(receiver: oneshot::Receiver<Result<HashResult>>, error_handler: E) -> Self {
-        Self { receiver, error_handler }
+        Self {
+            receiver,
+            error_handler,
+        }
     }
 }
 
@@ -118,7 +125,9 @@ where
         match Pin::new(&mut this.receiver).poll(cx) {
             Poll::Ready(Ok(Ok(value))) => Poll::Ready(Ok(value)),
             Poll::Ready(Ok(Err(e))) => Poll::Ready(Err((this.error_handler)(e))),
-            Poll::Ready(Err(_)) => Poll::Ready(Err((this.error_handler)(HashError::internal("Hash resolution task dropped")))),
+            Poll::Ready(Err(_)) => Poll::Ready(Err((this.error_handler)(HashError::internal(
+                "Hash resolution task dropped",
+            )))),
             Poll::Pending => Poll::Pending,
         }
     }

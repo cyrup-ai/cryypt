@@ -92,6 +92,8 @@ cryypt_jwt = { path = "../jwt", optional = true }
 cryypt_pqcrypto = { path = "../pqcrypto", optional = true }
 cryypt_quic = { path = "../quic", optional = true }
 cryypt_vault = { path = "../vault", optional = true }
+cyrup_sugars = "0.2.0"
+cryypt_common = { version = "0.1.0", path = "../common" }
 
 [dev-dependencies]
 tokio = { version = "1.46.1", features = ["full"] }

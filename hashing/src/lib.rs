@@ -3,23 +3,24 @@
 #![forbid(unsafe_code)]
 
 pub mod api;
+pub mod async_result;
 pub mod error;
 pub mod hash_result;
-pub mod async_result;
 
 // Re-export error types
 pub use error::{HashError, Result};
 
 // Re-export the main APIs per README.md
-pub use api::{Hash, Sha256Builder, Sha3_256Builder, Sha3_384Builder, Sha3_512Builder, Blake2bBuilder};
+pub use api::{
+    Blake2bBuilder, Hash, Sha3_256Builder, Sha3_384Builder, Sha3_512Builder, Sha256Builder,
+};
 
 // Re-export hash result types
+pub use async_result::{AsyncHashResult, AsyncHashResultWithError, AsyncHashResultWithHandler};
 pub use hash_result::HashResult;
-pub use async_result::{AsyncHashResult, AsyncHashResultWithHandler, AsyncHashResultWithError};
 
-// Re-export common handlers from cryypt_common
-pub use cryypt_common::{on_result, on_chunk, on_error};
-
+// Re-export common macros and handlers from cryypt_common
+pub use cryypt_common::{on_chunk, on_error, on_result};
 
 /// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
 pub struct Cryypt;

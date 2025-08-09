@@ -19,8 +19,8 @@ use cryypt::Cryypt;
 // Simple hash
 let hash = Cryypt::hash()
     .sha256()
-    .on_result(|result| {
-        Ok => result.to_vec(),
+    .on_result(|result| match result {
+        Ok => result.into(),
         Err(e) => {
             log::error!("Hash computation failed: {}", e);
             Vec::new()
@@ -32,8 +32,8 @@ let hash = Cryypt::hash()
 // Hash entire file at once (Future)
 let hash = Cryypt::hash()
     .sha256()
-    .on_result(|result| {
-        Ok => result.to_vec(),
+    .on_result(|result| match result {
+        Ok => result.into(),
         Err(e) => {
             log::error!("Hash computation failed: {}", e);
             Vec::new()
@@ -46,10 +46,10 @@ let hash = Cryypt::hash()
 let mut hash_stream = Cryypt::hash()
     .sha256()
     .on_chunk(|chunk| {
-        Ok => chunk,
+        Ok => chunk.into(),
         Err(e) => {
             log::error!("Hash chunk error: {}", e);
-            return
+            BadChunk::from_error(e)
         }
     })
     .compute_stream(file_stream); // Returns Stream<Item = Vec<u8>> - fully unwrapped hash chunks
@@ -64,8 +64,8 @@ while let Some(partial_hash) = hash_stream.next().await {
 let hmac = Cryypt::hash()
     .sha256()
     .with_key(b"secret_key")
-    .on_result(|result| {
-        Ok => result.to_vec(),
+    .on_result(|result| match result {
+        Ok => result.into(),
         Err(e) => {
             log::error!("HMAC operation failed: {}", e);
             Vec::new()
@@ -77,8 +77,8 @@ let hmac = Cryypt::hash()
 // Alternative: Direct builder is also available
 use cryypt::Hash;
 let hash = Hash::sha256()
-    .on_result(|result| {
-        Ok => result.to_vec(),
+    .on_result(|result| match result {
+        Ok => result.into(),
         Err(e) => {
             log::error!("Hash operation failed: {}", e);
             Vec::new()
@@ -96,8 +96,8 @@ use cryypt::{Cryypt, on_result};
 // SHA3-256
 let hash = Cryypt::hash()
     .sha3_256()
-    .on_result(|result| {
-        Ok => result.to_vec(),
+    .on_result(|result| match result {
+        Ok => result.into(),
         Err(e) => {
             log::error!("Hash operation failed: {}", e);
             Vec::new()
@@ -109,7 +109,7 @@ let hash = Cryypt::hash()
 // SHA3-512 with custom handling
 let hash = Cryypt::hash()
     .sha3_512()
-    .on_result(|result| {
+    .on_result(|result| match result {
         Ok => {
             println!("Hash computed: {:?}", result);
             result.to_vec()
@@ -126,8 +126,8 @@ let hash = Cryypt::hash()
 let hash = Cryypt::hash()
     .blake2b()
     .with_output_size(32) // 32 bytes
-    .on_result(|result| {
-        Ok => result.to_vec(),
+    .on_result(|result| match result {
+        Ok => result.into(),
         Err(e) => {
             log::error!("Hash operation failed: {}", e);
             Vec::new()
@@ -149,8 +149,8 @@ let hashes = try_join_all(
     files.into_iter().map(|file|  
         Cryypt::hash()
             .sha256()
-            .on_result(|result| {
-                Ok => result.to_vec(),
+            .on_result(|result| match result {
+                Ok => result.into(),
                 Err(e) => {
                     log::error!("Hash error for file: {}", e);
                     Vec::new()
@@ -170,8 +170,8 @@ use cryypt::{Hash, on_result};
 // FUTURE PATTERN: Single operation returning Future<Output = Result<T>>
 // on_result handles Result<T> and returns unwrapped T
 let hash = Hash::sha256()
-    .on_result(|result| {
-        Ok => result.to_vec(),
+    .on_result(|result| match result {
+        Ok => result.into(),
         Err(e) => {
             log::error!("Hash operation failed: {}", e);
             Vec::new()

@@ -9,8 +9,8 @@ use std::time::Duration;
 use uuid::Uuid;
 
 // Declare submodules
-pub mod sender;
 pub mod receiver;
+pub mod sender;
 
 /// Progress information for file transfers
 #[derive(Debug, Clone)]
@@ -97,5 +97,5 @@ impl QuicFileTransfer {
 }
 
 // Re-export types from submodules for convenience
-pub use sender::{FileTransferServerBuilder, FileTransferServer, FileUploadBuilder};
-pub use receiver::{FileTransferClientBuilder, FileDownloadBuilder};
+pub use receiver::{FileDownloadBuilder, FileTransferClientBuilder};
+pub use sender::{FileTransferServer, FileTransferServerBuilder, FileUploadBuilder};

@@ -2,15 +2,15 @@
 //!
 //! Contains the main ML-KEM builder patterns and core types for post-quantum key encapsulation.
 
-use super::super::{KemAlgorithm};
+use super::super::KemAlgorithm;
 use super::states::*;
 use crate::{PqCryptoError, Result};
 use std::marker::PhantomData;
 
 // Declare submodules
-pub mod keypair;
-pub mod encapsulation;
 pub mod decapsulation;
+pub mod encapsulation;
+pub mod keypair;
 
 // Re-export key types from submodules for external use
 // pub use encapsulation::*;
@@ -98,7 +98,7 @@ where
         let result = Ok((vec![0u8; 32], vec![0u8; 32])); // Placeholder (public_key, secret_key)
         handler(result)
     }
-    
+
     /// Encapsulate and apply result handler
     pub async fn encapsulate(self, _public_key: Vec<u8>) -> T {
         let handler = self.result_handler;

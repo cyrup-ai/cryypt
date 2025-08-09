@@ -209,7 +209,7 @@ impl SignBuilder for FalconBuilder<HasMessage> {
 
             let signature = match self.algorithm {
                 SignatureAlgorithm::Falcon512 => {
-                    use pqcrypto_falcon::falcon512::{detached_sign, SecretKey};
+                    use pqcrypto_falcon::falcon512::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid FALCON-512 secret key".to_string())
                     })?;
@@ -217,7 +217,7 @@ impl SignBuilder for FalconBuilder<HasMessage> {
                     PqDetachedSignature::as_bytes(&sig).to_vec()
                 }
                 SignatureAlgorithm::Falcon1024 => {
-                    use pqcrypto_falcon::falcon1024::{detached_sign, SecretKey};
+                    use pqcrypto_falcon::falcon1024::{SecretKey, detached_sign};
                     let sk = SecretKey::from_bytes(&secret_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid FALCON-1024 secret key".to_string())
                     })?;
@@ -253,7 +253,7 @@ impl VerifyBuilder for FalconBuilder<HasSignature> {
             let is_valid = match self.algorithm {
                 SignatureAlgorithm::Falcon512 => {
                     use pqcrypto_falcon::falcon512::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid FALCON-512 public key".to_string())
@@ -265,7 +265,7 @@ impl VerifyBuilder for FalconBuilder<HasSignature> {
                 }
                 SignatureAlgorithm::Falcon1024 => {
                     use pqcrypto_falcon::falcon1024::{
-                        verify_detached_signature, DetachedSignature, PublicKey,
+                        DetachedSignature, PublicKey, verify_detached_signature,
                     };
                     let pk = PublicKey::from_bytes(&public_key).map_err(|_| {
                         PqCryptoError::InvalidKey("Invalid FALCON-1024 public key".to_string())

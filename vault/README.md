@@ -71,10 +71,10 @@ let api_key = vault
 // Stream all secrets
 let mut secret_stream = vault
     .on_chunk(|chunk| {
-        Ok => chunk,
+        Ok => chunk.into(),
         Err(e) => {
             log::error!("Vault stream error: {}", e);
-            return;
+            BadChunk::from_error(e)
         }
     })
     .find(".*");

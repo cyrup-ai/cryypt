@@ -2,7 +2,7 @@
 //!
 //! Contains streaming operations and related types for Bzip2 compression.
 
-use super::{Bzip2BuilderWithChunk, NoLevel, HasLevel};
+use super::{Bzip2BuilderWithChunk, HasLevel, NoLevel};
 use crate::{CompressionAlgorithm, CompressionError, Result};
 use std::pin::Pin;
 use tokio::sync::mpsc;
@@ -16,19 +16,29 @@ where
     /// Compress data from a stream using default level (6)
     #[inline]
     pub fn compress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> Bzip2Stream<C> {
-        Bzip2Stream::new(stream, CompressionAlgorithm::Bzip2 { level: Some(6) }, self.chunk_handler, self.error_handler)
+        Bzip2Stream::new(
+            stream,
+            CompressionAlgorithm::Bzip2 { level: Some(6) },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
-    
+
     /// Decompress data from a stream
     #[inline]
     pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> Bzip2Stream<C> {
-        Bzip2Stream::new_decompress(stream, CompressionAlgorithm::Bzip2 { level: None }, self.chunk_handler, self.error_handler)
+        Bzip2Stream::new_decompress(
+            stream,
+            CompressionAlgorithm::Bzip2 { level: None },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
 }
 
@@ -40,19 +50,31 @@ where
     /// Compress data from a stream using the configured level
     #[inline]
     pub fn compress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> Bzip2Stream<C> {
-        Bzip2Stream::new(stream, CompressionAlgorithm::Bzip2 { level: Some(self.level.0) }, self.chunk_handler, self.error_handler)
+        Bzip2Stream::new(
+            stream,
+            CompressionAlgorithm::Bzip2 {
+                level: Some(self.level.0),
+            },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
-    
+
     /// Decompress data from a stream
     #[inline]
     pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> Bzip2Stream<C> {
-        Bzip2Stream::new_decompress(stream, CompressionAlgorithm::Bzip2 { level: None }, self.chunk_handler, self.error_handler)
+        Bzip2Stream::new_decompress(
+            stream,
+            CompressionAlgorithm::Bzip2 { level: None },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
 }
 
@@ -77,13 +99,13 @@ where
         S: Stream<Item = Vec<u8>> + Send + 'static,
     {
         let (sender, receiver) = mpsc::channel(16); // Bounded channel for backpressure
-        
+
         // Spawn task to process stream
         tokio::spawn(async move {
             use tokio_stream::StreamExt;
             let mut stream = Box::pin(stream);
             let mut compressor = create_bzip2_compressor(&algorithm);
-            
+
             while let Some(chunk) = stream.next().await {
                 // Compress chunk
                 match compressor.compress_chunk(chunk) {
@@ -92,39 +114,32 @@ where
                             break; // Receiver dropped
                         }
                     }
-                    Ok(_) => {}, // Empty chunk, skip
+                    Ok(_) => {} // Empty chunk, skip
                     Err(e) => {
-                        let error = error_handler.as_ref()
-                            .map(|h| h(e.clone()))
-                            .unwrap_or(e);
+                        let error = error_handler.as_ref().map(|h| h(e.clone())).unwrap_or(e);
                         if sender.send(Err(error)).await.is_err() {
                             break; // Receiver dropped
                         }
                     }
                 }
             }
-            
+
             // Send final compressed data
             match compressor.finish() {
                 Ok(final_data) if !final_data.is_empty() => {
                     let _ = sender.send(Ok(final_data)).await;
                 }
-                Ok(_) => {}, // No final data
+                Ok(_) => {} // No final data
                 Err(e) => {
-                    let error = error_handler.as_ref()
-                        .map(|h| h(e.clone()))
-                        .unwrap_or(e);
+                    let error = error_handler.as_ref().map(|h| h(e.clone())).unwrap_or(e);
                     let _ = sender.send(Err(error)).await;
                 }
             }
         });
-        
-        Bzip2Stream {
-            receiver,
-            handler,
-        }
+
+        Bzip2Stream { receiver, handler }
     }
-    
+
     /// Create a new decompression stream
     pub fn new_decompress<S>(
         stream: S,
@@ -136,13 +151,13 @@ where
         S: Stream<Item = Vec<u8>> + Send + 'static,
     {
         let (sender, receiver) = mpsc::channel(16); // Bounded channel for backpressure
-        
+
         // Spawn task to process stream
         tokio::spawn(async move {
             use tokio_stream::StreamExt;
             let mut stream = Box::pin(stream);
             let mut decompressor = create_bzip2_decompressor();
-            
+
             while let Some(chunk) = stream.next().await {
                 // Decompress chunk
                 match decompressor.decompress_chunk(chunk) {
@@ -151,37 +166,30 @@ where
                             break; // Receiver dropped
                         }
                     }
-                    Ok(_) => {}, // Need more data
+                    Ok(_) => {} // Need more data
                     Err(e) => {
-                        let error = error_handler.as_ref()
-                            .map(|h| h(e.clone()))
-                            .unwrap_or(e);
+                        let error = error_handler.as_ref().map(|h| h(e.clone())).unwrap_or(e);
                         if sender.send(Err(error)).await.is_err() {
                             break; // Receiver dropped
                         }
                     }
                 }
             }
-            
+
             // Send final decompressed data
             match decompressor.finish() {
                 Ok(final_data) if !final_data.is_empty() => {
                     let _ = sender.send(Ok(final_data)).await;
                 }
-                Ok(_) => {}, // No final data
+                Ok(_) => {} // No final data
                 Err(e) => {
-                    let error = error_handler.as_ref()
-                        .map(|h| h(e.clone()))
-                        .unwrap_or(e);
+                    let error = error_handler.as_ref().map(|h| h(e.clone())).unwrap_or(e);
                     let _ = sender.send(Err(error)).await;
                 }
             }
         });
-        
-        Bzip2Stream {
-            receiver,
-            handler,
-        }
+
+        Bzip2Stream { receiver, handler }
     }
 }
 
@@ -192,7 +200,10 @@ where
     type Item = Vec<u8>;
 
     #[inline]
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
         match self.receiver.poll_recv(cx) {
             std::task::Poll::Ready(Some(result)) => {
                 // Apply user's chunk handler
@@ -202,7 +213,7 @@ where
             std::task::Poll::Pending => std::task::Poll::Pending,
         }
     }
-    
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         // We don't know the exact size, but we can hint based on channel
@@ -232,46 +243,49 @@ struct Bzip2Compressor {
 
 impl Bzip2Compressor {
     fn new(level: u32) -> Self {
-        use bzip2::write::BzEncoder;
         use bzip2::Compression;
-        
+        use bzip2::write::BzEncoder;
+
         // Pre-allocate output buffer with reasonable capacity
         let mut output_buffer = Vec::with_capacity(64 * 1024);
         output_buffer.clear(); // Ensure len is 0
-        
+
         Self {
             encoder: BzEncoder::new(output_buffer, Compression::new(level)),
             output_buffer: Vec::with_capacity(64 * 1024),
         }
     }
-    
+
     fn compress_chunk(&mut self, chunk: Vec<u8>) -> Result<Vec<u8>> {
         use std::io::Write;
-        
+
         // Write input to encoder
-        self.encoder.write_all(&chunk)
+        self.encoder
+            .write_all(&chunk)
             .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+
         // Flush to get partial output
-        self.encoder.flush()
+        self.encoder
+            .flush()
             .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+
         // Extract any available compressed data
         let inner = self.encoder.get_mut();
         if inner.is_empty() {
             return Ok(Vec::new());
         }
-        
+
         // Swap buffers to avoid allocation
         std::mem::swap(inner, &mut self.output_buffer);
         inner.clear();
-        
+
         // Return the compressed data (ownership transferred)
         Ok(std::mem::take(&mut self.output_buffer))
     }
-    
+
     fn finish(self) -> Result<Vec<u8>> {
-        self.encoder.finish()
+        self.encoder
+            .finish()
             .map_err(|e| CompressionError::internal(e.to_string()))
     }
 }
@@ -294,31 +308,31 @@ impl Bzip2Decompressor {
             consumed: 0,
         }
     }
-    
+
     fn decompress_chunk(&mut self, chunk: Vec<u8>) -> Result<Vec<u8>> {
         use bzip2::read::BzDecoder;
         use std::io::Read;
-        
+
         // Append new data to our input buffer
         self.input_buffer.extend_from_slice(&chunk);
-        
+
         // Try to decompress from current position
         let unconsumed = &self.input_buffer[self.consumed..];
         if unconsumed.is_empty() {
             return Ok(Vec::new());
         }
-        
+
         // Create decoder for unconsumed data
         let mut decoder = BzDecoder::new(unconsumed);
         self.output_buffer.clear();
-        
+
         // Read as much as we can
         match decoder.read_to_end(&mut self.output_buffer) {
             Ok(n) if n > 0 => {
                 // Calculate how much input was consumed
                 let total_in = decoder.total_in();
                 self.consumed += total_in as usize;
-                
+
                 // Return decompressed data (move to avoid copy)
                 Ok(std::mem::take(&mut self.output_buffer))
             }
@@ -330,23 +344,24 @@ impl Bzip2Decompressor {
             Err(e) => Err(CompressionError::internal(e.to_string())),
         }
     }
-    
+
     fn finish(mut self) -> Result<Vec<u8>> {
         use bzip2::read::BzDecoder;
         use std::io::Read;
-        
+
         // Final decompression of any remaining data
         let unconsumed = &self.input_buffer[self.consumed..];
         if unconsumed.is_empty() {
             return Ok(Vec::new());
         }
-        
+
         let mut decoder = BzDecoder::new(unconsumed);
         self.output_buffer.clear();
-        
-        decoder.read_to_end(&mut self.output_buffer)
+
+        decoder
+            .read_to_end(&mut self.output_buffer)
             .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+
         Ok(self.output_buffer)
     }
 }
@@ -354,9 +369,7 @@ impl Bzip2Decompressor {
 #[inline]
 fn create_bzip2_compressor(algorithm: &CompressionAlgorithm) -> Bzip2Compressor {
     match algorithm {
-        CompressionAlgorithm::Bzip2 { level } => {
-            Bzip2Compressor::new(level.unwrap_or(6) as u32)
-        }
+        CompressionAlgorithm::Bzip2 { level } => Bzip2Compressor::new(level.unwrap_or(6) as u32),
         _ => Bzip2Compressor::new(6),
     }
 }

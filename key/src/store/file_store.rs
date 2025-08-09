@@ -1,10 +1,10 @@
 //! File-based key storage implementation
 
-use crate::{KeyResult, KeyError, Result};
 use crate::api::KeyStore;
+use crate::{KeyError, KeyResult, Result};
 use aes_gcm::{
-    aead::{generic_array::GenericArray, Aead, KeyInit},
     Aes256Gcm,
+    aead::{Aead, KeyInit, generic_array::GenericArray},
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -42,7 +42,11 @@ impl FileKeyStore {
 
     /// Derive a file path from namespace and version
     fn key_path(&self, namespace: &str, version: u32) -> PathBuf {
-        let safe_id = format!("{}_{}", namespace.replace('/', "_").replace(':', "_"), version);
+        let safe_id = format!(
+            "{}_{}",
+            namespace.replace('/', "_").replace(':', "_"),
+            version
+        );
         self.base_path.join(format!("{}.key", safe_id))
     }
 }
@@ -65,7 +69,7 @@ impl KeyStore for FileKeyStore {
         let master_key = self.master_key.clone();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = async move {
                 let (key_material, encrypted_data) =
@@ -82,13 +86,17 @@ impl KeyStore for FileKeyStore {
                         let nonce_array = GenericArray::from_slice(&nonce);
 
                         // Create cipher with master key
-                        let cipher = Aes256Gcm::new_from_slice(master_key.as_ref())
-                            .map_err(|e| KeyError::InvalidKey(format!("Invalid master key: {}", e)))?;
+                        let cipher =
+                            Aes256Gcm::new_from_slice(master_key.as_ref()).map_err(|e| {
+                                KeyError::InvalidKey(format!("Invalid master key: {}", e))
+                            })?;
 
                         // Encrypt key material
                         let ciphertext = cipher
                             .encrypt(nonce_array, key_material.as_ref())
-                            .map_err(|_| KeyError::EncryptionFailed("Key encryption failed".into()))?;
+                            .map_err(|_| {
+                                KeyError::EncryptionFailed("Key encryption failed".into())
+                            })?;
 
                         // Combine nonce + ciphertext
                         let mut encrypted_data = nonce;
@@ -97,7 +105,9 @@ impl KeyStore for FileKeyStore {
                         Ok((key_material.to_vec(), encrypted_data))
                     })
                     .await
-                    .map_err(|e| KeyError::internal(format!("Key generation task failed: {}", e)))??;
+                    .map_err(|e| {
+                        KeyError::internal(format!("Key generation task failed: {}", e))
+                    })??;
 
                 // Ensure directory exists
                 if let Some(parent) = path.parent() {
@@ -112,21 +122,22 @@ impl KeyStore for FileKeyStore {
                     .map_err(|e| KeyError::Io(format!("Failed to write key file: {}", e)))?;
 
                 Ok(key_material)
-            }.await;
-            
+            }
+            .await;
+
             let _ = tx.send(result);
         });
-        
+
         KeyResult::new(rx)
     }
-    
+
     /// Retrieve an existing key
     fn retrieve_key(&self, namespace: &str, version: u32) -> KeyResult {
         let path = self.key_path(namespace, version);
         let master_key = self.master_key.clone();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = async move {
                 // Read encrypted data
@@ -165,46 +176,43 @@ impl KeyStore for FileKeyStore {
                 })
                 .await
                 .map_err(|e| KeyError::internal(format!("Decryption task failed: {}", e)))?
-            }.await;
-            
+            }
+            .await;
+
             let _ = tx.send(result);
         });
-        
+
         KeyResult::new(rx)
     }
 }
 
 // Implement KeyStorage trait family for FileKeyStore
-use crate::traits::{KeyStorage, KeyRetrieval, KeyImport, KeyGeneration, KeyEnumeration};
-use crate::store_results::*;
 use crate::KeyId;
+use crate::store_results::*;
+use crate::traits::{KeyEnumeration, KeyGeneration, KeyImport, KeyRetrieval, KeyStorage};
 
 impl KeyStorage for FileKeyStore {
     fn exists(&self, key_id: &dyn KeyId) -> ExistsResult {
         let namespace = key_id.namespace().unwrap_or("default");
-        let path = self.base_path.join(format!(
-            "{}/{}.key", 
-            namespace, 
-            key_id.version()
-        ));
-        
+        let path = self
+            .base_path
+            .join(format!("{}/{}.key", namespace, key_id.version()));
+
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let result = Ok(tokio::fs::metadata(&path).await.is_ok());
             let _ = tx.send(result);
         });
-        
+
         ExistsResult::new(rx)
     }
-    
+
     fn delete(&self, key_id: &dyn KeyId) -> DeleteResult {
         let namespace = key_id.namespace().unwrap_or("default");
-        let path = self.base_path.join(format!(
-            "{}/{}.key", 
-            namespace, 
-            key_id.version()
-        ));
-        
+        let path = self
+            .base_path
+            .join(format!("{}/{}.key", namespace, key_id.version()));
+
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let result = match tokio::fs::remove_file(&path).await {
@@ -216,7 +224,7 @@ impl KeyStorage for FileKeyStore {
             };
             let _ = tx.send(result);
         });
-        
+
         DeleteResult::new(rx)
     }
 }
@@ -226,13 +234,13 @@ impl KeyRetrieval for FileKeyStore {
         // Use the existing retrieve_key implementation
         let namespace = key_id.namespace().unwrap_or("default");
         let key_result = self.retrieve_key(namespace, key_id.version());
-        
+
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let result = key_result.await;
             let _ = tx.send(result);
         });
-        
+
         RetrieveResult::new(rx)
     }
 }
@@ -243,74 +251,77 @@ impl KeyImport for FileKeyStore {
         let path = self.key_path(namespace, key_id.version());
         let key_data = key_material.to_vec();
         let master_key = self.master_key.clone();
-        
+
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let result = async move {
                 // Ensure directory exists
                 if let Some(parent) = path.parent() {
-                    tokio::fs::create_dir_all(parent).await
+                    tokio::fs::create_dir_all(parent)
+                        .await
                         .map_err(|e| KeyError::Io(e.to_string()))?;
                 }
-                
+
                 let encrypted_data = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
-                    use rand::RngCore;
-                    use aes_gcm::{Aes256Gcm, KeyInit};
                     use aes_gcm::aead::Aead;
                     use aes_gcm::aead::generic_array::GenericArray;
-                    
+                    use aes_gcm::{Aes256Gcm, KeyInit};
+                    use rand::RngCore;
+
                     // Generate random nonce
                     let mut nonce = vec![0u8; 12];
                     rand::rng().fill_bytes(&mut nonce);
                     let nonce_array = GenericArray::from_slice(&nonce);
-                    
+
                     // Create cipher with master key
                     let cipher = Aes256Gcm::new_from_slice(master_key.as_ref())
                         .map_err(|e| KeyError::InvalidKey(format!("Invalid master key: {}", e)))?;
-                    
+
                     // Encrypt key material
                     let ciphertext = cipher
                         .encrypt(nonce_array, key_data.as_ref())
                         .map_err(|_| KeyError::EncryptionFailed("Key encryption failed".into()))?;
-                    
+
                     // Combine nonce and ciphertext
                     let mut encrypted_data = nonce;
                     encrypted_data.extend_from_slice(&ciphertext);
-                    
+
                     Ok(encrypted_data)
                 })
                 .await
                 .map_err(|e| KeyError::internal(format!("Encryption task failed: {}", e)))??;
-                
+
                 // Write encrypted data to file
-                tokio::fs::write(&path, encrypted_data).await
+                tokio::fs::write(&path, encrypted_data)
+                    .await
                     .map_err(|e| KeyError::Io(e.to_string()))?;
-                
+
                 Ok(())
-            }.await;
-            
+            }
+            .await;
+
             let _ = tx.send(result);
         });
-        
+
         StoreResult::new(rx)
     }
 }
 
 impl KeyGeneration for FileKeyStore {
     fn generate(&self, key_id: &dyn KeyId, key_size_bytes: usize) -> RetrieveResult {
-        // Use the existing generate_key implementation 
+        // Use the existing generate_key implementation
         let key_result = self.generate_key(
             (key_size_bytes * 8) as u32, // Convert bytes to bits
-            key_id.namespace().unwrap_or("default"), 
-            key_id.version()
+            key_id.namespace().unwrap_or("default"),
+            key_id.version(),
         );
-        
+
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let result = key_result.await;
             let _ = tx.send(result);
         });
-        
+
         RetrieveResult::new(rx)
     }
 }
@@ -319,28 +330,30 @@ impl KeyEnumeration for FileKeyStore {
     fn list(&self, namespace_pattern: &str) -> ListResult {
         let store_path = self.base_path.clone();
         let pattern = namespace_pattern.to_string();
-        
+
         let (tx, rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             let result = async move {
-                
                 let mut key_ids: Vec<String> = Vec::new();
-                
+
                 // Read namespace directory
                 let namespace_path = store_path.join(&pattern);
                 if !namespace_path.exists() {
                     return Ok(key_ids); // Empty result for non-existent namespace
                 }
-                
-                let mut entries = tokio::fs::read_dir(&namespace_path).await
+
+                let mut entries = tokio::fs::read_dir(&namespace_path)
+                    .await
                     .map_err(|e| KeyError::Io(e.to_string()))?;
-                
-                while let Some(entry) = entries.next_entry().await
-                    .map_err(|e| KeyError::Io(e.to_string()))? {
-                    
+
+                while let Some(entry) = entries
+                    .next_entry()
+                    .await
+                    .map_err(|e| KeyError::Io(e.to_string()))?
+                {
                     let file_name = entry.file_name();
                     let file_name_str = file_name.to_string_lossy();
-                    
+
                     // Parse version from filename (format: "<version>.key")
                     if let Some(version_str) = file_name_str.strip_suffix(".key") {
                         if let Ok(version) = version_str.parse::<u32>() {
@@ -348,13 +361,14 @@ impl KeyEnumeration for FileKeyStore {
                         }
                     }
                 }
-                
+
                 Ok(key_ids)
-            }.await;
-            
+            }
+            .await;
+
             let _ = tx.send(result);
         });
-        
+
         ListResult::new(rx)
     }
 }

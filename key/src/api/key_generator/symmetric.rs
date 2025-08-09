@@ -2,12 +2,12 @@
 //!
 //! Contains symmetric key generation logic with cryptographically secure random bytes.
 
-use super::{generate_secure_key_id, KeyGeneratorReady, SecureKeyBuffer, StreamConfig};
+use super::{KeyGeneratorReady, SecureKeyBuffer, StreamConfig, generate_secure_key_id};
 use crate::{
-    traits::{KeyImport, KeyStorage},
     KeyError,
+    traits::{KeyImport, KeyStorage},
 };
-use crossbeam_channel::{bounded, unbounded, Receiver};
+use crossbeam_channel::{Receiver, bounded, unbounded};
 use zeroize::Zeroize;
 
 impl<S: KeyStorage + KeyImport> KeyGeneratorReady<S> {
@@ -42,13 +42,12 @@ impl<S: KeyStorage + KeyImport> KeyGeneratorReady<S> {
         let key_bytes = secure_buffer.into_key_bytes();
 
         // Store the key using the configured storage backend
-        self.store.store(&key_id, &key_bytes)
-            .on_result(|result| {
-                match result {
-                    Ok(()) => {},
-                    Err(e) => {
-                        log::error!("Failed to store generated key: {}", e);
-                    }
+        self.store
+            .store(&key_id, &key_bytes)
+            .on_result(|result| match result {
+                Ok(()) => {}
+                Err(e) => {
+                    log::error!("Failed to store generated key: {}", e);
                 }
             })
             .await;
@@ -163,7 +162,9 @@ impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> KeyGeneratorBatc
     }
 }
 
-impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> crate::result_macro::KeyProducer for KeyGeneratorReady<S> {
+impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> crate::result_macro::KeyProducer
+    for KeyGeneratorReady<S>
+{
     async fn produce_key(self) -> Result<crate::api::ActualKey, crate::KeyError> {
         self.generate_key().await
     }

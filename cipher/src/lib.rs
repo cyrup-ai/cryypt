@@ -10,9 +10,9 @@
 #![forbid(unsafe_code)]
 
 // Internal macro implementations (hidden from users per ARCHITECTURE.md)
-mod result_macro;
 mod chunk_macro;
 mod cipher_result;
+mod result_macro;
 
 pub mod bits_macro;
 /// Encryption and decryption primitives
@@ -20,16 +20,19 @@ pub mod cipher;
 pub mod error;
 
 // Re-export core types
-pub use error::{CryptError, Result};
 pub use cipher_result::{CipherResult, CipherResultWithHandler};
+pub use error::{CryptError, Result};
 
 // Re-export the main APIs per README.md
-pub use cipher::api::{Cipher, aes_builder::{AesBuilder, AesWithKey, AesWithKeyAndHandler}};
-pub use cipher::api::chacha_builder::{ChaChaBuilder, ChaChaWithKey};
 pub use cipher::CipherAlgorithm;
+pub use cipher::api::chacha_builder::{ChaChaBuilder, ChaChaWithKey};
+pub use cipher::api::{
+    Cipher,
+    aes_builder::{AesBuilder, AesWithKey, AesWithKeyAndHandler},
+};
 
 // Re-export common handlers from cryypt_common
-pub use cryypt_common::{on_result, on_chunk, on_error};
+pub use cryypt_common::{on_chunk, on_error, on_result};
 
 /// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
 pub struct Cryypt;
@@ -49,7 +52,7 @@ impl CipherMasterBuilder {
     pub fn aes(self) -> AesBuilder {
         AesBuilder::new()
     }
-    
+
     /// Use ChaCha20-Poly1305 encryption - README.md pattern
     pub fn chacha20(self) -> ChaChaBuilder {
         ChaChaBuilder::new()
@@ -59,7 +62,7 @@ impl CipherMasterBuilder {
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        Cipher, Cryypt, CryptError, Result,
+        Cipher, CryptError, Cryypt, Result,
         cipher::api::aes_builder::{AesBuilder, AesWithKey},
     };
 }

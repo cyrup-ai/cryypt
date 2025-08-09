@@ -1,19 +1,28 @@
 //! Digital signature builder implementations
 
 mod common;
-mod ml_dsa;
 mod falcon;
+mod ml_dsa;
 mod sphincs;
 
-use super::super::{SignatureAlgorithm};
+use super::super::SignatureAlgorithm;
 use super::states::*;
 use crate::{PqCryptoError, Result};
 use std::marker::PhantomData;
 
 // Re-export builder types
-pub use ml_dsa::{MlDsaBuilder, MlDsaWithKeyPair, MlDsaWithSecretKey, MlDsaWithPublicKey, MlDsaWithMessage, MlDsaWithSignature};
-pub use falcon::{FalconBuilder, FalconWithKeyPair, FalconWithSecretKey, FalconWithPublicKey, FalconWithMessage, FalconWithSignature};
-pub use sphincs::{SphincsBuilder, SphincsWithKeyPair, SphincsWithSecretKey, SphincsWithPublicKey, SphincsWithMessage, SphincsWithSignature};
+pub use falcon::{
+    FalconBuilder, FalconWithKeyPair, FalconWithMessage, FalconWithPublicKey, FalconWithSecretKey,
+    FalconWithSignature,
+};
+pub use ml_dsa::{
+    MlDsaBuilder, MlDsaWithKeyPair, MlDsaWithMessage, MlDsaWithPublicKey, MlDsaWithSecretKey,
+    MlDsaWithSignature,
+};
+pub use sphincs::{
+    SphincsBuilder, SphincsWithKeyPair, SphincsWithMessage, SphincsWithPublicKey,
+    SphincsWithSecretKey, SphincsWithSignature,
+};
 
 // Import BaseSignatureBuilder for use by submodules
 use common::BaseSignatureBuilder;
@@ -106,7 +115,7 @@ impl SignatureBuilderWithPublicKey {
     pub fn with_signature(self, _signature: Vec<u8>) -> Self {
         self
     }
-    
+
     /// Add on_result handler for verification - README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> SignatureBuilderWithVerifyHandler<F, T>
     where

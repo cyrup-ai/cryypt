@@ -17,16 +17,16 @@ pub struct SecretSummary {
 pub enum AwsError {
     #[error("AWS SDK error: {0}")]
     SdkError(#[from] Error),
-    
+
     #[error("Client not initialized")]
     ClientNotInitialized,
-    
+
     #[error("Secret not found: {0}")]
     SecretNotFound(String),
-    
+
     #[error("Operation failed: {0}")]
     OperationFailed(String),
-    
+
     #[error("SDK operation error: {0}")]
     SdkOperationError(String),
 }

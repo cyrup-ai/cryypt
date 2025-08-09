@@ -1,10 +1,10 @@
-use cryypt::{Cryypt, FileKeyStore, Bits, KeyRetriever};
+use cryypt::{Bits, Cryypt, FileKeyStore, KeyRetriever, BadChunk};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Setup master key (in production, this should be securely generated)
     let master_key = [1u8; 32]; // 32 bytes for AES-256
-    
+
     // Generate a NEW key (one-time setup)
     let store = FileKeyStore::at("/secure/keys").with_master_key(master_key);
     let generated_key = Cryypt::key()
@@ -14,8 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(1)
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Key generation failed");
                     Vec::new() // Return empty key on error
@@ -32,8 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(1)
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Key retrieval failed");
                     Vec::new() // Return empty key on error
@@ -48,8 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(generated_key.clone())
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Operation failed");
                     Vec::new() // Return empty on error
@@ -64,8 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(generated_key.clone())
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Operation failed");
                     Vec::new() // Return empty on error
@@ -80,8 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .chacha20()
         .with_key(retrieved_key.clone())
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Operation failed");
                     Vec::new() // Return empty on error
@@ -97,8 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(1)
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Key retrieval failed");
                     Vec::new() // Return empty key on error
@@ -116,8 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(2) // New version
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Key generation failed");
                     Vec::new() // Return empty key on error
@@ -134,8 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_namespace("my-app")
         .version(1) // Old version
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Key generation failed");
                     Vec::new() // Return empty key on error
@@ -151,8 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(old_key)
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Operation failed");
                     Vec::new() // Return empty on error
@@ -167,8 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(new_key)
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Operation failed");
                     Vec::new() // Return empty on error
@@ -183,8 +173,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(key_alt.clone())
         .on_result(|result| {
-            match result {
-                Ok(result) => result,
+            Ok(key) => key.into(),
                 Err(_e) => {
                     log::error!("Alternative key encryption failed");
                     Vec::new() // Return empty on error
@@ -193,15 +182,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .encrypt(b"Message using alternative key retrieval API")
         .await; // Returns fully unwrapped value - no Result wrapper
-    
+
     println!("Key management operations completed successfully");
     println!("Generated key length: {}", generated_key.len());
     println!("Retrieved key length: {}", retrieved_key.len());
     println!("Alternative retrieved key length: {}", key_alt.len());
-    println!("Original plaintext: {}", String::from_utf8_lossy(&plaintext));
+    println!(
+        "Original plaintext: {}",
+        String::from_utf8_lossy(&plaintext)
+    );
     println!("ChaCha20 encrypted length: {}", encrypted_chacha.len());
     println!("Re-encrypted data length: {}", new_ciphertext.len());
     println!("Alternative API encrypted length: {}", alt_encrypted.len());
+
+    // Test streaming key generation with on_chunk
+    println!("\nStreaming key generation with on_chunk:");
+    let store_for_stream = FileKeyStore::at("/secure/keys").with_master_key(master_key);
+    let mut key_stream = Cryypt::key()
+        .size(256u32.bits())
+        .with_store(store_for_stream)
+        .with_namespace("streaming-app")
+        .version(1)
+        .on_chunk(|chunk| {
+            Ok => chunk.into(),
+            Err(e) => {
+                log::error!("Key generation stream error: {}", e);
+                BadChunk::from_error(e)
+            }
+        })
+        .generate_stream();
+
+    use futures::StreamExt;
+    let mut key_chunks = Vec::new();
+    while let Some(chunk) = key_stream.next().await {
+        key_chunks.extend_from_slice(&chunk);
+        println!("Key generation chunk received: {} bytes", chunk.len());
+    }
     
+    if !key_chunks.is_empty() {
+        println!("Generated key from stream: {} bytes", key_chunks.len());
+        
+        // Test the generated key by encrypting some data
+        let test_data = b"Testing stream-generated key";
+        let stream_encrypted = Cryypt::cipher()
+            .aes()
+            .with_key(key_chunks)
+            .on_result(|result| {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    log::error!("Stream key encryption error: {}", e);
+                    Vec::new()
+                }
+            })
+            .encrypt(test_data)
+            .await;
+            
+        println!("Stream key encryption successful: {} bytes", stream_encrypted.len());
+    }
+
     Ok(())
 }

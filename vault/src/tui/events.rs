@@ -1,21 +1,18 @@
-use std::io;
-use std::time::Duration;
-use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
-use dialoguer::{Password, theme::ColorfulTheme};
-use ratatui::{
-    backend::CrosstermBackend,
-    Terminal,
-};
-use crate::core::Vault;
-use zeroize::Zeroizing;
 use super::app::App;
 use super::types::{AppMode, AppTab, InputField};
 use super::ui::ui;
+use crate::core::Vault;
 use crate::logging::log_security_event;
+use crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    execute,
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+};
+use dialoguer::{Password, theme::ColorfulTheme};
+use ratatui::{Terminal, backend::CrosstermBackend};
+use std::io;
+use std::time::Duration;
+use zeroize::Zeroizing;
 
 pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
     // Setup terminal
@@ -31,11 +28,15 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
     // If the vault is locked, first prompt for passphrase
     if app.state.is_vault_locked {
         disable_raw_mode()?;
-        execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
-        
+        execute!(
+            terminal.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        )?;
+
         // Check if this is a new vault or existing one
         let is_new_vault = app.vault.is_new_vault().await;
-        
+
         if is_new_vault {
             println!("Welcome! Creating a new secure vault.");
             println!("");
@@ -46,18 +47,18 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
             println!("• Must contain special characters");
             println!("• Should not contain easily guessable information");
             println!("");
-            
+
             let passphrase = Password::with_theme(&ColorfulTheme::default())
                 .with_prompt("Create vault passphrase")
                 .interact()?;
-                
+
             app.state.passphrase = Zeroizing::new(passphrase.clone());
-            
+
             // For new vaults, confirm the passphrase
             let confirm = Password::with_theme(&ColorfulTheme::default())
                 .with_prompt("Confirm vault passphrase")
                 .interact()?;
-                
+
             if passphrase != confirm {
                 eprintln!("Passphrases do not match!");
                 return Err("Passphrases do not match".into());
@@ -65,22 +66,26 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
         } else {
             println!("Secure Vault - Enter passphrase to unlock");
             println!("");
-            
+
             let passphrase = Password::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter vault passphrase")
                 .interact()?;
-                
+
             app.state.passphrase = Zeroizing::new(passphrase);
         }
-        
+
         // Try to unlock and handle errors properly
         if let Err(err) = app.unlock().await {
             eprintln!("Failed to unlock vault: {}", err);
             return Err(Box::new(err));
         }
-        
+
         enable_raw_mode()?;
-        execute!(terminal.backend_mut(), EnterAlternateScreen, EnableMouseCapture)?;
+        execute!(
+            terminal.backend_mut(),
+            EnterAlternateScreen,
+            EnableMouseCapture
+        )?;
     }
 
     // Load initial items
@@ -91,20 +96,22 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
 
     // Main loop
     loop {
-        terminal.draw(|f| {
-            ui::<CrosstermBackend<std::io::Stdout>>(f, &mut app)
-        })?;
+        terminal.draw(|f| ui::<CrosstermBackend<std::io::Stdout>>(f, &mut app))?;
 
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
             .unwrap_or_else(|| Duration::from_secs(0));
-            
+
         // Check for session timeout
         let timeout_duration = Duration::from_secs(300); // 5 minutes
         if !app.state.is_vault_locked && app.state.last_activity.elapsed() > timeout_duration {
             app.lock().await.ok();
             app.state.error_message = Some("Session timed out due to inactivity".to_string());
-            log_security_event("SESSION_TIMEOUT", "Session timed out due to inactivity", true);
+            log_security_event(
+                "SESSION_TIMEOUT",
+                "Session timed out due to inactivity",
+                true,
+            );
         }
 
         if crossterm::event::poll(timeout)? {
@@ -116,18 +123,26 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                         AppMode::Normal => match key.code {
                             // Single key exit commands
                             KeyCode::Char('q') => break,
-                            KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
-                            KeyCode::Char('d') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
-                            
+                            KeyCode::Char('c')
+                                if key.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                            {
+                                break;
+                            }
+                            KeyCode::Char('d')
+                                if key.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                            {
+                                break;
+                            }
+
                             // Search-based commands (activate search mode to check for :q or /quit)
                             KeyCode::Char(':') => {
                                 app.state.search_pattern = ":".to_string();
                                 app.mode = AppMode::Input(InputField::Search);
-                            },
+                            }
                             KeyCode::Char('/') => {
                                 app.state.search_pattern = "/".to_string();
                                 app.mode = AppMode::Input(InputField::Search);
-                            },
+                            }
                             KeyCode::Tab => {
                                 app.active_tab = match app.active_tab {
                                     AppTab::Keys => AppTab::Search,
@@ -186,7 +201,9 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                             KeyCode::Char('d') => {
-                                if app.active_tab == AppTab::Keys || app.active_tab == AppTab::Search {
+                                if app.active_tab == AppTab::Keys
+                                    || app.active_tab == AppTab::Search
+                                {
                                     // Use async block directly instead of spawning
                                     app.delete_selected().await;
                                 }
@@ -212,16 +229,26 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                             KeyCode::Esc => {
                                 app.mode = AppMode::Normal;
                             }
-                            KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
-                            KeyCode::Char('d') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
+                            KeyCode::Char('c')
+                                if key.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                            {
+                                break;
+                            }
+                            KeyCode::Char('d')
+                                if key.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                            {
+                                break;
+                            }
                             KeyCode::Enter => {
                                 match field {
                                     InputField::Search => {
                                         // Check for command inputs
-                                        if app.state.search_pattern == ":q" || app.state.search_pattern == "/quit" {
+                                        if app.state.search_pattern == ":q"
+                                            || app.state.search_pattern == "/quit"
+                                        {
                                             break;
                                         }
-                                        
+
                                         // Set mode to normal before executing the search
                                         app.mode = AppMode::Normal;
                                         // Execute the search directly without spawning a task
@@ -234,7 +261,8 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                                         app.unlock().await.ok();
                                     }
                                     InputField::NewPassphrase | InputField::ConfirmPassphrase => {
-                                        if app.state.new_passphrase == app.state.confirm_passphrase {
+                                        if app.state.new_passphrase == app.state.confirm_passphrase
+                                        {
                                             // Set mode to normal before changing passphrase
                                             app.mode = AppMode::Normal;
                                             // Call directly instead of spawning
@@ -248,46 +276,72 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
                             KeyCode::Char(c) => {
                                 // Check for command input
                                 match field {
-                                    InputField::Search if app.state.search_pattern.starts_with(":") => {
+                                    InputField::Search
+                                        if app.state.search_pattern.starts_with(":") =>
+                                    {
                                         app.state.search_pattern.push(c);
                                         // Immediately process :q command
                                         if c == 'q' && app.state.search_pattern == ":q" {
                                             break;
                                         }
-                                    },
-                                    InputField::Search if app.state.search_pattern.starts_with("/") => {
+                                    }
+                                    InputField::Search
+                                        if app.state.search_pattern.starts_with("/") =>
+                                    {
                                         app.state.search_pattern.push(c);
                                         // Check for /quit command
                                         if app.state.search_pattern == "/quit" {
                                             break;
                                         }
-                                    },
+                                    }
                                     InputField::Search => app.state.search_pattern.push(c),
                                     InputField::NewKey => app.state.new_key.push(c),
                                     InputField::NewValue => app.state.new_value.push(c),
                                     InputField::Passphrase => app.state.passphrase.push(c),
                                     InputField::NewPassphrase => app.state.new_passphrase.push(c),
-                                    InputField::ConfirmPassphrase => app.state.confirm_passphrase.push(c),
+                                    InputField::ConfirmPassphrase => {
+                                        app.state.confirm_passphrase.push(c)
+                                    }
                                     InputField::PassStore => app.state.pass.store_path.push(c),
                                     InputField::AwsProfile => app.state.aws.profile.push(c),
                                     InputField::AwsRegion => app.state.aws.region.push(c),
-                                    InputField::AwsSearchPattern => app.state.aws.search_pattern.push(c),
+                                    InputField::AwsSearchPattern => {
+                                        app.state.aws.search_pattern.push(c)
+                                    }
                                 }
                             }
-                            KeyCode::Backspace => {
-                                match field {
-                                    InputField::Search => { app.state.search_pattern.pop(); }
-                                    InputField::NewKey => { app.state.new_key.pop(); }
-                                    InputField::NewValue => { app.state.new_value.pop(); }
-                                    InputField::Passphrase => { app.state.passphrase.pop(); }
-                                    InputField::NewPassphrase => { app.state.new_passphrase.pop(); }
-                                    InputField::ConfirmPassphrase => { app.state.confirm_passphrase.pop(); }
-                                    InputField::PassStore => { app.state.pass.store_path.pop(); }
-                                    InputField::AwsProfile => { app.state.aws.profile.pop(); }
-                                    InputField::AwsRegion => { app.state.aws.region.pop(); }
-                                    InputField::AwsSearchPattern => { app.state.aws.search_pattern.pop(); }
+                            KeyCode::Backspace => match field {
+                                InputField::Search => {
+                                    app.state.search_pattern.pop();
                                 }
-                            }
+                                InputField::NewKey => {
+                                    app.state.new_key.pop();
+                                }
+                                InputField::NewValue => {
+                                    app.state.new_value.pop();
+                                }
+                                InputField::Passphrase => {
+                                    app.state.passphrase.pop();
+                                }
+                                InputField::NewPassphrase => {
+                                    app.state.new_passphrase.pop();
+                                }
+                                InputField::ConfirmPassphrase => {
+                                    app.state.confirm_passphrase.pop();
+                                }
+                                InputField::PassStore => {
+                                    app.state.pass.store_path.pop();
+                                }
+                                InputField::AwsProfile => {
+                                    app.state.aws.profile.pop();
+                                }
+                                InputField::AwsRegion => {
+                                    app.state.aws.region.pop();
+                                }
+                                InputField::AwsSearchPattern => {
+                                    app.state.aws.search_pattern.pop();
+                                }
+                            },
                             _ => {}
                         },
                     }
@@ -297,7 +351,7 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
 
         if last_tick.elapsed() >= tick_rate {
             last_tick = std::time::Instant::now();
-            
+
             // Clear messages after some time
             app.state.success_message = None;
         }

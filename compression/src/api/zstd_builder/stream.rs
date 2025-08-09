@@ -2,7 +2,7 @@
 //!
 //! Contains streaming operations and related types for Zstd compression.
 
-use super::{ZstdBuilderWithChunk, NoLevel, HasLevel};
+use super::{HasLevel, NoLevel, ZstdBuilderWithChunk};
 use crate::{CompressionAlgorithm, CompressionError, Result};
 use std::pin::Pin;
 use tokio::sync::mpsc;
@@ -15,18 +15,28 @@ where
 {
     /// Compress data from a stream using default level (3)
     pub fn compress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> ZstdStream<C> {
-        ZstdStream::new(stream, CompressionAlgorithm::Zstd { level: Some(3) }, self.chunk_handler, self.error_handler)
+        ZstdStream::new(
+            stream,
+            CompressionAlgorithm::Zstd { level: Some(3) },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
-    
+
     /// Decompress data from a stream
     pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> ZstdStream<C> {
-        ZstdStream::new_decompress(stream, CompressionAlgorithm::Zstd { level: None }, self.chunk_handler, self.error_handler)
+        ZstdStream::new_decompress(
+            stream,
+            CompressionAlgorithm::Zstd { level: None },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
 }
 
@@ -37,18 +47,30 @@ where
 {
     /// Compress data from a stream using the configured level
     pub fn compress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> ZstdStream<C> {
-        ZstdStream::new(stream, CompressionAlgorithm::Zstd { level: Some(self.level.0) }, self.chunk_handler, self.error_handler)
+        ZstdStream::new(
+            stream,
+            CompressionAlgorithm::Zstd {
+                level: Some(self.level.0),
+            },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
-    
+
     /// Decompress data from a stream
     pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self, 
-        stream: S
+        self,
+        stream: S,
     ) -> ZstdStream<C> {
-        ZstdStream::new_decompress(stream, CompressionAlgorithm::Zstd { level: None }, self.chunk_handler, self.error_handler)
+        ZstdStream::new_decompress(
+            stream,
+            CompressionAlgorithm::Zstd { level: None },
+            self.chunk_handler,
+            self.error_handler,
+        )
     }
 }
 
@@ -73,13 +95,13 @@ where
         S: Stream<Item = Vec<u8>> + Send + 'static,
     {
         let (sender, receiver) = mpsc::channel(100);
-        
+
         // Spawn task to process stream
         tokio::spawn(async move {
             use tokio_stream::StreamExt;
             let mut stream = Box::pin(stream);
             let mut compressor = create_compressor(&algorithm);
-            
+
             while let Some(chunk) = stream.next().await {
                 // Compress chunk
                 match compressor.compress_chunk(chunk) {
@@ -95,7 +117,7 @@ where
                     }
                 }
             }
-            
+
             // Send final compressed data
             match compressor.finish() {
                 Ok(final_data) => {
@@ -110,13 +132,10 @@ where
                 }
             }
         });
-        
-        ZstdStream {
-            receiver,
-            handler,
-        }
+
+        ZstdStream { receiver, handler }
     }
-    
+
     /// Create a new decompression stream
     pub fn new_decompress<S>(
         stream: S,
@@ -128,13 +147,13 @@ where
         S: Stream<Item = Vec<u8>> + Send + 'static,
     {
         let (sender, receiver) = mpsc::channel(100);
-        
+
         // Spawn task to process stream
         tokio::spawn(async move {
             use tokio_stream::StreamExt;
             let mut stream = Box::pin(stream);
             let mut decompressor = create_decompressor();
-            
+
             while let Some(chunk) = stream.next().await {
                 // Decompress chunk
                 match decompressor.decompress_chunk(chunk) {
@@ -150,7 +169,7 @@ where
                     }
                 }
             }
-            
+
             // Send final decompressed data
             match decompressor.finish() {
                 Ok(final_data) => {
@@ -165,11 +184,8 @@ where
                 }
             }
         });
-        
-        ZstdStream {
-            receiver,
-            handler,
-        }
+
+        ZstdStream { receiver, handler }
     }
 }
 
@@ -179,7 +195,10 @@ where
 {
     type Item = Vec<u8>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
         match self.receiver.poll_recv(cx) {
             std::task::Poll::Ready(Some(result)) => {
                 // Apply user's chunk handler
@@ -210,63 +229,70 @@ struct ZstdCompressor {
 
 impl ZstdCompressor {
     fn new(level: i32) -> Self {
-        let encoder = zstd::stream::Encoder::new(Vec::new(), level)
-            .expect("Failed to create zstd encoder");
+        let encoder =
+            zstd::stream::Encoder::new(Vec::new(), level).expect("Failed to create zstd encoder");
         Self { encoder }
     }
-    
+
     fn compress_chunk(&mut self, chunk: Vec<u8>) -> Result<Vec<u8>> {
         use std::io::Write;
-        
-        self.encoder.write_all(&chunk)
+
+        self.encoder
+            .write_all(&chunk)
             .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+
         // Flush to get partial output
-        self.encoder.flush()
+        self.encoder
+            .flush()
             .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+
         // Get compressed data
         let inner = self.encoder.get_mut();
         let compressed = inner.clone();
         inner.clear();
-        
+
         Ok(compressed)
     }
-    
+
     fn finish(self) -> Result<Vec<u8>> {
-        self.encoder.finish()
+        self.encoder
+            .finish()
             .map_err(|e| CompressionError::internal(e.to_string()))
     }
 }
 
 struct ZstdDecompressor {
-    decoder: zstd::stream::Decoder<'static, std::io::BufReader<std::io::BufReader<std::io::Cursor<Vec<u8>>>>>,
+    decoder: zstd::stream::Decoder<
+        'static,
+        std::io::BufReader<std::io::BufReader<std::io::Cursor<Vec<u8>>>>,
+    >,
     buffer: Vec<u8>,
 }
 
 impl ZstdDecompressor {
     fn new() -> Self {
         use std::io::Cursor;
-        
+
         let decoder = zstd::stream::Decoder::new(std::io::BufReader::new(Cursor::new(Vec::new())))
             .expect("Failed to create zstd decoder");
-        
+
         Self {
             decoder,
             buffer: Vec::new(),
         }
     }
-    
+
     fn decompress_chunk(&mut self, chunk: Vec<u8>) -> Result<Vec<u8>> {
-        use std::io::{Read, Cursor};
-        
+        use std::io::{Cursor, Read};
+
         // Append new data to buffer
         self.buffer.extend_from_slice(&chunk);
-        
+
         // Update decoder with all buffered data
-        self.decoder = zstd::stream::Decoder::new(std::io::BufReader::new(Cursor::new(self.buffer.clone())))
-            .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+        self.decoder =
+            zstd::stream::Decoder::new(std::io::BufReader::new(Cursor::new(self.buffer.clone())))
+                .map_err(|e| CompressionError::internal(e.to_string()))?;
+
         let mut output = Vec::new();
         match self.decoder.read_to_end(&mut output) {
             Ok(_) => Ok(output),
@@ -277,17 +303,19 @@ impl ZstdDecompressor {
             Err(e) => Err(CompressionError::internal(e.to_string())),
         }
     }
-    
+
     fn finish(self) -> Result<Vec<u8>> {
-        use std::io::{Read, Cursor};
-        
-        let mut decoder = zstd::stream::Decoder::new(std::io::BufReader::new(Cursor::new(self.buffer)))
-            .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+        use std::io::{Cursor, Read};
+
+        let mut decoder =
+            zstd::stream::Decoder::new(std::io::BufReader::new(Cursor::new(self.buffer)))
+                .map_err(|e| CompressionError::internal(e.to_string()))?;
+
         let mut output = Vec::new();
-        decoder.read_to_end(&mut output)
+        decoder
+            .read_to_end(&mut output)
             .map_err(|e| CompressionError::internal(e.to_string()))?;
-        
+
         Ok(output)
     }
 }

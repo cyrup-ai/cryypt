@@ -15,7 +15,9 @@ pub mod api;
 mod quic_result;
 
 // Re-export result types
-pub use quic_result::{QuicResult, QuicClientResult, QuicServerResult, QuicStreamResult, QuicWriteResult};
+pub use quic_result::{
+    QuicClientResult, QuicResult, QuicServerResult, QuicStreamResult, QuicWriteResult,
+};
 
 // Legacy high-level protocol builders
 pub mod protocols;
@@ -33,10 +35,10 @@ mod server;
 // pub use quic::{Auth, Protocol, Quic as QuicOld, Transport};
 
 // Export the new cryypt-pattern API
-pub use api::{quic, Quic, QuicServer, QuicClient, QuicSend, QuicRecv, QuicMasterBuilder};
+pub use api::{Quic, QuicClient, QuicMasterBuilder, QuicRecv, QuicSend, QuicServer, quic};
 
 // Re-export common handlers from cryypt_common
-pub use cryypt_common::{on_result, on_chunk, on_error};
+pub use cryypt_common::{on_chunk, on_error, on_result};
 
 // Implement NotResult for QUIC types to support on_result handlers
 use cryypt_common::traits::NotResult;
@@ -63,7 +65,7 @@ pub use protocols::{
 
 // Export low-level primitives for advanced users
 pub use builder::{QuicCryptoBuilder, QuicCryptoConfig};
-pub use client::{connect_quic_client, Client};
+pub use client::{Client, connect_quic_client};
 pub use error::{CryptoTransportError, Result};
 pub use quic_conn::{QuicConnectionEvent, QuicConnectionHandle};
-pub use server::{run_quic_server, QuicServerConfig, Server};
+pub use server::{QuicServerConfig, Server, run_quic_server};

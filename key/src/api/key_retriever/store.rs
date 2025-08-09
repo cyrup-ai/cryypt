@@ -4,14 +4,17 @@
 
 use super::{KeyRetrieverReady, SecureRetrievedKey, StreamConfig};
 use crate::{
-    traits::{KeyRetrieval, KeyStorage},
     KeyError, KeyId,
+    traits::{KeyRetrieval, KeyStorage},
 };
-use crossbeam_channel::{bounded, unbounded, Receiver};
+use crossbeam_channel::{Receiver, bounded, unbounded};
 
 impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverReady<S> {
     /// Internal retrieval with security wrapper
-    pub(crate) async fn retrieve_internal(&self, key_id: &crate::SimpleKeyId) -> Result<SecureRetrievedKey, KeyError> {
+    pub(crate) async fn retrieve_internal(
+        &self,
+        key_id: &crate::SimpleKeyId,
+    ) -> Result<SecureRetrievedKey, KeyError> {
         // Validate version
         if self.version == 0 {
             return Err(KeyError::invalid_key("Key version must be non-zero"));
@@ -31,7 +34,8 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
                 "Namespace too long (max 64 characters)",
             ));
         }
-        if !self.namespace
+        if !self
+            .namespace
             .chars()
             .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
         {
@@ -40,18 +44,18 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
             ));
         }
 
-        let key_bytes = self.store.retrieve(key_id)
-            .on_result(|result| {
-                match result {
-                    Ok(bytes) => bytes,
-                    Err(e) => {
-                        log::error!("Key retrieval failed: {}", e);
-                        Vec::new()
-                    }
+        let key_bytes = self
+            .store
+            .retrieve(key_id)
+            .on_result(|result| match result {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    log::error!("Key retrieval failed: {}", e);
+                    Vec::new()
                 }
             })
             .await;
-            
+
         if key_bytes.is_empty() {
             Err(KeyError::KeyNotFound {
                 id: key_id.id().to_string(),
@@ -135,7 +139,9 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
     }
 }
 
-impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> crate::result_macro::KeyProducer for KeyRetrieverReady<S> {
+impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> crate::result_macro::KeyProducer
+    for KeyRetrieverReady<S>
+{
     async fn produce_key(self) -> Result<crate::api::ActualKey, crate::KeyError> {
         self.retrieve_key().await
     }

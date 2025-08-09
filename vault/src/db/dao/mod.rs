@@ -3,6 +3,7 @@
 //! Provides trait definitions and base types for database operations
 //! with SurrealDB backend support.
 
+use chrono::{DateTime, Utc};
 use futures::Stream;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -11,7 +12,6 @@ use std::sync::Arc;
 use surrealdb::Surreal;
 use surrealdb::engine::any::Any;
 use thiserror::Error;
-use chrono::{DateTime, Utc};
 
 // Import individual implementations
 mod documents;

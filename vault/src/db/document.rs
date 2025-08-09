@@ -4,8 +4,8 @@ use std::sync::Arc;
 use surrealdb::Surreal;
 use surrealdb::engine::any::Any;
 // Add additional imports if needed
-use futures::StreamExt;
 use chrono::{DateTime, Utc};
+use futures::StreamExt;
 use uuid::Uuid;
 
 /// Document stored in the vault database

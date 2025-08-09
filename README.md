@@ -11,23 +11,28 @@ A comprehensive cryptography library for Rust, providing immutable builders for 
 This workspace contains the following crates:
 
 ### Core Cryptography
+
 - **[cipher](./cipher/)** - Symmetric encryption algorithms (AES-GCM, ChaCha20-Poly1305)
 - **[hashing](./hashing/)** - Cryptographic hash functions (SHA-256, SHA3, BLAKE2b)
 - **[key](./key/)** - Key generation and management
 
 ### Data Processing
+
 - **[compression](./compression/)** - Data compression algorithms (Zstandard, Gzip, Bzip2, ZIP)
 
 ### Advanced Features
+
 - **[jwt](./jwt/)** - JSON Web Token creation and verification
 - **[pqcrypto](./pqcrypto/)** - Post-quantum cryptography algorithms (Kyber, Dilithium, Falcon, SPHINCS+)
 - **[quic](./quic/)** - QUIC transport protocol with built-in encryption
 - **[vault](./vault/)** - Secure encrypted storage vault
 
 ### Main API
+
 - **[cryypt](./cryypt/)** - Unified API with feature flags for selective functionality
 
 ### Supporting Crates
+
 - **[common](./common/)** - Common infrastructure and error types
 - **[map_macro](./map_macro/)** - Ergonomic map/set macros
 - **[examples](./examples/)** - Example applications demonstrating usage
@@ -70,6 +75,7 @@ Both are fully supported - use whichever feels more natural for your use case.
 ## Quick Examples
 
 ### Encryption
+
 ```rust
 use cryypt::Cryypt;
 
@@ -77,10 +83,10 @@ let encrypted = Cryypt::cipher()
     .aes()
     .with_key(key)
     .on_result(|result| {
-        Ok => result,
+        Ok(bytes) => bytes.to_vec(),
         Err(e) => {
-            log::error!("Cipher operation failed: {}", e);
-            Vec::new()
+            log::error!("Encryption error: {}", e);
+            b"Secret message".to_vec()
         }
     })
     .encrypt(b"Secret message")
@@ -88,14 +94,15 @@ let encrypted = Cryypt::cipher()
 ```
 
 ### Hashing
+
 ```rust
 let hash = Cryypt::hash()
     .sha256()
     .on_result(|result| {
-        Ok => result.to_vec(),
+        Ok(bytes) => bytes.to_vec(),
         Err(e) => {
-            log::error!("Hash computation failed: {}", e);
-            Vec::new()
+            log::error!("Encryption error: {}", e);
+            b"Secret message".to_vec()
         }
     })
     .compute(b"Hello, World!")
@@ -103,12 +110,13 @@ let hash = Cryypt::hash()
 ```
 
 ### Compression
+
 ```rust
 let compressed = Cryypt::compress()
     .zstd()
     .with_level(3)
     .on_result(|result| {
-        Ok => result.to_vec(),
+        Ok(bytes) => bytes.to_vec(),
         Err(e) => {
             log::error!("Compression error: {}", e);
             b"Large text data...".to_vec()
@@ -122,8 +130,8 @@ let compressed = Cryypt::compress()
 
 Licensed under either of:
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 

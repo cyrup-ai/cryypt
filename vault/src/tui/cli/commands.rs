@@ -10,19 +10,19 @@ pub struct Cli {
     /// Path to the vault file
     #[arg(long)]
     pub vault_path: Option<PathBuf>,
-    
+
     /// Path to the salt file
     #[arg(long)]
     pub salt_path: Option<PathBuf>,
-    
+
     /// Output in JSON format
     #[arg(long)]
     pub json: bool,
-    
+
     /// Save vault after command execution
     #[arg(long)]
     pub save: bool,
-    
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -31,36 +31,36 @@ pub struct Cli {
 pub enum Commands {
     /// Save vault data to disk
     Save {},
-    
+
     /// Store a key-value pair in the vault
-    Put { 
+    Put {
         /// The key to store
-        key: String, 
+        key: String,
         /// The value to store
-        value: String 
+        value: String,
     },
-    
+
     /// Retrieve a value from the vault
-    Get { 
+    Get {
         /// The key to retrieve
-        key: String 
+        key: String,
     },
-    
+
     /// Delete a key from the vault
-    Delete { 
+    Delete {
         /// The key to delete
-        key: String 
+        key: String,
     },
-    
+
     /// List all keys in the vault
     List {},
-    
+
     /// Find keys matching a pattern
-    Find { 
+    Find {
         /// Regular expression pattern to match keys
-        pattern: String 
+        pattern: String,
     },
-    
+
     /// Change the vault passphrase
     ChangePassphrase {
         /// Current passphrase (will prompt if not provided)
@@ -70,13 +70,13 @@ pub enum Commands {
         #[arg(long)]
         new_passphrase: Option<String>,
     },
-    
+
     /// Run a command with vault variables as environment variables
-    Run { 
+    Run {
         /// Command and arguments to execute
-        command: Vec<String> 
+        command: Vec<String>,
     },
-    
+
     /// Generate a new cryptographic key
     GenerateKey {
         /// Namespace for organizing keys
@@ -92,7 +92,7 @@ pub enum Commands {
         #[arg(long, default_value = "memory")]
         store: String,
     },
-    
+
     /// Retrieve an existing cryptographic key
     RetrieveKey {
         /// Namespace of the key to retrieve
@@ -105,7 +105,7 @@ pub enum Commands {
         #[arg(long, default_value = "memory")]
         store: String,
     },
-    
+
     /// Generate multiple keys in batch
     BatchGenerateKeys {
         /// Namespace for organizing keys

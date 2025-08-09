@@ -19,19 +19,19 @@ impl ClosureCallTracker {
             last_error: Arc::new(Mutex::new(None)),
         }
     }
-    
+
     fn was_called(&self) -> bool {
         *self.called.lock().unwrap()
     }
-    
+
     fn call_count(&self) -> u32 {
         *self.call_count.lock().unwrap()
     }
-    
+
     fn last_error(&self) -> Option<String> {
         self.last_error.lock().unwrap().clone()
     }
-    
+
     fn mark_called(&self, error_msg: Option<String>) {
         *self.called.lock().unwrap() = true;
         *self.call_count.lock().unwrap() += 1;
@@ -43,7 +43,7 @@ impl ClosureCallTracker {
 async fn test_compression_zstd_handler_usage() {
     let tracker = ClosureCallTracker::new();
     let tracker_clone = tracker.clone();
-    
+
     let result = Cryypt::compress()
         .zstd()
         .with_level(3)
@@ -64,13 +64,23 @@ async fn test_compression_zstd_handler_usage() {
         })
         .compress(b"Large text data that should compress well with zstd algorithm")
         .await;
-    
+
     // Verify the closure was called and modified the result
     assert!(tracker.was_called(), "ZSTD handler closure was not called");
-    assert_eq!(tracker.call_count(), 1, "ZSTD handler should be called exactly once");
-    assert!(tracker.last_error().is_none(), "No error should have occurred in success case");
-    assert!(result.ends_with(b"_ZSTD_HANDLER_CALLED"), "ZSTD handler should have modified the result");
-    
+    assert_eq!(
+        tracker.call_count(),
+        1,
+        "ZSTD handler should be called exactly once"
+    );
+    assert!(
+        tracker.last_error().is_none(),
+        "No error should have occurred in success case"
+    );
+    assert!(
+        result.ends_with(b"_ZSTD_HANDLER_CALLED"),
+        "ZSTD handler should have modified the result"
+    );
+
     println!("✅ ZSTD Handler Test PASSED - Closure was called and modified result");
 }
 
@@ -78,7 +88,7 @@ async fn test_compression_zstd_handler_usage() {
 async fn test_compression_gzip_handler_usage() {
     let tracker = ClosureCallTracker::new();
     let tracker_clone = tracker.clone();
-    
+
     let result = Cryypt::compress()
         .gzip()
         .with_level(6)
@@ -99,13 +109,23 @@ async fn test_compression_gzip_handler_usage() {
         })
         .compress(b"Large text data that should compress well with gzip algorithm")
         .await;
-    
+
     // Verify the closure was called and modified the result
     assert!(tracker.was_called(), "GZIP handler closure was not called");
-    assert_eq!(tracker.call_count(), 1, "GZIP handler should be called exactly once");
-    assert!(tracker.last_error().is_none(), "No error should have occurred in success case");
-    assert!(result.ends_with(b"_GZIP_HANDLER_CALLED"), "GZIP handler should have modified the result");
-    
+    assert_eq!(
+        tracker.call_count(),
+        1,
+        "GZIP handler should be called exactly once"
+    );
+    assert!(
+        tracker.last_error().is_none(),
+        "No error should have occurred in success case"
+    );
+    assert!(
+        result.ends_with(b"_GZIP_HANDLER_CALLED"),
+        "GZIP handler should have modified the result"
+    );
+
     println!("✅ GZIP Handler Test PASSED - Closure was called and modified result");
 }
 
