@@ -35,22 +35,18 @@ path = "src/pqcrypto_api.rs"
 name = "quic_api"
 path = "src/quic_api.rs"
 
-[[bin]]
-name = "cipher_streaming"
-path = "src/cipher_streaming.rs"
-
 [dependencies]
 cryypt = { path = "../cryypt", features = ["full", "quic"] }
-tokio = { version = "1.46.1", features = ["full"] }
+tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 futures = "0.3.31"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
+serde_json = "1.0.143"
 log = "0.4.27"
 env_logger = "0.11.8"
 hex = "0.4.3"
-uuid = { version = "1.17.0", features = ["v4", "serde"] }
+uuid = { version = "1.18.0", features = ["v4", "serde"] }
 chrono = { version = "0.4.41", features = ["serde"] }
 
 cryypt_common = { version = "0.1.0", path = "../common" }
-cyrup_sugars = "0.2.0"
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", version = "0.3.0", features = ["all"] }

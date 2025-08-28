@@ -2,7 +2,7 @@
 //!
 //! Contains the main builder types, type-state markers, and entry points for Bzip2 compression.
 
-use crate::{CompressionError, CompressionResult, Result};
+use crate::{CompressionError, Result};
 
 pub mod compress;
 pub mod config;
@@ -41,6 +41,12 @@ pub struct Bzip2BuilderWithChunk<L, F> {
     pub(crate) chunk_handler: F,
     pub(crate) error_handler:
         Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
+}
+
+impl Default for Bzip2Builder<NoLevel> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Bzip2Builder<NoLevel> {

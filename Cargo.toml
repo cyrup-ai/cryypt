@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+    "async_task",    # Async task coordination
     "cipher",        # Symmetric encryption
     "common",        # Common infrastructure
     "compression",   # Data compression
@@ -17,6 +18,8 @@ members = [
     "workspace-hack",          # QUIC protocol crypto
 ]
 
+exclude = ["tmp", "docs", "forks", "target"]
+
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
@@ -31,3 +34,28 @@ rust-version = "1.88"
 [workspace.lints]
 clippy.all = "warn"
 clippy.pedantic = "warn"
+
+# Use stable versions only - remove git patches that cause version conflicts
+[patch.crates-io]
+# rsa = { git = "https://github.com/RustCrypto/RSA", branch = "master" }
+# ecdsa = { git = "https://github.com/RustCrypto/signatures", branch = "master" }
+# p256 = { git = "https://github.com/RustCrypto/elliptic-curves", branch = "master" }
+# p384 = { git = "https://github.com/RustCrypto/elliptic-curves", branch = "master" }
+# primefield = { git = "https://github.com/RustCrypto/elliptic-curves", branch = "master" }
+# elliptic-curve = { git = "https://github.com/RustCrypto/traits", branch = "master" }
+# hmac = { git = "https://github.com/RustCrypto/MACs", branch = "master" }
+# sha2 = { git = "https://github.com/RustCrypto/hashes", branch = "master" }
+
+# Force latest stable digest version for API compatibility
+[workspace.dependencies.digest]
+version = "0.10.7"
+
+# Force latest crypto-bigint for API compatibility
+[workspace.dependencies.crypto-bigint]
+version = "0.7.0-rc.2"
+
+[workspace.dependencies.rand_core]
+version = "=0.9.3"
+
+[workspace.dependencies.rand]
+version = "=0.9.2"

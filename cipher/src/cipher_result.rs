@@ -1,6 +1,6 @@
 //! Concrete cipher result type implementing the unwrapping pattern
 
-use crate::{CryptError, Result};
+use crate::{CipherError, Result};
 use cryypt_common::NotResult;
 use std::future::Future;
 use std::pin::Pin;
@@ -27,7 +27,7 @@ impl CipherResult {
     }
 
     /// Create a CipherResult that yields an error
-    pub fn error(error: CryptError) -> Self {
+    pub fn error(error: CipherError) -> Self {
         Self::ready(Err(error))
     }
 
@@ -49,7 +49,7 @@ impl Future for CipherResult {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(CryptError::InternalError(
+            Poll::Ready(Err(_)) => Poll::Ready(Err(CipherError::Internal(
                 "Cipher resolution task dropped".to_string(),
             ))),
             Poll::Pending => Poll::Pending,
@@ -80,7 +80,7 @@ where
             Poll::Ready(Err(_)) => {
                 // Task dropped - this should not happen in normal operation
                 if let Some(handler) = this.handler.take() {
-                    Poll::Ready(handler(Err(CryptError::InternalError(
+                    Poll::Ready(handler(Err(CipherError::Internal(
                         "Cipher resolution task dropped".to_string(),
                     ))))
                 } else {

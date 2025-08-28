@@ -11,6 +11,12 @@ pub struct RotatorBuilder {
     result_handler: Option<Box<dyn Fn(JwtResult<JwtRotator>) -> JwtRotator + Send + Sync>>,
 }
 
+impl Default for RotatorBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RotatorBuilder {
     pub fn new() -> Self {
         Self {
@@ -100,7 +106,7 @@ impl JwtRotator {
 
     /// Sign JWT with current key - README.md pattern
     pub fn sign<T: Serialize>(self, claims: T) -> JwtRotatorSigner {
-        let claims_value = serde_json::to_value(claims).unwrap_or_else(|_| serde_json::Value::Null);
+        let claims_value = serde_json::to_value(claims).unwrap_or(serde_json::Value::Null);
 
         JwtRotatorSigner {
             rotator: self,
@@ -125,14 +131,34 @@ impl JwtRotator {
         }
     }
 
-    /// Verify JWT with any available key - README.md pattern
+    /// Verify JWT with any available key - Production implementation
     pub async fn verify<T>(self, token: T) -> serde_json::Value
     where
         T: AsRef<str>,
     {
-        // Placeholder implementation
-        let _ = token;
-        serde_json::json!({"sub": "rotator_verified", "name": "Test User"})
+        // Try to verify with each available key until one succeeds
+        let token_str = token.as_ref();
+        
+        // Try current key first (most likely to succeed)
+        if let Some((_key_id, key_bytes)) = &self.current_key
+            && let Ok(claims) = crate::crypto::hmac_sha256::hs256_verify(key_bytes, token_str).await {
+                return claims;
+            }
+        
+        // Try other keys in rotation
+        for (key_id, key_bytes) in &self.keys {
+            if let Some((current_id, _)) = &self.current_key
+                && key_id == current_id {
+                    continue; // Already tried current key
+                }
+            
+            if let Ok(claims) = crate::crypto::hmac_sha256::hs256_verify(key_bytes, token_str).await {
+                return claims;
+            }
+        }
+        
+        // If no key worked, return an error-like response
+        serde_json::json!({"error": "Token verification failed", "valid": false})
     }
 }
 
@@ -165,12 +191,10 @@ impl JwtRotatorSigner {
         let claims_str = self.claims.to_string();
         let token = format!("header.{}.signature-{}", claims_str, key_info);
 
-        let result = Ok(token);
-
         if let Some(handler) = self.result_handler {
-            handler(result)
+            handler(Ok(token))
         } else {
-            result.unwrap_or_default() // Never fails in practice since we create with Ok()
+            token
         }
     }
 }
@@ -207,12 +231,12 @@ impl JwtRotatorVerifier {
             })
         };
 
-        let result = Ok(verification_result);
+        let result = verification_result;
 
         if let Some(handler) = self.result_handler {
-            handler(result)
+            handler(Ok(result))
         } else {
-            result.unwrap_or_default() // Never fails in practice since we create with Ok()
+            result // Return the JSON value directly
         }
     }
 }

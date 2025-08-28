@@ -31,6 +31,8 @@ pub struct VaultEntry {
     pub created_at: Option<DateTime<Utc>>,
     /// Last modification timestamp
     pub updated_at: Option<DateTime<Utc>>,
+    /// Optional expiration timestamp for TTL support
+    pub expires_at: Option<DateTime<Utc>>,
     /// Optional namespace for organizing entries
     pub namespace: Option<String>,
 }
@@ -76,7 +78,7 @@ impl LocalVaultProvider {
         }
 
         // Use file database - match the working wallpapers example exactly
-        let db = surrealdb::engine::any::connect(&format!("surrealkv://{}", db_path))
+        let db = surrealdb::engine::any::connect(format!("surrealkv://{}", db_path))
             .await
             .map_err(|e| {
                 VaultError::Provider(format!(

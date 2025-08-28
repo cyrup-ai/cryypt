@@ -15,22 +15,16 @@ pub struct DecryptionBuilder<C, D> {
 }
 
 impl DecryptionBuilder<(), HasData<Vec<u8>>> {
-    /// Decrypt with AES-GCM using provided key
+    /// Decrypt with AES-GCM using provided key - Direct async implementation
     pub fn with_aes_key(self, key: &[u8]) -> impl AsyncDecryptionResult {
         let encrypted = self.data.0;
         let key = key.to_vec();
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
-            let result =
-                tokio::task::spawn_blocking(move || decrypt_aes_gcm(&encrypted, &key)).await;
-
-            let _ = tx.send(result.unwrap_or_else(|e| {
-                Err(CryptError::internal(format!(
-                    "Decryption task panicked: {}",
-                    e
-                )))
-            }));
+            // Direct async execution - AES-GCM is fast, no spawn_blocking needed
+            let result = decrypt_aes_gcm(&encrypted, &key);
+            let _ = tx.send(result);
         });
 
         DecryptionResultImpl::new(rx)
@@ -43,16 +37,9 @@ impl DecryptionBuilder<(), HasData<Vec<u8>>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
-            let result =
-                tokio::task::spawn_blocking(move || decrypt_chacha20_poly1305(&encrypted, &key))
-                    .await;
-
-            let _ = tx.send(result.unwrap_or_else(|e| {
-                Err(CryptError::internal(format!(
-                    "Decryption task panicked: {}",
-                    e
-                )))
-            }));
+            // Direct async execution - ChaCha20-Poly1305 is fast, no spawn_blocking needed
+            let result = decrypt_chacha20_poly1305(&encrypted, &key);
+            let _ = tx.send(result);
         });
 
         DecryptionResultImpl::new(rx)

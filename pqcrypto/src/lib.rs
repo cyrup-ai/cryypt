@@ -42,7 +42,7 @@ pub use self::shared_secret::SharedSecret;
 pub use self::api::{
     CiphertextBuilder, DecapsulateBuilder, EncapsulateBuilder, KemBuilder, KemKeyPairBuilder,
     MessageBuilder, SignBuilder, SignatureBuilder, SignatureDataBuilder, SignatureKeyPairBuilder,
-    VerifyBuilder,
+    VerifyBuilder, PqCryptoMasterBuilder,
 };
 
 /// Prelude for post-quantum cryptography

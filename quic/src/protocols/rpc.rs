@@ -3,7 +3,7 @@
 //! Provides request/response patterns with automatic timeouts,
 //! retries, and load balancing across multiple connections.
 
-use crate::{Result, quic_conn::QuicConnectionHandle};
+use crate::{Result, quic_conn::{QuicConnectionHandle, QuicConnectionEvent}};
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::sync::Arc;
@@ -31,73 +31,101 @@ impl<Req: Serialize + Send + 'static, Resp: for<'de> Deserialize<'de> + Send + '
     RpcCall<Req, Resp>
 {
     /// Execute the RPC call
-    pub fn execute(self) -> impl Future<Output = Result<RpcResponse<Resp>>> + Send {
-        async move {
-            // Log RPC call details
-            println!("🔄 Executing RPC method: {}", self.method);
-            println!("    Timeout: {:?}, Retries: {}", self.timeout, self.retries);
+    pub async fn execute(self) -> Result<RpcResponse<Resp>> {
+        // Log RPC call details
+        println!("🔄 Executing RPC method: {}", self.method);
+        println!("    Timeout: {:?}, Retries: {}", self.timeout, self.retries);
 
-            // Serialize request
-            let _request_json = serde_json::to_string(&self.request).map_err(|e| {
+        // Serialize request
+        let _request_json = serde_json::to_string(&self.request).map_err(|e| {
+            crate::error::CryptoTransportError::Internal(format!(
+                "Failed to serialize RPC request: {}",
+                e
+            ))
+        })?;
+
+        // If we have a connection handle, use it
+        if let Some(handle) = &self.handle {
+            // Wait for handshake
+            handle.wait_for_handshake().await?;
+
+            // Create RPC request with ID
+            let rpc_request = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": self.method,
+                "params": _request_json,
+                "id": 1
+            });
+
+            let request_data = serde_json::to_vec(&rpc_request).map_err(|e| {
                 crate::error::CryptoTransportError::Internal(format!(
                     "Failed to serialize RPC request: {}",
                     e
                 ))
             })?;
 
-            // If we have a connection handle, use it
-            if let Some(handle) = &self.handle {
-                // Wait for handshake
-                handle.wait_for_handshake().await?;
+            // Send the request
+            handle.send_stream_data(&request_data, true)?;
 
-                // Create RPC request with ID
-                let rpc_request = serde_json::json!({
-                    "jsonrpc": "2.0",
-                    "method": self.method,
-                    "params": _request_json,
-                    "id": 1
-                });
-
-                let request_data = serde_json::to_vec(&rpc_request).map_err(|e| {
-                    crate::error::CryptoTransportError::Internal(format!(
-                        "Failed to serialize RPC request: {}",
-                        e
-                    ))
-                })?;
-
-                // Send the request
-                handle.send_stream_data(&request_data, true)?;
-
-                // For now, return a mock response
-                // In a complete implementation, we'd wait for and parse the response
-                let mock_response = serde_json::json!({
-                    "result": "Mock response for demonstration"
-                });
-
-                let response_str = serde_json::to_string(&mock_response).map_err(|e| {
-                    crate::error::CryptoTransportError::Internal(format!(
-                        "Failed to serialize response: {}",
-                        e
-                    ))
-                })?;
-
-                let resp: Resp = serde_json::from_str(&response_str).map_err(|e| {
-                    crate::error::CryptoTransportError::Internal(format!(
-                        "Failed to deserialize response: {}",
-                        e
-                    ))
-                })?;
-
-                Ok(RpcResponse {
-                    result: Ok(resp),
-                    call_duration: Duration::from_millis(100),
-                    server_id: Some("quic-server-1".to_string()),
-                })
-            } else {
+            // Wait for response with timeout
+            let start_time = std::time::Instant::now();
+            let mut event_rx = handle.subscribe_to_events();
+            
+            let response = tokio::time::timeout(self.timeout, async {
+                while let Ok(event) = event_rx.recv().await {
+                    if let QuicConnectionEvent::InboundStreamData(_, data) = event {
+                        let response_str = String::from_utf8(data).map_err(|e| {
+                            crate::error::CryptoTransportError::Internal(format!(
+                                "Invalid UTF-8 in response: {}", e
+                            ))
+                        })?;
+                        
+                        let json_response: serde_json::Value = serde_json::from_str(&response_str)
+                            .map_err(|e| {
+                                crate::error::CryptoTransportError::Internal(format!(
+                                    "Failed to parse JSON response: {}", e
+                                ))
+                            })?;
+                        
+                        if let Some(result) = json_response.get("result") {
+                            let resp: Resp = serde_json::from_value(result.clone()).map_err(|e| {
+                                crate::error::CryptoTransportError::Internal(format!(
+                                    "Failed to deserialize result: {}", e
+                                ))
+                            })?;
+                            
+                            return Ok(resp);
+                        } else if let Some(error) = json_response.get("error") {
+                            return Err(crate::error::CryptoTransportError::Internal(format!(
+                                "RPC error: {}", error
+                            )));
+                        }
+                    }
+                }
                 Err(crate::error::CryptoTransportError::Internal(
-                    "No QUIC connection handle available".to_string(),
+                    "Connection closed before response".to_string()
                 ))
+            }).await;
+            
+            match response {
+                Ok(Ok(resp)) => Ok(RpcResponse {
+                    result: Ok(resp),
+                    call_duration: start_time.elapsed(),
+                    server_id: Some("quic-server".to_string()),
+                }),
+                Ok(Err(e)) => Ok(RpcResponse {
+                    result: Err(e),
+                    call_duration: start_time.elapsed(),
+                    server_id: Some("quic-server".to_string()),
+                }),
+                Err(_) => Err(crate::error::CryptoTransportError::Internal(
+                    format!("RPC timeout after {:?}", self.timeout)
+                )),
             }
+        } else {
+            Err(crate::error::CryptoTransportError::Internal(
+                "No QUIC connection handle available".to_string(),
+            ))
         }
     }
 }

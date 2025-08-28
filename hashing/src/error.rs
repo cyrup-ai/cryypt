@@ -1,61 +1,49 @@
-//! Error types for the hashing crate
+//! Comprehensive error handling for hashing module
 
-use std::fmt;
 use thiserror::Error;
 
-/// Result type alias for hashing operations
-pub type Result<T> = std::result::Result<T, HashError>;
-
-/// Main error type for all hashing operations
-#[derive(Error, Debug)]
+/// Hashing-specific errors
+#[derive(Debug, Error)]
 pub enum HashError {
-    /// Invalid parameters provided
+    #[error("MAC initialization error: {0}")]
+    MacInitialization(String),
+
+    #[error("Hash computation error: {0}")]
+    HashComputation(String),
+
+    #[error("Invalid key length for MAC: expected {expected}, got {actual}")]
+    InvalidMacKeyLength { expected: usize, actual: usize },
+
+    #[error("Stream processing error: {0}")]
+    StreamProcessing(String),
+
+    #[error("Hash verification failed")]
+    VerificationFailed,
+
+    #[error("Unsupported hash algorithm: {0}")]
+    UnsupportedAlgorithm(String),
+
+    #[error("Hash finalization error: {0}")]
+    Finalization(String),
+    
+    #[error("Internal error: {0}")]
+    Internal(String),
+    
     #[error("Invalid parameters: {0}")]
     InvalidParameters(String),
-
-    /// Invalid salt size
-    #[error("Invalid salt size: expected {expected}, got {actual}")]
-    InvalidSaltSize {
-        /// Expected salt size
-        expected: usize,
-        /// Actual salt size provided
-        actual: usize,
-    },
-
-    /// Key derivation failed
-    #[error("Key derivation failed: {0}")]
-    KeyDerivationFailed(String),
-
-    /// Insufficient entropy for secure operation
-    #[error("Insufficient entropy: minimum quality not met")]
-    InsufficientEntropy,
-
-    /// Generic internal error
-    #[error("Internal error: {0}")]
-    InternalError(String),
 }
 
 impl HashError {
-    /// Create an InvalidParameters error with a formatted message
-    pub fn invalid_parameters(msg: impl fmt::Display) -> Self {
-        Self::InvalidParameters(msg.to_string())
+    /// Create an internal error (legacy compatibility)
+    pub fn internal(msg: impl Into<String>) -> Self {
+        Self::Internal(msg.into())
     }
-
-    /// Create a KeyDerivationFailed error with a formatted message
-    pub fn key_derivation_failed(msg: impl fmt::Display) -> Self {
-        Self::KeyDerivationFailed(msg.to_string())
-    }
-
-    /// Create an InternalError with a formatted message
-    pub fn internal(msg: impl fmt::Display) -> Self {
-        Self::InternalError(msg.to_string())
+    
+    /// Create an invalid_parameters error (legacy compatibility)
+    pub fn invalid_parameters(msg: impl Into<String>) -> Self {
+        Self::InvalidParameters(msg.into())
     }
 }
 
-// Implement conversions from common error types
-
-impl From<argon2::password_hash::Error> for HashError {
-    fn from(err: argon2::password_hash::Error) -> Self {
-        Self::KeyDerivationFailed(format!("Argon2 error: {}", err))
-    }
-}
+/// Result type for hashing operations
+pub type Result<T> = std::result::Result<T, HashError>;

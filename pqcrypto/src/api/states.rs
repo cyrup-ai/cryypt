@@ -83,7 +83,7 @@ impl<T: BuilderState> Default for StateMarker<T> {
 
 impl<T: BuilderState> Clone for StateMarker<T> {
     fn clone(&self) -> Self {
-        Self::new()
+        *self
     }
 }
 

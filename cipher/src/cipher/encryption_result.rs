@@ -48,7 +48,7 @@ impl EncodableResult {
     pub async fn to_file<P: AsRef<std::path::Path>>(self, path: P) -> crate::Result<()> {
         tokio::fs::write(path, &self.data)
             .await
-            .map_err(|e| crate::CryptError::Io(format!("Failed to write file: {}", e)))
+            .map_err(|e| crate::CryptError::Internal(format!("Failed to write file: {}", e)))
     }
 
     /// Get the length of the data

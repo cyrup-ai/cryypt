@@ -52,7 +52,7 @@ pub use key_id::{KeyId, SimpleKeyId};
 pub use key_result::KeyResult;
 
 // Re-export common macros and handlers from cryypt_common
-pub use cryypt_common::{on_chunk, on_error, on_result};
+pub use cryypt_common::{on_error, on_result};
 
 // Re-export the main API
 pub use api::{

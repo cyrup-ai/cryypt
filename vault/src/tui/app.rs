@@ -40,7 +40,7 @@ impl App {
                 ));
                 log_security_event(
                     "TUI_UNLOCK",
-                    &format!("Rate limited: too many failed attempts"),
+                    &"Rate limited: too many failed attempts".to_string(),
                     false,
                 );
                 return Err(VaultError::TooManyAttempts(remaining));
@@ -279,5 +279,24 @@ impl App {
                 );
             }
         }
+    }
+
+    /// Create a PassInterface for password operations
+    pub async fn create_pass_interface(&self) -> Result<crate::tui::pass_interface::PassInterface, VaultError> {
+        use std::path::PathBuf;
+        
+        // Use the pass store path from app state, or create a default one
+        let pass_store_path = if self.state.pass.store_path.is_empty() {
+            // Create default pass store path in the same directory as the vault
+            let mut default_path = PathBuf::from("~/.password-store");
+            if let Ok(home) = std::env::var("HOME") {
+                default_path = PathBuf::from(home).join(".password-store");
+            }
+            default_path
+        } else {
+            PathBuf::from(&self.state.pass.store_path)
+        };
+
+        crate::tui::pass_interface::PassInterface::from_path(pass_store_path).await
     }
 }

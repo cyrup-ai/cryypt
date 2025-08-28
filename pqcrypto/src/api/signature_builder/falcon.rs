@@ -2,12 +2,12 @@
 
 use super::super::super::{SignatureAlgorithm, SignatureResult, VerificationResult};
 use super::super::{builder_traits::*, states::*};
-use super::BaseSignatureBuilder;
+use super::common::BaseSignatureBuilder;
 use crate::{PqCryptoError, Result};
 use pqcrypto_traits::sign::{
     DetachedSignature as PqDetachedSignature, PublicKey as PqPublicKey, SecretKey as PqSecretKey,
 };
-use std::future::Future;
+
 use std::marker::PhantomData;
 
 /// FALCON builder type
@@ -20,7 +20,7 @@ pub struct FalconBuilder<State> {
     pub(super) signature: Option<Vec<u8>>,
 }
 
-impl<State> super::BaseSignatureBuilder for FalconBuilder<State> {
+impl<State> super::common::BaseSignatureBuilder for FalconBuilder<State> {
     fn algorithm(&self) -> SignatureAlgorithm {
         self.algorithm
     }
@@ -32,39 +32,37 @@ impl SignatureKeyPairBuilder for FalconBuilder<NeedKeyPair> {
     type PublicKeyOutput = FalconBuilder<HasPublicKey>;
     type SecretKeyOutput = FalconBuilder<HasSecretKey>;
 
-    fn generate(self) -> impl Future<Output = Result<Self::Output>> + Send {
-        async move {
-            let (pk, sk) = match self.algorithm {
-                SignatureAlgorithm::Falcon512 => {
-                    let (pk, sk) = pqcrypto_falcon::falcon512::keypair();
-                    (
-                        PqPublicKey::as_bytes(&pk).to_vec(),
-                        PqSecretKey::as_bytes(&sk).to_vec(),
-                    )
-                }
-                SignatureAlgorithm::Falcon1024 => {
-                    let (pk, sk) = pqcrypto_falcon::falcon1024::keypair();
-                    (
-                        PqPublicKey::as_bytes(&pk).to_vec(),
-                        PqSecretKey::as_bytes(&sk).to_vec(),
-                    )
-                }
-                _ => {
-                    return Err(PqCryptoError::InternalError(
-                        "Invalid algorithm for FALCON".to_string(),
-                    ));
-                }
-            };
+    async fn generate(self) -> Result<Self::Output> {
+        let (pk, sk) = match self.algorithm {
+            SignatureAlgorithm::Falcon512 => {
+                let (pk, sk) = pqcrypto_falcon::falcon512::keypair();
+                (
+                    PqPublicKey::as_bytes(&pk).to_vec(),
+                    PqSecretKey::as_bytes(&sk).to_vec(),
+                )
+            }
+            SignatureAlgorithm::Falcon1024 => {
+                let (pk, sk) = pqcrypto_falcon::falcon1024::keypair();
+                (
+                    PqPublicKey::as_bytes(&pk).to_vec(),
+                    PqSecretKey::as_bytes(&sk).to_vec(),
+                )
+            }
+            _ => {
+                return Err(PqCryptoError::InternalError(
+                    "Invalid algorithm for FALCON".to_string(),
+                ));
+            }
+        };
 
-            Ok(FalconBuilder {
-                algorithm: self.algorithm,
-                state: PhantomData,
-                public_key: Some(pk),
-                secret_key: Some(sk),
-                message: None,
-                signature: None,
-            })
-        }
+        Ok(FalconBuilder {
+            algorithm: self.algorithm,
+            state: PhantomData,
+            public_key: Some(pk),
+            secret_key: Some(sk),
+            message: None,
+            signature: None,
+        })
     }
 
     fn with_keypair<T: Into<Vec<u8>>>(self, public_key: T, secret_key: T) -> Result<Self::Output> {
@@ -135,17 +133,13 @@ pub type FalconWithSignature = FalconBuilder<HasSignature>;
 impl FalconBuilder<HasKeyPair> {
     /// Get the public key bytes
     pub fn public_key(&self) -> Result<&[u8]> {
-        self.public_key
-            .as_ref()
-            .map(|k| k.as_slice())
+        self.public_key.as_deref()
             .ok_or_else(|| PqCryptoError::internal("Public key not available in HasKeyPair state"))
     }
 
     /// Get the secret key bytes  
     pub fn secret_key(&self) -> Result<&[u8]> {
-        self.secret_key
-            .as_ref()
-            .map(|k| k.as_slice())
+        self.secret_key.as_deref()
             .ok_or_else(|| PqCryptoError::internal("Secret key not available in HasKeyPair state"))
     }
 

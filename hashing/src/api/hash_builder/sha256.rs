@@ -63,8 +63,37 @@ impl<P> HashBuilder<Sha256Hash, NoData, HasSalt, P> {
         self, 
         stream: S
     ) -> HashStream {
-        // TODO: Implement streaming HMAC
-        HashStream::new(stream, HashAlgorithm::Sha256, self.chunk_handler)
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
+        use tokio::sync::mpsc;
+        
+        let key = self.salt.0.clone();
+        let (sender, receiver) = mpsc::channel(100);
+        let chunk_handler = self.chunk_handler;
+        
+        tokio::spawn(async move {
+            use tokio_stream::StreamExt;
+            use crate::error::{HashError, Result};
+            let mut stream = Box::pin(stream);
+            let mut mac = Hmac::<Sha256>::new_from_slice(&key)
+                .map_err(|e| HashError::MacInitialization(format!("Failed to initialize SHA256 HMAC: {}", e)))?;
+            
+            while let Some(chunk) = stream.next().await {
+                mac.update(&chunk);
+                // Send intermediate HMAC for progressive verification
+                let intermediate = mac.clone().finalize().into_bytes().to_vec();
+                let _ = sender.send(Ok(intermediate)).await;
+            }
+            
+            // Final HMAC
+            let final_mac = mac.finalize().into_bytes().to_vec();
+            let _ = sender.send(Ok(final_mac)).await;
+        });
+        
+        HashStream {
+            receiver,
+            handler: chunk_handler.map(|h| Box::new(h) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
+        }
     }
 }
 

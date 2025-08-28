@@ -1,6 +1,7 @@
 use futures::Future;
 use std::sync::Arc;
-use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use tokio::sync::{broadcast, mpsc::unbounded_channel};
+use tracing::{debug, info};
 
 use quiche::{ConnectionId, Header, accept};
 
@@ -79,22 +80,26 @@ pub fn run_quic_server(
     }
 }
 
-fn server_event_reporter() -> UnboundedSender<QuicConnectionEvent> {
-    let (tx, mut rx) = unbounded_channel();
+fn server_event_reporter() -> broadcast::Sender<QuicConnectionEvent> {
+    let (tx, mut rx) = broadcast::channel(1000);
     tokio::spawn(async move {
-        while let Some(evt) = rx.recv().await {
+        while let Ok(evt) = rx.recv().await {
             match evt {
                 QuicConnectionEvent::HandshakeCompleted => {
-                    println!("Server: Handshake completed");
+                    info!("Server handshake completed");
                 }
                 QuicConnectionEvent::InboundStreamData(sid, data) => {
-                    println!("Server: Received {} bytes on stream {}", data.len(), sid);
+                    debug!(
+                        stream_id = sid,
+                        bytes = data.len(),
+                        "Server received stream data"
+                    );
                 }
                 QuicConnectionEvent::StreamFinished(sid) => {
-                    println!("Server: Stream {} finished", sid);
+                    debug!(stream_id = sid, "Server stream finished");
                 }
                 QuicConnectionEvent::ConnectionClosed => {
-                    println!("Server: Connection closed");
+                    info!("Server connection closed");
                 }
             }
         }

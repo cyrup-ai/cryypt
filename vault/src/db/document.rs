@@ -1,4 +1,4 @@
-use crate::db::dao::{Error, GenericDao, SurrealDbDao, TableType};
+use crate::db::dao::{Error, SurrealDbDao, TableType};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::Surreal;
@@ -128,8 +128,8 @@ impl DocumentDao {
     /// Delete a document by its key
     pub async fn delete_by_key(&self, key: String) -> Result<bool, Error> {
         // First find the document to get its ID
-        if let Some(doc) = self.find_by_key(key).await? {
-            if let Some(id) = doc.id {
+        if let Some(doc) = self.find_by_key(key).await?
+            && let Some(id) = doc.id {
                 let mut stream = self.dao.delete(&id);
                 let mut items = Vec::new();
 
@@ -144,7 +144,6 @@ impl DocumentDao {
                     return Ok(true);
                 }
             }
-        }
 
         Ok(false)
     }

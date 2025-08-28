@@ -4,7 +4,9 @@
 
 use super::MasterKeyProvider;
 use crate::{KeyImport, KeyRetrieval, KeyStorage, SimpleKeyId};
+use async_task::AsyncTask;
 use rand::RngCore;
+use tokio::sync::oneshot;
 
 /// Represents a master key stored in a key store
 pub struct StoredMasterKey<S: KeyStorage + KeyRetrieval + Send + Sync> {
@@ -12,46 +14,71 @@ pub struct StoredMasterKey<S: KeyStorage + KeyRetrieval + Send + Sync> {
     pub(crate) key_id: SimpleKeyId,
 }
 
+impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> StoredMasterKey<S> {
+    /// Async version of resolve for use in async contexts
+    pub async fn resolve_async(&self) -> crate::Result<[u8; 32]> {
+        let store = self.store.clone();
+        let key_id = self.key_id.clone();
+
+        // Try to retrieve existing key first
+        match store.retrieve(&key_id).await {
+            Ok(existing_key) => {
+                let mut key = [0u8; 32];
+                key.copy_from_slice(&existing_key[..32]);
+                Ok(key)
+            }
+            Err(_) => {
+                // Generate new master key
+                let mut key = [0u8; 32];
+                rand::rng().fill_bytes(&mut key);
+
+                // Store it
+                store.store(&key_id, &key).await.map_err(|e| {
+                    crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
+                })?;
+
+                Ok(key)
+            }
+        }
+    }
+}
+
 impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> MasterKeyProvider
     for StoredMasterKey<S>
 {
     fn resolve(&self) -> crate::Result<[u8; 32]> {
-        // Block on async to provide sync interface for master key
+        // Use channel-based coordination for sync interface
+        let (tx, rx) = oneshot::channel();
         let store = self.store.clone();
         let key_id = self.key_id.clone();
 
-        let rt = match tokio::runtime::Handle::try_current() {
-            Ok(handle) => handle,
-            Err(_) => {
-                let runtime = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .map_err(|e| crate::KeyError::InvalidKey(format!("Failed to create runtime: {}", e)))?;
-                runtime.handle().clone()
-            }
-        };
+        tokio::spawn(async move {
+            let result = async {
+                // Try to retrieve existing key first
+                match store.retrieve(&key_id).await {
+                    Ok(existing_key) => {
+                        let mut key = [0u8; 32];
+                        key.copy_from_slice(&existing_key[..32]);
+                        Ok(key)
+                    }
+                    Err(_) => {
+                        // Generate new master key
+                        let mut key = [0u8; 32];
+                        rand::rng().fill_bytes(&mut key);
 
-        rt.block_on(async move {
-            // Try to retrieve existing key first
-            match store.retrieve(&key_id).await {
-                Ok(existing_key) => {
-                    let mut key = [0u8; 32];
-                    key.copy_from_slice(&existing_key[..32]);
-                    Ok(key)
+                        // Store it
+                        store.store(&key_id, &key).await.map_err(|e| {
+                            crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
+                        })?;
+
+                        Ok(key)
+                    }
                 }
-                Err(_) => {
-                    // Generate new master key
-                    let mut key = [0u8; 32];
-                    rand::rng().fill_bytes(&mut key);
+            }.await;
+            let _ = tx.send(result);
+        });
 
-                    // Store it
-                    store.store(&key_id, &key).await.map_err(|e| {
-                        crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
-                    })?;
-
-                    Ok(key)
-                }
-            }
-        })
+        rx.blocking_recv()
+            .map_err(|_| crate::KeyError::InvalidKey("Key resolution failed".to_string()))?
     }
 }

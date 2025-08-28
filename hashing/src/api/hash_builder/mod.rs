@@ -7,7 +7,7 @@ pub use common::HashBuilder;
 mod blake2b;
 mod common;
 mod sha256;
-mod sha3;
+pub mod sha3;
 mod stream;
 
 // Re-export streaming types

@@ -12,22 +12,19 @@ pub use cli::{Cli, Commands};
 pub use events::run_tui;
 
 // Entry point for the TUI application
-pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     use crate::LocalVaultProvider;
     use crate::core::Vault;
     use clap::Parser;
     use cli::Cli;
     use std::path::PathBuf;
-    use tokio::runtime::Runtime;
-
-    // Create the runtime
-    let rt = Runtime::new()?;
 
     // Parse command line arguments
     let cli = Cli::parse();
 
     // Create vault
-    let vault = rt.block_on(async move {
+    let vault = {
         // Initialize basic vault
         let vault = Vault::new();
 
@@ -56,8 +53,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         // LocalVaultProvider has its own encryption setup
 
         // Ensure parent directories exist
-        if let Some(parent) = config.vault_path.parent() {
-            if !parent.exists() {
+        if let Some(parent) = config.vault_path.parent()
+            && !parent.exists() {
                 let _ = std::fs::create_dir_all(parent);
 
                 // Set appropriate permissions on Unix systems
@@ -71,13 +68,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-        }
 
-        if let Some(parent) = config.salt_path.parent() {
-            if !parent.exists() {
+        if let Some(parent) = config.salt_path.parent()
+            && !parent.exists() {
                 let _ = std::fs::create_dir_all(parent);
             }
-        }
 
         // Create provider with config
         let provider = LocalVaultProvider::new(config).await?;
@@ -85,8 +80,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         // Register provider
         vault.register_operation(provider).await;
 
-        Ok::<Vault, Box<dyn std::error::Error>>(vault)
-    })?;
+        vault
+    };
 
     // Use match option pattern to run TUI mode by default
     if let Some(command) = cli.command.clone() {
@@ -94,20 +89,20 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         let should_save = cli.save || matches!(command, Commands::Save {});
 
         // Execute CLI command
-        let result = rt.block_on(cli::process_command(&vault, command, cli.json));
+        let result = cli::process_command(&vault, command, cli.json).await;
 
         // If save flag is true or the command is Save, explicitly save data to disk
         if should_save {
             // Save vault data by temporarily locking it (which triggers a save)
             let passphrase = std::env::var("CYSEC_PASSPHRASE").ok();
 
-            if let Err(e) = rt.block_on(async {
+            if let Err(e) = async {
                 vault.lock().await?;
                 if let Some(pass) = &passphrase {
                     vault.unlock(pass).await?;
                 }
                 Ok::<_, Box<dyn std::error::Error>>(())
-            }) {
+            }.await {
                 eprintln!("Error during save operation: {}", e);
             }
         }
@@ -120,7 +115,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("Error: --json flag requires a command");
             std::process::exit(1);
         }
-        rt.block_on(run_tui(vault))?;
+        run_tui(vault).await?;
     }
 
     Ok(())

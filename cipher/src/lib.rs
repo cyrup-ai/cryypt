@@ -21,7 +21,10 @@ pub mod error;
 
 // Re-export core types
 pub use cipher_result::{CipherResult, CipherResultWithHandler};
-pub use error::{CryptError, Result};
+pub use error::{CipherError, Result};
+
+/// Legacy error type alias for backwards compatibility
+pub type CryptError = CipherError;
 
 // Re-export the main APIs per README.md
 pub use cipher::CipherAlgorithm;
@@ -32,7 +35,7 @@ pub use cipher::api::{
 };
 
 // Re-export common handlers from cryypt_common
-pub use cryypt_common::{on_chunk, on_error, on_result};
+pub use cryypt_common::{on_error, on_result};
 
 /// Main entry point - README.md pattern: "Cryypt offers two equivalent APIs"
 pub struct Cryypt;

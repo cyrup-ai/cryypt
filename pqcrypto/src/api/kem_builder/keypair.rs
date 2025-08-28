@@ -7,7 +7,7 @@ use super::super::{builder_traits::*, states::*};
 use super::MlKemBuilder;
 use crate::Result;
 use pqcrypto_traits::kem::{PublicKey as PqPublicKey, SecretKey as PqSecretKey};
-use std::future::Future;
+
 use std::marker::PhantomData;
 
 // Implementation for NeedKeyPair state
@@ -16,40 +16,38 @@ impl KemKeyPairBuilder for MlKemBuilder<NeedKeyPair> {
     type PublicKeyOutput = MlKemBuilder<HasPublicKey>;
     type SecretKeyOutput = MlKemBuilder<HasSecretKey>;
 
-    fn generate(self) -> impl Future<Output = Result<Self::Output>> + Send {
-        async move {
-            let (pk, sk) = match self.algorithm {
-                KemAlgorithm::MlKem512 => {
-                    let (pk, sk) = pqcrypto_mlkem::mlkem512::keypair();
-                    (
-                        PqPublicKey::as_bytes(&pk).to_vec(),
-                        PqSecretKey::as_bytes(&sk).to_vec(),
-                    )
-                }
-                KemAlgorithm::MlKem768 => {
-                    let (pk, sk) = pqcrypto_mlkem::mlkem768::keypair();
-                    (
-                        PqPublicKey::as_bytes(&pk).to_vec(),
-                        PqSecretKey::as_bytes(&sk).to_vec(),
-                    )
-                }
-                KemAlgorithm::MlKem1024 => {
-                    let (pk, sk) = pqcrypto_mlkem::mlkem1024::keypair();
-                    (
-                        PqPublicKey::as_bytes(&pk).to_vec(),
-                        PqSecretKey::as_bytes(&sk).to_vec(),
-                    )
-                }
-            };
+    async fn generate(self) -> Result<Self::Output> {
+        let (pk, sk) = match self.algorithm {
+            KemAlgorithm::MlKem512 => {
+                let (pk, sk) = pqcrypto_mlkem::mlkem512::keypair();
+                (
+                    PqPublicKey::as_bytes(&pk).to_vec(),
+                    PqSecretKey::as_bytes(&sk).to_vec(),
+                )
+            }
+            KemAlgorithm::MlKem768 => {
+                let (pk, sk) = pqcrypto_mlkem::mlkem768::keypair();
+                (
+                    PqPublicKey::as_bytes(&pk).to_vec(),
+                    PqSecretKey::as_bytes(&sk).to_vec(),
+                )
+            }
+            KemAlgorithm::MlKem1024 => {
+                let (pk, sk) = pqcrypto_mlkem::mlkem1024::keypair();
+                (
+                    PqPublicKey::as_bytes(&pk).to_vec(),
+                    PqSecretKey::as_bytes(&sk).to_vec(),
+                )
+            }
+        };
 
-            Ok(MlKemBuilder {
-                algorithm: self.algorithm,
-                state: PhantomData,
-                public_key: Some(pk),
-                secret_key: Some(sk),
-                ciphertext: None,
-            })
-        }
+        Ok(MlKemBuilder {
+            algorithm: self.algorithm,
+            state: PhantomData,
+            public_key: Some(pk),
+            secret_key: Some(sk),
+            ciphertext: None,
+        })
     }
 
     fn with_keypair<T: Into<Vec<u8>>>(self, public_key: T, secret_key: T) -> Result<Self::Output> {

@@ -2,131 +2,47 @@
 //!
 //! Provides reliable, ordered message delivery with acknowledgments,
 //! delivery guarantees, and automatic retry logic.
+//!
+//! This module has been decomposed into discrete separation of concerns submodules:
+//! - `types`: Core data structures, enums, and type definitions
+//! - `builders`: Builder patterns for server and client construction
+//! - `server`: Server implementation with connection management
+//! - `message_processing`: Compression, encryption, and streaming pipelines
+//! - `protocol_core`: Core protocol utilities and constants
+//!
+//! Each submodule is kept under 400 lines for maintainability and follows
+//! the single responsibility principle.
 
-use serde::Serialize;
-use std::future::Future;
-use std::time::Duration;
-use tokio_stream::Stream;
+// Import the modular submodules
+mod types;
+mod builders;
+mod server;
+mod message_processing;
+mod protocol_core;
 
-/// Message delivery confirmation
-#[derive(Debug, Clone)]
-pub struct MessageDelivery {
-    pub message_id: String,
-    pub delivered_at: std::time::Instant,
-    pub delivery_time: Duration,
-}
+// Re-export main types and builders for convenience
+pub use types::{
+    CompressionAlgorithm, EncryptionAlgorithm, MessageEnvelope, MessageDelivery,
+    DistributionStrategy, MessagePriority, CompressionMetadata, EncryptionMetadata,
+    PriorityMessageQueue, LoadBalancer, ConnectionState,
+};
 
-/// High-level messaging protocol builder
-pub struct QuicMessaging;
+pub use builders::{QuicMessaging, MessagingServerBuilder, MessagingClientBuilder};
 
-impl QuicMessaging {
-    /// Create a messaging server
-    pub fn server() -> MessagingServerBuilder {
-        MessagingServerBuilder::default()
-    }
+pub use server::{
+    MessagingServer, MessagingServerConfig, TopicSubscriptions, 
+    ConnectionHealth, ServerConnectionState
+};
 
-    /// Connect to a messaging server
-    pub fn connect(server_addr: &str) -> MessagingClientBuilder {
-        MessagingClientBuilder::new(server_addr.to_string())
-    }
-}
+pub use message_processing::{
+    calculate_checksum, derive_connection_key, compress_payload_stream,
+    decompress_payload_stream, encrypt_payload_stream, decrypt_payload_stream,
+    process_payload_forward, process_payload_reverse,
+};
 
-#[derive(Default)]
-pub struct MessagingServerBuilder {
-    max_message_size: usize,
-    retain_messages: bool,
-    delivery_timeout: Duration,
-}
-
-impl MessagingServerBuilder {
-    pub fn with_max_message_size(mut self, size: usize) -> Self {
-        self.max_message_size = size;
-        self
-    }
-
-    pub fn with_message_retention(mut self, retain: bool) -> Self {
-        self.retain_messages = retain;
-        self
-    }
-
-    pub fn with_delivery_timeout(mut self, timeout: Duration) -> Self {
-        self.delivery_timeout = timeout;
-        self
-    }
-
-    pub fn listen(self, addr: &str) -> impl Future<Output = crate::Result<MessagingServer>> + Send {
-        let _addr = addr.to_string();
-        async move {
-            // Implementation would set up QUIC server with messaging protocol
-            Ok(MessagingServer)
-        }
-    }
-}
-
-pub struct MessagingServer;
-
-pub struct MessagingClientBuilder {
-    server_addr: String,
-    client_id: Option<String>,
-    auto_reconnect: bool,
-}
-
-impl MessagingClientBuilder {
-    fn new(server_addr: String) -> Self {
-        Self {
-            server_addr,
-            client_id: None,
-            auto_reconnect: true,
-        }
-    }
-
-    pub fn with_client_id(mut self, id: &str) -> Self {
-        self.client_id = Some(id.to_string());
-        self
-    }
-
-    pub fn with_auto_reconnect(mut self, enabled: bool) -> Self {
-        self.auto_reconnect = enabled;
-        self
-    }
-
-    /// Send a message and wait for delivery confirmation
-    pub fn send_message(
-        self,
-        message: impl Serialize + Send + 'static,
-    ) -> impl Future<Output = crate::Result<MessageDelivery>> + Send {
-        async move {
-            // Log messaging details
-            println!(
-                "📤 Sending message to {} (client_id: {:?}, auto_reconnect: {})",
-                self.server_addr, self.client_id, self.auto_reconnect
-            );
-
-            // Serialize message
-            let _serialized = serde_json::to_string(&message).map_err(|e| {
-                crate::error::CryptoTransportError::Internal(format!(
-                    "Failed to serialize message: {}",
-                    e
-                ))
-            })?;
-
-            // TODO: Implementation would send message over QUIC and wait for ack
-            Ok(MessageDelivery {
-                message_id: "msg_123".to_string(),
-                delivered_at: std::time::Instant::now(),
-                delivery_time: Duration::from_millis(50),
-            })
-        }
-    }
-
-    /// Subscribe to incoming messages
-    pub fn subscribe(
-        self,
-    ) -> impl Future<Output = crate::Result<Box<dyn Stream<Item = Vec<u8>> + Unpin + Send>>> + Send
-    {
-        async move {
-            // Implementation would return a stream of incoming messages
-            Ok(Box::new(tokio_stream::empty()) as Box<dyn Stream<Item = Vec<u8>> + Unpin + Send>)
-        }
-    }
-}
+pub use protocol_core::{
+    PerformanceMonitor, ConnectionHealthChecker, FlowController,
+    RetryManager, MessageValidator, MetricsCollector,
+    QUIC_PROTOCOL_VERSION, APPLICATION_PROTOCOL, CONNECTION_TIMEOUT,
+    generate_connection_id, create_quic_config, create_client_quic_config,
+};

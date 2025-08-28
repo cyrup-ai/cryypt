@@ -1,5 +1,4 @@
 use super::super::app::App;
-use super::super::pass_interface::PassInterface;
 use super::super::types::PassStateMode;
 use ratatui::{
     Frame,
@@ -113,17 +112,22 @@ fn render_pass_search(f: &mut Frame, app: &mut App, area: Rect) {
 
 /// Load passwords from the Pass store
 pub async fn load_passwords(app: &mut App) {
-    let pass = PassInterface::default();
-
-    match pass.list() {
-        Ok(entries) => {
-            app.state.pass.entries = entries;
-            if !app.state.pass.entries.is_empty() && app.state.pass.selected_index == 0 {
-                app.state.pass.selected_index = 0;
+    match app.create_pass_interface().await {
+        Ok(pass) => {
+            match pass.list().await {
+                Ok(entries) => {
+                    app.state.pass.entries = entries;
+                    if !app.state.pass.entries.is_empty() && app.state.pass.selected_index == 0 {
+                        app.state.pass.selected_index = 0;
+                    }
+                }
+                Err(e) => {
+                    app.state.pass.status_message = format!("Error loading passwords: {}", e);
+                }
             }
         }
         Err(e) => {
-            app.state.pass.status_message = format!("Error loading passwords: {}", e);
+            app.state.pass.status_message = format!("Error creating pass interface: {}", e);
         }
     }
 }
@@ -135,14 +139,19 @@ pub async fn load_password_content(app: &mut App) {
     }
 
     let password_name = app.state.pass.entries[app.state.pass.selected_index].clone();
-    let pass = PassInterface::default();
-
-    match pass.get(&password_name) {
-        Ok(content) => {
-            app.state.pass.content = Some(content.into());
+    match app.create_pass_interface().await {
+        Ok(pass) => {
+            match pass.get(&password_name).await {
+                Ok(content) => {
+                    app.state.pass.content = Some(content.into());
+                }
+                Err(e) => {
+                    app.state.pass.status_message = format!("Error loading password: {}", e);
+                }
+            }
         }
         Err(e) => {
-            app.state.pass.status_message = format!("Error loading password: {}", e);
+            app.state.pass.status_message = format!("Error creating pass interface: {}", e);
         }
     }
 }
@@ -150,16 +159,21 @@ pub async fn load_password_content(app: &mut App) {
 /// Search for passwords
 pub async fn search_passwords(app: &mut App) {
     let query = app.state.pass.search_query.clone();
-    let pass = PassInterface::default();
-
-    match pass.search(&query) {
-        Ok(entries) => {
-            app.state.pass.entries = entries;
-            app.state.pass.selected_index = 0;
-            app.state.pass.mode = PassStateMode::List;
+    match app.create_pass_interface().await {
+        Ok(pass) => {
+            match pass.search(&query).await {
+                Ok(entries) => {
+                    app.state.pass.entries = entries;
+                    app.state.pass.selected_index = 0;
+                    app.state.pass.mode = PassStateMode::List;
+                }
+                Err(e) => {
+                    app.state.pass.status_message = format!("Error searching passwords: {}", e);
+                }
+            }
         }
         Err(e) => {
-            app.state.pass.status_message = format!("Error searching passwords: {}", e);
+            app.state.pass.status_message = format!("Error creating pass interface: {}", e);
         }
     }
 }
@@ -196,12 +210,9 @@ pub async fn handle_input(app: &mut App, key: crossterm::event::KeyEvent) {
             }
             _ => {}
         },
-        PassStateMode::View => match key.code {
-            crossterm::event::KeyCode::Esc => {
-                app.state.pass.mode = PassStateMode::List;
-                app.state.pass.content = None;
-            }
-            _ => {}
+        PassStateMode::View => if key.code == crossterm::event::KeyCode::Esc {
+            app.state.pass.mode = PassStateMode::List;
+            app.state.pass.content = None;
         },
         PassStateMode::Search => match key.code {
             crossterm::event::KeyCode::Enter => {

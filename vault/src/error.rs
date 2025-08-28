@@ -30,6 +30,8 @@ pub enum VaultError {
     InvalidPattern(String),
     #[error("Database error: {0}")]
     Database(#[from] surrealdb::Error),
+    #[error("Database error: {0}")]
+    DatabaseError(String),
     #[error("Migration error: {0}")]
     Migration(String),
     #[error("Time error: {0}")]
@@ -50,8 +52,51 @@ pub enum VaultError {
     Conflict(String),
     #[error("Invalid input: {0}")]
     InvalidInput(String),
+    #[error("Invalid key: {0}")]
+    InvalidKey(String),
     #[error("Other error: {0}")]
     Other(String),
+}
+
+impl VaultError {
+    /// Create an authentication failed error
+    pub fn authentication_failed(_msg: &str) -> Self {
+        VaultError::InvalidPassphrase
+    }
+
+    /// Create a weak passphrase error
+    pub fn weak_passphrase(_msg: &str) -> Self {
+        VaultError::WeakPassphrase
+    }
+
+    /// Create transaction error variants
+    pub fn transaction_already_committed(tx_id: String, _msg: String) -> Self {
+        VaultError::InvalidInput(format!("Transaction {} already committed", tx_id))
+    }
+
+    pub fn transaction_already_rolled_back(tx_id: String) -> Self {
+        VaultError::InvalidInput(format!("Transaction {} already rolled back", tx_id))
+    }
+
+    pub fn transaction_begin_failed(_tx_id: String, _msg: String) -> Self {
+        VaultError::Database(surrealdb::Error::Db(surrealdb::error::Db::TxFailure))
+    }
+
+    pub fn transaction_commit_failed(_tx_id: String, _msg: String) -> Self {
+        VaultError::Database(surrealdb::Error::Db(surrealdb::error::Db::TxFailure))
+    }
+
+    pub fn transaction_operation_failed(_tx_id: String, _msg: String) -> Self {
+        VaultError::Database(surrealdb::Error::Db(surrealdb::error::Db::TxFailure))
+    }
+
+    pub fn transaction_closed(tx_id: String) -> Self {
+        VaultError::InvalidInput(format!("Transaction {} is closed", tx_id))
+    }
+
+    pub fn database_operation_failed(_tx_id: String, _msg: String) -> Self {
+        VaultError::Database(surrealdb::Error::Db(surrealdb::error::Db::QueryTimedout))
+    }
 }
 
 pub type VaultResult<T> = Result<T, VaultError>;
@@ -63,26 +108,20 @@ use cryypt_cipher::CryptError;
 impl From<CryptError> for VaultError {
     fn from(err: CryptError) -> Self {
         match err {
-            CryptError::KeyDerivationFailed(msg) => VaultError::KeyDerivation(msg),
+            CryptError::KeyDerivation(msg) => VaultError::KeyDerivation(msg),
             CryptError::EncryptionFailed(msg) => VaultError::Encryption(msg),
             CryptError::DecryptionFailed(msg) => VaultError::Decryption(msg),
             CryptError::InvalidKeySize { expected, actual } => VaultError::Crypto(format!(
                 "Invalid key size: expected {}, got {}",
                 expected, actual
             )),
-            CryptError::InvalidNonceSize { expected, actual } => VaultError::Crypto(format!(
+            CryptError::InvalidNonceLength { expected, actual } => VaultError::Crypto(format!(
                 "Invalid nonce size: expected {}, got {}",
                 expected, actual
             )),
             CryptError::InvalidEncryptedData(msg) => VaultError::Crypto(msg),
-            CryptError::SerializationError(msg) => VaultError::Serialization(
-                serde_json::from_str::<()>(&format!("serialization error: {}", msg)).unwrap_err(),
-            ),
-            CryptError::IoError(e) => VaultError::Io(e),
-            CryptError::Io(msg) => {
-                VaultError::Io(std::io::Error::new(std::io::ErrorKind::Other, msg))
-            }
-            CryptError::InternalError(msg) => VaultError::Other(msg),
+            CryptError::Io(e) => VaultError::Io(e),
+            CryptError::Internal(msg) => VaultError::Other(msg),
             _ => VaultError::Other(err.to_string()),
         }
     }

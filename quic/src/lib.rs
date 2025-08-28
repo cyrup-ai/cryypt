@@ -7,8 +7,7 @@
 //! key exchange and post-quantum TLS configurations.
 
 // New beautiful QUIC API (primary public API)
-// TODO: Fix to use new patterns
-// pub mod quic;
+pub mod quic;
 
 // New cryypt-pattern API
 pub mod api;
@@ -29,16 +28,13 @@ pub mod error;
 mod keys;
 mod quic_conn;
 mod server;
+pub mod tls;
 
-// Export the new beautiful QUIC API (what users should use)
-// TODO: Fix to use new patterns
-// pub use quic::{Auth, Protocol, Quic as QuicOld, Transport};
-
-// Export the new cryypt-pattern API
-pub use api::{Quic, QuicClient, QuicMasterBuilder, QuicRecv, QuicSend, QuicServer, quic};
+// Export the new cryypt-pattern API (primary)
+pub use api::{QuicClient, QuicMasterBuilder, QuicRecv, QuicSend, QuicServer, quic};
 
 // Re-export common handlers from cryypt_common
-pub use cryypt_common::{on_chunk, on_error, on_result};
+pub use cryypt_common::{on_error, on_result};
 
 // Implement NotResult for QUIC types to support on_result handlers
 use cryypt_common::traits::NotResult;

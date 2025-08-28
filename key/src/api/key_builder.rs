@@ -99,34 +99,6 @@ impl KeyBuilderWithStoreAndNamespace {
 }
 
 impl KeyBuilderReady {
-    /// Internal implementation for on_result - called by macro
-    fn on_result_impl<F>(self, handler: F) -> KeyBuilderReadyWithHandler<F>
-    where
-        F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
-    {
-        KeyBuilderReadyWithHandler {
-            size_bits: self.size_bits,
-            store: self.store,
-            namespace: self.namespace,
-            version: self.version,
-            result_handler: handler,
-        }
-    }
-
-    /// Internal implementation for on_chunk - called by macro
-    fn on_chunk_impl<F>(self, handler: F) -> KeyBuilderReadyWithChunkHandler<F>
-    where
-        F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
-    {
-        KeyBuilderReadyWithChunkHandler {
-            size_bits: self.size_bits,
-            store: self.store,
-            namespace: self.namespace,
-            version: self.version,
-            chunk_handler: handler,
-        }
-    }
-
     /// Add on_result handler - transforms pattern matching internally
     pub fn on_result<F>(self, handler: F) -> KeyBuilderReadyWithHandler<F>
     where
@@ -212,16 +184,15 @@ where
     F: Fn(Result<Vec<u8>, KeyError>) -> Vec<u8> + Send + 'static,
 {
     /// Generate a new key as stream - returns async iterator of chunks
-    pub fn generate_stream(
-        self,
-    ) -> impl futures::Stream<Item = Vec<u8>> + Send {
+    pub fn generate_stream(self) -> impl futures::Stream<Item = Vec<u8>> + Send {
         let store = self.store;
         let namespace = self.namespace;
         let version = self.version;
         let size_bits = self.size_bits;
         let handler = self.chunk_handler;
 
-        futures::stream::unfold((store, namespace, version, size_bits, handler, false), 
+        futures::stream::unfold(
+            (store, namespace, version, size_bits, handler, false),
             move |(store, namespace, version, size_bits, handler, done)| async move {
                 if done {
                     return None;
@@ -232,20 +203,23 @@ where
                 let result = key_result.await;
                 let processed_chunk = handler(result);
 
-                Some((processed_chunk, (store, namespace, version, size_bits, handler, true)))
-            })
+                Some((
+                    processed_chunk,
+                    (store, namespace, version, size_bits, handler, true),
+                ))
+            },
+        )
     }
 
     /// Retrieve an existing key as stream - returns async iterator of chunks
-    pub fn retrieve_stream(
-        self,
-    ) -> impl futures::Stream<Item = Vec<u8>> + Send {
+    pub fn retrieve_stream(self) -> impl futures::Stream<Item = Vec<u8>> + Send {
         let store = self.store;
         let namespace = self.namespace;
         let version = self.version;
         let handler = self.chunk_handler;
 
-        futures::stream::unfold((store, namespace, version, handler, false), 
+        futures::stream::unfold(
+            (store, namespace, version, handler, false),
             move |(store, namespace, version, handler, done)| async move {
                 if done {
                     return None;
@@ -257,7 +231,8 @@ where
                 let processed_chunk = handler(result);
 
                 Some((processed_chunk, (store, namespace, version, handler, true)))
-            })
+            },
+        )
     }
 }
 

@@ -48,15 +48,14 @@ impl<S: Signer> Generator<S> {
         let claims = claims.clone();
 
         tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || {
+            // Direct async implementation - JWT signing is fast, no blocking needed
+            let result = async move {
                 let payload = match serde_json::to_string(&claims) {
                     Ok(p) => p,
                     Err(_) => return Err(JwtError::Malformed),
                 };
                 signer.sign(&header, &payload)
-            })
-            .await
-            .unwrap_or_else(|_| Err(JwtError::TaskJoinError));
+            }.await;
 
             let _ = tx.send(result);
         });
@@ -72,7 +71,8 @@ impl<S: Signer> Generator<S> {
         let token = token.into();
 
         tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || {
+            // Direct async implementation - JWT verification and validation are fast, no blocking needed
+            let result = async move {
                 let payload = signer.verify(&token)?;
                 let claims: Claims =
                     serde_json::from_str(&payload).map_err(|_| JwtError::Malformed)?;
@@ -123,9 +123,7 @@ impl<S: Signer> Generator<S> {
                 }
 
                 Ok(claims)
-            })
-            .await
-            .unwrap_or_else(|_| Err(JwtError::TaskJoinError));
+            }.await;
 
             let _ = tx.send(result);
         });

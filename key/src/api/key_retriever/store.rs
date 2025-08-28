@@ -59,7 +59,7 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
         if key_bytes.is_empty() {
             Err(KeyError::KeyNotFound {
                 id: key_id.id().to_string(),
-                version: Some(self.version),
+                version: self.version,
             })
         } else {
             // Wrap in secure buffer for automatic cleanup
@@ -90,7 +90,6 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
 
     /// Retrieve key with handler for README.md alternative syntax (REMOVED - replaced by main retrieve method)
     /// The new retrieve method with default unwrapping is in mod.rs following README.md patterns
-
     /// Retrieve a key with a specific suffix
     #[inline]
     pub async fn retrieve_with_suffix<F, T>(self, suffix: &str, handler: F) -> T

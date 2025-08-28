@@ -1,10 +1,11 @@
 //! Zstd compression builder following README.md patterns
 
-use crate::{CompressionError, CompressionResult, Result};
+use crate::{CompressionError, Result};
 
 pub mod compress;
 pub mod config;
 pub mod stream;
+pub mod streaming_compress;
 
 // Re-export configuration methods for builder pattern
 // pub use config::*; // Commented out - unused
@@ -39,6 +40,12 @@ pub struct ZstdBuilderWithChunk<L, F> {
     pub(crate) chunk_handler: F,
     pub(crate) error_handler:
         Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
+}
+
+impl Default for ZstdBuilder<NoLevel> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ZstdBuilder<NoLevel> {

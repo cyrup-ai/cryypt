@@ -10,7 +10,10 @@
 #![feature(negative_impls)]
 #![feature(marker_trait_attr)]
 
+use cyrup_sugars::prelude::*;
+
 pub mod builder_traits;
+pub mod chunk_types;
 pub mod error;
 pub mod handlers;
 #[doc(hidden)]
@@ -22,11 +25,11 @@ pub mod traits;
 pub use error::*;
 // Handler functions are placeholders - actual implementation is via internal macros
 pub use builder_traits::{
-    AsyncResultWithHandler, ChunkHandler, ErrorHandler, OnChunkBuilder, OnErrorBuilder,
-    OnResultBuilder, ResultHandler,
+    AsyncResultWithHandler, ErrorHandler, OnChunkBuilder, OnErrorBuilder, OnResultBuilder,
+    ResultHandler,
 };
 // Do NOT re-export external sugars/macros publicly
-pub use handlers::{on_chunk, on_error, on_result};
+pub use handlers::{on_error, on_result};
 pub use traits::{
     AsyncDeleteResult, AsyncExistsResult, AsyncGenerateResult, AsyncListResult,
     AsyncRetrieveResult, AsyncStoreResult, NotResult,
@@ -42,8 +45,52 @@ impl BadChunk {
     }
 }
 
-impl Into<Vec<u8>> for BadChunk {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<BadChunk> for Vec<u8> {
+    fn from(val: BadChunk) -> Self {
+        val.0
+    }
+}
+
+/// Data chunk wrapper that implements MessageChunk for cyrup_sugars compatibility
+#[derive(Debug, Clone)]
+pub struct DataChunk {
+    pub data: Vec<u8>,
+    error: Option<String>,
+}
+
+impl DataChunk {
+    /// Create a new data chunk
+    pub fn new(data: Vec<u8>) -> Self {
+        Self { data, error: None }
+    }
+
+    /// Get the data as Vec<u8>
+    pub fn into_data(self) -> Vec<u8> {
+        self.data
+    }
+}
+
+impl MessageChunk for DataChunk {
+    fn bad_chunk(error: String) -> Self {
+        Self {
+            data: format!("[ERROR] {}", error).into_bytes(),
+            error: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
+
+impl From<Vec<u8>> for DataChunk {
+    fn from(data: Vec<u8>) -> Self {
+        Self::new(data)
+    }
+}
+
+impl From<DataChunk> for Vec<u8> {
+    fn from(val: DataChunk) -> Self {
+        val.data
     }
 }

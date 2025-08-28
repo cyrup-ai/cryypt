@@ -22,7 +22,7 @@ pub trait DataBuilder {
         async move {
             let data = tokio::fs::read(path)
                 .await
-                .map_err(|e| crate::CryptError::Io(format!("Failed to read file: {}", e)))?;
+                .map_err(|e| crate::CryptError::Internal(format!("Failed to read file: {}", e)))?;
             Ok(self.with_data(data))
         }
     }
@@ -74,7 +74,7 @@ pub trait CiphertextBuilder {
     {
         async move {
             let data = tokio::fs::read(path).await.map_err(|e| {
-                crate::CryptError::Io(format!("Failed to read ciphertext file: {}", e))
+                crate::CryptError::Internal(format!("Failed to read ciphertext file: {}", e))
             })?;
             Ok(self.with_ciphertext(data))
         }

@@ -86,6 +86,10 @@ pub enum PqCryptoError {
     /// Generic internal error
     #[error("Internal error: {0}")]
     InternalError(String),
+    
+    /// Invalid input provided
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
 }
 
 impl PqCryptoError {

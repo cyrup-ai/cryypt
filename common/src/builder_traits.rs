@@ -9,10 +9,6 @@ use std::task::{Context, Poll};
 pub type ResultHandler<T, U> =
     Box<dyn FnOnce(Result<T, Box<dyn std::error::Error + Send + Sync>>) -> U + Send>;
 
-/// Standard chunk handler type for streaming operations
-pub type ChunkHandler<T> =
-    Box<dyn Fn(Result<T, Box<dyn std::error::Error + Send + Sync>>) -> Option<T> + Send + Sync>;
-
 /// Standard error handler type for error processing
 pub type ErrorHandler<E> = Box<dyn Fn(E) -> E + Send + Sync>;
 
@@ -59,7 +55,7 @@ where
             Poll::Ready(Err(_)) => {
                 if let Some(handler) = this.handler.take() {
                     let error: Box<dyn std::error::Error + Send + Sync> = Box::new(
-                        std::io::Error::new(std::io::ErrorKind::Other, "Task dropped"),
+                        std::io::Error::other("Task dropped"),
                     );
                     Poll::Ready(handler(Err(error)))
                 } else {

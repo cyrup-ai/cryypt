@@ -16,7 +16,7 @@ pub use async_result::{AsyncCompressionResult, AsyncCompressionResultWithHandler
 pub use compression_result::{CompressionAlgorithm, CompressionResult};
 
 // Re-export common macros and handlers from cryypt_common
-pub use cryypt_common::{on_chunk, on_error, on_result};
+pub use cryypt_common::{on_error, on_result};
 
 // Macros are defined but unused - they were replaced with direct implementations
 

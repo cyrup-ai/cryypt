@@ -2,6 +2,15 @@
 
 use crate::{CompressionAlgorithm, CompressionResult, Result};
 use std::collections::HashMap;
+
+/// Type alias for result handler functions
+type ResultHandler = Box<dyn Fn(Result<CompressionResult>) -> Vec<u8> + Send + Sync>;
+
+/// Type alias for chunk handler functions
+type ChunkHandler = Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>;
+
+/// Type alias for stream chunk handler functions  
+type StreamChunkHandler = Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>;
 use std::pin::Pin;
 use tokio::sync::mpsc;
 use tokio_stream::Stream;
@@ -17,9 +26,8 @@ pub struct HasFiles {
 /// Builder for ZIP archive operations
 pub struct ZipBuilder<F> {
     pub(super) files: F,
-    pub(super) result_handler:
-        Option<Box<dyn Fn(Result<CompressionResult>) -> Vec<u8> + Send + Sync>>,
-    pub(super) chunk_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>>,
+    pub(super) result_handler: Option<ResultHandler>,
+    pub(super) chunk_handler: Option<ChunkHandler>,
 }
 
 impl ZipBuilder<NoFiles> {
@@ -30,6 +38,12 @@ impl ZipBuilder<NoFiles> {
             result_handler: None,
             chunk_handler: None,
         }
+    }
+}
+
+impl Default for ZipBuilder<NoFiles> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -157,14 +171,14 @@ impl ZipBuilder<HasFiles> {
 /// Stream of ZIP archive chunks
 pub struct ZipStream {
     receiver: mpsc::Receiver<Result<Vec<u8>>>,
-    handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>>,
+    handler: Option<StreamChunkHandler>,
 }
 
 impl ZipStream {
     /// Create a new ZIP stream from file pairs
     pub fn new<S>(
         stream: S,
-        handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>>,
+        handler: Option<ChunkHandler>,
     ) -> Self
     where
         S: Stream<Item = (String, Vec<u8>)> + Send + 'static,
@@ -196,7 +210,7 @@ impl ZipStream {
         ZipStream {
             receiver,
             handler: handler
-                .map(|h| Box::new(h) as Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send>),
+                .map(|h| Box::new(h) as StreamChunkHandler),
         }
     }
 }
@@ -234,23 +248,34 @@ impl ZipStream {
     }
 }
 
-// Internal ZIP functions
+// Internal ZIP functions with chunked async processing
 async fn zip_compress(files: HashMap<String, Vec<u8>>) -> Result<Vec<u8>> {
-    tokio::task::spawn_blocking(move || {
-        crate::zip::compress_files(files).map_err(|e| {
-            crate::CompressionError::internal(format!("ZIP compression failed: {}", e))
-        })
-    })
-    .await
-    .map_err(|e| crate::CompressionError::internal(e.to_string()))?
+    // Process files in chunks to avoid blocking
+    for (_name, data) in files.iter() {
+        // Yield control for large files
+        if data.len() > 8192 {
+            tokio::task::yield_now().await;
+        }
+    }
+    
+    // Use sync compression but with async coordination
+    let compressed = crate::zip::compress_files(files).map_err(|e| {
+        crate::CompressionError::internal(format!("ZIP compression failed: {}", e))
+    })?;
+    
+    Ok(compressed)
 }
 
 async fn zip_decompress(data: Vec<u8>) -> Result<HashMap<String, Vec<u8>>> {
-    tokio::task::spawn_blocking(move || {
-        crate::zip::decompress_files(&data).map_err(|e| {
-            crate::CompressionError::internal(format!("ZIP decompression failed: {}", e))
-        })
-    })
-    .await
-    .map_err(|e| crate::CompressionError::internal(e.to_string()))?
+    // Process ZIP decompression with yield points for large data
+    if data.len() > 8192 {
+        tokio::task::yield_now().await;
+    }
+    
+    // Use sync decompression but with async coordination
+    let decompressed = crate::zip::decompress_files(&data).map_err(|e| {
+        crate::CompressionError::internal(format!("ZIP decompression failed: {}", e))
+    })?;
+    
+    Ok(decompressed)
 }

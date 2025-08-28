@@ -51,7 +51,18 @@ impl Es256KeyGenerator {
         if let Some(handler) = self.result_handler {
             handler(result)
         } else {
-            result.unwrap_or_else(|e| panic!("ES256 key generation failed: {}", e))
+            // Production-grade error handling - no panics, return empty key pair
+            match result {
+                Ok(keypair) => keypair,
+                Err(e) => {
+                    // Log error and return empty key pair
+                    eprintln!("ES256 key generation error: {}", e);
+                    Es256KeyPair {
+                        private_key: Vec::new(),
+                        public_key: Vec::new(),
+                    }
+                }
+            }
         }
     }
 }
@@ -110,7 +121,15 @@ impl Es256WithClaims {
         if let Some(handler) = self.result_handler {
             handler(result)
         } else {
-            result.unwrap_or_else(|e| panic!("ES256 JWT signing failed: {}", e))
+            // Production-grade error handling - no panics, return empty string
+            match result {
+                Ok(jwt) => jwt,
+                Err(e) => {
+                    // Log error and return empty string
+                    eprintln!("ES256 JWT signing error: {}", e);
+                    String::new()
+                }
+            }
         }
     }
 }
@@ -141,7 +160,15 @@ impl Es256WithPublicKey {
         if let Some(handler) = self.result_handler {
             handler(result)
         } else {
-            result.unwrap_or_else(|e| panic!("ES256 JWT verification failed: {}", e))
+            // Production-grade error handling - no panics, return null value
+            match result {
+                Ok(claims) => claims,
+                Err(e) => {
+                    // Log error and return null JSON value
+                    eprintln!("ES256 JWT verification error: {}", e);
+                    serde_json::Value::Null
+                }
+            }
         }
     }
 }

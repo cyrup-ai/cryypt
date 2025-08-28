@@ -4,9 +4,12 @@
 //! for QUIC transport layer.
 
 use super::config::Auth;
-use super::stream::{FileTransferBuilder, QuicStreamDispatcher};
+use super::file_transfer::FileTransferBuilder;
+use super::stream_dispatcher::QuicStreamDispatcher;
 use crate::{quic_conn::QuicConnectionHandle, Result};
 use std::net::SocketAddr;
+use std::time::Duration;
+use tracing::{info, debug};
 
 /// Persistent QUIC connection for multiplexed protocols
 pub struct QuicConnection {
@@ -16,6 +19,7 @@ pub struct QuicConnection {
 }
 
 impl QuicConnection {
+    #[allow(dead_code)]
     pub(super) fn new(addr: SocketAddr, auth: Option<Auth>) -> Self {
         Self {
             addr,
@@ -47,15 +51,17 @@ impl QuicConnection {
     /// Convenience method: Send a message
     pub async fn send_message(&self, message: impl Into<String>) -> Result<()> {
         let msg = message.into();
-        println!(
-            "📤 Sending message to {} (auth: {})",
-            self.addr,
-            match &self.auth {
-                Some(Auth::MutualTLS { .. }) => "MutualTLS",
-                Some(Auth::PSK { .. }) => "PSK",
-                Some(Auth::Anonymous) => "Anonymous",
-                None => "None",
-            }
+        let auth_type = match &self.auth {
+            Some(Auth::MutualTLS { .. }) => "MutualTLS",
+            Some(Auth::PSK { .. }) => "PSK",
+            Some(Auth::Anonymous) => "Anonymous",
+            None => "None",
+        };
+        
+        info!(
+            addr = %self.addr,
+            auth = auth_type,
+            "Sending message"
         );
 
         if let Some(handle) = &self.handle {
@@ -65,7 +71,7 @@ impl QuicConnection {
             // Send the message over QUIC stream
             let data = msg.as_bytes();
             handle.send_stream_data(data, true)?;
-            println!("    Message sent: {}", msg);
+            debug!(message = %msg, "Message sent");
         } else {
             return Err(crate::CryptoTransportError::Internal(
                 "No active connection".to_string(),
@@ -100,11 +106,38 @@ impl QuicConnection {
 
             // Send RPC request
             handle.send_stream_data(&data, true)?;
-            println!("🔄 RPC {} called on {}", method_str, self.addr);
+            info!(
+                method = %method_str,
+                addr = %self.addr,
+                "RPC method called"
+            );
 
-            // For now, return a mock response since we need to implement receiving
-            // In a complete implementation, we'd wait for the response
-            Ok(format!("{{\"result\": \"Response for {}\"}}", method_str))
+            // Wait for response with timeout
+            let mut event_rx = handle.subscribe_to_events();
+            let timeout_duration = Duration::from_secs(30);
+            
+            let response = tokio::time::timeout(timeout_duration, async {
+                while let Ok(event) = event_rx.recv().await {
+                    if let crate::quic_conn::QuicConnectionEvent::InboundStreamData(_, data) = event {
+                        return String::from_utf8(data).map_err(|e| {
+                            crate::CryptoTransportError::Internal(format!(
+                                "Invalid UTF-8 in response: {}", e
+                            ))
+                        });
+                    }
+                }
+                Err(crate::CryptoTransportError::Internal(
+                    "Connection closed before response".to_string()
+                ))
+            }).await;
+            
+            match response {
+                Ok(Ok(response_str)) => Ok(response_str),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(crate::CryptoTransportError::Internal(
+                    "RPC timeout".to_string()
+                )),
+            }
         } else {
             Err(crate::CryptoTransportError::Internal(
                 "No active connection".to_string(),

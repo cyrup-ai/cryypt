@@ -1,8 +1,17 @@
 //! CLI module for command-line interface functionality
 
+pub mod auth;
 pub mod commands;
+pub mod crud_operations;
+pub mod data_ops;
 pub mod key_ops;
+pub mod passphrase_operations;
+pub mod query_operations;
 pub mod run_command;
+pub mod save_ops;
+pub mod search_ops;
+pub mod security_ops;
+pub mod unlock_operations;
 pub mod vault_ops;
 
 use crate::core::Vault;
@@ -42,13 +51,13 @@ pub async fn process_command(
             version,
             bits,
             store,
-        } => key_ops::handle_generate_key(&namespace, version, bits, &store, use_json).await,
+        } => key_ops::handle_generate_key(vault, &namespace, version, bits, &store, use_json).await,
 
         Commands::RetrieveKey {
             namespace,
             version,
             store,
-        } => key_ops::handle_retrieve_key(&namespace, version, &store, use_json).await,
+        } => key_ops::handle_retrieve_key(vault, &namespace, version, &store, use_json).await,
 
         Commands::BatchGenerateKeys {
             namespace,
@@ -57,8 +66,10 @@ pub async fn process_command(
             count,
             store,
         } => {
-            key_ops::handle_batch_generate_keys(&namespace, version, bits, count, &store, use_json)
-                .await
+            key_ops::handle_batch_generate_keys(
+                vault, &namespace, version, bits, count, &store, use_json,
+            )
+            .await
         }
     }
 }

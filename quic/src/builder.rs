@@ -1,13 +1,13 @@
 //! QUIC crypto configuration builder
 use super::error::{CryptoTransportError, Result};
+use super::quic::config::Auth;
 use std::sync::Arc;
 
 /// QUIC crypto configuration
 pub struct QuicCryptoConfig {
     // Store builder params instead of built config
     pub alpn_protocols: Vec<Vec<u8>>,
-    pub cert_path: Option<String>,
-    pub key_path: Option<String>,
+    pub auth_config: Option<Auth>,
     pub verify_peer: bool,
     pub max_idle_timeout: u64,
     pub max_udp_payload_size: u64,
@@ -27,8 +27,7 @@ impl QuicCryptoConfig {
     pub fn new() -> Self {
         Self {
             alpn_protocols: vec![b"cryypt/1".to_vec()],
-            cert_path: None,
-            key_path: None,
+            auth_config: None,
             verify_peer: true,
             max_idle_timeout: 30_000,
             max_udp_payload_size: 1350,
@@ -46,20 +45,22 @@ impl QuicCryptoConfig {
 
     /// Set certificate chain
     pub fn set_cert_chain(&mut self, cert: Vec<u8>) {
-        // For now, we'll need to write cert to a temp file
-        // In production, we'd handle this better
-        self.cert_path = Some("/tmp/cert.pem".to_string());
-        // Write cert to file
-        std::fs::write("/tmp/cert.pem", cert).ok();
+        self.auth_config = Some(Auth::MutualTLS {
+            cert,
+            key: self.auth_config.as_ref()
+                .and_then(|auth| if let Auth::MutualTLS { key, .. } = auth { Some(key.clone()) } else { None })
+                .unwrap_or_default(),
+        });
     }
 
     /// Set private key
     pub fn set_private_key(&mut self, key: Vec<u8>) {
-        // For now, we'll need to write key to a temp file
-        // In production, we'd handle this better
-        self.key_path = Some("/tmp/key.pem".to_string());
-        // Write key to file
-        std::fs::write("/tmp/key.pem", key).ok();
+        self.auth_config = Some(Auth::MutualTLS {
+            cert: self.auth_config.as_ref()
+                .and_then(|auth| if let Auth::MutualTLS { cert, .. } = auth { Some(cert.clone()) } else { None })
+                .unwrap_or_default(),
+            key,
+        });
     }
     /// Create a new quiche::Config
     pub fn build_config(&self) -> Result<quiche::Config> {
@@ -81,13 +82,52 @@ impl QuicCryptoConfig {
         config.set_application_protos(&alpn_refs)?;
 
         // Server-specific
-        if let (Some(cert), Some(key)) = (&self.cert_path, &self.key_path) {
+        if let Some(Auth::MutualTLS { cert, key }) = &self.auth_config {
+            // Write certificates to secure temporary files for quiche API
+            use std::fs;
+            use std::os::unix::fs::PermissionsExt;
+            use tempfile::NamedTempFile;
+            use std::io::Write;
+            
+            let mut cert_file = NamedTempFile::new()
+                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to create temp cert file: {}", e)))?;
+            let mut key_file = NamedTempFile::new()
+                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to create temp key file: {}", e)))?;
+            
+            // Set restrictive permissions (600)
+            fs::set_permissions(cert_file.path(), fs::Permissions::from_mode(0o600))
+                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to set cert permissions: {}", e)))?;
+            fs::set_permissions(key_file.path(), fs::Permissions::from_mode(0o600))
+                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to set key permissions: {}", e)))?;
+            
+            // Write certificate and key data
+            cert_file.write_all(cert)
+                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to write cert: {}", e)))?;
+            key_file.write_all(key)
+                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to write key: {}", e)))?;
+            
+            cert_file.flush()
+                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to flush cert: {}", e)))?;
+            key_file.flush()
+                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to flush key: {}", e)))?;
+            
+            let cert_path = cert_file.path().to_str()
+                .ok_or_else(|| CryptoTransportError::CertificateInvalid(
+                    "Certificate temp file path contains non-UTF-8 characters".to_string()
+                ))?;
             config
-                .load_cert_chain_from_pem_file(cert)
+                .load_cert_chain_from_pem_file(cert_path)
                 .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+                
+            let key_path = key_file.path().to_str()
+                .ok_or_else(|| CryptoTransportError::CertificateInvalid(
+                    "Key temp file path contains non-UTF-8 characters".to_string()
+                ))?;
             config
-                .load_priv_key_from_pem_file(key)
+                .load_priv_key_from_pem_file(key_path)
                 .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+            
+            // Files will be automatically cleaned up when NamedTempFile is dropped
         }
 
         // Client-specific
@@ -195,10 +235,14 @@ impl QuicCryptoBuilder {
         let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
         config.set_application_protos(&alpn_refs)?;
 
+        // Create auth config from cert/key files
+        let cert = std::fs::read(cert_path).map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+        let key = std::fs::read(key_path).map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+        let auth_config = Some(Auth::MutualTLS { cert, key });
+
         Ok(Arc::new(QuicCryptoConfig {
             alpn_protocols: self.alpn_protocols,
-            cert_path: Some(cert_path.to_string()),
-            key_path: Some(key_path.to_string()),
+            auth_config,
             verify_peer: self.verify_peer,
             max_idle_timeout: self.max_idle_timeout,
             max_udp_payload_size: self.max_udp_payload_size,
@@ -230,8 +274,7 @@ impl QuicCryptoBuilder {
 
         Ok(Arc::new(QuicCryptoConfig {
             alpn_protocols: self.alpn_protocols,
-            cert_path: None,
-            key_path: None,
+            auth_config: None,
             verify_peer: self.verify_peer,
             max_idle_timeout: self.max_idle_timeout,
             max_udp_payload_size: self.max_udp_payload_size,

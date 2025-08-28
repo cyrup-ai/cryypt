@@ -1,11 +1,24 @@
 //! Vault API module
 //!
-//! Contains fluent builders for vault operations following README.md patterns
+//! Contains production-ready vault operations decomposed into logical modules
 
-pub mod vault_operations;
+pub mod compression_optimizer;
+pub mod connection_manager;
+pub mod error_recovery;
+pub mod passphrase_manager;
+pub mod stream_buffer;
+pub mod stream_manager;
+pub mod ttl_operations;
+pub mod surrealdb_builder;
+pub mod vault_master_builder;
 
-// Re-export the main operation builders
-pub use vault_operations::{
-    VaultGetHandler, VaultWithKey, VaultWithKeyAndHandler, VaultWithKeyAndTtl,
-    VaultWithKeyAndTtlAndHandler,
-};
+// Re-export all the main types and structs
+pub use compression_optimizer::{CompressionAlgorithm, CompressionOptimizer};
+pub use connection_manager::{ConnectionManager, ConnectionState};
+pub use error_recovery::ErrorRecovery;
+pub use passphrase_manager::PassphraseChanger;
+pub use stream_buffer::StreamBuffer;
+pub use stream_manager::StreamIdManager;
+pub use ttl_operations::VaultWithTtl;
+pub use surrealdb_builder::{SurrealDbBuilder, SurrealDbBuilderWithHandler, SurrealDbBuilderWithChunk};
+pub use vault_master_builder::VaultMasterBuilder;

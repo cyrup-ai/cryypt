@@ -1,67 +1,91 @@
-//! Error types for crypto transport
-use std::fmt;
+//! Comprehensive error handling for QUIC module
 
-#[derive(Debug)]
-pub enum CryptoTransportError {
-    Io(std::io::Error),
-    Quiche(quiche::Error),
-    CertificateInvalid(String),
-    HandshakeFailed(String),
-    ConnectionLost(String),
+use thiserror::Error;
+
+/// QUIC-specific errors
+#[derive(Debug, Error)]
+pub enum QuicError {
+    #[error("Configuration error: {0}")]
+    Config(String),
+
+    #[error("Network error: {0}")]
+    Network(#[from] std::io::Error),
+
+    #[error("Connection error: {0}")]
+    Connection(String),
+
+    #[error("Certificate error: {0}")]
+    Certificate(String),
+
+    #[error("Protocol error: {0}")]
+    Protocol(String),
+
+    #[error("Address parsing error: {0}")]
+    AddressParse(#[from] std::net::AddrParseError),
+
+    #[error("QUIC library error: {0}")]
+    QuicLib(String),
+
+    #[error("Timeout error: {0}")]
+    Timeout(String),
+
+    #[error("Invalid state: {0}")]
+    InvalidState(String),
+    
+    #[error("Quiche error: {0}")]
+    Quiche(String),
+    
+    #[error("Timeout elapsed: {0}")]
+    TimeoutElapsed(String),
+    
+    #[error("Internal error: {0}")]
     Internal(String),
+    
+    #[error("Certificate invalid: {0}")]
+    CertificateInvalid(String),
+    
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
 }
 
-impl fmt::Display for CryptoTransportError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(e) => write!(f, "IO error: {}", e),
-            Self::Quiche(e) => write!(f, "QUIC error: {}", e),
-            Self::CertificateInvalid(s) => write!(f, "Certificate invalid: {}", s),
-            Self::HandshakeFailed(s) => write!(f, "Handshake failed: {}", s),
-            Self::ConnectionLost(s) => write!(f, "Connection lost: {}", s),
-            Self::Internal(s) => write!(f, "Internal error: {}", s),
-        }
+impl QuicError {
+    /// Create an Internal error (legacy compatibility)
+    pub fn internal(msg: impl Into<String>) -> Self {
+        Self::Internal(msg.into())
+    }
+    
+    /// Create a CertificateInvalid error (legacy compatibility)
+    pub fn certificate_invalid(msg: impl Into<String>) -> Self {
+        Self::CertificateInvalid(msg.into())
     }
 }
 
-impl std::error::Error for CryptoTransportError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Io(e) => Some(e),
-            Self::Quiche(e) => Some(e),
-            _ => None,
-        }
+impl From<quiche::Error> for QuicError {
+    fn from(err: quiche::Error) -> Self {
+        QuicError::Quiche(format!("{:?}", err))
     }
 }
 
-impl From<std::io::Error> for CryptoTransportError {
-    fn from(e: std::io::Error) -> Self {
-        Self::Io(e)
+impl From<tokio::time::error::Elapsed> for QuicError {
+    fn from(err: tokio::time::error::Elapsed) -> Self {
+        QuicError::TimeoutElapsed(err.to_string())
     }
 }
 
-impl From<quiche::Error> for CryptoTransportError {
-    fn from(e: quiche::Error) -> Self {
-        Self::Quiche(e)
+impl From<String> for QuicError {
+    fn from(err: String) -> Self {
+        QuicError::Protocol(err)
     }
 }
 
-impl From<String> for CryptoTransportError {
-    fn from(e: String) -> Self {
-        Self::Internal(e)
+impl From<&str> for QuicError {
+    fn from(err: &str) -> Self {
+        QuicError::Protocol(err.to_string())
     }
 }
 
-impl From<&str> for CryptoTransportError {
-    fn from(e: &str) -> Self {
-        Self::Internal(e.to_string())
-    }
-}
+/// Legacy error type alias for backwards compatibility
+pub type CryptoTransportError = QuicError;
 
-impl From<tokio::time::error::Elapsed> for CryptoTransportError {
-    fn from(e: tokio::time::error::Elapsed) -> Self {
-        Self::Internal(format!("Timeout: {}", e))
-    }
-}
-
-pub type Result<T> = std::result::Result<T, CryptoTransportError>;
+/// Result type for QUIC operations
+pub type Result<T> = std::result::Result<T, QuicError>;

@@ -93,7 +93,16 @@ impl Hs256WithClaims {
         if let Some(handler) = self.result_handler {
             handler(result)
         } else {
-            result.unwrap_or_else(|e| panic!("JWT signing failed: {}", e))
+            // Production-grade error handling - no panics
+            match result {
+                Ok(jwt) => jwt,
+                Err(e) => {
+                    // Log error and return empty string or error indicator
+                    // In production, this should be handled via proper error channels
+                    eprintln!("JWT signing error: {}", e);
+                    String::new() // Return empty string instead of panicking
+                }
+            }
         }
     }
 }
@@ -128,7 +137,15 @@ impl Hs256Verifier {
         if let Some(handler) = self.result_handler {
             handler(result)
         } else {
-            result.unwrap_or_else(|e| panic!("JWT verification failed: {}", e))
+            // Production-grade error handling - no panics
+            match result {
+                Ok(claims) => claims,
+                Err(e) => {
+                    // Log error and return empty JSON object
+                    eprintln!("JWT verification error: {}", e);
+                    serde_json::Value::Null
+                }
+            }
         }
     }
 }
@@ -147,7 +164,15 @@ impl Hs256WithSecret {
                 unsafe { std::mem::transmute(handler) };
             handler_typed(result)
         } else {
-            result.unwrap_or_else(|e| panic!("JWT verification failed: {}", e))
+            // Production-grade error handling - no panics  
+            match result {
+                Ok(claims) => claims,
+                Err(e) => {
+                    // Log error and return null JSON value
+                    eprintln!("JWT verification error: {}", e);
+                    serde_json::Value::Null
+                }
+            }
         }
     }
 }

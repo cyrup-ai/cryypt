@@ -2,7 +2,10 @@
 //!
 //! Contains the main builder types, type-state markers, and entry points for Gzip compression.
 
-use crate::{CompressionError, CompressionResult, Result};
+use crate::{CompressionError, Result};
+
+/// Type alias for chunk handler functions
+type ChunkHandler = Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>;
 
 pub mod compress;
 pub mod config;
@@ -24,7 +27,7 @@ pub struct HasLevel(pub u32);
 /// Builder for Gzip compression operations
 pub struct GzipBuilder<L> {
     pub(crate) level: L,
-    pub(crate) chunk_handler: Option<Box<dyn Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync>>,
+    pub(crate) chunk_handler: Option<ChunkHandler>,
     pub(crate) error_handler:
         Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
 }
@@ -42,6 +45,12 @@ pub struct GzipBuilderWithChunk<L, F> {
     pub(crate) chunk_handler: F,
     pub(crate) error_handler:
         Option<Box<dyn Fn(CompressionError) -> CompressionError + Send + Sync>>,
+}
+
+impl Default for GzipBuilder<NoLevel> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GzipBuilder<NoLevel> {

@@ -1,6 +1,7 @@
 use futures::Future;
 use std::sync::Arc;
-use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use tokio::sync::{broadcast, mpsc::unbounded_channel};
+use tracing::{debug, info};
 
 use super::builder::QuicCryptoConfig;
 use super::error::{CryptoTransportError, Result};
@@ -55,22 +56,26 @@ pub fn connect_quic_client(
     }
 }
 
-fn client_event_reporter() -> UnboundedSender<QuicConnectionEvent> {
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+fn client_event_reporter() -> broadcast::Sender<QuicConnectionEvent> {
+    let (tx, mut rx) = broadcast::channel(1000);
     tokio::spawn(async move {
-        while let Some(evt) = rx.recv().await {
+        while let Ok(evt) = rx.recv().await {
             match evt {
                 QuicConnectionEvent::HandshakeCompleted => {
-                    println!("Client: Handshake completed");
+                    info!("Client handshake completed");
                 }
                 QuicConnectionEvent::InboundStreamData(sid, data) => {
-                    println!("Client: Received {} bytes on stream {}", data.len(), sid);
+                    debug!(
+                        stream_id = sid,
+                        bytes = data.len(),
+                        "Client received stream data"
+                    );
                 }
                 QuicConnectionEvent::StreamFinished(sid) => {
-                    println!("Client: Stream {} finished", sid);
+                    debug!(stream_id = sid, "Client stream finished");
                 }
                 QuicConnectionEvent::ConnectionClosed => {
-                    println!("Client: Connection closed");
+                    info!("Client connection closed");
                 }
             }
         }

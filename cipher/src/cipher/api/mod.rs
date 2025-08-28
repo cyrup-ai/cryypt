@@ -48,6 +48,12 @@ pub use cipher_builder_traits::KeyBuilder;
 #[derive(Debug)]
 pub struct CryptoStream;
 
+impl Default for CryptoStream {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CryptoStream {
     /// Create a new crypto stream
     pub fn new() -> Self {

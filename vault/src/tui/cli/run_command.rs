@@ -19,7 +19,7 @@ pub async fn handle_run(
     }
 
     // Ensure the vault is unlocked
-    if let Err(e) = ensure_unlocked(&vault, use_json).await {
+    if let Err(e) = ensure_unlocked(vault, use_json).await {
         if use_json {
             println!(
                 "{}",

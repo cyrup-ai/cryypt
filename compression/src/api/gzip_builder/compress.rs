@@ -179,23 +179,17 @@ async fn gzip_decompress_async(data: Vec<u8>) -> Result<Vec<u8>> {
 // Handler implementations for unwrapping pattern
 impl<F, T> GzipBuilderWithHandler<NoLevel, F, T>
 where
-    F: FnOnce(Result<CompressionResult>) -> T + Send + 'static,
+    F: Fn(Result<Vec<u8>>) -> T + Send + 'static,
     T: cryypt_common::NotResult + Send + 'static,
 {
     /// Compress data using default compression level
     pub async fn compress<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
-        let original_size = data.len();
+        let _original_size = data.len();
 
         let result = gzip_compress_async(data, flate2::Compression::default())
             .await
-            .map(|(compressed, _)| {
-                CompressionResult::with_original_size(
-                    compressed,
-                    CompressionAlgorithm::Gzip { level: Some(6) },
-                    original_size,
-                )
-            });
+            .map(|(compressed, _)| compressed); // Convert to Vec<u8>
 
         (self.result_handler)(result)
     }
@@ -204,9 +198,7 @@ where
     pub async fn decompress<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
 
-        let result = gzip_decompress_async(data).await.map(|decompressed| {
-            CompressionResult::new(decompressed, CompressionAlgorithm::Gzip { level: None })
-        });
+        let result = gzip_decompress_async(data).await; // Already Vec<u8>
 
         (self.result_handler)(result)
     }
@@ -214,25 +206,19 @@ where
 
 impl<F, T> GzipBuilderWithHandler<HasLevel, F, T>
 where
-    F: FnOnce(Result<CompressionResult>) -> T + Send + 'static,
+    F: Fn(Result<Vec<u8>>) -> T + Send + 'static,
     T: cryypt_common::NotResult + Send + 'static,
 {
     /// Compress data using specified compression level
     pub async fn compress<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
-        let original_size = data.len();
+        let _original_size = data.len();
         let level = self.level.0;
 
         let flate_level = flate2::Compression::new(level);
         let result = gzip_compress_async(data, flate_level)
             .await
-            .map(|(compressed, _)| {
-                CompressionResult::with_original_size(
-                    compressed,
-                    CompressionAlgorithm::Gzip { level: Some(level) },
-                    original_size,
-                )
-            });
+            .map(|(compressed, _)| compressed); // Convert to Vec<u8>
 
         (self.result_handler)(result)
     }
@@ -241,9 +227,7 @@ where
     pub async fn decompress<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
 
-        let result = gzip_decompress_async(data).await.map(|decompressed| {
-            CompressionResult::new(decompressed, CompressionAlgorithm::Gzip { level: None })
-        });
+        let result = gzip_decompress_async(data).await; // Already Vec<u8>
 
         (self.result_handler)(result)
     }

@@ -13,7 +13,7 @@
 //! ### Hashing
 //! - `sha256` - SHA-256 hashing
 //! - `sha3` - SHA3-256 hashing (also enables sha3-384, sha3-512)
-//! - `blake2b` - BLAKE2b hashing
+//! - `blake2b` - `BLAKE2b` hashing
 //!
 //! ### Compression
 //! - `zstd` - Zstandard compression (recommended)
@@ -216,10 +216,9 @@ pub use cryypt_hashing::on_result as hash_on_result;
     docsrs,
     doc(cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b")))
 )]
-pub use cryypt_hashing::on_chunk as hash_on_chunk;
+// Removed on_chunk re-export as it's no longer available
 
 // === Compression Re-exports ===
-
 #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
 #[cfg_attr(
     docsrs,
@@ -271,7 +270,7 @@ pub mod prelude {
     pub use crate::Cipher;
 
     #[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
-    pub use crate::{Hash, HashResult, hash_on_chunk, hash_on_result};
+    pub use crate::{Hash, HashResult, hash_on_result};
 
     #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
     pub use crate::Compress;

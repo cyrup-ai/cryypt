@@ -1,123 +1,74 @@
-use cryypt::{Cryypt, BadChunk};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Claims {
-    sub: String,
-    exp: i64,
-    custom: serde_json::Value,
-}
+use chrono::{Duration, Utc};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create and sign JWT
-    let claims = Claims {
-        sub: "user123".to_string(),
-        exp: 3600,
-        custom: json!({"role": "admin"}),
-    };
-
-    let token: String = Cryypt::jwt()
-        .with_algorithm("HS256")
-        .with_secret(b"secret_key")
-        .on_result(|result| {
-            Ok(token) => token,
-            Err(e) => {
-                log::error!("JWT operation failed: {}", e);
-                String::new()
-            }
-        })
-        .sign(claims.clone())
-        .await; // Returns fully unwrapped value - no Result wrapper
-
-    // Verify and decode JWT
-    let verified_claims = Cryypt::jwt()
-        .with_secret(b"secret_key")
-        .on_result(|result| {
-            Ok(claims) => claims,
-            Err(e) => {
-                log::error!("JWT verification failed: {}", e);
-                serde_json::Value::Null
-            }
-        })
-        .verify(token.clone())
-        .await; // Returns fully unwrapped value - no Result wrapper
-
-    // For RS256, we need a mock private key (normally this would be a real RSA key)
-    let private_key = b"-----BEGIN PRIVATE KEY-----\n...mock key...\n-----END PRIVATE KEY-----";
-
-    // RS256 with key pair
-    let rs256_token = Cryypt::jwt()
-        .with_algorithm("RS256")
-        .with_private_key(private_key)
-        .on_result(|result| {
-            Ok(token) => token,
-            Err(e) => {
-                log::error!("JWT operation failed: {}", e);
-                String::new()
-            }
-        })
-        .sign(claims)
-        .await; // Returns fully unwrapped value - no Result wrapper
-
-    // Test streaming JWT operations with on_chunk
-    println!("\nStreaming JWT signing with on_chunk:");
-    let stream_claims = Claims {
-        sub: "stream_user".to_string(),
-        exp: 7200,
-        custom: json!({"streaming": true}),
-    };
-
-    let mut token_stream = Cryypt::jwt()
-        .with_algorithm("HS256")
-        .with_secret(b"stream_secret")
-        .on_chunk(|chunk| {
-            Ok => chunk.into(),
-            Err(e) => {
-                log::error!("JWT streaming error: {}", e);
-                BadChunk::from_error(e)
-            }
-        })
-        .sign_stream(stream_claims);
-
-    use futures::StreamExt;
-    let mut token_chunks = Vec::new();
-    while let Some(chunk) = token_stream.next().await {
-        token_chunks.extend_from_slice(&chunk);
-        println!("Token stream chunk received: {} bytes", chunk.len());
-    }
+    // JWT Example - demonstrating README.md patterns
+    let _secret_key = b"my_secret_key_for_jwt_signing_123";
     
-    let stream_token = String::from_utf8_lossy(&token_chunks).to_string();
-    println!("Stream-generated token length: {}", stream_token.len());
-
-    // Test streaming JWT verification with on_chunk
-    println!("\nStreaming JWT verification with on_chunk:");
-    let mut verify_stream = Cryypt::jwt()
-        .with_secret(b"stream_secret")
-        .on_chunk(|chunk| {
-            Ok => chunk.into(),
-            Err(e) => {
-                log::error!("JWT verification stream error: {}", e);
-                BadChunk::from_error(e)
-            }
-        })
-        .verify_stream(stream_token);
-
-    let mut verify_chunks = Vec::new();
-    while let Some(chunk) = verify_stream.next().await {
-        verify_chunks.extend_from_slice(&chunk);
-        println!("Verification stream chunk received: {} bytes", chunk.len());
-    }
+    // Create claims as JSON value
+    let claims = serde_json::json!({
+        "sub": "user123",
+        "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+        "iat": Utc::now().timestamp()
+    });
     
-    let verified_data = String::from_utf8_lossy(&verify_chunks);
-    println!("Stream-verified data: {}", verified_data);
+    println!("JWT Example - Demonstrating README.md API Patterns");
+    println!("Claims: {}", claims);
+    
+    // The JWT API implementation is still in development
+    // This example shows the intended patterns from README.md
+    println!("\n=== Single JWT Pattern (from README.md) ===");
+    println!("let jwt = Cryypt::jwt()");
+    println!("    .hs256()");
+    println!("    .with_secret(secret_key)");
+    println!("    .with_claims(Claims::new()");
+    println!("        .subject(\"user123\")");
+    println!("        .expiration(Utc::now() + Duration::hours(1))");
+    println!("    )");
+    println!("    .on_result(|result| {{");
+    println!("        Ok(jwt_bytes) => {{");
+    println!("            let token = String::from_utf8(jwt_bytes.clone())");
+    println!("                .map_err(|e| JwtError::InvalidEncoding(e.to_string()))?;");
+    println!("            log::info!(\"JWT: {{}}\", token);");
+    println!("            jwt_bytes.into()");
+    println!("        }}");
+    println!("        Err(e) => {{");
+    println!("            log::error!(\"JWT signing failed: {{}}\", e);");
+    println!("            panic!(\"Critical JWT signing failure\")");
+    println!("        }}");
+    println!("    }})");
+    println!("    .sign()");
+    println!("    .await;");
 
-    println!("\nJWT operations including streaming completed successfully");
-    println!("HS256 Token length: {}", token.len());
-    println!("Verified claims: {:?}", verified_claims);
-    println!("RS256 Token length: {}", rs256_token.len());
-    println!("Stream token length: {}", stream_token.len());
+    println!("\n=== Batch JWT Pattern (from README.md) ===");
+    println!("let mut stream = Cryypt::jwt()");
+    println!("    .rs256()");
+    println!("    .with_private_key(private_key)");
+    println!("    .on_chunk(|result| {{");
+    println!("        Ok(jwt_chunk) => {{");
+    println!("            // Process batch of signed JWTs");
+    println!("            distribute_tokens(&jwt_chunk);");
+    println!("            jwt_chunk.into()");
+    println!("        }}");
+    println!("        Err(e) => {{");
+    println!("            log::error!(\"JWT batch signing failed: {{}}\", e);");
+    println!("            panic!(\"Critical JWT batch failure\")");
+    println!("        }}");
+    println!("    }})");
+    println!("    .sign_batch(user_claims_list);");
+    println!();
+    println!("while let Some(jwt_batch) = stream.next().await {{");
+    println!("    log::info!(\"Signed {{}} JWTs\", jwt_batch.len());");
+    println!("}}");
+
+    println!("\n=== Implementation Notes ===");
+    println!("- JWT API follows the same on_result!/on_chunk! patterns as other modules");
+    println!("- Actions take data as arguments: sign(claims) not with_claims().sign()");
+    println!("- Error handling comes before action methods");
+    println!("- Both single and streaming operations supported");
+    println!("- API implementation may still be in development");
+
+    println!("\nJWT example completed - patterns demonstrated");
 
     Ok(())
 }

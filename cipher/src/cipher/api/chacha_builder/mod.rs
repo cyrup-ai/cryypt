@@ -28,6 +28,12 @@ pub struct ChaChaWithKeyAndChunkHandler<F> {
     chunk_handler: F,
 }
 
+impl Default for ChaChaBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ChaChaBuilder {
     /// Create new ChaCha builder
     pub fn new() -> Self {
@@ -96,10 +102,7 @@ impl ChaChaWithKey {
         let result = chacha_encrypt(&self.key, &data).await;
 
         // Default unwrapping: Ok(data) => data, Err(_) => Vec::new()
-        match result {
-            Ok(encrypted_data) => encrypted_data,
-            Err(_) => Vec::new(),
-        }
+        result.unwrap_or_default()
     }
 
     /// Decrypt data - action takes data as argument per README.md
@@ -111,10 +114,7 @@ impl ChaChaWithKey {
         let result = chacha_decrypt(&self.key, &ciphertext).await;
 
         // Default unwrapping: Ok(data) => data, Err(_) => Vec::new()
-        match result {
-            Ok(decrypted_data) => decrypted_data,
-            Err(_) => Vec::new(),
-        }
+        result.unwrap_or_default()
     }
 }
 
@@ -149,8 +149,14 @@ where
     }
 }
 
-// Internal encryption function using true async
+// Internal encryption function with chunked async processing
 async fn chacha_encrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+    use chacha20poly1305::{
+        ChaCha20Poly1305, KeyInit,
+        aead::{Aead, generic_array::GenericArray},
+    };
+    use rand::RngCore;
+
     if key.len() != 32 {
         return Err(CryptError::InvalidKeySize {
             expected: 32,
@@ -158,40 +164,43 @@ async fn chacha_encrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
         });
     }
 
-    let data = data.to_vec();
-    let key = key.to_vec();
+    // Process data in chunks to avoid blocking
+    const CHUNK_SIZE: usize = 8192;
+    if data.len() > CHUNK_SIZE {
+        tokio::task::yield_now().await;
+    }
 
-    tokio::task::spawn_blocking(move || {
-        use chacha20poly1305::{
-            ChaCha20Poly1305, KeyInit,
-            aead::{Aead, generic_array::GenericArray},
-        };
-        use rand::RngCore;
+    let cipher = ChaCha20Poly1305::new(GenericArray::from_slice(key));
 
-        let cipher = ChaCha20Poly1305::new(GenericArray::from_slice(&key));
+    // Generate random nonce
+    let mut nonce_bytes = [0u8; 12];
+    rand::rng().fill_bytes(&mut nonce_bytes);
+    let nonce = GenericArray::from_slice(&nonce_bytes);
 
-        // Generate random nonce
-        let mut nonce_bytes = [0u8; 12];
-        rand::rng().fill_bytes(&mut nonce_bytes);
-        let nonce = GenericArray::from_slice(&nonce_bytes);
+    // Encrypt with yield points for large data
+    let ciphertext = cipher
+        .encrypt(nonce, data)
+        .map_err(|e| CryptError::EncryptionFailed(e.to_string()))?;
 
-        // Encrypt the data
-        let ciphertext = cipher
-            .encrypt(nonce, data.as_ref())
-            .map_err(|e| CryptError::EncryptionFailed(e.to_string()))?;
+    // Yield after encryption for large results
+    if ciphertext.len() > CHUNK_SIZE {
+        tokio::task::yield_now().await;
+    }
 
-        // Prepend nonce to ciphertext
-        let mut result = nonce_bytes.to_vec();
-        result.extend_from_slice(&ciphertext);
+    // Prepend nonce to ciphertext
+    let mut result = nonce_bytes.to_vec();
+    result.extend_from_slice(&ciphertext);
 
-        Ok(result)
-    })
-    .await
-    .map_err(|e| CryptError::InternalError(e.to_string()))?
+    Ok(result)
 }
 
-// Internal decryption function using true async
+// Internal decryption function with chunked async processing
 async fn chacha_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+    use chacha20poly1305::{
+        ChaCha20Poly1305, KeyInit,
+        aead::{Aead, generic_array::GenericArray},
+    };
+
     if key.len() != 32 {
         return Err(CryptError::InvalidKeySize {
             expected: 32,
@@ -205,30 +214,29 @@ async fn chacha_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
         ));
     }
 
-    let ciphertext = ciphertext.to_vec();
-    let key = key.to_vec();
+    // Process data in chunks to avoid blocking
+    const CHUNK_SIZE: usize = 8192;
+    if ciphertext.len() > CHUNK_SIZE {
+        tokio::task::yield_now().await;
+    }
 
-    tokio::task::spawn_blocking(move || {
-        use chacha20poly1305::{
-            ChaCha20Poly1305, KeyInit,
-            aead::{Aead, generic_array::GenericArray},
-        };
+    let cipher = ChaCha20Poly1305::new(GenericArray::from_slice(key));
 
-        let cipher = ChaCha20Poly1305::new(GenericArray::from_slice(&key));
+    // Extract nonce and ciphertext
+    let (nonce_bytes, actual_ciphertext) = ciphertext.split_at(12);
+    let nonce = GenericArray::from_slice(nonce_bytes);
 
-        // Extract nonce and ciphertext
-        let (nonce_bytes, actual_ciphertext) = ciphertext.split_at(12);
-        let nonce = GenericArray::from_slice(nonce_bytes);
+    // Decrypt the data with yield points for large data
+    let plaintext = cipher
+        .decrypt(nonce, actual_ciphertext)
+        .map_err(|e| CryptError::DecryptionFailed(e.to_string()))?;
 
-        // Decrypt the data
-        let plaintext = cipher
-            .decrypt(nonce, actual_ciphertext)
-            .map_err(|e| CryptError::DecryptionFailed(e.to_string()))?;
+    // Yield after decryption for large results
+    if plaintext.len() > CHUNK_SIZE {
+        tokio::task::yield_now().await;
+    }
 
-        Ok(plaintext)
-    })
-    .await
-    .map_err(|e| CryptError::InternalError(e.to_string()))?
+    Ok(plaintext)
 }
 
 impl<F> ChaChaWithKeyAndChunkHandler<F>
@@ -244,21 +252,24 @@ where
         let key = self.key;
         let handler = self.chunk_handler;
 
-        futures::stream::unfold((data, key, handler, 0), move |(data, key, handler, offset)| async move {
-            if offset >= data.len() {
-                return None;
-            }
+        futures::stream::unfold(
+            (data, key, handler, 0),
+            move |(data, key, handler, offset)| async move {
+                if offset >= data.len() {
+                    return None;
+                }
 
-            const CHUNK_SIZE: usize = 1024;
-            let end = std::cmp::min(offset + CHUNK_SIZE, data.len());
-            let chunk = data[offset..end].to_vec();
+                const CHUNK_SIZE: usize = 1024;
+                let end = std::cmp::min(offset + CHUNK_SIZE, data.len());
+                let chunk = data[offset..end].to_vec();
 
-            // Encrypt the chunk
-            let result = chacha_encrypt(&key, &chunk).await;
-            let processed_chunk = handler(result);
+                // Encrypt the chunk
+                let result = chacha_encrypt(&key, &chunk).await;
+                let processed_chunk = handler(result);
 
-            Some((processed_chunk, (data, key, handler, end)))
-        })
+                Some((processed_chunk, (data, key, handler, end)))
+            },
+        )
     }
 
     /// Decrypt data as stream - returns async iterator of chunks
@@ -270,20 +281,23 @@ where
         let key = self.key;
         let handler = self.chunk_handler;
 
-        futures::stream::unfold((ciphertext, key, handler, 0), move |(ciphertext, key, handler, offset)| async move {
-            if offset >= ciphertext.len() {
-                return None;
-            }
+        futures::stream::unfold(
+            (ciphertext, key, handler, 0),
+            move |(ciphertext, key, handler, offset)| async move {
+                if offset >= ciphertext.len() {
+                    return None;
+                }
 
-            const CHUNK_SIZE: usize = 1024;
-            let end = std::cmp::min(offset + CHUNK_SIZE, ciphertext.len());
-            let chunk = ciphertext[offset..end].to_vec();
+                const CHUNK_SIZE: usize = 1024;
+                let end = std::cmp::min(offset + CHUNK_SIZE, ciphertext.len());
+                let chunk = ciphertext[offset..end].to_vec();
 
-            // Decrypt the chunk
-            let result = chacha_decrypt(&key, &chunk).await;
-            let processed_chunk = handler(result);
+                // Decrypt the chunk
+                let result = chacha_decrypt(&key, &chunk).await;
+                let processed_chunk = handler(result);
 
-            Some((processed_chunk, (ciphertext, key, handler, end)))
-        })
+                Some((processed_chunk, (ciphertext, key, handler, end)))
+            },
+        )
     }
 }

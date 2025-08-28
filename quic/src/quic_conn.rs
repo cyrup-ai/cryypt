@@ -1,14 +1,14 @@
 use std::{
     collections::VecDeque,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, atomic::{AtomicU64, Ordering}},
 };
 
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::broadcast;
 
-use super::error::Result;
+use super::error::{CryptoTransportError, Result};
 use quiche::{Connection, RecvInfo};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum QuicConnectionEvent {
     HandshakeCompleted,
     InboundStreamData(u64, Vec<u8>),
@@ -19,7 +19,7 @@ pub enum QuicConnectionEvent {
 pub struct QuicConnectionController {
     pub conn: Arc<Mutex<Connection>>,
     pub outbound_queue: Arc<Mutex<VecDeque<OutboundMessage>>>,
-    pub event_tx: UnboundedSender<QuicConnectionEvent>,
+    pub event_tx: broadcast::Sender<QuicConnectionEvent>,
     pub socket: Arc<tokio::net::UdpSocket>,
     pub handshake_done: Arc<Mutex<bool>>,
 }
@@ -28,6 +28,7 @@ pub struct QuicConnectionController {
 pub struct OutboundMessage {
     data: Vec<u8>,
     fin: bool,
+    stream_id: Option<u64>,
 }
 
 /// Public handle for user calls. If you need future-based methods, return `impl Future`.
@@ -43,10 +44,15 @@ impl QuicConnectionHandle {
 
     /// For sending data, no blocking—immediately enqueues partial data if flow control halts.
     pub fn send_stream_data(&self, data: &[u8], fin: bool) -> Result<()> {
-        let mut queue = self.controller.outbound_queue.lock().unwrap();
+        let mut queue = self.controller.outbound_queue.lock().map_err(|_| {
+            crate::error::CryptoTransportError::Internal(
+                "Failed to acquire outbound queue lock".to_string(),
+            )
+        })?;
         queue.push_back(OutboundMessage {
             data: data.to_vec(),
             fin,
+            stream_id: None,
         });
         Ok(())
     }
@@ -60,97 +66,133 @@ impl QuicConnectionHandle {
         async move {
             loop {
                 {
-                    let is_done = *ctrl.handshake_done.lock().unwrap();
+                    let is_done = *ctrl.handshake_done.lock().map_err(|_| {
+                        CryptoTransportError::from("Failed to acquire handshake lock")
+                    })?;
                     if is_done {
                         return Ok(());
                     }
                 }
-                // Sleep a short time so we re-check. Could integrate wakers or quiche events.
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                // Reduced polling frequency for better performance
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             }
         }
+    }
+
+    /// Get access to the controller for advanced operations
+    /// This is used internally for stream integration
+    #[allow(dead_code)]
+    pub(crate) fn controller(&self) -> &Arc<QuicConnectionController> {
+        &self.controller
+    }
+
+    /// Subscribe to events for RPC response handling
+    pub fn subscribe_to_events(&self) -> broadcast::Receiver<QuicConnectionEvent> {
+        self.controller.event_tx.subscribe()
+    }
+    
+    /// Send data to a specific stream ID
+    pub fn send_stream_data_with_id(&self, stream_id: u64, data: &[u8], fin: bool) -> Result<()> {
+        let mut queue = self.controller.outbound_queue.lock().map_err(|_| {
+            crate::error::CryptoTransportError::Internal(
+                "Failed to acquire outbound queue lock".to_string(),
+            )
+        })?;
+        queue.push_back(OutboundMessage {
+            data: data.to_vec(),
+            fin,
+            stream_id: Some(stream_id),
+        });
+        Ok(())
     }
 }
 
 /// Main QUIC connection loop: fully non-blocking, no "WouldBlock," no partial blocking calls.
 /// We define it as a normal function returning `impl Future<Output=Result<()>>`.
-pub fn quic_connection_main_loop(
+pub async fn quic_connection_main_loop(
     controller: Arc<QuicConnectionController>,
-) -> impl std::future::Future<Output = Result<()>> + Send + 'static {
-    async move {
-        let mut recv_buf = vec![0u8; 65535];
+) -> Result<()> {
+    let mut recv_buf = vec![0u8; 65535];
 
-        loop {
-            // Read an incoming packet
-            let (len, from_addr) = controller.socket.recv_from(&mut recv_buf).await?;
-            {
-                let mut conn_guard = controller.conn.lock().unwrap();
-                let recv_info = RecvInfo {
-                    from: from_addr,
-                    to: controller.socket.local_addr()?,
-                };
-                match conn_guard.recv(&mut recv_buf[..len], recv_info) {
-                    Ok(_) => {
-                        drop(conn_guard);
-                        process_readable_streams(&controller)?;
-                        check_handshake_complete(&controller)?;
-                    }
-                    Err(quiche::Error::Done) => {
-                        // no data in that packet
-                    }
-                    Err(e) => {
-                        return Err(e.into());
-                    }
-                }
-            }
-
-            // Attempt to flush queued outbound data
-            flush_outbound(&controller)?;
-
-            // Then flush QUIC packets to the UDP socket
-            let mut out_buf = [0u8; 65535];
-            loop {
-                let send_result = {
-                    let mut conn_guard = controller.conn.lock().unwrap();
-                    conn_guard.send(&mut out_buf)
-                };
-
-                match send_result {
-                    Ok((written, send_info)) => {
-                        controller
-                            .socket
-                            .send_to(&out_buf[..written], send_info.to)
-                            .await?;
-                    }
-                    Err(quiche::Error::Done) => {
-                        break;
-                    }
-                    Err(e) => {
-                        return Err(e.into());
-                    }
-                }
-            }
-
-            // Check if closed
-            {
-                let conn_guard = controller.conn.lock().unwrap();
-                if conn_guard.is_closed() {
+    loop {
+        // Read an incoming packet
+        let (len, from_addr) = controller.socket.recv_from(&mut recv_buf).await?;
+        {
+            let mut conn_guard = controller
+                .conn
+                .lock()
+                .map_err(|_| CryptoTransportError::from("Failed to acquire connection lock"))?;
+            let recv_info = RecvInfo {
+                from: from_addr,
+                to: controller.socket.local_addr()?,
+            };
+            match conn_guard.recv(&mut recv_buf[..len], recv_info) {
+                Ok(_) => {
                     drop(conn_guard);
-                    let _ = controller
-                        .event_tx
-                        .send(QuicConnectionEvent::ConnectionClosed);
-                    break;
+                    process_readable_streams(&controller)?;
+                    check_handshake_complete(&controller)?;
+                }
+                Err(quiche::Error::Done) => {
+                    // no data in that packet
+                }
+                Err(e) => {
+                    return Err(e.into());
                 }
             }
         }
 
-        Ok(())
+        // Attempt to flush queued outbound data
+        flush_outbound(&controller)?;
+
+        // Then flush QUIC packets to the UDP socket
+        let mut out_buf = [0u8; 65535];
+        loop {
+            let send_result = {
+                let mut conn_guard = controller.conn.lock().map_err(|_| {
+                    CryptoTransportError::from("Failed to acquire connection lock for send")
+                })?;
+                conn_guard.send(&mut out_buf)
+            };
+
+            match send_result {
+                Ok((written, send_info)) => {
+                    controller
+                        .socket
+                        .send_to(&out_buf[..written], send_info.to)
+                        .await?;
+                }
+                Err(quiche::Error::Done) => {
+                    break;
+                }
+                Err(e) => {
+                    return Err(e.into());
+                }
+            }
+        }
+
+        // Check if closed
+        {
+            let conn_guard = controller.conn.lock().map_err(|_| {
+                CryptoTransportError::from("Failed to acquire connection lock for close check")
+            })?;
+            if conn_guard.is_closed() {
+                drop(conn_guard);
+                let _ = controller
+                    .event_tx
+                    .send(QuicConnectionEvent::ConnectionClosed);
+                break;
+            }
+        }
     }
+
+    Ok(())
 }
 
 fn check_handshake_complete(controller: &Arc<QuicConnectionController>) -> Result<()> {
     let is_established = {
-        let conn_guard = controller.conn.lock().unwrap();
+        let conn_guard = controller.conn.lock().map_err(|_| {
+            CryptoTransportError::from("Failed to acquire connection lock for handshake check")
+        })?;
         conn_guard.is_established()
     };
 
@@ -159,7 +201,10 @@ fn check_handshake_complete(controller: &Arc<QuicConnectionController>) -> Resul
     }
 
     let should_send_event = {
-        let mut done = controller.handshake_done.lock().unwrap();
+        let mut done = controller
+            .handshake_done
+            .lock()
+            .map_err(|_| CryptoTransportError::from("Failed to acquire handshake done lock"))?;
         if !*done {
             *done = true;
             true
@@ -179,7 +224,9 @@ fn check_handshake_complete(controller: &Arc<QuicConnectionController>) -> Resul
 
 fn process_readable_streams(controller: &Arc<QuicConnectionController>) -> Result<()> {
     let readable_streams: Vec<u64> = {
-        let conn_guard = controller.conn.lock().unwrap();
+        let conn_guard = controller.conn.lock().map_err(|_| {
+            CryptoTransportError::from("Failed to acquire connection lock for readable streams")
+        })?;
         conn_guard.readable().collect()
     };
 
@@ -187,7 +234,9 @@ fn process_readable_streams(controller: &Arc<QuicConnectionController>) -> Resul
         loop {
             let mut buf = vec![0u8; 65535];
             let result = {
-                let mut conn_guard = controller.conn.lock().unwrap();
+                let mut conn_guard = controller.conn.lock().map_err(|_| {
+                    CryptoTransportError::from("Failed to acquire connection lock for stream recv")
+                })?;
                 conn_guard.stream_recv(stream_id, &mut buf)
             };
 
@@ -215,15 +264,31 @@ fn process_readable_streams(controller: &Arc<QuicConnectionController>) -> Resul
     Ok(())
 }
 
+// Centralized stream ID generator for consistency across the codebase
+pub fn generate_next_stream_id() -> u64 {
+    static STREAM_COUNTER: AtomicU64 = AtomicU64::new(0);
+    STREAM_COUNTER.fetch_add(4, Ordering::SeqCst) + 4
+}
+
 fn flush_outbound(controller: &Arc<QuicConnectionController>) -> Result<()> {
-    let mut conn_guard = controller.conn.lock().unwrap();
-    let mut queue = controller.outbound_queue.lock().unwrap();
+    let mut conn_guard = controller
+        .conn
+        .lock()
+        .map_err(|_| CryptoTransportError::from("Failed to acquire connection lock for flush"))?;
+    let mut queue = controller.outbound_queue.lock().map_err(|_| {
+        CryptoTransportError::from("Failed to acquire outbound queue lock for flush")
+    })?;
 
     let i = 0;
     while i < queue.len() {
         let msg = &mut queue[i];
-        // Use a deterministic stream ID for now (proper stream management would be more complex)
-        let stream_id = (i as u64) * 4; // Client-initiated bidirectional streams start at 0 and increment by 4
+        
+        // Proper stream ID allocation
+        let stream_id = if let Some(id) = msg.stream_id {
+            id
+        } else {
+            generate_next_stream_id()
+        };
 
         let mut offset = 0;
         while offset < msg.data.len() {
@@ -250,6 +315,7 @@ fn flush_outbound(controller: &Arc<QuicConnectionController>) -> Result<()> {
             msg.data = leftover;
             break;
         } else {
+            // Message fully sent, remove from queue
             queue.remove(i);
             // Don't increment i since we removed an element
         }

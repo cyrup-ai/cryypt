@@ -36,7 +36,8 @@ pub struct TransferResult {
 
 /// Internal protocol messages (hidden from users)
 #[derive(Debug, Serialize, Deserialize)]
-enum FileTransferMessage {
+#[allow(dead_code)]
+pub(crate) enum FileTransferMessage {
     UploadRequest {
         file_id: Uuid,
         filename: String,
@@ -67,8 +68,9 @@ enum FileTransferMessage {
         files: Vec<FileMetadata>,
     },
     DownloadRequest {
+        file_id: Uuid,
         filename: String,
-        offset: u64,
+        resume_offset: Option<u64>,
     },
 }
 

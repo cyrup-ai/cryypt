@@ -2,7 +2,8 @@
 //!
 //! Contains symmetric key generation logic with cryptographically secure random bytes.
 
-use super::{KeyGeneratorReady, SecureKeyBuffer, StreamConfig, generate_secure_key_id};
+use super::core_types::{SecureKeyBuffer, generate_secure_key_id};
+use super::{KeyGeneratorReady, StreamConfig};
 use crate::{
     KeyError,
     traits::{KeyImport, KeyStorage},

@@ -1,13 +1,14 @@
 //! OS Keychain-based key storage (macOS Keychain, Windows Credential Store, Linux Secret Service)
+//!
+//! Uses channel-based async keychain service for "True async with channels" architecture compliance.
 
-use crate::KeyError;
+
 use crate::{
     KeyId,
     store_results::{DeleteResult, ExistsResult, ListResult, RetrieveResult, StoreResult},
     traits::{KeyEnumeration, KeyImport, KeyRetrieval, KeyStorage},
 };
-use base64::{Engine, engine::general_purpose::STANDARD};
-use zeroize::Zeroizing;
+use super::keychain_service::get_keychain_service;
 
 /// OS Keychain store
 #[derive(Clone)]
@@ -37,20 +38,10 @@ impl KeyStorage for KeychainStore {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || {
-                let keyring = keyring::Entry::new(&service_name, &key_id_str)
-                    .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
-
-                match keyring.get_password() {
-                    Ok(_) => Ok(true),
-                    Err(keyring::Error::NoEntry) => Ok(false),
-                    Err(e) => Err(KeyError::Io(format!("Keychain error: {}", e))),
-                }
-            })
-            .await
-            .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))
-            .and_then(|r| r);
-
+            let result = match get_keychain_service().await {
+                Ok(service) => service.exists(service_name, key_id_str).await,
+                Err(e) => Err(e),
+            };
             let _ = tx.send(result);
         });
 
@@ -64,20 +55,10 @@ impl KeyStorage for KeychainStore {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || {
-                let keyring = keyring::Entry::new(&service_name, &key_id_str)
-                    .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
-
-                keyring
-                    .delete_credential()
-                    .map_err(|e| KeyError::Io(format!("Failed to delete from keychain: {}", e)))?;
-
-                Ok(())
-            })
-            .await
-            .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))
-            .and_then(|r| r);
-
+            let result = match get_keychain_service().await {
+                Ok(service) => service.delete(service_name, key_id_str).await,
+                Err(e) => Err(e),
+            };
             let _ = tx.send(result);
         });
 
@@ -89,25 +70,15 @@ impl KeyImport for KeychainStore {
     fn store(&self, key_id: &dyn KeyId, key_material: &[u8]) -> StoreResult {
         let service_name = self.service_name.clone();
         let key_id_str = key_id.full_id();
-        let encoded = Zeroizing::new(STANDARD.encode(key_material));
+        let key_material = key_material.to_vec();
 
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || {
-                let keyring = keyring::Entry::new(&service_name, &key_id_str)
-                    .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
-
-                keyring
-                    .set_password(&encoded)
-                    .map_err(|e| KeyError::Io(format!("Failed to store in keychain: {}", e)))?;
-
-                Ok(())
-            })
-            .await
-            .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))
-            .and_then(|r| r);
-
+            let result = match get_keychain_service().await {
+                Ok(service) => service.store(service_name, key_id_str, key_material).await,
+                Err(e) => Err(e),
+            };
             let _ = tx.send(result);
         });
 
@@ -123,22 +94,10 @@ impl KeyRetrieval for KeychainStore {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || {
-                let keyring = keyring::Entry::new(&service_name, &key_id_str)
-                    .map_err(|e| KeyError::Io(format!("Keychain error: {}", e)))?;
-
-                let encoded = keyring
-                    .get_password()
-                    .map_err(|e| KeyError::Io(format!("Failed to read from keychain: {}", e)))?;
-
-                STANDARD
-                    .decode(&encoded)
-                    .map_err(|e| KeyError::Io(format!("Invalid key format: {}", e)))
-            })
-            .await
-            .map_err(|e| KeyError::internal(format!("Task failed: {}", e)))
-            .and_then(|r| r);
-
+            let result = match get_keychain_service().await {
+                Ok(service) => service.retrieve(service_name, key_id_str).await,
+                Err(e) => Err(e),
+            };
             let _ = tx.send(result);
         });
 
@@ -147,14 +106,17 @@ impl KeyRetrieval for KeychainStore {
 }
 
 impl KeyEnumeration for KeychainStore {
-    fn list(&self, _namespace_pattern: &str) -> ListResult {
+    fn list(&self, namespace_pattern: &str) -> ListResult {
+        let service_name = self.service_name.clone();
+        let namespace_pattern = namespace_pattern.to_string();
+
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
-            // Most OS keychains don't support listing
-            let result = Err(KeyError::Io(
-                "Keychain does not support listing keys".into(),
-            ));
+            let result = match get_keychain_service().await {
+                Ok(service) => service.list(service_name, namespace_pattern).await,
+                Err(e) => Err(e),
+            };
             let _ = tx.send(result);
         });
 

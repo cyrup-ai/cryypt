@@ -22,21 +22,21 @@ impl ClosureCallTracker {
     }
 
     fn was_called(&self) -> bool {
-        *self.called.lock().unwrap()
+        *self.called.lock().expect("Mutex poisoned - test infrastructure failure")
     }
 
     fn call_count(&self) -> u32 {
-        *self.call_count.lock().unwrap()
+        *self.call_count.lock().expect("Mutex poisoned - test infrastructure failure")
     }
 
     fn last_error(&self) -> Option<String> {
-        self.last_error.lock().unwrap().clone()
+        self.last_error.lock().expect("Mutex poisoned - test infrastructure failure").clone()
     }
 
     fn mark_called(&self, error_msg: Option<String>) {
-        *self.called.lock().unwrap() = true;
-        *self.call_count.lock().unwrap() += 1;
-        *self.last_error.lock().unwrap() = error_msg;
+        *self.called.lock().expect("Mutex poisoned - test infrastructure failure") = true;
+        *self.call_count.lock().expect("Mutex poisoned - test infrastructure failure") += 1;
+        *self.last_error.lock().expect("Mutex poisoned - test infrastructure failure") = error_msg;
     }
 }
 

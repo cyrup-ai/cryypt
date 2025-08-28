@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use tracing::warn;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VaultConfig {
@@ -31,11 +32,14 @@ impl Default for VaultConfig {
         let config_dir = PathBuf::from("./tmp/cryypt");
 
         // Create the directory if it doesn't exist
-        if !config_dir.exists() {
-            if let Err(e) = std::fs::create_dir_all(&config_dir) {
-                eprintln!("Warning: Failed to create config directory: {}", e);
+        if !config_dir.exists()
+            && let Err(e) = std::fs::create_dir_all(&config_dir) {
+                warn!(
+                    path = %config_dir.display(),
+                    error = %e,
+                    "Failed to create config directory"
+                );
             }
-        }
 
         // Set appropriate permissions on Unix systems
         #[cfg(unix)]

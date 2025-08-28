@@ -129,50 +129,48 @@ pub struct NonceManager {
 
 impl NonceManager {
     /// Construct a manager from a master SecretKey and optional Config
-    pub fn new(master: &NonceSecretKey, cfg: Option<NonceConfig>) -> Self {
+    pub fn new(master: &NonceSecretKey, cfg: Option<NonceConfig>) -> crate::error::Result<Self> {
+        use crate::error::CipherError;
+
         // Domain-separated MAC key via HKDF-SHA3-512
         let hk = Hkdf::<Sha3_512>::new(None, master.as_bytes());
         let mut okm = Zeroizing::new([0u8; 64]);
         hk.expand(HKDF_INFO_HMAC, &mut okm[..])
-            .expect("HKDF expand should never fail for valid length");
+            .map_err(|e| CipherError::HkdfExpansion(format!("HKDF expand failed: {}", e)))?;
 
-        Self {
+        Ok(Self {
             mac_key: okm,
             cfg: cfg.unwrap_or_default(),
             seen: DashMap::with_capacity(4096),
-        }
+        })
     }
 
     /// Generate a fresh nonce using the supplied CSPRNG
-    pub fn generate<'a, R>(
+    pub async fn generate<'a, R>(
         &'a self,
         rng: &'a mut R,
-    ) -> impl std::future::Future<Output = Nonce> + 'a
+    ) -> Result<Nonce>
     where
         R: RngCore + CryptoRng,
     {
-        async move {
-            let ts = unix_time_nanos();
-            let mut random = [0u8; RANDOM_BYTES];
-            rng.fill_bytes(&mut random);
+        let ts = unix_time_nanos()?;
+        let mut random = [0u8; RANDOM_BYTES];
+        rng.fill_bytes(&mut random);
 
-            let tag = self.hmac_tag(ts, &random);
+        let tag = self.hmac_tag(ts, &random)?;
 
-            // Assemble raw bytes
-            let mut raw = [0u8; NONCE_BYTES];
-            raw[..TIMESTAMP_BYTES].copy_from_slice(&ts.to_be_bytes());
-            raw[TIMESTAMP_BYTES..TIMESTAMP_BYTES + RANDOM_BYTES].copy_from_slice(&random);
-            raw[TIMESTAMP_BYTES + RANDOM_BYTES..].copy_from_slice(&tag);
+        // Assemble raw bytes
+        let mut raw = [0u8; NONCE_BYTES];
+        raw[..TIMESTAMP_BYTES].copy_from_slice(&ts.to_be_bytes());
+        raw[TIMESTAMP_BYTES..TIMESTAMP_BYTES + RANDOM_BYTES].copy_from_slice(&random);
+        raw[TIMESTAMP_BYTES + RANDOM_BYTES..].copy_from_slice(&tag);
 
-            let encoded = URL_SAFE_NO_PAD.encode(raw);
-            Nonce(encoded)
-        }
+        let encoded = URL_SAFE_NO_PAD.encode(raw);
+        Ok(Nonce(encoded))
     }
 
     /// Convenience wrapper using rand::rng()
-    pub fn generate_os(&self) -> impl std::future::Future<Output = Nonce> + '_ {
-        async move { self.generate(&mut rng()).await }
-    }
+    pub async fn generate_os(&self) -> Result<Nonce> { self.generate(&mut rng()).await }
 
     /// Verify nonce authenticity, freshness and replay
     pub fn verify(&self, encoded: &str) -> Result<ParsedNonce> {
@@ -198,7 +196,7 @@ impl NonceManager {
         tag_arr.copy_from_slice(tag_bytes);
 
         // 1. Constant-time MAC verification
-        let expected_tag = self.hmac_tag(ts, &rand_arr);
+        let expected_tag = self.hmac_tag(ts, &rand_arr)?;
         if expected_tag.ct_eq(&tag_arr).unwrap_u8() == 0 {
             return Err(NonceError::BadMac.into());
         }
@@ -245,18 +243,25 @@ impl NonceManager {
     }
 
     /// Compute HMAC-SHA3 tag for (timestamp, random)
-    fn hmac_tag(&self, ts: u64, rand: &[u8; RANDOM_BYTES]) -> [u8; MAC_BYTES] {
-        let mut mac = HmacSha3::new_from_slice(&self.mac_key[..]).expect("HMAC key length valid");
+    fn hmac_tag(
+        &self,
+        ts: u64,
+        rand: &[u8; RANDOM_BYTES],
+    ) -> crate::error::Result<[u8; MAC_BYTES]> {
+        use crate::error::CipherError;
+
+        let mut mac = HmacSha3::new_from_slice(&self.mac_key[..])
+            .map_err(|e| CipherError::Hmac(format!("Failed to initialize HMAC: {}", e)))?;
         mac.update(&ts.to_be_bytes());
         mac.update(rand);
         let mut out = [0u8; MAC_BYTES];
         out.copy_from_slice(&mac.finalize().into_bytes()[..MAC_BYTES]);
-        out
+        Ok(out)
     }
 
     /// Clear expired entries from replay cache
     pub fn cleanup_expired(&self) {
-        let now = unix_time_nanos();
+        let now = unix_time_nanos().unwrap_or(0);
         let ttl_nanos = self.cfg.ttl.as_nanos() as u64;
 
         self.seen
@@ -265,18 +270,21 @@ impl NonceManager {
 }
 
 /// Current UNIX time in nanoseconds
-fn unix_time_nanos() -> u64 {
+fn unix_time_nanos() -> crate::error::Result<u64> {
+    use crate::error::CipherError;
+
     let dur = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("System clock error");
-    dur.as_secs()
+        .map_err(|e| CipherError::NonceGeneration(format!("System clock error: {}", e)))?;
+    Ok(dur
+        .as_secs()
         .saturating_mul(1_000_000_000)
-        .saturating_add(u64::from(dur.subsec_nanos()))
+        .saturating_add(u64::from(dur.subsec_nanos())))
 }
 
 /// Returns true if timestamp is within TTL of now
 fn is_fresh(ts: u64, ttl: Duration) -> bool {
-    let now = unix_time_nanos();
+    let now = unix_time_nanos().unwrap_or(0);
     let age = now.saturating_sub(ts);
     age <= (ttl.as_nanos().min(u64::MAX as u128) as u64)
 }

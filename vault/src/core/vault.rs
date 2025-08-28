@@ -8,9 +8,10 @@ use crate::operation::{
     Passphrase, VaultBoolRequest, VaultChangePassphraseRequest, VaultFindRequest, VaultGetRequest,
     VaultListRequest, VaultOperation, VaultPutAllRequest, VaultUnitRequest,
 };
+
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex};
 
 /// Main Vault struct for managing encrypted storage operations
 pub struct Vault {
@@ -25,21 +26,25 @@ impl Vault {
         }
     }
 
-    /// Creates a new Vault with a LocalVaultProvider using FortressEncrypt (defense-in-depth) encryption
-    pub fn with_fortress_encryption(config: crate::config::VaultConfig) -> VaultResult<Self> {
+    /// Creates a new Vault with a LocalVaultProvider using FortressEncrypt (defense-in-depth) encryption (async version)
+    pub async fn with_fortress_encryption_async(config: crate::config::VaultConfig) -> VaultResult<Self> {
         let vault = Self::new();
-
-        // Register provider (non-async context so we need to block)
-        let providers = Arc::clone(&vault.providers);
-        let rt = tokio::runtime::Runtime::new().map_err(|e| VaultError::Other(e.to_string()))?;
-        rt.block_on(async {
-            let provider = crate::LocalVaultProvider::new(config).await?;
-            let mut guard = providers.lock().await;
-            guard.push(Arc::new(provider));
-            Ok::<(), VaultError>(())
-        })?;
-
+        let provider = crate::LocalVaultProvider::new(config).await?;
+        vault.register_operation(provider).await;
         Ok(vault)
+    }
+
+    /// Creates a new Vault with a LocalVaultProvider using FortressEncrypt (sync wrapper)
+    pub fn with_fortress_encryption(config: crate::config::VaultConfig) -> VaultResult<Self> {
+        let (tx, rx) = oneshot::channel();
+        
+        tokio::spawn(async move {
+            let result = Self::with_fortress_encryption_async(config).await;
+            let _ = tx.send(result);
+        });
+
+        rx.blocking_recv()
+            .map_err(|_| VaultError::Other("Provider registration failed".to_string()))?
     }
 
     pub async fn register_operation(&self, provider: impl VaultOperation) {
@@ -74,7 +79,7 @@ impl Vault {
         let providers = self.providers.lock().await;
         providers
             .first()
-            .map_or(true, |provider| provider.is_locked())
+            .is_none_or(|provider| provider.is_locked())
     }
 
     /// Determines if this vault is using fortress-grade (defense-in-depth) encryption
@@ -82,7 +87,7 @@ impl Vault {
         let providers = self.providers.lock().await;
         providers
             .first()
-            .map_or(false, |provider| provider.supports_defense_in_depth())
+            .is_some_and(|provider| provider.supports_defense_in_depth())
     }
 
     /// Gets the encryption type being used by this vault

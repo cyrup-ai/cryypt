@@ -5,9 +5,11 @@
 use super::{MasterKeyBuilder, MasterKeyBuilderWithStore, MasterKeyBuilderWithStoreAndNamespace, MasterKeyBuilderWithStoreNamespaceAndVersion};
 use super::{PassphraseMasterKey, RawMasterKey, EnvMasterKey};
 use crate::{KeyImport, KeyRetrieval, KeyStorage, SimpleKeyId};
+use async_task::AsyncTask;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use hex;
 use rand::RngCore;
+use tokio::sync::oneshot;
 use zeroize::Zeroizing;
 
 impl MasterKeyBuilder {
@@ -105,34 +107,31 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static>
         // Key ID for master key
         let key_id = SimpleKeyId::new(format!("master:{}:v{}", namespace, version));
 
-        let rt = match tokio::runtime::Handle::try_current() {
-            Ok(handle) => handle,
-            Err(_) => {
-                let runtime = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .map_err(|e| crate::KeyError::InvalidKey(format!("Failed to create runtime: {}", e)))?;
-                runtime.handle().clone()
-            }
-        };
+        let (tx, rx) = oneshot::channel();
+        
+        tokio::spawn(async move {
+            let result = async {
+                // Try to retrieve existing key first
+                match store.retrieve(&key_id).await {
+                    Ok(existing_key) => Ok(hex::encode(&existing_key)),
+                    Err(_) => {
+                        // Generate new master key
+                        let mut key = [0u8; 32];
+                        rand::rng().fill_bytes(&mut key);
 
-        rt.block_on(async move {
-            // Try to retrieve existing key first
-            match store.retrieve(&key_id).await {
-                Ok(existing_key) => Ok(hex::encode(&existing_key)),
-                Err(_) => {
-                    // Generate new master key
-                    let mut key = [0u8; 32];
-                    rand::rng().fill_bytes(&mut key);
+                        // Store it
+                        store.store(&key_id, &key).await.map_err(|e| {
+                            crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
+                        })?;
 
-                    // Store it
-                    store.store(&key_id, &key).await.map_err(|e| {
-                        crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
-                    })?;
-
-                    Ok(hex::encode(&key))
+                        Ok(hex::encode(&key))
+                    }
                 }
-            }
-        })
+            }.await;
+            let _ = tx.send(result);
+        });
+
+        rx.blocking_recv()
+            .map_err(|_| crate::KeyError::InvalidKey("Key building failed".to_string()))?
     }
 }
