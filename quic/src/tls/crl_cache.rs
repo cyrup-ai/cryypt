@@ -23,6 +23,7 @@ pub enum CrlStatus {
 
 
 #[derive(Clone)]
+#[derive(Debug)]
 pub struct CrlCache {
     cache: Arc<RwLock<std::collections::HashMap<String, CrlCacheEntry>>>,
     http_client: TlsHttpClient,

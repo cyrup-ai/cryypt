@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
+use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 
 use crate::tls::errors::TlsError;
@@ -183,7 +184,18 @@ impl AuthorityFilesystemBuilder {
         }
 
         // Generate CA certificate
-        let mut params = CertificateParams::new(vec![]);
+        let mut params = match CertificateParams::new(vec![]) {
+            Ok(params) => params,
+            Err(e) => {
+                return super::responses::CertificateAuthorityResponse {
+                    success: false,
+                    authority: None,
+                    operation: super::responses::CaOperation::CreateFailed,
+                    issues: vec![format!("Failed to create certificate parameters: {}", e)],
+                    files_created: vec![],
+                };
+            }
+        };
         params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
 
         let mut distinguished_name = DistinguishedName::new();
@@ -199,7 +211,7 @@ impl AuthorityFilesystemBuilder {
         .into();
 
         // Generate key pair
-        let key_pair = KeyPair::generate(&rcgen::PKCS_RSA_SHA256)
+        let key_pair = KeyPair::generate()
             .map_err(|e| format!("Failed to generate key pair: {}", e));
 
         let key_pair = match key_pair {
@@ -215,9 +227,7 @@ impl AuthorityFilesystemBuilder {
             }
         };
 
-        params.key_pair = Some(key_pair);
-
-        let cert = match rcgen::Certificate::from_params(params) {
+        let cert = match params.self_signed(&key_pair) {
             Ok(c) => c,
             Err(e) => {
                 return super::responses::CertificateAuthorityResponse {
@@ -405,7 +415,9 @@ impl AuthorityKeychainBuilder {
         // macOS keychain implementation using security-framework
         #[cfg(target_os = "macos")]
         {
-            use security_framework::keychain::{SecKeychain, ItemSearchOptions};
+            use security_framework::item::ItemClass;
+            use security_framework::item::ItemSearchOptions;
+            use security_framework::os::macos::keychain::SecKeychain;
             use security_framework::certificate::SecCertificate;
             use security_framework::key::SecKey;
             use std::collections::HashMap;
@@ -424,7 +436,7 @@ impl AuthorityKeychainBuilder {
 
             // Search for CA certificate by name using ItemSearchOptions
             let mut search_options = ItemSearchOptions::new();
-            search_options.class(security_framework::item_class::ItemClass::certificate());
+            search_options.class(ItemClass::certificate());
             search_options.label(&self.name);
             search_options.load_refs(true);
 
@@ -465,7 +477,7 @@ impl AuthorityKeychainBuilder {
 
             let cert_pem = format!(
                 "-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----\n",
-                base64::encode(&cert_data)
+                general_purpose::STANDARD.encode(&cert_data)
                     .chars()
                     .collect::<Vec<char>>()
                     .chunks(64)
@@ -476,7 +488,7 @@ impl AuthorityKeychainBuilder {
 
             // Search for associated private key
             let mut key_search_options = ItemSearchOptions::new();
-            key_search_options.class(security_framework::item_class::ItemClass::key());
+            key_search_options.class(ItemClass::key());
             key_search_options.label(&self.name);
             key_search_options.load_refs(true);
 
@@ -516,7 +528,7 @@ impl AuthorityKeychainBuilder {
 
             let key_pem = format!(
                 "-----BEGIN PRIVATE KEY-----\n{}\n-----END PRIVATE KEY-----\n",
-                base64::encode(&key_data)
+                general_purpose::STANDARD.encode(&key_data)
                     .chars()
                     .collect::<Vec<char>>()
                     .chunks(64)
@@ -554,16 +566,18 @@ impl AuthorityKeychainBuilder {
                     match rcgen::KeyPair::from_pem(&key_pem) {
                         Ok(key_pair) => {
                             // Create Issuer for signing
-                            match rcgen::CertificateParams::from_ca_cert_pem(&cert_pem) {
-                                Ok(params) => {
-                                    let issuer = rcgen::Certificate::from_params(params)
-                                        .map_err(|e| super::responses::CertificateAuthorityResponse {
-                                            success: false,
-                                            authority: None,
-                                            operation: super::responses::CaOperation::LoadFailed,
-                                            issues: vec![format!("Failed to create certificate from params: {}", e)],
-                                            files_created: vec![],
-                                        })?;
+                            let issuer = match rcgen::Issuer::from_ca_cert_pem(&cert_pem, key_pair) {
+                                Ok(issuer) => issuer,
+                                Err(e) => {
+                                    return super::responses::CertificateAuthorityResponse {
+                                        success: false,
+                                        authority: None,
+                                        operation: super::responses::CaOperation::LoadFailed,
+                                        issues: vec![format!("Failed to create issuer from CA cert: {}", e)],
+                                        files_created: vec![],
+                                    };
+                                }
+                            };
 
                                     let authority = super::super::CertificateAuthority {
                                         name: self.name.clone(),
@@ -572,21 +586,12 @@ impl AuthorityKeychainBuilder {
                                         created_at: std::time::SystemTime::now(),
                                     };
 
-                                    super::responses::CertificateAuthorityResponse {
-                                        success: true,
-                                        authority: Some(authority),
-                                        operation: super::responses::CaOperation::LoadedFromKeychain,
-                                        issues: vec![],
-                                        files_created: vec![],
-                                    }
-                                },
-                                Err(e) => super::responses::CertificateAuthorityResponse {
-                                    success: false,
-                                    authority: None,
-                                    operation: super::responses::CaOperation::LoadFailed,
-                                    issues: vec![format!("Failed to parse certificate parameters: {}", e)],
-                                    files_created: vec![],
-                                }
+                            super::responses::CertificateAuthorityResponse {
+                                success: true,
+                                authority: Some(authority),
+                                operation: super::responses::CaOperation::LoadedFromKeychain,
+                                issues: vec![],
+                                files_created: vec![],
                             }
                         },
                         Err(e) => super::responses::CertificateAuthorityResponse {
@@ -722,39 +727,32 @@ impl AuthorityKeychainBuilder {
                     match rcgen::KeyPair::from_pem(&key_pem) {
                         Ok(key_pair) => {
                             // Create Certificate from parameters
-                            match rcgen::CertificateParams::from_ca_cert_pem(&cert_pem) {
-                                Ok(params) => {
-                                    let issuer = rcgen::Certificate::from_params(params)
-                                        .map_err(|e| super::responses::CertificateAuthorityResponse {
-                                            success: false,
-                                            authority: None,
-                                            operation: super::responses::CaOperation::LoadFailed,
-                                            issues: vec![format!("Failed to create certificate from params: {}", e)],
-                                            files_created: vec![],
-                                        })?;
-
-                                    let authority = super::super::CertificateAuthority {
-                                        name: self.name.clone(),
-                                        cert_pem: cert_pem.clone(),
-                                        issuer: Some(issuer),
-                                        created_at: std::time::SystemTime::now(),
-                                    };
-
-                                    super::responses::CertificateAuthorityResponse {
-                                        success: true,
-                                        authority: Some(authority),
-                                        operation: super::responses::CaOperation::LoadedFromSystemStore,
-                                        issues: vec![],
+                            let issuer = match rcgen::Issuer::from_ca_cert_pem(&cert_pem, key_pair) {
+                                Ok(issuer) => issuer,
+                                Err(e) => {
+                                    return super::responses::CertificateAuthorityResponse {
+                                        success: false,
+                                        authority: None,
+                                        operation: super::responses::CaOperation::LoadFailed,
+                                        issues: vec![format!("Failed to create issuer from CA cert: {}", e)],
                                         files_created: vec![],
-                                    }
-                                },
-                                Err(e) => super::responses::CertificateAuthorityResponse {
-                                    success: false,
-                                    authority: None,
-                                    operation: super::responses::CaOperation::LoadFailed,
-                                    issues: vec![format!("Failed to parse certificate parameters: {}", e)],
-                                    files_created: vec![],
+                                    };
                                 }
+                            };
+
+                            let authority = super::super::CertificateAuthority {
+                                name: self.name.clone(),
+                                cert_pem: cert_pem.clone(),
+                                issuer: Some(issuer),
+                                created_at: std::time::SystemTime::now(),
+                            };
+
+                            super::responses::CertificateAuthorityResponse {
+                                success: true,
+                                authority: Some(authority),
+                                operation: super::responses::CaOperation::LoadedFromSystemStore,
+                                issues: vec![],
+                                files_created: vec![],
                             }
                         },
                         Err(e) => super::responses::CertificateAuthorityResponse {
@@ -794,12 +792,89 @@ impl AuthorityRemoteBuilder {
 
     /// Load certificate authority from remote URL
     pub async fn load(self) -> super::responses::CertificateAuthorityResponse {
-        // TODO: Implement remote CA loading
+        use crate::tls::http_client::TlsHttpClient;
+        use crate::tls::certificate::parse_certificate_from_pem;
+        
+        let http_client = TlsHttpClient::new();
+        
+        // Download certificate from remote URL
+        let cert_pem = match http_client.get_ca_certificate(&self.url).await {
+            Ok(pem) => pem,
+            Err(e) => {
+                return super::responses::CertificateAuthorityResponse {
+                    success: false,
+                    authority: None,
+                    operation: super::responses::CaOperation::LoadFailed,
+                    issues: vec![format!("Failed to download CA certificate from {}: {}", self.url, e)],
+                    files_created: vec![],
+                };
+            }
+        };
+        
+        // Parse the certificate to extract metadata
+        let parsed_cert = match parse_certificate_from_pem(&cert_pem) {
+            Ok(cert) => cert,
+            Err(e) => {
+                return super::responses::CertificateAuthorityResponse {
+                    success: false,
+                    authority: None,
+                    operation: super::responses::CaOperation::LoadFailed,
+                    issues: vec![format!("Failed to parse downloaded certificate: {}", e)],
+                    files_created: vec![],
+                };
+            }
+        };
+        
+        // Validate that this is actually a CA certificate
+        if !parsed_cert.is_ca {
+            return super::responses::CertificateAuthorityResponse {
+                success: false,
+                authority: None,
+                operation: super::responses::CaOperation::LoadFailed,
+                issues: vec!["Downloaded certificate is not a Certificate Authority (CA bit not set)".to_string()],
+                files_created: vec![],
+            };
+        }
+        
+        // Check if certificate is still valid
+        let now = SystemTime::now();
+        if now < parsed_cert.not_before || now > parsed_cert.not_after {
+            return super::responses::CertificateAuthorityResponse {
+                success: false,
+                authority: None,
+                operation: super::responses::CaOperation::LoadFailed,
+                issues: vec!["Downloaded CA certificate is expired or not yet valid".to_string()],
+                files_created: vec![],
+            };
+        }
+        
+        // Note: We cannot load the private key from a remote URL for security reasons
+        // This is intentional - remote CA loading only provides the public certificate
+        // for validation purposes, not the private key for signing
+        let placeholder_private_key = "# Private key not available for remote CA\n# This CA can only be used for certificate validation\n".to_string();
+        
+        let authority = CertificateAuthority {
+            name: self.name,
+            certificate_pem: cert_pem,
+            private_key_pem: placeholder_private_key,
+            metadata: CaMetadata {
+                subject: parsed_cert.subject,
+                issuer: parsed_cert.issuer,
+                serial_number: parsed_cert.serial_number.clone(),
+                valid_from: parsed_cert.not_before,
+                valid_until: parsed_cert.not_after,
+                key_algorithm: parsed_cert.key_algorithm.unwrap_or_else(|| "Unknown".to_string()),
+                key_size: parsed_cert.key_size,
+                created_at: SystemTime::now(),
+                source: CaSource::Remote { url: self.url },
+            },
+        };
+        
         super::responses::CertificateAuthorityResponse {
-            success: false,
-            authority: None,
-            operation: super::responses::CaOperation::LoadFailed,
-            issues: vec!["Remote loading not yet implemented".to_string()],
+            success: true,
+            authority: Some(authority),
+            operation: super::responses::CaOperation::Loaded,
+            issues: vec!["Private key not available for remote CA - can only be used for validation".to_string()],
             files_created: vec![],
         }
     }

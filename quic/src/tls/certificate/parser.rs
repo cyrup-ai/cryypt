@@ -3,7 +3,8 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
 
-use x509_cert::{der::Decode, Certificate as X509CertCert};
+use der::{Decode, Encode, Reader};
+use x509_cert::{der::Decode as X509Decode, Certificate as X509CertCert};
 // Using available const_oid constants based on actual const_oid 0.9 API
 use const_oid::db::rfc5912::{SECP_224_R_1, SECP_256_R_1, SECP_384_R_1, SECP_521_R_1, ID_EC_PUBLIC_KEY};
 use const_oid::db::rfc8410::{ID_X_25519, ID_X_448, ID_ED_25519, ID_ED_448};

@@ -121,7 +121,7 @@ impl ConnectionHealthChecker {
     pub async fn health_check_connections(
         &self,
         connections: &DashMap<Vec<u8>, Arc<CachePadded<ServerConnectionState>>>,
-        load_balancer: &LoadBalancer,
+        _load_balancer: &LoadBalancer,
     ) -> Vec<Vec<u8>> {
         let mut unhealthy_connections = Vec::new();
         let health_threshold = 5000; // 50% health score threshold
@@ -215,6 +215,7 @@ impl RetryManager {
     where
         F: FnMut() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>> + Send>>,
         E: std::fmt::Debug,
+        T: std::fmt::Debug,
     {
         let mut attempt = 0;
         

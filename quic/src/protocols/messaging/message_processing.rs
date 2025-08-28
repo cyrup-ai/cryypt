@@ -51,7 +51,7 @@ pub async fn compress_payload_stream(
             
             // Use cryypt streaming compression API with 64KB chunks
             let stream = Compress::zstd()
-                .with_level(level)
+                .with_level(level as i32)
                 .on_chunk(|result| match result {
                     Ok(chunk) => {
                         tracing::debug!("Processing Zstd compressed chunk: {} bytes", chunk.len());
@@ -123,7 +123,7 @@ pub async fn decompress_payload_stream(
                         panic!("Critical Zstd chunk decompression failure")
                     }
                 })
-                .decompress(data);
+                .decompress_stream(data);
             
             let mut pinned_stream = Box::pin(stream);
             
@@ -233,7 +233,7 @@ pub async fn encrypt_payload_stream(
                         panic!("Critical ChaCha20 chunk encryption failure")
                     }
                 })
-                .encrypt(data);
+                .encrypt_stream(data);
             
             let mut pinned_stream = Box::pin(stream);
             
@@ -336,7 +336,7 @@ pub async fn decrypt_payload_stream(
                         panic!("Critical ChaCha20 chunk decryption failure")
                     }
                 })
-                .decrypt(encrypted_with_tag);
+                .decrypt_stream(encrypted_with_tag);
             
             let mut pinned_stream = Box::pin(stream);
             

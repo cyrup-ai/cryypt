@@ -101,7 +101,7 @@ async fn generate_ca(
     let issuer = Issuer::new(params, key_pair);
 
     Ok((
-        CertificateDer::from(cert_der),
+        cert_der.clone(),
         PrivatePkcs8KeyDer::from(key_der),
         issuer,
     ))
@@ -219,5 +219,5 @@ async fn generate_server_cert(
     let cert_der = cert.der();
     let key_der = key_pair.serialize_der();
 
-    Ok((cert_der.into(), key_der.into()))
+    Ok((cert_der.clone(), key_der.clone()))
 }

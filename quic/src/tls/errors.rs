@@ -23,6 +23,8 @@ pub enum TlsError {
     CrlValidation(String),
     #[error("Network error during validation: {0}")]
     NetworkError(String),
+    #[error("Parse error: {0}")]
+    ParseError(String),
     #[error("Internal error: {0}")]
     Internal(String),
     #[error("IO error: {0}")]

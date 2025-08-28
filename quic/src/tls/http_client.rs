@@ -6,6 +6,7 @@ use crate::tls::errors::TlsError;
 
 /// HTTP client wrapper for TLS-related requests
 #[derive(Clone)]
+#[derive(Debug)]
 pub struct TlsHttpClient {
     client: Client,
 }
@@ -62,5 +63,50 @@ impl TlsHttpClient {
             .await
             .map(|b| b.to_vec())
             .map_err(|e| TlsError::NetworkError(format!("Failed to read CRL: {}", e)))
+    }
+
+    /// Download CA certificate and convert to PEM format
+    pub async fn get_ca_certificate(&self, url: &str) -> Result<String, TlsError> {
+        let response = self.client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| TlsError::NetworkError(format!("CA certificate download failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(TlsError::NetworkError(format!(
+                "CA certificate server returned status: {}", response.status()
+            )));
+        }
+
+        let cert_bytes = response.bytes()
+            .await
+            .map(|b| b.to_vec())
+            .map_err(|e| TlsError::NetworkError(format!("Failed to read CA certificate: {}", e)))?;
+
+        // Check if already PEM format (starts with "-----BEGIN")
+        if cert_bytes.starts_with(b"-----BEGIN") {
+            // Already PEM format
+            let pem_string = String::from_utf8(cert_bytes)
+                .map_err(|e| TlsError::ParseError(format!("Invalid UTF-8 in PEM certificate: {}", e)))?;
+            return Ok(pem_string);
+        }
+
+        // Assume DER format - convert to PEM
+        use base64::engine::Engine;
+        let base64_cert = base64::engine::general_purpose::STANDARD.encode(&cert_bytes);
+        
+        // Format as PEM with proper line breaks (64 characters per line)
+        let mut pem_lines = Vec::new();
+        pem_lines.push("-----BEGIN CERTIFICATE-----".to_string());
+        
+        for chunk in base64_cert.as_bytes().chunks(64) {
+            let line = String::from_utf8_lossy(chunk);
+            pem_lines.push(line.to_string());
+        }
+        
+        pem_lines.push("-----END CERTIFICATE-----".to_string());
+        
+        Ok(pem_lines.join("\n"))
     }
 }

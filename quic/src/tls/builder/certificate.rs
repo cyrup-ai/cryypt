@@ -656,7 +656,7 @@ impl CertificateGeneratorWithDomain {
             .collect();
 
         // Generate key pair
-        let key_pair = match KeyPair::generate(&rcgen::PKCS_RSA_SHA256) {
+        let key_pair = match KeyPair::generate() {
             Ok(kp) => kp,
             Err(e) => {
                 return CertificateGenerationResponse {
@@ -674,12 +674,10 @@ impl CertificateGeneratorWithDomain {
             }
         };
 
-        params.key_pair = Some(key_pair);
-
         // Create certificate
         let cert = if self.self_signed {
             // Self-signed certificate
-            match rcgen::Certificate::from_params(params) {
+            match params.self_signed(&key_pair) {
                 Ok(c) => c,
                 Err(e) => {
                     return CertificateGenerationResponse {
@@ -698,25 +696,6 @@ impl CertificateGeneratorWithDomain {
             }
         } else if let Some(ca) = &self.authority {
             // CA-signed certificate using existing authority
-            let ca_cert_params =
-                match rcgen::CertificateParams::from_ca_cert_pem(&ca.certificate_pem) {
-                    Ok(params) => params,
-                    Err(e) => {
-                        return CertificateGenerationResponse {
-                            success: false,
-                            certificate_info: None,
-                            files_created: vec![],
-                            certificate_pem: None,
-                            private_key_pem: None,
-                            issues: vec![super::responses::GenerationIssue {
-                                severity: super::responses::IssueSeverity::Error,
-                                message: format!("Failed to parse CA certificate: {}", e),
-                                suggestion: Some("Check CA certificate format".to_string()),
-                            }],
-                        };
-                    }
-                };
-
             let ca_key_pair = match rcgen::KeyPair::from_pem(&ca.private_key_pem) {
                 Ok(kp) => kp,
                 Err(e) => {
@@ -735,8 +714,8 @@ impl CertificateGeneratorWithDomain {
                 }
             };
 
-            let ca_cert = match rcgen::Certificate::from_params(ca_cert_params) {
-                Ok(c) => c,
+            let ca_issuer = match rcgen::Issuer::from_ca_cert_pem(&ca.certificate_pem, ca_key_pair) {
+                Ok(issuer) => issuer,
                 Err(e) => {
                     return CertificateGenerationResponse {
                         success: false,
@@ -753,9 +732,9 @@ impl CertificateGeneratorWithDomain {
                 }
             };
 
-            // Create the certificate to be signed
-            let cert = match rcgen::Certificate::from_params(params) {
-                Ok(c) => c,
+            // Create the certificate signed by the CA
+            match params.signed_by(&key_pair, &ca_issuer) {
+                Ok(cert) => cert,
                 Err(e) => {
                     return CertificateGenerationResponse {
                         success: false,
@@ -765,26 +744,8 @@ impl CertificateGeneratorWithDomain {
                         private_key_pem: None,
                         issues: vec![super::responses::GenerationIssue {
                             severity: super::responses::IssueSeverity::Error,
-                            message: format!("Failed to create certificate for signing: {}", e),
-                            suggestion: Some("Check certificate parameters".to_string()),
-                        }],
-                    };
-                }
-            };
-
-            match cert.serialize_pem_with_signer(&ca_cert) {
-                Ok(signed_cert) => rcgen::Certificate::from_params(params).unwrap(), /* Use signed cert */
-                Err(e) => {
-                    return CertificateGenerationResponse {
-                        success: false,
-                        certificate_info: None,
-                        files_created: vec![],
-                        certificate_pem: None,
-                        private_key_pem: None,
-                        issues: vec![super::responses::GenerationIssue {
-                            severity: super::responses::IssueSeverity::Error,
-                            message: format!("Failed to sign certificate with CA: {}", e),
-                            suggestion: Some("Check CA signing process".to_string()),
+                            message: format!("Failed to create certificate signed by CA: {}", e),
+                            suggestion: Some("Check CA certificate and certificate parameters".to_string()),
                         }],
                     };
                 }

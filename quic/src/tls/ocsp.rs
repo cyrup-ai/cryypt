@@ -36,7 +36,7 @@ pub struct OcspCacheEntry {
 }
 
 /// OCSP response cache for performance optimization
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct OcspCache {
     cache: Arc<RwLock<HashMap<String, OcspCacheEntry>>>,
     http_client: TlsHttpClient,
@@ -54,7 +54,7 @@ impl OcspCache {
 
         // Pre-generate 1KB of random bytes for nonce generation
         let mut nonce_pool = vec![0u8; 1024];
-        rand::thread_rng().fill(&mut nonce_pool[..]);
+        rand::rng().fill(&mut nonce_pool[..]);
 
         Self {
             cache: Arc::new(RwLock::new(HashMap::with_capacity(128))),
@@ -366,7 +366,7 @@ impl OcspCache {
             } else {
                 // Refill pool if exhausted
                 pool.resize(1024, 0);
-                rand::thread_rng().fill(&mut pool[..]);
+                rand::rng().fill(&mut pool[..]);
                 nonce.copy_from_slice(&pool[..16]);
                 pool.drain(..16);
             }

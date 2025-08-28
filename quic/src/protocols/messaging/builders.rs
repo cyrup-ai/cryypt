@@ -294,7 +294,7 @@ impl MessagingClientBuilder {
         let connection_result = tokio::time::timeout(connection_timeout, async {
             loop {
                 if conn.is_established() {
-                    break Ok::<(), CryptoTransportError>(());
+                    break;
                 }
 
                 // Receive packets
@@ -337,7 +337,7 @@ impl MessagingClientBuilder {
         ))??;
 
         // Open bidirectional stream for message sending
-        let stream_id = conn.stream_send(None, &envelope_data, false)
+        let stream_id = conn.stream_send(0, &envelope_data, false)
             .map_err(|e| CryptoTransportError::Internal(
                 format!("Failed to send message on stream: {}", e)
             ))?;

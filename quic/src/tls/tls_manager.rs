@@ -191,7 +191,7 @@ impl TlsManager {
         let connector = TlsConnector::from(Arc::new(client_config));
         
         // Create server name for TLS
-        let server_name = rustls::pki_types::ServerName::try_from(host)
+        let server_name = rustls::pki_types::ServerName::try_from(host.to_string())
             .map_err(|e| TlsError::Internal(format!("Invalid hostname '{}': {}", host, e)))?;
         
         // Establish TLS connection
@@ -293,6 +293,7 @@ impl TlsManager {
 }
 
 /// Enterprise server certificate verifier with OCSP and CRL validation
+#[derive(Debug)]
 struct EnterpriseServerCertVerifier {
     ocsp_cache: Arc<OcspCache>,
     crl_cache: Arc<CrlCache>,

@@ -1,6 +1,7 @@
 //! Certificate validation and chain verification
 
 use anyhow::Result;
+use der::Decode;
 use rustls::pki_types::CertificateDer;
 use tracing::{info, warn};
 

@@ -5,15 +5,13 @@ use crossbeam::{channel, queue::ArrayQueue, utils::CachePadded};
 use std::sync::{atomic::{AtomicU64, Ordering}, Arc};
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::net::UdpSocket;
-use tokio::sync::Mutex as TokioMutex;
 use std::collections::HashMap;
 use uuid::Uuid;
 
 use super::types::{
     CompressionAlgorithm, EncryptionAlgorithm, MessageEnvelope, 
     DistributionStrategy, MessagePriority, PriorityMessageQueue,
-    LoadBalancer, ConnectionState, now_millis
+    LoadBalancer, now_millis
 };
 use super::message_processing::{derive_connection_key, process_payload_forward, calculate_checksum};
 use crate::error::CryptoTransportError;
@@ -418,12 +416,11 @@ impl MessagingServer {
     /// Based on quiche-server.rs pattern adapted for async operation with full production features
     pub async fn run(self) -> crate::Result<MessagingServer> {
         use tokio::net::UdpSocket;
-        use tokio::time::{timeout, Duration, interval};
+        use tokio::time::{Duration, interval};
         use std::collections::HashMap;
-        use quiche::{Config, Connection, ConnectionId, Header, RecvInfo, SendInfo};
+        use quiche::{Connection, ConnectionId, Header, RecvInfo};
         use ring::rand::SystemRandom;
         use ring::hmac;
-        use uuid::Uuid;
         
         const MAX_BUF_SIZE: usize = 65507;
         const MAX_DATAGRAM_SIZE: usize = 1350;
@@ -827,7 +824,7 @@ impl MessagingServer {
         
         // Handle unhealthy connections
         for conn_key in unhealthy_connections {
-            if let Some(conn) = clients.get_mut(&conn_key) {
+            if let Some(_conn) = clients.get_mut(&conn_key) {
                 if let Some(&addr) = client_addrs.get(&conn_key) {
                     tracing::warn!("Unhealthy connection to {}, attempting recovery", addr);
                     // Could implement connection recovery logic here
