@@ -21,9 +21,9 @@ build:
 build-release:
     cargo build --release
 
-# Run all tests
+# Run all tests with all features
 test:
-    cargo test
+    cargo test --all-features
 
 # Run tests for specific crates
 test-cipher:

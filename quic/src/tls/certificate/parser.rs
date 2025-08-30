@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use std::time::SystemTime;
 
 use der::{Decode, Encode, Reader};
-use x509_cert::{der::Decode as X509Decode, Certificate as X509CertCert};
+use x509_cert::Certificate as X509CertCert;
 // Using available const_oid constants based on actual const_oid 0.9 API
 use const_oid::db::rfc5912::{SECP_224_R_1, SECP_256_R_1, SECP_384_R_1, SECP_521_R_1, ID_EC_PUBLIC_KEY};
 use const_oid::db::rfc8410::{ID_X_25519, ID_X_448, ID_ED_25519, ID_ED_448};
-use der::{AnyRef, Length, SliceReader, Tag};
-use oid::ObjectIdentifier;
+use der::{AnyRef, SliceReader, Tag};
+
 use spki::AlgorithmIdentifier;
 
 use crate::tls::errors::TlsError;
@@ -477,10 +477,33 @@ pub fn extract_key_info_from_cert(cert: &X509CertCert) -> (String, Option<u32>) 
         "Unknown".to_string()
     };
 
-    let key_size = extract_key_size_from_algorithm_and_key(
-        algorithm,
-        &cert.tbs_certificate.subject_public_key_info.subject_public_key
-    );
+    // Extract actual key size from certificate using production cryptographic parsing
+    let key_size = match cert.tbs_certificate.subject_public_key_info.subject_public_key.as_bytes() {
+        Some(public_key_bits) => {
+            // Create a proper BitStringRef from the raw bytes  
+            match der::asn1::BitStringRef::new(0, public_key_bits) {
+                Ok(public_key_ref) => {
+                    // Convert algorithm to the correct type with AnyRef parameters
+                    let algorithm_any = algorithm.parameters.as_ref()
+                        .and_then(|p| der::AnyRef::from_der(p.value()).ok());
+                    let algorithm_ref = spki::AlgorithmIdentifier {
+                        oid: algorithm.oid,
+                        parameters: algorithm_any,
+                    };
+                    
+                    extract_key_size_from_algorithm_and_key(&algorithm_ref, &public_key_ref)
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to create BitStringRef: {}", e);
+                    None
+                }
+            }
+        }
+        None => {
+            tracing::warn!("Failed to get public key bytes from certificate");
+            None
+        }
+    };
 
     (algorithm_name, key_size)
 }
@@ -533,7 +556,7 @@ fn compute_bit_length(bytes: &[u8]) -> Option<u32> {
 /// Skip a single ASN.1 element using a SliceReader
 fn skip_element(reader: &mut der::SliceReader) -> Option<()> {
     let header = reader.peek_header().ok()?;
-    let header_len = header.encoded_len() as usize;
+    let header_len: usize = header.encoded_len().ok()?.try_into().ok()?;
     let content_len: usize = header.length.try_into().ok()?;
     let total_len = header_len + content_len;
     reader.read_slice(der::Length::try_from(total_len).ok()?).ok()?;
@@ -542,7 +565,7 @@ fn skip_element(reader: &mut der::SliceReader) -> Option<()> {
 
 /// Extract RSA modulus size in bits from RSA public key
 fn extract_rsa_key_size(public_key: &der::asn1::BitStringRef) -> Option<u32> {
-    use der::{Length, Tag};
+    use der::Tag;
 
     let key_bytes = public_key.as_bytes()?;
     let mut reader = der::SliceReader::new(key_bytes).ok()?;
@@ -551,13 +574,17 @@ fn extract_rsa_key_size(public_key: &der::asn1::BitStringRef) -> Option<u32> {
     if sequence_header.tag != Tag::Sequence {
         return None;
     }
-    reader.read_slice(Length::try_from(sequence_header.encoded_len() as usize).ok()?).ok()?;
+    // Skip the sequence header to get to the content
+    let header_len = sequence_header.encoded_len().ok()?;
+    reader.read_slice(header_len).ok()?;
 
     let modulus_header = reader.peek_header().ok()?;
     if modulus_header.tag != Tag::Integer {
         return None;
     }
-    reader.read_slice(Length::try_from(modulus_header.encoded_len() as usize).ok()?).ok()?;
+    // Skip the integer header to get to the modulus content
+    let modulus_header_len = modulus_header.encoded_len().ok()?;
+    reader.read_slice(modulus_header_len).ok()?;
 
     let modulus_bytes = reader.read_slice(modulus_header.length).ok()?;
     compute_bit_length(modulus_bytes)
@@ -566,20 +593,22 @@ fn extract_rsa_key_size(public_key: &der::asn1::BitStringRef) -> Option<u32> {
 /// Extract key size for DH-like algorithms (DSA, DH) from parameters
 fn extract_dh_like_key_size(parameters_opt: Option<&AnyRef>) -> Option<u32> {
     let parameters = parameters_opt?;
-    let bytes = parameters.as_bytes().ok()?;
+    let bytes = parameters.value();
     let mut reader = der::SliceReader::new(bytes).ok()?;
 
     let sequence_header = reader.peek_header().ok()?;
     if sequence_header.tag != der::Tag::Sequence {
         return None;
     }
-    reader.read_slice(der::Length::try_from(sequence_header.encoded_len() as usize).ok()?).ok()?;
+    let seq_header_len = sequence_header.encoded_len().ok()?;
+    reader.read_slice(seq_header_len).ok()?;
 
     let p_header = reader.peek_header().ok()?;
     if p_header.tag != der::Tag::Integer {
         return None;
     }
-    reader.read_slice(der::Length::try_from(p_header.encoded_len() as usize).ok()?).ok()?;
+    let p_header_len = p_header.encoded_len().ok()?;
+    reader.read_slice(p_header_len).ok()?;
 
     let p_bytes = reader.read_slice(p_header.length).ok()?;
     compute_bit_length(p_bytes)
@@ -588,14 +617,17 @@ fn extract_dh_like_key_size(parameters_opt: Option<&AnyRef>) -> Option<u32> {
 /// Extract EC key size from curve parameters
 fn extract_ec_key_size(parameters_opt: Option<&AnyRef>) -> Option<u32> {
     let parameters = parameters_opt?;
-    let bytes = parameters.as_bytes().ok()?;
+    let bytes = parameters.value();
     let mut reader = SliceReader::new(bytes).ok()?;
 
     let header = reader.peek_header().ok()?;
     match header.tag {
         Tag::ObjectIdentifier => {
-            reader.read_slice(Length::try_from(header.encoded_len() as usize).ok()?).ok()?;
-            let curve_oid: ObjectIdentifier = ObjectIdentifier::decode_without_tag(&mut reader).ok()?;
+            let header_len = header.encoded_len().ok()?;
+            reader.read_slice(header_len).ok()?;
+            // Read the OID bytes and create ObjectIdentifier
+            let oid_bytes = reader.read_slice(header.length).ok()?;
+            let curve_oid = const_oid::ObjectIdentifier::from_bytes(oid_bytes).ok()?;
             match curve_oid {
                 SECP_224_R_1 => Some(224),
                 SECP_256_R_1 => Some(256),
@@ -617,7 +649,8 @@ fn extract_ec_key_size(parameters_opt: Option<&AnyRef>) -> Option<u32> {
         Tag::Null => None, // implicitCurve
         Tag::Sequence => {
             // specifiedCurve: ECParameters
-            reader.read_slice(Length::try_from(header.encoded_len() as usize).ok()?).ok()?;
+            let header_len = header.encoded_len().ok()?;
+            reader.read_slice(header_len).ok()?;
             // Skip version INTEGER
             skip_element(&mut reader)?;
             // Skip fieldID SEQUENCE
@@ -631,7 +664,8 @@ fn extract_ec_key_size(parameters_opt: Option<&AnyRef>) -> Option<u32> {
             if order_header.tag != Tag::Integer {
                 return None;
             }
-            reader.read_slice(Length::try_from(order_header.encoded_len() as usize).ok()?).ok()?;
+            let order_header_len = order_header.encoded_len().ok()?;
+            reader.read_slice(order_header_len).ok()?;
             let order_bytes = reader.read_slice(order_header.length).ok()?;
             compute_bit_length(order_bytes)
         }

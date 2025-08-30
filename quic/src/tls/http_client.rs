@@ -12,14 +12,17 @@ pub struct TlsHttpClient {
 }
 
 impl TlsHttpClient {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, TlsError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
             .user_agent("cryypt-quic/1.0")
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| TlsError::HttpClientInit {
+                source: Box::new(e),
+                context: "Failed to initialize HTTP client for OCSP/CRL validation",
+            })?;
         
-        Self { client }
+        Ok(Self { client })
     }
 
     /// Send OCSP request

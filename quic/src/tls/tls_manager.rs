@@ -6,32 +6,20 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use std::io::{Read, Write};
 
-use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
-use rustls::pki_types::ServerName;
+
+use rustls::{ClientConfig, RootCertStore};
+
 use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
 
-use super::ocsp::{OcspCache, OcspStatus};
-use super::crl_cache::{CrlCache, CrlStatus};
-use super::certificate::parse_certificate_from_pem;
-use super::builder::{CertificateAuthority, Tls};
-use super::errors::TlsError;
-use super::types::ParsedCertificate as TypesParsedCertificate;
+use super::ocsp::OcspCache;
+use super::crl_cache::CrlCache;
 
-/// Parse certificate from DER format
-fn parse_certificate_from_der(der_bytes: &[u8]) -> Result<TypesParsedCertificate, TlsError> {
-    // Simple implementation - in production this would be more comprehensive
-    Ok(TypesParsedCertificate {
-        subject: "Unknown".to_string(),
-        serial_number: der_bytes.get(..16).unwrap_or(&[]).to_vec(),
-        ocsp_urls: Vec::new(),
-        crl_urls: Vec::new(),
-        subject_der: der_bytes.to_vec(),
-        public_key_der: Vec::new(),
-    })
-}
+use super::builder::CertificateAuthority;
+use super::errors::TlsError;
+use super::certificate::validation::parse_certificate_from_der;
+
 
 /// Enterprise TLS connection manager with comprehensive security validation
 #[derive(Clone)]
@@ -109,7 +97,7 @@ impl TlsConfig {
 
 impl TlsManager {
     /// Create new TLS manager with default configuration
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, crate::tls::errors::TlsError> {
         Self::with_config(TlsConfig::default())
     }
     
@@ -136,21 +124,21 @@ impl TlsManager {
             }
         }
         
-        Ok(Self::with_config(config))
+        Self::with_config(config)
     }
     
     /// Create TLS manager with specific configuration
-    pub fn with_config(config: TlsConfig) -> Self {
-        Self {
-            ocsp_cache: Arc::new(OcspCache::new()),
-            crl_cache: Arc::new(CrlCache::new()),
+    pub fn with_config(config: TlsConfig) -> Result<Self, crate::tls::errors::TlsError> {
+        Ok(Self {
+            ocsp_cache: Arc::new(OcspCache::new()?),
+            crl_cache: Arc::new(CrlCache::new()?),
             custom_cas: Arc::new(RwLock::new(HashMap::new())),
             config,
-        }
+        })
     }
     
     /// Create TLS manager with production-optimized configuration
-    pub fn production_optimized() -> Self {
+    pub fn production_optimized() -> Result<Self, crate::tls::errors::TlsError> {
         Self::with_config(TlsConfig::production_optimized())
     }
     
@@ -209,21 +197,22 @@ impl TlsManager {
         
         // Add system certificates if enabled
         if self.config.use_system_certs {
-            match rustls_native_certs::load_native_certs() {
-                Ok(certs) => {
-                    for cert in certs {
-                        if let Err(e) = root_store.add(cert) {
-                            tracing::warn!("Failed to add system certificate: {}", e);
-                        }
-                    }
-                    tracing::debug!("Loaded {} system certificates", root_store.len());
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to load system certificates: {}", e);
-                    // Fall back to webpki roots
-                    root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            let cert_result = rustls_native_certs::load_native_certs();
+            for cert in cert_result.certs {
+                if let Err(e) = root_store.add(cert) {
+                    tracing::warn!("Failed to add system certificate: {}", e);
                 }
             }
+            
+            if !cert_result.errors.is_empty() {
+                for err in &cert_result.errors {
+                    tracing::warn!("Certificate load error: {}", err);
+                }
+                // Fall back to webpki roots if there were significant errors
+                root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            }
+            
+            tracing::debug!("Loaded {} system certificates", root_store.len());
         } else {
             // Use webpki roots as fallback
             root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
@@ -231,10 +220,13 @@ impl TlsManager {
         
         // Add custom root certificates
         for cert_pem in &self.config.custom_root_certs {
-            if let Ok(cert) = parse_certificate_from_der(cert_pem.as_bytes()) {
-                // Convert parsed certificate back to rustls certificate
-                // This is a simplified implementation - in production, proper conversion would be needed
-                tracing::debug!("Added custom root certificate: {}", cert.subject);
+            if let Ok(cert_der) = pem::parse(cert_pem) {
+                let cert = rustls::pki_types::CertificateDer::from(cert_der.contents());
+                if let Err(e) = root_store.add(cert) {
+                    tracing::warn!("Failed to add custom root certificate: {}", e);
+                } else {
+                    tracing::debug!("Added custom root certificate");
+                }
             }
         }
         
@@ -246,7 +238,7 @@ impl TlsManager {
             if ca.is_valid() {
                 // Parse CA certificate and add to root store
                 if let Ok(cert_der) = pem::parse(&ca.certificate_pem) {
-                    let cert = rustls::pki_types::CertificateDer::from(cert_der.contents);
+                    let cert = rustls::pki_types::CertificateDer::from(cert_der.contents());
                     if let Err(e) = root_store.add(cert) {
                         tracing::warn!("Failed to add custom CA '{}': {}", name, e);
                     } else {
@@ -258,10 +250,6 @@ impl TlsManager {
             }
         }
         
-        // Create client config builder
-        let config_builder = ClientConfig::builder()
-            .with_root_certificates(root_store);
-        
         // Create verifier that includes OCSP and CRL validation
         let verifier = Arc::new(EnterpriseServerCertVerifier::new(
             self.ocsp_cache.clone(),
@@ -272,7 +260,8 @@ impl TlsManager {
         ));
         
         // Build configuration with enterprise verifier
-        let mut client_config = config_builder
+        let mut client_config = ClientConfig::builder()
+            .dangerous()
             .with_custom_certificate_verifier(verifier)
             .with_no_client_auth();
         
@@ -343,26 +332,76 @@ impl rustls::client::danger::ServerCertVerifier for EnterpriseServerCertVerifier
         
         // Perform OCSP validation if enabled (synchronous for rustls compatibility)
         if self.enable_ocsp && !parsed_cert.ocsp_urls.is_empty() {
-            let issuer_cert = if !intermediates.is_empty() {
+            let _issuer_cert = if !intermediates.is_empty() {
                 Some(parse_certificate_from_der(intermediates[0].as_ref())
                     .map_err(|e| rustls::Error::General(format!("Failed to parse issuer certificate: {}", e)))?)
             } else {
                 None
             };
             
-            // Note: OCSP validation would normally be async, but rustls verifier is sync.
-            // In production, consider pre-validating certificates or using a different approach.
-            tracing::debug!("OCSP validation skipped (sync context) for {}", server_name);
+            // Perform real OCSP validation using blocking calls to our async infrastructure with timeout
+            match tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(
+                    tokio::time::timeout(
+                        self.validation_timeout,
+                        self.ocsp_cache.check_certificate(&parsed_cert, _issuer_cert.as_ref())
+                    )
+                )
+            }) {
+                Ok(Ok(crate::tls::ocsp::OcspStatus::Good)) => {
+                    tracing::debug!("OCSP validation passed for {:?}", server_name);
+                },
+                Ok(Ok(crate::tls::ocsp::OcspStatus::Revoked)) => {
+                    tracing::error!("Certificate revoked via OCSP for {:?}", server_name);
+                    return Err(rustls::Error::General("Certificate revoked via OCSP".to_string()));
+                },
+                Ok(Ok(crate::tls::ocsp::OcspStatus::Unknown)) => {
+                    tracing::warn!("OCSP validation inconclusive for {:?}", server_name);
+                    // Allow unknown status but log warning
+                },
+                Ok(Err(e)) => {
+                    tracing::warn!("OCSP validation failed for {:?}: {}", server_name, e);
+                    // Allow validation errors but log them
+                },
+                Err(_) => {
+                    tracing::warn!("OCSP validation timed out for {:?} after {:?}", server_name, self.validation_timeout);
+                    // Allow timeout but log warning
+                }
+            }
         }
         
         // Perform CRL validation if enabled (synchronous for rustls compatibility)
         if self.enable_crl && !parsed_cert.crl_urls.is_empty() {
-            // Note: CRL validation would normally be async, but rustls verifier is sync.
-            // In production, consider pre-validating certificates or using a different approach.
-            tracing::debug!("CRL validation skipped (sync context) for {}", server_name);
+            // Check certificate against each CRL URL
+            for crl_url in &parsed_cert.crl_urls {
+                match tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(
+                        tokio::time::timeout(
+                            self.validation_timeout,
+                            self.crl_cache.check_certificate_status(&parsed_cert.serial_number, crl_url)
+                        )
+                    )
+                }) {
+                    Ok(crate::tls::crl_cache::CrlStatus::Valid) => {
+                        tracing::debug!("CRL validation passed for {:?} against {}", server_name, crl_url);
+                    },
+                    Ok(crate::tls::crl_cache::CrlStatus::Revoked) => {
+                        tracing::error!("Certificate revoked via CRL for {:?} against {}", server_name, crl_url);
+                        return Err(rustls::Error::General(format!("Certificate revoked via CRL: {}", crl_url)));
+                    },
+                    Ok(crate::tls::crl_cache::CrlStatus::Unknown) => {
+                        tracing::warn!("CRL validation inconclusive for {:?} against {}", server_name, crl_url);
+                        // Allow unknown status but log warning
+                    },
+                    Err(_) => {
+                        tracing::warn!("CRL validation timed out for {:?} against {} after {:?}", server_name, crl_url, self.validation_timeout);
+                        // Allow timeout but continue checking other CRLs
+                    }
+                }
+            }
         }
         
-        tracing::info!("Enterprise certificate validation completed for {}", server_name);
+        tracing::info!("Enterprise certificate validation completed for {:?}", server_name);
         Ok(rustls::client::danger::ServerCertVerified::assertion())
     }
     

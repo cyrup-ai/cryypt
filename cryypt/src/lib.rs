@@ -273,7 +273,7 @@ pub mod prelude {
     pub use crate::{Hash, HashResult, hash_on_result};
 
     #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
-    pub use crate::Compress;
+    pub use Compress;
 
     #[cfg(feature = "key")]
     pub use cryypt_key::bits_macro::Bits;

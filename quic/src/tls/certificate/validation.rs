@@ -73,7 +73,10 @@ pub async fn validate_certificate_chain(
     }
 
     // Verify the root certificate matches our CA
-    let root_cert = chain_certs.last().unwrap();
+    let root_cert = chain_certs.last()
+        .ok_or_else(|| TlsError::InvalidCertificateChain(
+            "Certificate chain is empty".to_string()
+        ))?;
     let ca_cert_parsed = parse_certificate_from_der(ca_cert.as_ref())?;
 
     if root_cert.subject != ca_cert_parsed.subject {
@@ -87,7 +90,7 @@ pub async fn validate_certificate_chain(
 }
 
 /// Parse certificate from DER format
-fn parse_certificate_from_der(der_data: &[u8]) -> Result<ParsedCertificate, TlsError> {
+pub fn parse_certificate_from_der(der_data: &[u8]) -> Result<ParsedCertificate, TlsError> {
     use x509_cert::Certificate;
 
     let cert = Certificate::from_der(der_data).map_err(|e| {
@@ -99,6 +102,7 @@ fn parse_certificate_from_der(der_data: &[u8]) -> Result<ParsedCertificate, TlsE
 }
 
 /// Verify peer certificate with comprehensive revocation checking (OCSP + CRL + Chain)
+#[allow(dead_code)] // Part of TLS library infrastructure - used by TlsManager
 pub async fn verify_peer_certificate_comprehensive(
     tls_manager: &crate::tls::tls_config::TlsManager,
     cert_pem: &str,

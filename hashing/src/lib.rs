@@ -6,6 +6,7 @@ pub mod api;
 pub mod async_result;
 pub mod error;
 pub mod hash_result;
+pub mod streaming;
 
 // Re-export error types
 pub use error::{HashError, Result};

@@ -16,6 +16,10 @@ name = "compression_api"
 path = "src/compression_api.rs"
 
 [[bin]]
+name = "test_decompress_pattern"
+path = "src/test_decompress_pattern.rs"
+
+[[bin]]
 name = "key_api"
 path = "src/key_api.rs"
 
@@ -35,8 +39,17 @@ path = "src/pqcrypto_api.rs"
 name = "quic_api"
 path = "src/quic_api.rs"
 
+[[bin]]
+name = "test_fluent_compression"
+path = "src/test_fluent_compression.rs"
+
+[[bin]]
+name = "test_fluent_streaming"
+path = "src/test_fluent_streaming.rs"
+
 [dependencies]
-cryypt = { path = "../cryypt", features = ["full", "quic"] }
+cryypt = { path = "../cryypt", features = ["full"] }
+cryypt_compression = { path = "../compression" }
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 futures = "0.3.31"

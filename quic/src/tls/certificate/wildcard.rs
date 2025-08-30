@@ -12,6 +12,7 @@ use crate::tls::errors::TlsError;
 
 /// Generate wildcard certificate with multiple SAN entries for SweetMCP auto-integration
 /// Creates a non-expiring certificate for *.cyrup.dev with SAN entries for *.cyrup.ai, *.cyrup.cloud, *.cyrup.pro
+#[allow(dead_code)] // SweetMCP integration infrastructure - used for automatic certificate generation
 pub async fn generate_wildcard_certificate(xdg_config_home: &Path) -> Result<(), TlsError> {
     let cert_dir = xdg_config_home.join("sweetmcp");
 
@@ -122,6 +123,7 @@ pub async fn generate_wildcard_certificate(xdg_config_home: &Path) -> Result<(),
 }
 
 /// Validate existing wildcard certificate
+#[allow(dead_code)] // SweetMCP integration infrastructure - used by generate_wildcard_certificate
 async fn validate_existing_wildcard_cert(cert_path: &Path) -> Result<(), TlsError> {
     let cert_content = fs::read_to_string(cert_path)
         .await

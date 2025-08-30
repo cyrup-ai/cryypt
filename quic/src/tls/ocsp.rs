@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime};
 
 use der::{Decode, Encode};
-use rand::{Rng, RngCore};
+use rand::Rng;
 
 use ring::digest::{Context as DigestContext, SHA256};
 
@@ -49,20 +49,20 @@ pub struct OcspCache {
 }
 
 impl OcspCache {
-    pub fn new() -> Self {
-        let http_client = TlsHttpClient::new();
+    pub fn new() -> Result<Self, crate::tls::errors::TlsError> {
+        let http_client = TlsHttpClient::new()?;
 
         // Pre-generate 1KB of random bytes for nonce generation
         let mut nonce_pool = vec![0u8; 1024];
         rand::rng().fill(&mut nonce_pool[..]);
 
-        Self {
+        Ok(Self {
             cache: Arc::new(RwLock::new(HashMap::with_capacity(128))),
             http_client,
             nonce_pool: Arc::new(RwLock::new(nonce_pool)),
             cache_hits: Arc::new(AtomicUsize::new(0)),
             cache_misses: Arc::new(AtomicUsize::new(0)),
-        }
+        })
     }
 
     /// Get cache statistics (hits, misses)

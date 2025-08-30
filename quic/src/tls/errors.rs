@@ -11,6 +11,8 @@ pub enum TlsError {
     KeyProtection(String),
     #[error("Certificate chain invalid: {0}")]
     ChainValidation(String),
+    #[error("Invalid certificate chain: {0}")]
+    InvalidCertificateChain(String),
     #[error("Peer verification failed: {0}")]
     PeerVerification(String),
     #[error("Certificate expired: {0}")]
@@ -29,4 +31,11 @@ pub enum TlsError {
     Internal(String),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("HTTP client initialization failed: {context}")]
+    HttpClientInit {
+        source: Box<dyn std::error::Error + Send + Sync>,
+        context: &'static str,
+    },
+    #[error("Validation-only CA operation: {0}")]
+    ValidationOnlyCA(String),
 }

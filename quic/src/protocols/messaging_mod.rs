@@ -24,7 +24,8 @@ pub use server::{
 };
 
 pub use message_processing::{
-    calculate_checksum, derive_connection_key, compress_payload_stream,
+    calculate_checksum, calculate_checksum_64, calculate_authenticated_checksum, verify_authenticated_checksum,
+    derive_connection_key, compress_payload_stream,
     decompress_payload_stream, encrypt_payload_stream, decrypt_payload_stream,
     process_payload_forward, process_payload_reverse,
 };

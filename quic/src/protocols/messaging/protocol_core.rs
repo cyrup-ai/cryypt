@@ -7,7 +7,7 @@ use dashmap::DashMap;
 use crossbeam::utils::CachePadded;
 use tokio::time::timeout;
 
-use super::types::{ConnectionState, LoadBalancer};
+use super::types::LoadBalancer;
 use super::server::ServerConnectionState;
 
 /// QUIC protocol constants
@@ -126,6 +126,9 @@ impl ConnectionHealthChecker {
         let mut unhealthy_connections = Vec::new();
         let health_threshold = 5000; // 50% health score threshold
         
+        // Wait for the configured health check interval before proceeding
+        tokio::time::sleep(self.health_check_interval).await;
+        
         for entry in connections.iter() {
             let conn_id = entry.key().clone();
             let state = entry.value();
@@ -135,9 +138,17 @@ impl ConnectionHealthChecker {
             if health_score < health_threshold {
                 unhealthy_connections.push(conn_id);
             }
+            
+            // Update health check timestamp for this connection
+            state.health.update_health_check();
         }
         
         unhealthy_connections
+    }
+
+    /// Get the configured health check interval
+    pub fn get_interval(&self) -> Duration {
+        self.health_check_interval
     }
 }
 

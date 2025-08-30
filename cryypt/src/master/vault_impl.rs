@@ -2,6 +2,7 @@
 //!
 //! Implementation of vault builder methods and future traits
 
+#[cfg(feature = "vault")]
 use super::vault::{VaultWithPath, VaultWithPathAndHandler};
 
 #[cfg(feature = "vault")]

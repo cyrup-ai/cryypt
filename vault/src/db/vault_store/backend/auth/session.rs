@@ -20,7 +20,7 @@ impl LocalVaultProvider {
         let token_guard = self.session_token.lock().await;
         if let Some(token) = token_guard.as_ref() {
             // Validate JWT token using cryypt_jwt API - use associated function syntax
-            let validation_result = JwtMasterBuilder::new()
+            let validation_result = JwtMasterBuilder::default()
                 .with_algorithm("HS256")
                 .with_secret(b"vault_session_key") // Use a consistent secret
                 .verify(token.clone())

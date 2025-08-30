@@ -94,7 +94,7 @@ impl LocalVaultProvider {
             "nbf": chrono::Utc::now().timestamp()
         });
 
-        let token_result = JwtMasterBuilder::new()
+        let token_result = JwtMasterBuilder::default()
             .with_algorithm("HS256")
             .with_secret(b"vault_session_key")
             .sign(session_claims)

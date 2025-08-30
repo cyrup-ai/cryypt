@@ -12,6 +12,7 @@ categories.workspace = true
 cryypt_common = { path = "../common" }
 cryypt_compression = { path = "../compression" }
 cryypt_cipher = { path = "../cipher" }
+cryypt_key = { path = "../key" }
 arc-swap = "1.7.1"
 rand = "0.9.2"
 zeroize = "1.8.1"
@@ -71,7 +72,7 @@ webpki-roots = "1.0.2"
 rustls-pemfile = "2.2.0"
 tokio-rustls = "0.26.2"
 
-# X.509 Certificate Parsing & Validation
+# X.509 Certificate Parsing & Validation  
 x509-cert = { version = "0.2.5", features = ["builder", "pem", "sct"] }
 x509-parser = "0.17.0"
 x509-ocsp = "0.2.1"

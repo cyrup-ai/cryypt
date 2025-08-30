@@ -1,8 +1,6 @@
 //! Certificate validation and generation builders
 
-use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use super::authority::CertificateAuthority;
 use super::responses::{CertificateGenerationResponse, CertificateValidationResponse};
@@ -110,7 +108,7 @@ impl CertificateValidatorWithInput {
 
         use crate::tls::certificate::{
             parse_certificate_from_pem, validate_basic_constraints, validate_certificate_time,
-            validate_key_usage, verify_peer_certificate,
+            validate_key_usage,
         };
         use crate::tls::types::CertificateUsage;
 
@@ -269,7 +267,7 @@ impl CertificateValidatorWithInput {
         let time_result = validate_certificate_time(&parsed_cert);
         validation_breakdown.insert("time_validity".to_string(), time_start.elapsed());
 
-        let time_check = match time_result {
+        let time_check = match &time_result {
             Ok(()) => super::responses::CheckResult::Passed,
             Err(e) => {
                 issues.push(super::responses::ValidationIssue {
@@ -327,8 +325,8 @@ impl CertificateValidatorWithInput {
 
                 // Continue with basic validation only
                 let domain_check = if let Some(domain) = &self.domain {
-                    if parsed_cert.san_entries.contains(domain)
-                        || parsed_cert.subject.contains(&format!("CN={}", domain))
+                    if parsed_cert.san_dns_names.contains(domain)
+                        || parsed_cert.subject.contains_key("CN") && parsed_cert.subject.get("CN") == Some(domain)
                     {
                         Some(super::responses::CheckResult::Passed)
                     } else {
@@ -354,12 +352,12 @@ impl CertificateValidatorWithInput {
                 return CertificateValidationResponse {
                     is_valid,
                     certificate_info: super::responses::CertificateInfo {
-                        subject: parsed_cert.subject.clone(),
-                        issuer: parsed_cert.issuer.clone(),
-                        serial_number: parsed_cert.serial_number.clone(),
+                        subject: format!("{:?}", parsed_cert.subject),
+                        issuer: format!("{:?}", parsed_cert.issuer),
+                        serial_number: hex::encode(&parsed_cert.serial_number),
                         valid_from: parsed_cert.not_before,
                         valid_until: parsed_cert.not_after,
-                        domains: parsed_cert.san_entries.clone(),
+                        domains: parsed_cert.san_dns_names.clone(),
                         is_ca: parsed_cert.is_ca,
                         key_algorithm: "RSA".to_string(),
                         key_size: None,
@@ -392,7 +390,7 @@ impl CertificateValidatorWithInput {
             .await;
         validation_breakdown.insert("ocsp_validation".to_string(), ocsp_start.elapsed());
 
-        let ocsp_check = match ocsp_result {
+        let ocsp_check = match &ocsp_result {
             Ok(()) => super::responses::CheckResult::Passed,
             Err(e) => {
                 issues.push(super::responses::ValidationIssue {
@@ -412,7 +410,7 @@ impl CertificateValidatorWithInput {
         let crl_result = tls_manager.validate_certificate_crl(&cert_content).await;
         validation_breakdown.insert("crl_validation".to_string(), crl_start.elapsed());
 
-        let crl_check = match crl_result {
+        let crl_check = match &crl_result {
             Ok(()) => super::responses::CheckResult::Passed,
             Err(e) => {
                 issues.push(super::responses::ValidationIssue {
@@ -458,10 +456,10 @@ impl CertificateValidatorWithInput {
             None
         };
 
-        // Domain validation if specified
+        // Domain validation if specified (single domain or multiple domains)
         let domain_check = if let Some(domain) = &self.domain {
-            if parsed_cert.san_entries.contains(domain)
-                || parsed_cert.subject.contains(&format!("CN={}", domain))
+            if parsed_cert.san_dns_names.contains(domain)
+                || (parsed_cert.subject.contains_key("CN") && parsed_cert.subject.get("CN") == Some(domain))
             {
                 Some(super::responses::CheckResult::Passed)
             } else {
@@ -473,6 +471,31 @@ impl CertificateValidatorWithInput {
                 });
                 Some(super::responses::CheckResult::Failed(
                     "Domain mismatch".to_string(),
+                ))
+            }
+        } else if let Some(domains) = &self.domains {
+            // Validate multiple domains - all must be present in certificate
+            let mut failed_domains = Vec::new();
+            
+            for domain in domains {
+                if !parsed_cert.san_dns_names.contains(domain)
+                    && !(parsed_cert.subject.contains_key("CN") && parsed_cert.subject.get("CN") == Some(domain))
+                {
+                    failed_domains.push(domain.clone());
+                }
+            }
+            
+            if failed_domains.is_empty() {
+                Some(super::responses::CheckResult::Passed)
+            } else {
+                issues.push(super::responses::ValidationIssue {
+                    severity: super::responses::IssueSeverity::Error,
+                    category: super::responses::IssueCategory::Domain,
+                    message: format!("Certificate not valid for domains: {}", failed_domains.join(", ")),
+                    suggestion: Some("Check SAN entries and subject CN for all required domains".to_string()),
+                });
+                Some(super::responses::CheckResult::Failed(
+                    format!("Domain mismatch for: {}", failed_domains.join(", "))
                 ))
             }
         } else {
@@ -496,12 +519,12 @@ impl CertificateValidatorWithInput {
         CertificateValidationResponse {
             is_valid,
             certificate_info: super::responses::CertificateInfo {
-                subject: parsed_cert.subject.clone(),
-                issuer: parsed_cert.issuer.clone(),
-                serial_number: parsed_cert.serial_number.clone(),
+                subject: format!("{:?}", parsed_cert.subject),
+                issuer: format!("{:?}", parsed_cert.issuer),
+                serial_number: hex::encode(&parsed_cert.serial_number),
                 valid_from: parsed_cert.not_before,
                 valid_until: parsed_cert.not_after,
-                domains: parsed_cert.san_entries.clone(),
+                domains: parsed_cert.san_dns_names.clone(),
                 is_ca: parsed_cert.is_ca,
                 key_algorithm: parsed_cert.key_algorithm.clone(),
                 key_size: parsed_cert.key_size,
@@ -627,7 +650,23 @@ impl CertificateGeneratorWithDomain {
 
         use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair, SanType};
 
-        let mut params = CertificateParams::new(self.domains.clone());
+        let mut params = match CertificateParams::new(self.domains.clone()) {
+            Ok(p) => p,
+            Err(e) => {
+                return CertificateGenerationResponse {
+                    success: false,
+                    certificate_info: None,
+                    files_created: vec![],
+                    certificate_pem: None,
+                    private_key_pem: None,
+                    issues: vec![super::responses::GenerationIssue {
+                        severity: super::responses::IssueSeverity::Error,
+                        message: format!("Failed to create certificate parameters: {}", e),
+                        suggestion: Some("Check certificate parameters and domain names".to_string()),
+                    }],
+                };
+            }
+        };
 
         // Set up distinguished name
         let mut distinguished_name = DistinguishedName::new();
@@ -642,18 +681,64 @@ impl CertificateGeneratorWithDomain {
         params.not_after =
             (now + std::time::Duration::from_secs(self.valid_for_days as u64 * 24 * 3600)).into();
 
-        // Add SAN entries
-        params.subject_alt_names = self
-            .domains
-            .iter()
-            .map(|domain| {
-                if domain.starts_with("*.") {
-                    SanType::DnsName(domain.clone())
-                } else {
-                    SanType::DnsName(domain.clone())
+        // Add SAN entries (with wildcard support)
+        let mut san_entries = Vec::new();
+        for domain in &self.domains {
+            // For wildcard certificates, ensure proper wildcard format
+            let domain_to_use = if self.is_wildcard && !domain.starts_with("*.") {
+                format!("*.{}", domain)
+            } else {
+                domain.clone()
+            };
+            
+            let ia5_string = match domain_to_use.clone().try_into() {
+                Ok(s) => s,
+                Err(e) => {
+                    return CertificateGenerationResponse {
+                        success: false,
+                        certificate_info: None,
+                        files_created: vec![],
+                        certificate_pem: None,
+                        private_key_pem: None,
+                        issues: vec![super::responses::GenerationIssue {
+                            severity: super::responses::IssueSeverity::Error,
+                            message: format!("Invalid DNS name '{}': {}", domain_to_use, e),
+                            suggestion: Some("Use valid DNS name format".to_string()),
+                        }],
+                    };
                 }
-            })
-            .collect();
+            };
+            san_entries.push(SanType::DnsName(ia5_string));
+            
+            // For wildcard certificates, also add the base domain
+            if self.is_wildcard {
+                let base_domain = if domain.starts_with("*.") {
+                    &domain[2..] // Remove "*."
+                } else {
+                    domain
+                };
+                
+                let base_ia5_string = match base_domain.to_string().try_into() {
+                    Ok(s) => s,
+                    Err(e) => {
+                        return CertificateGenerationResponse {
+                            success: false,
+                            certificate_info: None,
+                            files_created: vec![],
+                            certificate_pem: None,
+                            private_key_pem: None,
+                            issues: vec![super::responses::GenerationIssue {
+                                severity: super::responses::IssueSeverity::Error,
+                                message: format!("Invalid base DNS name '{}': {}", base_domain, e),
+                                suggestion: Some("Use valid DNS name format for base domain".to_string()),
+                            }],
+                        };
+                    }
+                };
+                san_entries.push(SanType::DnsName(base_ia5_string));
+            }
+        }
+        params.subject_alt_names = san_entries;
 
         // Generate key pair
         let key_pair = match KeyPair::generate() {
@@ -696,7 +781,24 @@ impl CertificateGeneratorWithDomain {
             }
         } else if let Some(ca) = &self.authority {
             // CA-signed certificate using existing authority
-            let ca_key_pair = match rcgen::KeyPair::from_pem(&ca.private_key_pem) {
+            let ca_private_key_pem = match ca.private_key_pem.as_ref() {
+                Some(key) => key,
+                None => {
+                    return CertificateGenerationResponse {
+                        success: false,
+                        certificate_info: None,
+                        certificate_pem: None,
+                        private_key_pem: None,
+                        files_created: vec![],
+                        issues: vec![super::responses::GenerationIssue {
+                            message: "Cannot sign certificates with validation-only CA - no private key available".to_string(),
+                            severity: super::responses::IssueSeverity::Error,
+                            suggestion: Some("Use a CA with a private key or load a different certificate authority".to_string()),
+                        }],
+                    };
+                }
+            };
+            let ca_key_pair = match rcgen::KeyPair::from_pem(ca_private_key_pem) {
                 Ok(kp) => kp,
                 Err(e) => {
                     return CertificateGenerationResponse {
@@ -766,25 +868,8 @@ impl CertificateGeneratorWithDomain {
         };
 
         // Serialize certificate and key
-        let cert_pem = match cert.serialize_pem() {
-            Ok(pem) => pem,
-            Err(e) => {
-                return CertificateGenerationResponse {
-                    success: false,
-                    certificate_info: None,
-                    files_created: vec![],
-                    certificate_pem: None,
-                    private_key_pem: None,
-                    issues: vec![super::responses::GenerationIssue {
-                        severity: super::responses::IssueSeverity::Error,
-                        message: format!("Failed to serialize certificate: {}", e),
-                        suggestion: Some("Check certificate generation".to_string()),
-                    }],
-                };
-            }
-        };
-
-        let key_pem = cert.serialize_private_key_pem();
+        let cert_pem = cert.pem();
+        let key_pem = key_pair.serialize_pem();
 
         let mut files_created = vec![];
 

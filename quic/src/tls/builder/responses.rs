@@ -61,7 +61,7 @@ impl CertificateValidationResponse {
         self.issues
             .iter()
             .filter(|i| matches!(i.severity, IssueSeverity::Error))
-            .map(|i| &i.message)
+            .map(|i| i.message.as_str())
             .collect::<Vec<_>>()
             .join("; ")
     }

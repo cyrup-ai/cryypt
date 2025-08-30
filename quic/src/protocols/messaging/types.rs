@@ -376,7 +376,7 @@ impl LoadBalancer {
         }
         
         use rand::Rng;
-        let index = rand::rng().gen_range(0..connections.len());
+        let index = rand::rng().random_range(0..connections.len());
         connections.get(index).cloned()
     }
     

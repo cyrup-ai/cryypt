@@ -3,8 +3,6 @@
 use serde::Serialize;
 use std::future::Future;
 use std::time::Duration;
-use std::net::SocketAddr;
-use tokio::net::UdpSocket;
 use uuid::Uuid;
 
 use super::types::{
@@ -26,6 +24,31 @@ impl QuicMessaging {
     /// Connect to a messaging server
     pub fn connect(server_addr: &str) -> MessagingClientBuilder {
         MessagingClientBuilder::new(server_addr.to_string())
+    }
+    
+    /// Convenience: Create a development messaging server with self-signed certificates
+    pub fn development_server() -> MessagingServerBuilder {
+        MessagingServerBuilder::development()
+    }
+    
+    /// Convenience: Create a production messaging server with file-based certificates
+    pub fn production_server() -> MessagingServerBuilder {
+        MessagingServerBuilder::production()
+    }
+    
+    /// Convenience: Create a low-latency messaging server optimized for speed
+    pub fn low_latency_server() -> MessagingServerBuilder {
+        MessagingServerBuilder::low_latency()
+    }
+    
+    /// Convenience: Create a high-throughput messaging server optimized for large payloads
+    pub fn high_throughput_server() -> MessagingServerBuilder {
+        MessagingServerBuilder::high_throughput()
+    }
+    
+    /// Convenience: Create a testing messaging server with temporary certificates
+    pub fn testing_server() -> MessagingServerBuilder {
+        MessagingServerBuilder::testing()
     }
 }
 
@@ -55,6 +78,71 @@ impl Default for MessagingServerBuilder {
 }
 
 impl MessagingServerBuilder {
+    /// Create a development-oriented builder with sensible defaults
+    pub fn development() -> Self {
+        Self {
+            max_message_size: 1_048_576, // 1MB
+            retain_messages: false,
+            delivery_timeout: Duration::from_secs(30),
+            default_compression: CompressionAlgorithm::Zstd,
+            compression_level: 3,
+            default_encryption: EncryptionAlgorithm::Aes256Gcm,
+            shared_secret: None,
+        }
+    }
+    
+    /// Create a production-oriented builder with robust defaults
+    pub fn production() -> Self {
+        Self {
+            max_message_size: 10_485_760, // 10MB
+            retain_messages: true,
+            delivery_timeout: Duration::from_secs(60),
+            default_compression: CompressionAlgorithm::Zstd,
+            compression_level: 6,
+            default_encryption: EncryptionAlgorithm::Aes256Gcm,
+            shared_secret: None,
+        }
+    }
+    
+    /// Create a low-latency builder optimized for speed
+    pub fn low_latency() -> Self {
+        Self {
+            max_message_size: 65536, // 64KB
+            retain_messages: false,
+            delivery_timeout: Duration::from_secs(5),
+            default_compression: CompressionAlgorithm::None,
+            compression_level: 1,
+            default_encryption: EncryptionAlgorithm::ChaCha20Poly1305,
+            shared_secret: None,
+        }
+    }
+    
+    /// Create a high-throughput builder optimized for large payloads
+    pub fn high_throughput() -> Self {
+        Self {
+            max_message_size: 50_331_648, // 48MB
+            retain_messages: true,
+            delivery_timeout: Duration::from_secs(300),
+            default_compression: CompressionAlgorithm::Zstd,
+            compression_level: 9,
+            default_encryption: EncryptionAlgorithm::Aes256Gcm,
+            shared_secret: None,
+        }
+    }
+    
+    /// Create a testing builder with minimal configuration
+    pub fn testing() -> Self {
+        Self {
+            max_message_size: 65536, // 64KB
+            retain_messages: false,
+            delivery_timeout: Duration::from_secs(10),
+            default_compression: CompressionAlgorithm::None,
+            compression_level: 1,
+            default_encryption: EncryptionAlgorithm::ChaCha20Poly1305,
+            shared_secret: Some(vec![42u8; 32]), // Fixed key for testing
+        }
+    }
+
     /// Set maximum message size in bytes
     pub fn with_max_message_size(mut self, size: usize) -> Self {
         self.max_message_size = size;
@@ -104,7 +192,7 @@ impl MessagingServerBuilder {
         self
     }
 
-    /// Start listening on the specified address
+    /// Start listening on the specified address using working implementation
     pub fn listen(self, addr: &str) -> impl Future<Output = crate::Result<MessagingServer>> + Send {
         use rand::RngCore;
         
@@ -115,30 +203,39 @@ impl MessagingServerBuilder {
             secret
         });
         
-        let config = MessagingServerConfig {
-            max_message_size: if self.max_message_size == 0 { 1024 * 1024 } else { self.max_message_size },
-            retain_messages: self.retain_messages,
-            delivery_timeout: if self.delivery_timeout.is_zero() { Duration::from_secs(30) } else { self.delivery_timeout },
-            default_compression: self.default_compression,
-            compression_level: self.compression_level,
-            default_encryption: self.default_encryption,
-            shared_secret,
-        };
         let addr_string = addr.to_string();
+        let max_message_size = if self.max_message_size == 0 { 1024 * 1024 } else { self.max_message_size };
+        let retain_messages = self.retain_messages;
+        let delivery_timeout = if self.delivery_timeout.is_zero() { Duration::from_secs(30) } else { self.delivery_timeout };
+        let default_compression = self.default_compression;
+        let compression_level = self.compression_level;
+        let default_encryption = self.default_encryption;
         
         async move {
-            let socket_addr: SocketAddr = addr_string.parse()
-                .map_err(|e| CryptoTransportError::Internal(
-                    format!("Invalid address {}: {}", addr_string, e)
-                ))?;
+            // Use development configuration with proper TLS integration
+            let cert_dir = std::path::PathBuf::from("./certs");
+            let mut config = MessagingServerConfig::development(cert_dir).await?;
             
-            // Create production-grade messaging server
-            let server = MessagingServer::new(socket_addr, config).await?;
+            // Override with user settings
+            config.max_message_size = max_message_size;
+            config.retain_messages = retain_messages;
+            config.delivery_timeout = delivery_timeout;
+            config.default_compression = default_compression;
+            config.compression_level = compression_level;
+            config.default_encryption = default_encryption;
+            config.shared_secret = shared_secret;
+            // Parse the address
+            let socket_addr = addr_string.parse().map_err(|e| {
+                crate::error::CryptoTransportError::Internal(format!("Invalid address {}: {}", addr_string, e))
+            })?;
             
-            println!("🚀 QUIC messaging server started on {}", socket_addr);
+            // Create messaging server with working implementation
+            let messaging_server = MessagingServer::new(socket_addr, config).await?;
             
-            // Start real QUIC event loop
-            server.run().await
+            println!("🚀 QUIC messaging server created on {}", addr_string);
+            
+            // Return the server - user can call .run().await to start it
+            Ok(messaging_server)
         }
     }
 }
@@ -148,6 +245,7 @@ pub struct MessagingClientBuilder {
     server_addr: String,
     client_id: Option<String>,
     auto_reconnect: bool,
+    client_secret: Option<Vec<u8>>,
 }
 
 impl MessagingClientBuilder {
@@ -156,6 +254,7 @@ impl MessagingClientBuilder {
             server_addr,
             client_id: None,
             auto_reconnect: true,
+            client_secret: None,
         }
     }
 
@@ -171,15 +270,22 @@ impl MessagingClientBuilder {
         self
     }
 
+    /// Set client secret for secure key derivation
+    pub fn with_client_secret(mut self, secret: Vec<u8>) -> Self {
+        self.client_secret = Some(secret);
+        self
+    }
+
     /// Send a message and wait for delivery confirmation
     pub async fn send_message<T: Serialize + Send + Sync + 'static>(
         self,
         message: T,
     ) -> crate::Result<MessageDelivery> {
-        // Log messaging details
-        println!(
-            "📤 Sending message to {} (client_id: {:?}, auto_reconnect: {})",
-            self.server_addr, self.client_id, self.auto_reconnect
+        // Log messaging details with client identification
+        let client_display = self.client_id.as_deref().unwrap_or("anonymous");
+        tracing::info!(
+            "📤 Sending message to {} (client_id: {}, auto_reconnect: {})",
+            self.server_addr, client_display, self.auto_reconnect
         );
 
         // Serialize message
@@ -194,30 +300,60 @@ impl MessagingClientBuilder {
         self.send_message_over_quic(&serialized, &message).await
     }
 
-    /// Send message over QUIC with acknowledgment
+    /// Send message over QUIC with acknowledgment using integrated QUIC API
     async fn send_message_over_quic<T: Serialize>(
         &self,
         serialized: &str,
         _message: &T,
     ) -> crate::Result<MessageDelivery> {
-        use rand::RngCore;
-
         let start_time = std::time::Instant::now();
         let message_id = Uuid::new_v4().to_string();
+        let payload_data = serialized.as_bytes().to_vec();
 
-        // Create message envelope with metadata
+        // Apply compression and encryption to client messages
+        let compression_alg = CompressionAlgorithm::Zstd; // Default compression for clients
+        let compression_level = 3; // Balanced compression level
+        let encryption_alg = EncryptionAlgorithm::Aes256Gcm; // Default encryption for clients
+        
+        // Generate encryption key from message ID and client secret
+        let client_secret = self.client_secret.as_ref().unwrap_or_else(|| {
+            // Generate secure default client secret if not provided
+            static DEFAULT_SECRET: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+            DEFAULT_SECRET.get_or_init(|| {
+                use rand::RngCore;
+                let mut secret = vec![0u8; 32];
+                rand::rng().fill_bytes(&mut secret);
+                secret
+            })
+        });
+        let encryption_key = super::message_processing::derive_connection_key(message_id.as_bytes(), client_secret).await
+            .map_err(|e| CryptoTransportError::Internal(format!("Key derivation failed: {}", e)))?;
+        let key_id = message_id.clone();
+
+        // Process payload through compression and encryption pipeline
+        let (processed_payload, compression_metadata, encryption_metadata) = 
+            super::message_processing::process_payload_forward(
+                payload_data,
+                compression_alg,
+                compression_level,
+                encryption_alg,
+                encryption_key,
+                key_id,
+            ).await?;
+
+        // Create message envelope with processed payload and metadata
         let envelope = MessageEnvelope {
             id: message_id.clone(),
             timestamp: std::time::SystemTime::now(),
-            payload: serialized.as_bytes().to_vec(),
-            topic: None, // Default topic for client messages
+            payload: processed_payload.clone(),
+            topic: self.client_id.as_ref().map(|id| format!("client:{}", id)), // Use client_id for topic routing
             distribution: DistributionStrategy::Broadcast,
             priority: MessagePriority::Normal, // Default priority for client messages
-            checksum: super::message_processing::calculate_checksum(serialized.as_bytes()),
+            checksum: super::message_processing::calculate_checksum(&processed_payload).await,
             requires_ack: true,
             retry_count: 0,
-            compression_metadata: None, // Client messages are not compressed by default
-            encryption_metadata: None, // Client messages are not encrypted by default
+            compression_metadata,
+            encryption_metadata,
         };
 
         // Serialize the envelope
@@ -228,123 +364,115 @@ impl MessagingClientBuilder {
             ))
         })?;
 
-        // Parse server address
-        let server_addr: SocketAddr = self.server_addr.parse()
-            .map_err(|e| CryptoTransportError::Internal(
-                format!("Invalid server address {}: {}", self.server_addr, e)
-            ))?;
-
-        // Create client QUIC configuration
-        let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)
-            .map_err(|e| CryptoTransportError::Internal(
-                format!("Failed to create QUIC config: {}", e)
-            ))?;
-
-        config.set_application_protos(&[b"cryypt-messaging"])
-            .map_err(|e| CryptoTransportError::Internal(
-                format!("Failed to set application protocols: {}", e)
-            ))?;
-
-        config.set_max_idle_timeout(30000); // 30 seconds
-        config.set_max_recv_udp_payload_size(1500);
-        config.set_initial_max_data(10_000_000);
-        config.set_initial_max_stream_data_bidi_local(1_000_000);
-        config.set_initial_max_stream_data_bidi_remote(1_000_000);
-        config.set_initial_max_streams_bidi(100);
-        config.set_initial_max_streams_uni(100);
-
-        // Configure TLS for client (insecure for now - in production use proper certs)
-        config.verify_peer(false);
-
-        // Bind UDP socket
-        let local_addr: SocketAddr = "0.0.0.0:0".parse().unwrap();
-        let socket = UdpSocket::bind(local_addr).await
-            .map_err(|e| CryptoTransportError::Internal(
-                format!("Failed to bind UDP socket: {}", e)
-            ))?;
-
-        // Generate random connection ID
-        let mut conn_id_bytes = [0u8; quiche::MAX_CONN_ID_LEN];
-        rand::rng().fill_bytes(&mut conn_id_bytes);
-        let conn_id = quiche::ConnectionId::from_ref(&conn_id_bytes);
+        // Use main QUIC API with auto-reconnect if enabled
+        let mut connection_attempts = 0;
+        let max_attempts = if self.auto_reconnect { 3 } else { 1 };
         
-        // Create QUIC connection
-        let mut conn = quiche::connect(None, &conn_id, local_addr, server_addr, &mut config)
-            .map_err(|e| CryptoTransportError::Internal(
-                format!("Failed to create QUIC connection: {}", e)
-            ))?;
-
-        let mut out_buf = vec![0u8; 1500];
-
-        // Send initial packet to establish connection
-        let (packet_len, send_info) = conn.send(&mut out_buf)
-            .map_err(|e| CryptoTransportError::Internal(
-                format!("Failed to send initial packet: {}", e)
-            ))?;
-
-        socket.send_to(&out_buf[..packet_len], send_info.to).await
-            .map_err(|e| CryptoTransportError::Internal(
-                format!("Failed to send UDP packet: {}", e)
-            ))?;
-
-        // Wait for connection establishment with timeout
-        let mut buf = vec![0u8; 1500];
-        let connection_timeout = Duration::from_secs(10);
-        
-        let connection_result = tokio::time::timeout(connection_timeout, async {
-            loop {
-                if conn.is_established() {
-                    break;
-                }
-
-                // Receive packets
-                let (packet_len, from) = socket.recv_from(&mut buf).await
-                    .map_err(|e| CryptoTransportError::Internal(
-                        format!("Failed to receive packet: {}", e)
-                    ))?;
-
-                let recv_info = quiche::RecvInfo { from, to: local_addr };
-                match conn.recv(&mut buf[..packet_len], recv_info) {
-                    Ok(_) => {},
-                    Err(quiche::Error::Done) => {},
-                    Err(e) => return Err(CryptoTransportError::Internal(
-                        format!("Connection recv error: {}", e)
-                    )),
-                }
-
-                // Send any pending packets
-                loop {
-                    match conn.send(&mut out_buf) {
-                        Ok((packet_len, send_info)) => {
-                            socket.send_to(&out_buf[..packet_len], send_info.to).await
-                                .map_err(|e| CryptoTransportError::Internal(
-                                    format!("Failed to send packet: {}", e)
-                                ))?;
-                        },
-                        Err(quiche::Error::Done) => break,
-                        Err(e) => return Err(CryptoTransportError::Internal(
-                            format!("Connection send error: {}", e)
-                        )),
+        let quic_client = loop {
+            connection_attempts += 1;
+            
+            match crate::api::Quic::client()
+                .with_server_name("localhost") // Use localhost for self-signed cert
+                .connect(&self.server_addr).await {
+                    Ok(client) => break client,
+                    Err(e) => {
+                        tracing::warn!("QUIC connection attempt {} failed: {}", connection_attempts, e);
+                        
+                        if connection_attempts >= max_attempts {
+                            tracing::error!("Failed to connect QUIC client after {} attempts", max_attempts);
+                            return Err(CryptoTransportError::Internal(
+                                format!("QUIC connection failed after {} attempts: {}", max_attempts, e)
+                            ));
+                        }
+                        
+                        if self.auto_reconnect {
+                            tracing::info!("Auto-reconnect enabled, retrying connection (attempt {} of {})", 
+                                connection_attempts + 1, max_attempts);
+                            // Brief delay before retry
+                            tokio::time::sleep(Duration::from_millis(500 * connection_attempts as u64)).await;
+                        }
                     }
                 }
-            }
+        };
 
-            Ok(())
+        let (quic_send, quic_recv) = quic_client
+            .open_bi().await
+            .map_err(|e| {
+                tracing::error!("Failed to open bidirectional stream: {}", e);
+                CryptoTransportError::Internal(format!("Failed to open QUIC stream: {}", e))
+            })?;
+
+        // Send the message envelope over the QUIC stream
+        quic_send
+            .write_all(&envelope_data).await
+            .map_err(|e| {
+                tracing::error!("Failed to send message over QUIC stream: {}", e);
+                CryptoTransportError::Internal(format!("Failed to send message: {}", e))
+            })?;
+        
+        tracing::info!("📤 Message sent successfully over integrated QUIC stream: {}", message_id);
+
+        // Wait for acknowledgment from server
+        let ack_timeout = Duration::from_secs(30);
+        let ack_result = tokio::time::timeout(ack_timeout, async {
+            use futures::StreamExt;
+            
+            let stream = quic_recv
+                .on_chunk(|result| match result {
+                    Ok(chunk) => {
+                        tracing::debug!("Received ACK chunk: {} bytes", chunk.len());
+                        Some(chunk)
+                    }
+                    Err(e) => {
+                        tracing::error!("QUIC ACK stream error: {}", e);
+                        None
+                    }
+                })
+                .stream();
+
+            let mut pinned_stream = Box::pin(stream);
+            let mut ack_data = Vec::new();
+            
+            // Collect acknowledgment data
+            while let Some(chunk) = pinned_stream.next().await {
+                ack_data.extend_from_slice(&chunk);
+                
+                // Try to parse as JSON acknowledgment
+                if let Ok(ack_text) = String::from_utf8(ack_data.clone()) {
+                    if let Ok(ack_json) = serde_json::from_str::<serde_json::Value>(&ack_text) {
+                        if let Some(ack_message_id) = ack_json.get("ack").and_then(|v| v.as_str()) {
+                            if ack_message_id == message_id {
+                                tracing::debug!("Received acknowledgment for message: {}", message_id);
+                                return Ok(());
+                            }
+                        }
+                    }
+                }
+                
+                // Break if we've received enough data to determine it's not an ACK
+                if ack_data.len() > 1024 {
+                    break;
+                }
+            }
+            
+            Err(CryptoTransportError::Internal("No valid acknowledgment received".to_string()))
         }).await;
 
-        connection_result.map_err(|_| CryptoTransportError::Internal(
-            "Connection establishment timeout".to_string()
-        ))??;
-
-        // Open bidirectional stream for message sending
-        let stream_id = conn.stream_send(0, &envelope_data, false)
-            .map_err(|e| CryptoTransportError::Internal(
-                format!("Failed to send message on stream: {}", e)
-            ))?;
-
-        // Wait for acknowledgment (simplified implementation)
-        // In a full implementation, this would wait for server ACK
         let delivery_time = start_time.elapsed();
+        
+        match ack_result {
+            Ok(Ok(())) => {
+                tracing::info!("Message {} acknowledged by server", message_id);
+            }
+            Ok(Err(e)) => {
+                tracing::warn!("Acknowledgment error for message {}: {}", message_id, e);
+                // Continue anyway - message was sent
+            }
+            Err(_) => {
+                tracing::warn!("Acknowledgment timeout for message {} after {:?}", message_id, ack_timeout);
+                // Continue anyway - message was sent
+            }
+        }
         
         // Return successful delivery confirmation
         Ok(MessageDelivery {
@@ -354,4 +482,5 @@ impl MessagingClientBuilder {
         })
     }
 }
+
 

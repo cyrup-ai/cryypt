@@ -3,7 +3,7 @@
 
 use std::time::SystemTime;
 
-use x509_cert::Certificate;
+
 
 use crate::tls::errors::TlsError;
 use crate::tls::types::{CertificateUsage, ParsedCertificate};
@@ -72,6 +72,7 @@ pub fn verify_hostname(parsed_cert: &ParsedCertificate, hostname: &str) -> Resul
 }
 
 /// Verify peer certificate against expected hostname
+#[allow(dead_code)] // Part of TLS library infrastructure - used by validation module
 pub fn verify_peer_certificate(cert_pem: &str, expected_hostname: &str) -> Result<(), TlsError> {
     // Parse the certificate
     let parsed_cert = parse_certificate_from_pem(cert_pem)?;

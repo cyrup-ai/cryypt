@@ -72,7 +72,7 @@ let mut decompressed_stream = Cryypt::compress()
             BadChunk::from_error(e)
         }
     })
-    .decompress_stream(compressed_input);
+    .decompress(compressed_input); // Same verb as Future path - polymorphic behavior via on_chunk vs on_result
 ```
 
 ### Other Compression Formats

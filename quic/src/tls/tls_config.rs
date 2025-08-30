@@ -18,10 +18,13 @@ use super::ocsp::OcspCache;
 pub struct TlsManager {
     #[allow(dead_code)]
     cert_dir: std::path::PathBuf,
+    #[allow(dead_code)] // Used by TLS configuration methods - library infrastructure
     ca_cert: CertificateDer<'static>,
     #[allow(dead_code)]
     ca_key: PrivatePkcs8KeyDer<'static>,
+    #[allow(dead_code)] // Used by TLS configuration methods - library infrastructure  
     server_cert: CertificateDer<'static>,
+    #[allow(dead_code)] // Used by TLS configuration methods - library infrastructure
     server_key: PrivatePkcs8KeyDer<'static>,
     ocsp_cache: OcspCache,
     crl_cache: crl_cache::CrlCache,
@@ -51,6 +54,7 @@ impl TlsManager {
     }
 
     /// Get server TLS configuration
+    #[allow(dead_code)] // TLS library infrastructure - provides server configuration
     pub fn server_config(&self) -> Result<ServerConfig> {
         let mut root_store = RootCertStore::empty();
         root_store.add(self.ca_cert.clone())?;
@@ -68,6 +72,7 @@ impl TlsManager {
     }
 
     /// Get client TLS configuration
+    #[allow(dead_code)] // TLS library infrastructure - provides client configuration
     pub fn client_config(&self) -> Result<ClientConfig> {
         let mut root_store = RootCertStore::empty();
         root_store.add(self.ca_cert.clone())?;
@@ -173,12 +178,14 @@ impl TlsManager {
     }
 
     /// Validate certificate chain to root CA
+    #[allow(dead_code)] // TLS library infrastructure - certificate chain validation
     pub async fn validate_certificate_chain(&self, cert_chain_pem: &str) -> Result<(), TlsError> {
         super::certificate::validation::validate_certificate_chain(cert_chain_pem, &self.ca_cert)
             .await
     }
 
     /// Verify peer certificate against expected hostname
+    #[allow(dead_code)] // TLS library infrastructure - peer certificate verification
     pub fn verify_peer_certificate(
         cert_pem: &str,
         expected_hostname: &str,
@@ -186,7 +193,8 @@ impl TlsManager {
         verify_peer_certificate(cert_pem, expected_hostname)
     }
 
-    /// Verify peer certificate with OCSP validation
+    /// Verify peer certificate with OCSP validation  
+    #[allow(dead_code)] // TLS library infrastructure - OCSP certificate verification
     pub async fn verify_peer_certificate_with_ocsp(
         &self,
         cert_pem: &str,
@@ -208,6 +216,7 @@ impl TlsManager {
     }
 
     /// Verify peer certificate with comprehensive revocation checking (OCSP + CRL + Chain)
+    #[allow(dead_code)] // TLS library infrastructure - comprehensive certificate verification
     pub async fn verify_peer_certificate_comprehensive(
         &self,
         cert_pem: &str,

@@ -5,10 +5,26 @@
 #[cfg(feature = "jwt")]
 use cryypt_jwt::Cryypt as JwtCryypt;
 
-use super::{
-    CipherMasterBuilder, CompressMasterBuilder, HashMasterBuilder, KeyMasterBuilder,
-    PqcryptoMasterBuilder, QuicMasterBuilder, VaultMasterBuilder,
-};
+#[cfg(any(feature = "aes", feature = "chacha20"))]
+use super::CipherMasterBuilder;
+
+#[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
+use super::CompressMasterBuilder;
+
+#[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
+use super::HashMasterBuilder;
+
+#[cfg(feature = "key")]
+use super::KeyMasterBuilder;
+
+#[cfg(feature = "pqcrypto")]
+use super::PqcryptoMasterBuilder;
+
+#[cfg(feature = "quic")]
+use super::QuicMasterBuilder;
+
+#[cfg(feature = "vault")]
+use super::VaultMasterBuilder;
 
 /// Master builder providing unified entry point for all cryypt operations
 /// README.md pattern: "Cryypt offers two equivalent APIs"

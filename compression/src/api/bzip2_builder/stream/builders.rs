@@ -24,18 +24,18 @@ where
         )
     }
 
-    /// Decompress data from a stream
-    #[inline]
-    pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self,
-        stream: S,
-    ) -> Bzip2Stream<C> {
-        Bzip2Stream::new_decompress(
-            stream,
-            CompressionAlgorithm::Bzip2 { level: None },
-            self.chunk_handler,
-            self.error_handler,
-        )
+    /// Decompress data using streaming chunk handler - follows cipher pattern
+    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
+        let data = data.into();
+        let handler = self.chunk_handler;
+
+        // Use public Bzip2Builder API - create builder and decompress
+        use crate::Bzip2Builder;
+        let builder = Bzip2Builder::new();
+        let result = builder.decompress(data).await;
+
+        // Apply chunk handler to raw Vec<u8> result
+        handler(result.map(|compression_result| compression_result.to_vec())).unwrap_or_default()
     }
 }
 
@@ -60,17 +60,17 @@ where
         )
     }
 
-    /// Decompress data from a stream
-    #[inline]
-    pub fn decompress_stream<S: Stream<Item = Vec<u8>> + Send + 'static>(
-        self,
-        stream: S,
-    ) -> Bzip2Stream<C> {
-        Bzip2Stream::new_decompress(
-            stream,
-            CompressionAlgorithm::Bzip2 { level: None },
-            self.chunk_handler,
-            self.error_handler,
-        )
+    /// Decompress data using streaming chunk handler - follows cipher pattern
+    pub async fn decompress<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
+        let data = data.into();
+        let handler = self.chunk_handler;
+
+        // Use public Bzip2Builder API - create builder and decompress
+        use crate::Bzip2Builder;
+        let builder = Bzip2Builder::new();
+        let result = builder.decompress(data).await;
+
+        // Apply chunk handler to raw Vec<u8> result
+        handler(result.map(|compression_result| compression_result.to_vec())).unwrap_or_default()
     }
 }

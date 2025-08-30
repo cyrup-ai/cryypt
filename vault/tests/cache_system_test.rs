@@ -15,7 +15,6 @@ use cryypt_vault::db::vault_store::cache::{
 use cryypt_vault::error::VaultError;
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::{Surreal, engine::any::Any};
 use tokio::time::sleep;
 
 /// Test key type for cache operations
@@ -57,7 +56,7 @@ async fn create_test_cache() -> LruCache<TestKey> {
 
 /// Create test cache with SurrealDB persistence
 async fn create_persistent_cache() -> Result<LruCache<TestKey>, VaultError> {
-    let config = CacheConfig {
+    let _config = CacheConfig {
         max_entries: 50,
         ttl_seconds: 1800,
         persistence_enabled: true,

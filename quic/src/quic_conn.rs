@@ -279,45 +279,39 @@ fn flush_outbound(controller: &Arc<QuicConnectionController>) -> Result<()> {
         CryptoTransportError::from("Failed to acquire outbound queue lock for flush")
     })?;
 
+    // Process queue using proper index management pattern from quiche examples  
     let i = 0;
     while i < queue.len() {
         let msg = &mut queue[i];
         
-        // Proper stream ID allocation
-        let stream_id = if let Some(id) = msg.stream_id {
-            id
-        } else {
-            generate_next_stream_id()
-        };
+        // Allocate stream ID if not already set
+        if msg.stream_id.is_none() {
+            msg.stream_id = Some(generate_next_stream_id());
+        }
+        let stream_id = msg.stream_id.unwrap();
 
-        let mut offset = 0;
-        while offset < msg.data.len() {
-            match conn_guard.stream_send(
-                stream_id,
-                &msg.data[offset..],
-                msg.fin && (offset + 1 >= msg.data.len()),
-            ) {
-                Ok(written) => {
-                    offset += written;
-                }
-                Err(quiche::Error::Done)
-                | Err(quiche::Error::FlowControl)
-                | Err(quiche::Error::StreamLimit) => {
+        // Attempt to send remaining data using quiche pattern
+        match conn_guard.stream_send(stream_id, &msg.data, msg.fin) {
+            Ok(written) => {
+                if written < msg.data.len() {
+                    // Partial write - update message with remaining data
+                    let remaining_data = msg.data[written..].to_vec();
+                    msg.data = remaining_data;
+                    // Keep message in queue, don't increment i - will retry on next flush
                     break;
-                }
-                Err(e) => {
-                    return Err(e.into());
+                } else {
+                    // Complete write - remove message from queue
+                    queue.remove(i);
+                    // Don't increment i since we removed an element
                 }
             }
-        }
-        if offset < msg.data.len() {
-            let leftover = msg.data[offset..].to_vec();
-            msg.data = leftover;
-            break;
-        } else {
-            // Message fully sent, remove from queue
-            queue.remove(i);
-            // Don't increment i since we removed an element
+            Err(quiche::Error::Done) | Err(quiche::Error::FlowControl) | Err(quiche::Error::StreamLimit) => {
+                // Flow control or stream limits - stop processing queue
+                break;
+            }
+            Err(e) => {
+                return Err(e.into());
+            }
         }
     }
 

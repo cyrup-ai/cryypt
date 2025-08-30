@@ -2,7 +2,7 @@
 
 use cryypt_vault::api::{
     CompressionAlgorithm, CompressionOptimizer, ConnectionManager, ConnectionState, ErrorRecovery,
-    PassphraseChanger, StreamBuffer, StreamIdManager, VaultWithTtl,
+    StreamBuffer, StreamIdManager,
 };
 use std::time::Duration;
 

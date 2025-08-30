@@ -254,27 +254,3 @@ impl ServerListenerBuilder {
     }
 }
 
-/// Generate a test certificate for QUIC server
-pub(crate) fn generate_test_certificate() -> Vec<u8> {
-    // Self-signed certificate for testing
-    // In production, use proper certificates from CA
-    b"-----BEGIN CERTIFICATE-----
-MIIBkTCB+wIJAMlyFqk69v+9MA0GCSqGSIb3DQEBCwUAMBQxEjAQBgNVBAMMCWxv
-Y2FsaG9zdDAeFw0yNDA4MTUwMDAwMDBaFw0yNTA4MTUwMDAwMDBaMBQxEjAQBgNV
-BAMMCWxvY2FsaG9zdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABPKxcYhw+WRc
-5MU9MqfKgVcr5W4dYFRR7EsGDKGzJZDo4QT+PVGRn5zJf6TGc7nP8sEJ1qEkXqNY
-eWoA8U9dPLgwDQYJKoZIhvcNAQELBQADQQCQFt2xgLj2YEUCvqCOoOaF9TnJHw1h
-5lk6oN7J9q9t5LT5WE9d3r3g6X1dQzRzxoKjhEYIw9P3B4UJE0BdFhzn
------END CERTIFICATE-----".to_vec()
-}
-
-/// Generate a test private key for QUIC server
-pub(crate) fn generate_test_private_key() -> Vec<u8> {
-    // Private key corresponding to test certificate
-    // In production, use properly generated and secured private keys
-    b"-----BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg7+DQ9JkXGKM8J0z1
-bQ8CfVTT4tN7F8zKq3pCqEPfgEWhRANCAAT1sXGIcPlkXOTFPTKnyoFXK+VuHWBU
-UexLBgyhsyWQ6OEE/j1RkZ+cyX+kxnO5z/LBCdahJF6jWHlqAPFPXTy4
------END PRIVATE KEY-----".to_vec()
-}

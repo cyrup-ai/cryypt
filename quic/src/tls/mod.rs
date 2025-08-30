@@ -18,6 +18,10 @@ pub(crate) mod types;
 pub mod builder;
 pub use builder::{CertificateAuthority, Tls};
 
+// Public QUIC integration utilities
+pub mod quiche_integration;
+pub use quiche_integration::{QuicheCertificateProvider, configure_quiche_with_tls};
+
 // Public TLS manager for enterprise connections
 pub use tls_manager::{TlsManager, TlsConfig};
 

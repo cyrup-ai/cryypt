@@ -3,201 +3,39 @@
 //! High-performance, lock-free LRU cache with atomic operations, SurrealDB persistence,
 //! TTL-based expiration, metrics collection, and security features.
 
-use super::VaultEntry;
+pub mod config;
+pub mod entry;
+pub mod metrics;
+pub mod security;
+pub mod persistence;
+pub mod simd_hash;
+pub mod invalidation;
+
+// Re-export main types
+pub use config::{CacheConfig, PersistenceMode};
+pub use entry::{CacheEntry, current_timestamp};
+pub use metrics::CacheMetrics;
+pub use security::SecureValue;
+pub use persistence::{PersistenceOperation, OperationType, persist_operation};
+pub use simd_hash::simd_hash::fast_hash;
+pub use invalidation::InvalidationStrategy;
+
+// Main cache implementation
+use crate::db::VaultEntry;
 use crate::error::VaultError;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use chrono;
 use cryypt_cipher::Cryypt;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use surrealdb::{Surreal, engine::any::Any};
 use tokio::sync::mpsc;
 use tokio::time::{interval, sleep};
 use tracing::{debug, error, info, warn};
-use zeroize::{Zeroize, Zeroizing};
-
-/// Cache configuration with performance and security settings
-#[derive(Debug, Clone)]
-pub struct CacheConfig {
-    /// Maximum number of entries in the cache
-    pub max_entries: usize,
-    /// Time-to-live for cache entries in seconds
-    pub ttl_seconds: u64,
-    /// Enable persistence to SurrealDB
-    pub persistence_enabled: bool,
-    /// Persistence mode: WriteThrough or WriteBack
-    pub persistence_mode: PersistenceMode,
-    /// Cache warming enabled
-    pub warming_enabled: bool,
-    /// Metrics collection interval in seconds
-    pub metrics_interval_seconds: u64,
-    /// Enable SIMD optimizations for hashing
-    pub simd_enabled: bool,
-}
-
-impl Default for CacheConfig {
-    fn default() -> Self {
-        Self {
-            max_entries: 10000,
-            ttl_seconds: 3600, // 1 hour
-            persistence_enabled: true,
-            persistence_mode: PersistenceMode::WriteThrough,
-            warming_enabled: true,
-            metrics_interval_seconds: 60,
-            simd_enabled: true,
-        }
-    }
-}
-
-/// Cache persistence modes
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PersistenceMode {
-    /// Write to cache and database immediately
-    WriteThrough,
-    /// Write to cache immediately, database asynchronously
-    WriteBack,
-}
-
-/// Secure cache entry storing encrypted data only - lock-free design
-#[derive(Debug)]
-struct CacheEntry {
-    /// Encrypted value as base64 string (same format as database)
-    encrypted_value: String,
-    created_at: u64,
-    last_accessed: AtomicU64,
-    access_count: AtomicU64,
-    ttl_seconds: u64,
-}
-
-impl CacheEntry {
-    fn new(encrypted_value: String, ttl_seconds: u64) -> Self {
-        let now = current_timestamp();
-        Self {
-            encrypted_value,
-            created_at: now,
-            last_accessed: AtomicU64::new(now),
-            access_count: AtomicU64::new(1),
-            ttl_seconds,
-        }
-    }
-
-    fn is_expired(&self) -> bool {
-        if self.ttl_seconds == 0 {
-            return false;
-        }
-        let now = current_timestamp();
-        now.saturating_sub(self.created_at) > self.ttl_seconds
-    }
-
-    fn touch(&self) {
-        let now = current_timestamp();
-        self.last_accessed.store(now, Ordering::Relaxed);
-        self.access_count.fetch_add(1, Ordering::Relaxed);
-    }
-
-    fn last_access_time(&self) -> u64 {
-        self.last_accessed.load(Ordering::Relaxed)
-    }
-}
-
-/// Cache metrics for monitoring and performance analysis - lock-free design
-#[derive(Debug, Default)]
-pub struct CacheMetrics {
-    pub hits: AtomicU64,
-    pub misses: AtomicU64,
-    pub evictions: AtomicU64,
-    pub insertions: AtomicU64,
-    pub deletions: AtomicU64,
-    pub expired_entries: AtomicU64,
-    pub persistence_writes: AtomicU64,
-    pub persistence_errors: AtomicU64,
-    pub memory_usage_bytes: AtomicU64,
-}
-
-impl CacheMetrics {
-    /// Get cache hit ratio as a percentage
-    pub fn hit_ratio(&self) -> f64 {
-        let hits = self.hits.load(Ordering::Relaxed) as f64;
-        let total = hits + self.misses.load(Ordering::Relaxed) as f64;
-        if total == 0.0 {
-            0.0
-        } else {
-            (hits / total) * 100.0
-        }
-    }
-
-    /// Reset all metrics to zero
-    pub fn reset(&self) {
-        self.hits.store(0, Ordering::Relaxed);
-        self.misses.store(0, Ordering::Relaxed);
-        self.evictions.store(0, Ordering::Relaxed);
-        self.insertions.store(0, Ordering::Relaxed);
-        self.deletions.store(0, Ordering::Relaxed);
-        self.expired_entries.store(0, Ordering::Relaxed);
-        self.persistence_writes.store(0, Ordering::Relaxed);
-        self.persistence_errors.store(0, Ordering::Relaxed);
-        self.memory_usage_bytes.store(0, Ordering::Relaxed);
-    }
-}
-
-/// Secure cache value wrapper with automatic zeroization
-#[derive(Debug, Clone)]
-pub struct SecureValue<T>
-where
-    T: Zeroize,
-{
-    inner: T,
-}
-
-impl<T> SecureValue<T>
-where
-    T: Zeroize,
-{
-    pub fn new(value: T) -> Self {
-        Self { inner: value }
-    }
-
-    pub fn get(&self) -> &T {
-        &self.inner
-    }
-
-    pub fn into_inner(self) -> T
-    where
-        T: Default,
-    {
-        let mut value = self;
-        std::mem::take(&mut value.inner)
-    }
-}
-
-impl<T> Drop for SecureValue<T>
-where
-    T: Zeroize,
-{
-    fn drop(&mut self) {
-        self.inner.zeroize();
-    }
-}
-
-/// Persistence operation for async database writes - stores encrypted data
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct PersistenceOperation<K> {
-    operation_type: OperationType,
-    key: K,
-    encrypted_value: Option<String>,
-    timestamp: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-enum OperationType {
-    Insert,
-    Update,
-    Delete,
-}
+use zeroize::Zeroizing;
 
 /// Lock-free secure LRU cache with encrypted storage and atomic operations
 pub struct LruCache<K>
@@ -205,11 +43,11 @@ where
     K: Clone + Hash + Eq + Send + Sync + 'static,
 {
     /// Main cache storage using lock-free hash map - stores encrypted data only
-    cache: Arc<DashMap<K, Arc<CacheEntry>>>,
+    pub cache: Arc<DashMap<K, Arc<CacheEntry>>>,
     /// Cache configuration
     config: CacheConfig,
     /// Current cache size
-    size: AtomicUsize,
+    pub size: AtomicUsize,
     /// Cache metrics
     metrics: Arc<CacheMetrics>,
     /// Persistence channel sender
@@ -267,7 +105,7 @@ where
             while running_clone.load(Ordering::Relaxed) {
                 match rx.recv().await {
                     Some(operation) => {
-                        if let Err(e) = Self::persist_operation(&db_clone, operation).await {
+                        if let Err(e) = persist_operation(&db_clone, operation).await {
                             error!(error = %e, "Cache persistence operation failed");
                             metrics_clone
                                 .persistence_errors
@@ -507,7 +345,7 @@ where
     #[inline]
     pub fn hash_key(&self, key: &K) -> u64 {
         if self.config.simd_enabled {
-            simd_hash::fast_hash(key)
+            simd_hash::simd_hash::fast_hash(key)
         } else {
             use std::collections::hash_map::DefaultHasher;
             use std::hash::Hasher;
@@ -714,47 +552,6 @@ where
         });
     }
 
-    /// Persist a cache operation to the database - zero allocation
-    async fn persist_operation(
-        db: &Surreal<Any>,
-        operation: PersistenceOperation<K>,
-    ) -> Result<(), VaultError> {
-        match operation.operation_type {
-            OperationType::Insert | OperationType::Update => {
-                if let Some(encrypted_value) = operation.encrypted_value {
-                    let db_clone = db.clone();
-                    let _result: Result<Option<VaultEntry>, surrealdb::Error> = db_clone
-                        .create("cache")
-                        .content(VaultEntry {
-                            id: Some(format!("cache:{:?}", operation.key)),
-                            key: format!("{:?}", operation.key),
-                            value: encrypted_value,
-                            created_at: Some(
-                                chrono::DateTime::from_timestamp(operation.timestamp as i64, 0)
-                                    .unwrap_or_default(),
-                            ),
-                            updated_at: Some(
-                                chrono::DateTime::from_timestamp(operation.timestamp as i64, 0)
-                                    .unwrap_or_default(),
-                            ),
-                            expires_at: None, // No expiry for cache entries  
-                            namespace: Some("cache".to_string()),
-                        })
-                        .await;
-                }
-            }
-            OperationType::Delete => {
-                let query = "DELETE cache_entries:$key";
-                db.query(query)
-                    .bind(("key", operation.key))
-                    .await
-                    .map_err(|e| VaultError::DatabaseError(e.to_string()))?;
-            }
-        }
-
-        Ok(())
-    }
-
     /// Shutdown the cache and cleanup resources
     pub async fn shutdown(&self) {
         self.running.store(false, Ordering::Relaxed);
@@ -763,183 +560,85 @@ where
         // Give background tasks time to finish
         sleep(Duration::from_millis(100)).await;
     }
-}
 
-/// Get current timestamp in seconds since UNIX epoch - zero allocation
-#[inline]
-fn current_timestamp() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
-}
+    /// Invalidate cache entries based on the specified strategy
+    pub async fn invalidate(&self, strategy: InvalidationStrategy) -> usize {
+        let mut invalidated_count = 0;
 
-/// SIMD-optimized hash function for cache keys
-#[cfg(target_arch = "x86_64")]
-mod simd_hash {
-    use std::hash::{Hash, Hasher};
+        match strategy {
+            InvalidationStrategy::KeyPattern(pattern) => {
+                let keys_to_remove: Vec<K> = self
+                    .cache
+                    .iter()
+                    .filter_map(|entry| {
+                        if format!("{:?}", entry.key()).contains(&pattern) {
+                            Some(entry.key().clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
 
-    /// SIMD-optimized hasher for x86_64 architectures
-    pub struct SimdHasher {
-        state: u64,
-    }
+                for key in keys_to_remove {
+                    if self.cache.remove(&key).is_some() {
+                        self.size.fetch_sub(1, Ordering::Relaxed);
+                        invalidated_count += 1;
+                    }
+                }
+            }
+            InvalidationStrategy::Age(max_age_seconds) => {
+                let current_time = current_timestamp();
+                let keys_to_remove: Vec<K> = self
+                    .cache
+                    .iter()
+                    .filter_map(|entry| {
+                        let age = current_time.saturating_sub(entry.value().created_at);
+                        if age > max_age_seconds {
+                            Some(entry.key().clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
 
-    impl SimdHasher {
-        pub fn new() -> Self {
-            Self {
-                state: 0x517cc1b727220a95,
-            } // Random seed
-        }
-    }
+                for key in keys_to_remove {
+                    if self.cache.remove(&key).is_some() {
+                        self.size.fetch_sub(1, Ordering::Relaxed);
+                        invalidated_count += 1;
+                    }
+                }
+            }
+            InvalidationStrategy::AccessCount(min_access_count) => {
+                let keys_to_remove: Vec<K> = self
+                    .cache
+                    .iter()
+                    .filter_map(|entry| {
+                        if entry.value().access_count.load(Ordering::Relaxed) < min_access_count
+                        {
+                            Some(entry.key().clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
 
-    impl Hasher for SimdHasher {
-        fn write(&mut self, bytes: &[u8]) {
-            // Use SIMD instructions for faster hashing on supported architectures
-            for chunk in bytes.chunks(8) {
-                let mut data = [0u8; 8];
-                data[..chunk.len()].copy_from_slice(chunk);
-                let value = u64::from_le_bytes(data);
-                self.state = self
-                    .state
-                    .wrapping_mul(0x9e3779b97f4a7c15)
-                    .wrapping_add(value);
+                for key in keys_to_remove {
+                    if self.cache.remove(&key).is_some() {
+                        self.size.fetch_sub(1, Ordering::Relaxed);
+                        invalidated_count += 1;
+                    }
+                }
+            }
+            InvalidationStrategy::All => {
+                invalidated_count = self.size.load(Ordering::Relaxed);
+                self.clear().await;
             }
         }
 
-        fn finish(&self) -> u64 {
-            self.state
+        if invalidated_count > 0 {
+            info!(invalidated_count, "Cache invalidation completed");
         }
-    }
 
-    /// Fast hash function using SIMD optimizations
-    pub fn fast_hash<T: Hash>(value: &T) -> u64 {
-        let mut hasher = SimdHasher::new();
-        value.hash(&mut hasher);
-        hasher.finish()
-    }
-}
-
-#[cfg(not(target_arch = "x86_64"))]
-mod simd_hash {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
-    /// Fallback hash function for non-x86_64 architectures
-    pub fn fast_hash<T: Hash>(value: &T) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        value.hash(&mut hasher);
-        hasher.finish()
-    }
-}
-
-/// Cache invalidation strategies
-pub mod invalidation {
-    use super::*;
-
-    /// Cache invalidation strategy
-    #[derive(Debug)]
-    pub enum InvalidationStrategy {
-        /// Invalidate by key pattern
-        KeyPattern(String),
-        /// Invalidate by age (older than specified seconds)
-        Age(u64),
-        /// Invalidate by access count (less than specified count)
-        AccessCount(u64),
-        /// Invalidate all entries
-        All,
-    }
-
-    impl<K> LruCache<K>
-    where
-        K: Clone
-            + Hash
-            + Eq
-            + Send
-            + Sync
-            + 'static
-            + Serialize
-            + for<'de> Deserialize<'de>
-            + std::fmt::Debug,
-    {
-        /// Invalidate cache entries based on the specified strategy
-        pub async fn invalidate(&self, strategy: InvalidationStrategy) -> usize {
-            let mut invalidated_count = 0;
-
-            match strategy {
-                InvalidationStrategy::KeyPattern(pattern) => {
-                    let keys_to_remove: Vec<K> = self
-                        .cache
-                        .iter()
-                        .filter_map(|entry| {
-                            if format!("{:?}", entry.key()).contains(&pattern) {
-                                Some(entry.key().clone())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                    for key in keys_to_remove {
-                        if self.cache.remove(&key).is_some() {
-                            self.size.fetch_sub(1, Ordering::Relaxed);
-                            invalidated_count += 1;
-                        }
-                    }
-                }
-                InvalidationStrategy::Age(max_age_seconds) => {
-                    let current_time = current_timestamp();
-                    let keys_to_remove: Vec<K> = self
-                        .cache
-                        .iter()
-                        .filter_map(|entry| {
-                            let age = current_time.saturating_sub(entry.value().created_at);
-                            if age > max_age_seconds {
-                                Some(entry.key().clone())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                    for key in keys_to_remove {
-                        if self.cache.remove(&key).is_some() {
-                            self.size.fetch_sub(1, Ordering::Relaxed);
-                            invalidated_count += 1;
-                        }
-                    }
-                }
-                InvalidationStrategy::AccessCount(min_access_count) => {
-                    let keys_to_remove: Vec<K> = self
-                        .cache
-                        .iter()
-                        .filter_map(|entry| {
-                            if entry.value().access_count.load(Ordering::Relaxed) < min_access_count
-                            {
-                                Some(entry.key().clone())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                    for key in keys_to_remove {
-                        if self.cache.remove(&key).is_some() {
-                            self.size.fetch_sub(1, Ordering::Relaxed);
-                            invalidated_count += 1;
-                        }
-                    }
-                }
-                InvalidationStrategy::All => {
-                    invalidated_count = self.size.load(Ordering::Relaxed);
-                    self.clear().await;
-                }
-            }
-
-            if invalidated_count > 0 {
-                info!(invalidated_count, "Cache invalidation completed");
-            }
-
-            invalidated_count
-        }
+        invalidated_count
     }
 }

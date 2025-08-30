@@ -34,15 +34,15 @@ pub struct CrlCache {
 }
 
 impl CrlCache {
-    pub fn new() -> Self {
-        let http_client = TlsHttpClient::new();
+    pub fn new() -> Result<Self, crate::tls::errors::TlsError> {
+        let http_client = TlsHttpClient::new()?;
 
-        Self {
+        Ok(Self {
             cache: Arc::new(RwLock::new(std::collections::HashMap::with_capacity(64))),
             http_client,
             cache_hits: Arc::new(AtomicUsize::new(0)),
             cache_misses: Arc::new(AtomicUsize::new(0)),
-        }
+        })
     }
 
     /// Get cache statistics (hits, misses)

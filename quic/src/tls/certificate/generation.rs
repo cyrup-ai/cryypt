@@ -42,8 +42,8 @@ pub async fn new(
     info!("Generating server certificate");
     let (server_cert, server_key) = generate_server_cert(&ca_issuer, &cert_dir).await?;
 
-    let ocsp_cache = crate::tls::ocsp::OcspCache::new();
-    let crl_cache = crate::tls::crl_cache::CrlCache::new();
+    let ocsp_cache = crate::tls::ocsp::OcspCache::new()?;
+    let crl_cache = crate::tls::crl_cache::CrlCache::new()?;
 
     Ok((
         ca_cert,
@@ -219,5 +219,5 @@ async fn generate_server_cert(
     let cert_der = cert.der();
     let key_der = key_pair.serialize_der();
 
-    Ok((cert_der.clone(), key_der.clone()))
+    Ok((cert_der.clone(), key_der.clone().into()))
 }

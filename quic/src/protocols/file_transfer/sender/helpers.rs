@@ -148,26 +148,20 @@ pub(crate) async fn execute_upload_protocol(
     })
 }
 
-/// Generate temporary self-signed certificates for demo purposes
+/// Generate temporary self-signed certificates using TLS builder API  
 pub(crate) async fn generate_temp_certificates() -> Result<(String, String)> {
-    use std::fs;
-    use crate::quic::server::{generate_test_certificate, generate_test_private_key};
+    use crate::tls::QuicheCertificateProvider;
     
-    // Generate real certificates using existing server functions
-    let cert_data = generate_test_certificate();
-    let key_data = generate_test_private_key();
+    tracing::info!("Generating temporary certificates for file transfer using TLS builder API");
     
-    // Write to temporary files
-    let cert_path = "/tmp/file_transfer_cert.pem".to_string();
-    let key_path = "/tmp/file_transfer_key.pem".to_string();
+    // Use TLS builder API to create certificates
+    let temp_cert_dir = std::env::temp_dir().join("cryypt-file-transfer");
+    let mut provider = QuicheCertificateProvider::create_self_signed("file-transfer-temp", temp_cert_dir).await
+        .map_err(|e| std::io::Error::other(format!("Failed to create certificates via TLS builder: {}", e)))?;
     
-    fs::write(&cert_path, cert_data).map_err(|e| {
-        std::io::Error::other(format!("Failed to write cert: {}", e))
-    })?;
+    // Create temporary PEM files that can be used by QUIC
+    let (cert_path, key_path) = provider.create_temp_pem_files().await
+        .map_err(|e| std::io::Error::other(format!("Failed to create temporary certificate files: {}", e)))?;
     
-    fs::write(&key_path, key_data).map_err(|e| {
-        std::io::Error::other(format!("Failed to write key: {}", e))
-    })?;
-    
-    Ok((cert_path, key_path))
+    Ok((cert_path.to_string_lossy().to_string(), key_path.to_string_lossy().to_string()))
 }

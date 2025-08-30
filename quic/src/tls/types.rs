@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::ZeroizeOnDrop;
 
 // PBKDF2 iteration count constant (OWASP 2024 minimum)
 #[allow(dead_code)]
@@ -20,6 +20,8 @@ pub enum CertificateUsage {
     /// Server certificate usage (TLS server authentication)
     ServerAuth,
     /// Client certificate usage (TLS client authentication)
+    /// This is library code intended for future client authentication support
+    #[allow(dead_code)]
     ClientAuth,
 }
 

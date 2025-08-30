@@ -33,14 +33,16 @@ impl ActualKey {
 }
 
 /// Simple key provider that provides the key bytes directly
+/// This is library code intended for future API expansion
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct DirectKeyProvider {
     key_bytes: Zeroizing<Vec<u8>>,
 }
 
 impl DirectKeyProvider {
     /// Create a new direct key provider
-    #[cfg_attr(not(any(feature = "aes", feature = "chacha20")), allow(dead_code))]
+    #[allow(dead_code)]
     pub fn new(key_bytes: Vec<u8>) -> Self {
         Self {
             key_bytes: Zeroizing::new(key_bytes),

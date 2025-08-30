@@ -15,6 +15,8 @@ use super::types::{
 };
 use super::message_processing::{derive_connection_key, process_payload_forward, calculate_checksum};
 use crate::error::CryptoTransportError;
+use crate::tls::QuicheCertificateProvider;
+use crate::tls::builder::CertificateAuthority;
 
 /// Production-grade messaging server configuration
 #[derive(Debug, Clone)]
@@ -30,6 +32,162 @@ pub struct MessagingServerConfig {
     pub default_encryption: EncryptionAlgorithm,
     /// Shared secret for connection key derivation (32 bytes recommended)
     pub shared_secret: Vec<u8>,
+    /// Certificate configuration for TLS/QUIC
+    pub certificate_config: CertificateConfig,
+}
+
+/// Certificate configuration using enterprise-grade TLS module
+#[derive(Debug, Clone)]
+pub struct CertificateConfig {
+    /// Certificate authority from TLS module
+    pub authority: CertificateAuthority,
+}
+
+impl MessagingServerConfig {
+    /// Create a new MessagingServerConfig with secure certificate generation
+    pub fn new() -> Result<Self, CryptoTransportError> {
+        use crate::tls::builder::authority::{CaMetadata, CaSource};
+        
+        // Generate a real self-signed certificate for development using the TLS module
+        use crate::tls::builder::certificate::{CertificateBuilder};
+        
+        // Generate a real development certificate synchronously for defaults
+        let development_authority = {
+            // Use a channel-based approach to avoid block_on
+            let (tx, rx) = std::sync::mpsc::channel();
+            
+            std::thread::spawn(move || {
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        let _ = tx.send(Err(CryptoTransportError::Internal(
+                            format!("Failed to create async runtime: {}", e)
+                        )));
+                        return;
+                    }
+                };
+                
+                let result = rt.block_on(async {
+                    CertificateBuilder::new()
+                        .generator()
+                        .domain("localhost")
+                        .self_signed()
+                        .valid_for_days(365)
+                        .generate()
+                        .await
+                });
+                
+                let _ = tx.send(Ok(result));
+            });
+            
+            let cert_result = rx.recv()
+                .map_err(|_| CryptoTransportError::Internal("Certificate generation channel closed".to_string()))??;
+            
+            if cert_result.success {
+                let cert_pem = cert_result.certificate_pem.unwrap_or_else(|| "".to_string());
+                let key_pem = cert_result.private_key_pem.unwrap_or_else(|| "".to_string());
+                
+                CertificateAuthority {
+                    name: "development-generated".to_string(),
+                    certificate_pem: cert_pem,
+                    private_key_pem: Some(key_pem),
+                    metadata: CaMetadata {
+                        subject: "CN=localhost".to_string(),
+                        issuer: "CN=localhost".to_string(),
+                        serial_number: "generated".to_string(),
+                        valid_from: std::time::SystemTime::now(),
+                        valid_until: std::time::SystemTime::now() + Duration::from_secs(365 * 24 * 3600), // 1 year
+                        key_algorithm: "RSA".to_string(),
+                        key_size: Some(2048),
+                        created_at: std::time::SystemTime::now(),
+                        source: CaSource::Generated,
+                    },
+                }
+            } else {
+                // FAIL FAST: Never use insecure fallback certificates
+                return Err(CryptoTransportError::Internal(
+                    "Certificate generation failed - cannot create secure messaging server. Check TLS configuration and ensure certificate generation is working properly.".to_string()
+                ));
+            }
+        };
+
+        Ok(Self {
+            max_message_size: 1_048_576, // 1MB default
+            retain_messages: false,
+            delivery_timeout: Duration::from_secs(30),
+            default_compression: CompressionAlgorithm::Zstd,
+            compression_level: 3,
+            default_encryption: EncryptionAlgorithm::Aes256Gcm,
+            shared_secret: (0..32).map(|_| rand::random::<u8>()).collect(), // Random 32-byte key
+            certificate_config: CertificateConfig {
+                authority: development_authority,
+            },
+        })
+    }
+
+    /// Create a new configuration with development-friendly defaults using TLS builder
+    pub async fn development(cert_dir: std::path::PathBuf) -> crate::Result<Self> {
+        let provider = QuicheCertificateProvider::create_self_signed("cryypt-dev", cert_dir).await
+            .map_err(|e| CryptoTransportError::Internal(format!("Failed to create development certificates: {}", e)))?;
+        
+        Ok(Self {
+            max_message_size: 1_048_576, // 1MB default
+            retain_messages: false,
+            delivery_timeout: Duration::from_secs(30),
+            default_compression: CompressionAlgorithm::Zstd,
+            compression_level: 3,
+            default_encryption: EncryptionAlgorithm::Aes256Gcm,
+            shared_secret: (0..32).map(|_| rand::random::<u8>()).collect(), // Random 32-byte key
+            certificate_config: CertificateConfig {
+                authority: provider.get_authority().clone(),
+            },
+        })
+    }
+    
+    /// Create a configuration for production use with certificates from path
+    pub async fn production_from_path(
+        name: &str,
+        cert_dir: std::path::PathBuf, 
+        shared_secret: Vec<u8>
+    ) -> crate::Result<Self> {
+        let provider = QuicheCertificateProvider::load_from_path(name, cert_dir).await
+            .map_err(|e| CryptoTransportError::Internal(format!("Failed to load production certificates: {}", e)))?;
+        
+        Ok(Self {
+            max_message_size: 10_485_760, // 10MB for production
+            retain_messages: true,
+            delivery_timeout: Duration::from_secs(60),
+            default_compression: CompressionAlgorithm::Zstd,
+            compression_level: 6, // Higher compression for production
+            default_encryption: EncryptionAlgorithm::Aes256Gcm,
+            shared_secret,
+            certificate_config: CertificateConfig {
+                authority: provider.get_authority().clone(),
+            },
+        })
+    }
+    
+    /// Convenience constructor: Create configuration with existing certificate authority
+    pub fn with_certificate_authority(authority: CertificateAuthority, shared_secret: Vec<u8>) -> Self {
+        Self {
+            max_message_size: 10_485_760, // 10MB default
+            retain_messages: true,
+            delivery_timeout: Duration::from_secs(60),
+            default_compression: CompressionAlgorithm::Zstd,
+            compression_level: 6,
+            default_encryption: EncryptionAlgorithm::Aes256Gcm,
+            shared_secret,
+            certificate_config: CertificateConfig { authority },
+        }
+    }
+}
+
+impl Default for MessagingServerConfig {
+    fn default() -> Self {
+        Self::new().unwrap_or_else(|e| {
+            panic!("Failed to create default MessagingServerConfig - certificate generation failed: {}", e)
+        })
+    }
 }
 
 /// Topic subscription management using lock-free data structures
@@ -150,6 +308,23 @@ impl ConnectionHealth {
         let current = self.stability_score.load(Ordering::Relaxed);
         let new_score = current.saturating_sub(1000); // Reduce by 10%
         self.stability_score.store(new_score, Ordering::Relaxed);
+    }
+
+    /// Update health check timestamp
+    pub fn update_health_check(&self) {
+        self.last_health_check.store(now_millis(), Ordering::Relaxed);
+    }
+
+    /// Get last health check timestamp
+    pub fn last_health_check_time(&self) -> u64 {
+        self.last_health_check.load(Ordering::Relaxed)
+    }
+
+    /// Check if health check is overdue (more than 60 seconds old)
+    pub fn is_health_check_overdue(&self) -> bool {
+        let current_time = now_millis();
+        let last_check = self.last_health_check.load(Ordering::Relaxed);
+        current_time.saturating_sub(last_check) > 60000 // 60 seconds
     }
     
     /// Calculate overall health score (0-10000 for 0-100.00%)
@@ -316,7 +491,7 @@ impl MessagingServer {
         let encryption_alg = self.config.default_encryption;
         
         // Derive encryption key from shared secret and message ID
-        let encryption_key = derive_connection_key(key_id.as_bytes(), &self.config.shared_secret);
+        let encryption_key = derive_connection_key(key_id.as_bytes(), &self.config.shared_secret).await;
         
         // Process payload through compression and encryption pipeline
         let (processed_payload, compression_metadata, encryption_metadata) = 
@@ -325,7 +500,7 @@ impl MessagingServer {
                 compression_alg,
                 compression_level,
                 encryption_alg,
-                encryption_key,
+                encryption_key?,
                 key_id,
             ).await?;
         
@@ -336,7 +511,7 @@ impl MessagingServer {
             topic: Some(topic),
             distribution,
             priority,
-            checksum: calculate_checksum(&processed_payload),
+            checksum: calculate_checksum(&processed_payload).await,
             requires_ack,
             retry_count: 0,
             compression_metadata,
@@ -370,7 +545,7 @@ impl MessagingServer {
         let encryption_alg = self.config.default_encryption;
         
         // Derive encryption key from shared secret and message ID
-        let encryption_key = derive_connection_key(key_id.as_bytes(), &self.config.shared_secret);
+        let encryption_key = derive_connection_key(key_id.as_bytes(), &self.config.shared_secret).await;
         
         // Process payload through compression and encryption pipeline
         let (processed_payload, compression_metadata, encryption_metadata) = 
@@ -379,7 +554,7 @@ impl MessagingServer {
                 compression_alg,
                 compression_level,
                 encryption_alg,
-                encryption_key,
+                encryption_key?,
                 key_id,
             ).await?;
         
@@ -390,7 +565,7 @@ impl MessagingServer {
             topic: None, // No topic = broadcast to all
             distribution: DistributionStrategy::Broadcast,
             priority,
-            checksum: calculate_checksum(&processed_payload),
+            checksum: calculate_checksum(&processed_payload).await,
             requires_ack,
             retry_count: 0,
             compression_metadata,
@@ -801,6 +976,22 @@ impl MessagingServer {
         let mut unhealthy_connections = Vec::new();
         
         for (conn_key, conn) in clients.iter_mut() {
+            // Update health check timestamp for tracked connections
+            if let Some(conn_state) = self.connections.get(conn_key) {
+                conn_state.health.update_health_check();
+                
+                // Check health score and mark connections that need attention
+                let health_score = conn_state.health.health_score();
+                if health_score < 5000 { // Less than 50% health
+                    tracing::warn!("Connection {:?} has low health score: {}", conn_key, health_score);
+                }
+                
+                // Check if health checks are overdue
+                if conn_state.health.is_health_check_overdue() {
+                    tracing::warn!("Health check overdue for connection: {:?}", conn_key);
+                }
+            }
+            
             // Check connection timeout
             if let Some(timeout) = conn.timeout() {
                 if timeout.as_millis() == 0 {
@@ -872,7 +1063,7 @@ impl MessagingServer {
                             envelope.id, peer_addr, total_data.len());
                         
                         // Verify message checksum
-                        let calculated_checksum = super::message_processing::calculate_checksum(&envelope.payload);
+                        let calculated_checksum = super::message_processing::calculate_checksum(&envelope.payload).await;
                         if calculated_checksum != envelope.checksum {
                             tracing::error!("Message checksum mismatch: expected {}, got {}", 
                                 envelope.checksum, calculated_checksum);
@@ -888,12 +1079,18 @@ impl MessagingServer {
                         
                         // Decompress and decrypt if needed
                         let processed_payload = if envelope.compression_metadata.is_some() || envelope.encryption_metadata.is_some() {
-                            let key = super::message_processing::derive_connection_key(conn_key, &self.config.shared_secret);
+                            let key = super::message_processing::derive_connection_key(conn_key, &self.config.shared_secret).await;
                             match super::message_processing::process_payload_reverse(
                                 envelope.payload.clone(),
                                 envelope.compression_metadata.as_ref(),
                                 envelope.encryption_metadata.as_ref(),
-                                key,
+                                match key {
+                                    Ok(k) => k,
+                                    Err(e) => {
+                                        tracing::error!("Failed to derive key: {}", e);
+                                        continue;
+                                    }
+                                },
                             ).await {
                                 Ok(payload) => payload,
                                 Err(e) => {
