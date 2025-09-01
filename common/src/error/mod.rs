@@ -9,11 +9,13 @@
 pub mod constructors;
 pub mod display;
 pub mod extensions;
+pub mod logging;
 pub mod macros;
 pub mod types;
 
 // Re-export all public types and traits
 pub use extensions::{OptionExt, ResultExt};
+pub use logging::LoggingTransformer;
 pub use types::{Error, ErrorKind, Result};
 
 // Tests moved to tests/ directory per CLAUDE.md rule

@@ -1,10 +1,35 @@
 use std::net::SocketAddr;
 
+/// Generate a real self-signed certificate for example purposes using modern rcgen API
+async fn generate_example_certificate() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use rcgen::{CertificateParams, DistinguishedName, KeyPair, DnType};
+    
+    // Create certificate parameters for localhost - new API returns Result
+    let mut params = CertificateParams::new(vec!["localhost".to_string()])?;
+    
+    // Set up distinguished name
+    let mut distinguished_name = DistinguishedName::new();
+    distinguished_name.push(DnType::CommonName, "localhost");
+    params.distinguished_name = distinguished_name;
+    
+    // Generate key pair
+    let key_pair = KeyPair::generate()?;
+    
+    // Create self-signed certificate using modern API
+    let cert = params.self_signed(&key_pair)?;
+    
+    // Get DER bytes
+    let cert_der = cert.der().to_vec();
+    
+    Ok(cert_der)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // QUIC Example - demonstrating README.md patterns
     let endpoint: SocketAddr = "127.0.0.1:443".parse()?;
-    let cert_data = b"mock_certificate_data";
+    // Generate real certificate for example
+    let cert_data = generate_example_certificate().await?;
     
     println!("QUIC Example - Demonstrating README.md API Patterns");
     

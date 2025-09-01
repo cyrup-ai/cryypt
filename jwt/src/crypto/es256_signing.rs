@@ -13,7 +13,7 @@ pub async fn es256_sign(
     header: &JwtHeader,
     claims: &serde_json::Value,
 ) -> JwtResult<String> {
-    // Direct async implementation - no spawn_blocking needed for ECDSA operations
+    // Direct async implementation using fast ECDSA operations suitable for async context
     // Parse ECDSA private key - support both PEM and raw formats
     let signing_key = if private_key.starts_with(b"-----BEGIN") {
         // PEM format

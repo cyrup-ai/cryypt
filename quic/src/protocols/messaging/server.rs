@@ -45,43 +45,22 @@ pub struct CertificateConfig {
 
 impl MessagingServerConfig {
     /// Create a new MessagingServerConfig with secure certificate generation
-    pub fn new() -> Result<Self, CryptoTransportError> {
+    pub async fn new() -> Result<Self, CryptoTransportError> {
         use crate::tls::builder::authority::{CaMetadata, CaSource};
         
         // Generate a real self-signed certificate for development using the TLS module
         use crate::tls::builder::certificate::{CertificateBuilder};
         
-        // Generate a real development certificate synchronously for defaults
+        // Generate development certificate asynchronously - no block_on needed
+        let cert_result = CertificateBuilder::new()
+            .generator()
+            .domain("localhost")
+            .self_signed()
+            .valid_for_days(365)
+            .generate()
+            .await;
+            
         let development_authority = {
-            // Use a channel-based approach to avoid block_on
-            let (tx, rx) = std::sync::mpsc::channel();
-            
-            std::thread::spawn(move || {
-                let rt = match tokio::runtime::Runtime::new() {
-                    Ok(rt) => rt,
-                    Err(e) => {
-                        let _ = tx.send(Err(CryptoTransportError::Internal(
-                            format!("Failed to create async runtime: {}", e)
-                        )));
-                        return;
-                    }
-                };
-                
-                let result = rt.block_on(async {
-                    CertificateBuilder::new()
-                        .generator()
-                        .domain("localhost")
-                        .self_signed()
-                        .valid_for_days(365)
-                        .generate()
-                        .await
-                });
-                
-                let _ = tx.send(Ok(result));
-            });
-            
-            let cert_result = rx.recv()
-                .map_err(|_| CryptoTransportError::Internal("Certificate generation channel closed".to_string()))??;
             
             if cert_result.success {
                 let cert_pem = cert_result.certificate_pem.unwrap_or_else(|| "".to_string());
@@ -118,7 +97,12 @@ impl MessagingServerConfig {
             default_compression: CompressionAlgorithm::Zstd,
             compression_level: 3,
             default_encryption: EncryptionAlgorithm::Aes256Gcm,
-            shared_secret: (0..32).map(|_| rand::random::<u8>()).collect(), // Random 32-byte key
+            shared_secret: {
+                use rand::RngCore;
+                let mut secret = vec![0u8; 32];
+                rand::rng().fill_bytes(&mut secret);
+                secret
+            }, // Cryptographically secure 32-byte key
             certificate_config: CertificateConfig {
                 authority: development_authority,
             },
@@ -137,7 +121,12 @@ impl MessagingServerConfig {
             default_compression: CompressionAlgorithm::Zstd,
             compression_level: 3,
             default_encryption: EncryptionAlgorithm::Aes256Gcm,
-            shared_secret: (0..32).map(|_| rand::random::<u8>()).collect(), // Random 32-byte key
+            shared_secret: {
+                use rand::RngCore;
+                let mut secret = vec![0u8; 32];
+                rand::rng().fill_bytes(&mut secret);
+                secret
+            }, // Cryptographically secure 32-byte key
             certificate_config: CertificateConfig {
                 authority: provider.get_authority().clone(),
             },
@@ -182,13 +171,7 @@ impl MessagingServerConfig {
     }
 }
 
-impl Default for MessagingServerConfig {
-    fn default() -> Self {
-        Self::new().unwrap_or_else(|e| {
-            panic!("Failed to create default MessagingServerConfig - certificate generation failed: {}", e)
-        })
-    }
-}
+
 
 /// Topic subscription management using lock-free data structures
 #[derive(Debug)]
@@ -362,6 +345,139 @@ impl ConnectionHealth {
     }
 }
 
+/// Security reputation tracking for connections
+#[derive(Debug)]
+pub struct ConnectionReputation {
+    /// Number of checksum validation failures
+    pub checksum_failures: AtomicU64,
+    /// Number of authentication failures
+    pub auth_failures: AtomicU64,
+    /// Number of protocol violations
+    pub protocol_violations: AtomicU64,
+    /// Last security violation timestamp
+    pub last_violation_time: AtomicU64,
+    /// Connection first seen timestamp
+    pub first_seen_time: AtomicU64,
+    /// Total security events count
+    pub total_security_events: AtomicU64,
+    /// Reputation score (0-10000, higher is better)
+    pub reputation_score: AtomicU64,
+}
+
+impl ConnectionReputation {
+    pub fn new() -> Self {
+        let now = now_millis();
+        Self {
+            checksum_failures: AtomicU64::new(0),
+            auth_failures: AtomicU64::new(0),
+            protocol_violations: AtomicU64::new(0),
+            last_violation_time: AtomicU64::new(0),
+            first_seen_time: AtomicU64::new(now),
+            total_security_events: AtomicU64::new(0),
+            reputation_score: AtomicU64::new(10000), // Start with perfect reputation
+        }
+    }
+
+    /// Record a checksum validation failure
+    pub fn record_checksum_failure(&self) {
+        self.checksum_failures.fetch_add(1, Ordering::Relaxed);
+        self.total_security_events.fetch_add(1, Ordering::Relaxed);
+        self.last_violation_time.store(now_millis(), Ordering::Relaxed);
+        self.update_reputation_score();
+    }
+
+    /// Record an authentication failure
+    pub fn record_auth_failure(&self) {
+        self.auth_failures.fetch_add(1, Ordering::Relaxed);
+        self.total_security_events.fetch_add(1, Ordering::Relaxed);
+        self.last_violation_time.store(now_millis(), Ordering::Relaxed);
+        self.update_reputation_score();
+    }
+
+    /// Record a protocol violation
+    pub fn record_protocol_violation(&self) {
+        self.protocol_violations.fetch_add(1, Ordering::Relaxed);
+        self.total_security_events.fetch_add(1, Ordering::Relaxed);
+        self.last_violation_time.store(now_millis(), Ordering::Relaxed);
+        self.update_reputation_score();
+    }
+
+    /// Update reputation score based on security events
+    fn update_reputation_score(&self) {
+        let checksum_failures = self.checksum_failures.load(Ordering::Relaxed);
+        let auth_failures = self.auth_failures.load(Ordering::Relaxed);
+        let protocol_violations = self.protocol_violations.load(Ordering::Relaxed);
+        
+        // Calculate penalty based on different violation types
+        let checksum_penalty = checksum_failures.saturating_mul(500); // 500 points per checksum failure
+        let auth_penalty = auth_failures.saturating_mul(1000); // 1000 points per auth failure
+        let protocol_penalty = protocol_violations.saturating_mul(300); // 300 points per protocol violation
+        
+        let total_penalty = checksum_penalty.saturating_add(auth_penalty).saturating_add(protocol_penalty);
+        let new_score = 10000_u64.saturating_sub(total_penalty);
+        
+        self.reputation_score.store(new_score, Ordering::Relaxed);
+    }
+
+    /// Get current reputation score
+    pub fn get_reputation_score(&self) -> u64 {
+        self.reputation_score.load(Ordering::Relaxed)
+    }
+
+    /// Check if connection should be banned (reputation below 2000)
+    pub fn should_ban(&self) -> bool {
+        self.get_reputation_score() < 2000
+    }
+
+    /// Check if connection is suspicious (reputation below 5000)
+    pub fn is_suspicious(&self) -> bool {
+        self.get_reputation_score() < 5000
+    }
+}
+
+/// Temporary security ban information
+#[derive(Debug, Clone)]
+pub struct SecurityBan {
+    /// Ban reason
+    pub reason: String,
+    /// Ban start time
+    pub start_time: u64,
+    /// Ban expiry time
+    pub expiry_time: u64,
+    /// Ban level (escalating bans)
+    pub ban_level: u64,
+    /// Associated security events count
+    pub security_events_count: u64,
+}
+
+impl SecurityBan {
+    pub fn new(reason: String, duration_ms: u64, ban_level: u64, events_count: u64) -> Self {
+        let now = now_millis();
+        Self {
+            reason,
+            start_time: now,
+            expiry_time: now.saturating_add(duration_ms),
+            ban_level,
+            security_events_count: events_count,
+        }
+    }
+
+    /// Check if ban has expired
+    pub fn is_expired(&self) -> bool {
+        now_millis() >= self.expiry_time
+    }
+
+    /// Get remaining ban time in milliseconds
+    pub fn remaining_time_ms(&self) -> u64 {
+        let now = now_millis();
+        if now >= self.expiry_time {
+            0
+        } else {
+            self.expiry_time.saturating_sub(now)
+        }
+    }
+}
+
 /// Enhanced connection state with lock-free data structures and health monitoring
 #[derive(Debug)]
 pub struct ServerConnectionState {
@@ -413,6 +529,10 @@ pub struct MessagingServer {
     pub message_rx: channel::Receiver<MessageEnvelope>,
     /// Performance counters using lock-free DashMap
     pub performance_counters: Arc<DashMap<&'static str, AtomicU64>>,
+    /// Security reputation tracking per connection
+    pub connection_reputations: DashMap<Vec<u8>, Arc<ConnectionReputation>>,
+    /// Temporary security bans with automatic expiry
+    pub security_bans: DashMap<Vec<u8>, SecurityBan>,
 }
 
 impl MessagingServer {
@@ -437,6 +557,8 @@ impl MessagingServer {
             message_tx,
             message_rx,
             performance_counters,
+            connection_reputations: DashMap::new(),
+            security_bans: DashMap::new(),
         })
     }
     
@@ -642,8 +764,8 @@ impl MessagingServer {
         config.set_active_connection_id_limit(8);
         config.enable_early_data();
         
-        // For development - in production, load proper certificates
-        config.verify_peer(false);
+        // Enable proper client certificate validation for secure connections
+        config.verify_peer(true);
         
         // Generate connection ID seed for HMAC-based connection ID generation
         let rng = SystemRandom::new();

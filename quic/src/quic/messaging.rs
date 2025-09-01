@@ -1,6 +1,8 @@
 //! Messaging protocol over QUIC stream
 
 use crate::quic_conn::QuicConnectionHandle;
+use cryypt_common::error::LoggingTransformer;
+use tracing::{debug, info};
 use std::net::SocketAddr;
 
 /// Messaging protocol over QUIC stream
@@ -52,12 +54,13 @@ impl std::future::Future for MessageBuilder {
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        // Log message details
-        println!(
+        // Log message details with structured logging
+        LoggingTransformer::log_messaging_info("send_message", self.message.len());
+        info!(
             "📤 Sending message to {} (reliable: {})",
             self.addr, self.reliable
         );
-        println!("    Message: {}", self.message);
+        debug!("    Message: {}", self.message);
 
         if let Some(handle) = &self.handle {
             let handle_clone = handle.clone();

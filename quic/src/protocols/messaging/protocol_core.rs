@@ -101,7 +101,7 @@ pub fn create_quic_config() -> Result<quiche::Config, quiche::Error> {
 /// Configure QUIC for client connections
 pub fn create_client_quic_config() -> Result<quiche::Config, quiche::Error> {
     let mut config = create_quic_config()?;
-    config.verify_peer(false); // For development - use proper certs in production
+    config.verify_peer(true); // Enable proper client certificate validation
     Ok(config)
 }
 

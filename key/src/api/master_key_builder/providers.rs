@@ -5,6 +5,7 @@
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use hex;
+use sha2::{Sha256, Digest};
 use zeroize::Zeroizing;
 
 /// Trait for types that can provide a master key
@@ -23,9 +24,18 @@ impl MasterKeyProvider for PassphraseMasterKey {
         // Use Argon2 for secure key derivation from passphrase
         let argon2 = Argon2::default();
 
-        // Use a fixed salt for deterministic key derivation
-        // In production, you might want configurable salts
-        let salt = SaltString::from_b64("YourFixedSaltHere1234567890")
+        // Generate deterministic salt from passphrase hash for security
+        // This ensures same passphrase = same key, but different passphrases = different salts
+        use sha2::{Sha256, Digest};
+        let mut hasher = Sha256::new();
+        hasher.update("passphrase_salt_v1:".as_bytes()); // Version prefix for future compatibility
+        hasher.update(self.passphrase.as_bytes());
+        let salt_bytes = hasher.finalize();
+        
+        // Use first 22 bytes for salt (Argon2 requirement) - encode as base64
+        use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_SALT};
+        let salt_b64 = BASE64_SALT.encode(&salt_bytes[..22]);
+        let salt = SaltString::from_b64(&salt_b64)
             .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {}", e)))?;
 
         let password_hash = argon2
@@ -88,7 +98,18 @@ impl MasterKeyProvider for EnvMasterKey {
 
         // If neither hex nor base64 worked, derive from the string using Argon2
         let argon2 = Argon2::default();
-        let salt = SaltString::from_b64("EnvVarSaltHere1234567890123")
+        
+        // Generate deterministic salt from environment variable content hash for security
+        // This ensures same env var = same key, but different env vars = different salts
+        use sha2::{Sha256, Digest};
+        let mut hasher = Sha256::new();
+        hasher.update("env_var_salt_v1:".as_bytes()); // Version prefix for future compatibility
+        hasher.update(value.as_bytes());
+        let salt_bytes = hasher.finalize();
+        
+        // Use first 22 bytes for salt (Argon2 requirement) - encode as base64
+        let salt_b64 = BASE64_SALT.encode(&salt_bytes[..22]);
+        let salt = SaltString::from_b64(&salt_b64)
             .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {}", e)))?;
 
         let password_hash = argon2

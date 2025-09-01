@@ -84,9 +84,9 @@ fn client_event_reporter() -> broadcast::Sender<QuicConnectionEvent> {
 }
 
 fn random_16_bytes() -> [u8; 16] {
-    use rand::Rng;
+    use rand::RngCore;
     let mut buf = [0u8; 16];
-    rand::rng().fill(&mut buf);
+    rand::rng().fill_bytes(&mut buf);
     buf
 }
 

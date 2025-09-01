@@ -27,6 +27,7 @@ impl LocalVaultProvider {
             id: Some(format!("entry:{}:{}", namespace, key.replace('/', "_"))),
             key,
             value: value_b64, // Store encoded string
+            metadata: value.metadata().cloned(), // Persist metadata from VaultValue
             created_at: Some(Utc::now()),
             updated_at: Some(Utc::now()),
             expires_at: None, // No expiry for namespace operations

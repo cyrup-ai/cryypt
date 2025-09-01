@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime};
 
 use der::{Decode, Encode};
-use rand::Rng;
 
 use ring::digest::{Context as DigestContext, SHA256};
 
@@ -18,6 +17,17 @@ use x509_ocsp::{CertId, OcspRequest, OcspResponse};
 use super::types::ParsedCertificate;
 use super::errors::TlsError;
 use super::http_client::TlsHttpClient;
+
+// Well-known Object Identifiers as functions with error handling
+fn sha256_oid() -> Result<der::asn1::ObjectIdentifier, TlsError> {
+    der::asn1::ObjectIdentifier::new("2.16.840.1.101.3.4.2.1")
+        .map_err(|e| TlsError::OcspValidation(format!("Invalid SHA-256 OID: {}", e)))
+}
+
+fn ocsp_nonce_oid() -> Result<der::asn1::ObjectIdentifier, TlsError> {
+    der::asn1::ObjectIdentifier::new("1.3.6.1.5.5.7.48.1.2")
+        .map_err(|e| TlsError::OcspValidation(format!("Invalid OCSP nonce OID: {}", e)))
+}
 
 /// OCSP response status
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -52,9 +62,12 @@ impl OcspCache {
     pub fn new() -> Result<Self, crate::tls::errors::TlsError> {
         let http_client = TlsHttpClient::new()?;
 
-        // Pre-generate 1KB of random bytes for nonce generation
+        // Pre-generate 1KB of random bytes for nonce generation using cryptographically secure RNG
         let mut nonce_pool = vec![0u8; 1024];
-        rand::rng().fill(&mut nonce_pool[..]);
+        {
+            use rand::RngCore;
+            rand::rng().fill_bytes(&mut nonce_pool);
+        }
 
         Ok(Self {
             cache: Arc::new(RwLock::new(HashMap::with_capacity(128))),
@@ -133,11 +146,16 @@ impl OcspCache {
             return now > next_update;
         }
 
-        // Default cache expiry: 1 hour
+        // Default cache expiry: 1 hour - handle time calculation safely
         let cache_duration = Duration::from_secs(3600);
-        now.duration_since(entry.cached_at)
-            .unwrap_or(Duration::ZERO)
-            > cache_duration
+        match now.duration_since(entry.cached_at) {
+            Ok(elapsed) => elapsed > cache_duration,
+            Err(_) => {
+                // If time calculation fails (clock went backwards), assume expired for safety
+                tracing::warn!("Time calculation failed in OCSP cache, assuming expired");
+                true
+            }
+        }
     }
 
     #[inline]
@@ -241,7 +259,7 @@ impl OcspCache {
 
         let cert_id = CertId {
             hash_algorithm: AlgorithmIdentifierOwned {
-                oid: der::asn1::ObjectIdentifier::new_unwrap("2.16.840.1.101.3.4.2.1"), // SHA-256
+                oid: sha256_oid()?, // SHA-256
                 parameters: None,
             },
             issuer_name_hash: der::asn1::OctetString::new(issuer_name_hash.as_ref()).map_err(
@@ -304,15 +322,17 @@ impl OcspCache {
                 |e| TlsError::OcspValidation(format!("Failed to parse basic OCSP response: {}", e)),
             )?;
 
-        // Verify nonce matches
+        // Verify nonce matches (with safe OID handling)
         if let Some(nonce_ext) = basic_response
             .tbs_response_data
             .response_extensions
             .as_ref()
             .and_then(|exts| {
-                exts.iter().find(|ext| {
-                    ext.extn_id == der::asn1::ObjectIdentifier::new_unwrap("1.3.6.1.5.5.7.48.1.2")
-                })
+                let expected_oid = match ocsp_nonce_oid() {
+                    Ok(oid) => oid,
+                    Err(_) => return None, // Skip nonce verification if OID is invalid
+                };
+                exts.iter().find(|ext| ext.extn_id == expected_oid)
             })
         {
             if nonce_ext.extn_value.as_bytes() != expected_nonce {
@@ -364,9 +384,12 @@ impl OcspCache {
                 nonce.copy_from_slice(&pool[..16]);
                 pool.drain(..16);
             } else {
-                // Refill pool if exhausted
+                // Refill pool if exhausted using cryptographically secure RNG
                 pool.resize(1024, 0);
-                rand::rng().fill(&mut pool[..]);
+                {
+                    use rand::RngCore;
+                    rand::rng().fill_bytes(&mut pool);
+                }
                 nonce.copy_from_slice(&pool[..16]);
                 pool.drain(..16);
             }

@@ -26,7 +26,13 @@ where
         tokio::spawn(async move {
             use tokio_stream::StreamExt;
             let mut stream = Box::pin(stream);
-            let mut decompressor = create_decompressor();
+            let mut decompressor = match create_decompressor() {
+                Ok(d) => d,
+                Err(e) => {
+                    let _ = sender.send(Err(e)).await;
+                    return;
+                }
+            };
 
             while let Some(chunk) = stream.next().await {
                 // Decompress chunk

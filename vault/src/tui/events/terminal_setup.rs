@@ -2,6 +2,7 @@
 
 use super::super::app::App;
 use crate::core::Vault;
+use cryypt_common::error::LoggingTransformer;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
@@ -38,6 +39,7 @@ pub async fn setup_terminal_and_vault(
         let is_new_vault = app.vault.is_new_vault().await;
 
         if is_new_vault {
+            LoggingTransformer::log_terminal_setup("new_vault_creation", Some("Displaying password requirements"));
             println!("Welcome! Creating a new secure vault.");
             println!();
             println!("Password Requirements:");
@@ -60,10 +62,12 @@ pub async fn setup_terminal_and_vault(
                 .interact()?;
 
             if passphrase != confirm {
+                LoggingTransformer::log_auth_event("passphrase_mismatch", None, false);
                 eprintln!("Passphrases do not match!");
                 return Err("Passphrases do not match".into());
             }
         } else {
+            LoggingTransformer::log_terminal_setup("vault_unlock_prompt", Some("Prompting for existing vault passphrase"));
             println!("Secure Vault - Enter passphrase to unlock");
             println!();
 
@@ -76,6 +80,7 @@ pub async fn setup_terminal_and_vault(
 
         // Try to unlock and handle errors properly
         if let Err(err) = app.unlock().await {
+            LoggingTransformer::log_auth_event("vault_unlock_failed", None, false);
             eprintln!("Failed to unlock vault: {}", err);
             return Err(Box::new(err));
         }

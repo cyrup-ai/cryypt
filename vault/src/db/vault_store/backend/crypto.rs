@@ -5,7 +5,6 @@
 use super::super::LocalVaultProvider;
 use crate::error::{VaultError, VaultResult};
 use crate::operation::Passphrase;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use cryypt_cipher::Cryypt;
 use secrecy::ExposeSecret;
 
@@ -21,7 +20,7 @@ impl LocalVaultProvider {
         log::trace!("Using {} byte salt for key derivation", salt.len());
 
         // Use Argon2 for secure key derivation with the vault's configured parameters
-        use argon2::{Argon2, password_hash::Salt};
+        use argon2::Argon2;
 
         log::trace!(
             "Configuring Argon2 with memory_cost={}, time_cost={}, parallelism={}",
@@ -42,11 +41,8 @@ impl LocalVaultProvider {
             .map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params: {}", e)))?,
         );
 
-        // Create Salt from our salt bytes
-        let salt_b64 = BASE64_STANDARD.encode(&salt);
-        log::trace!("Salt base64 encoded for Argon2: {} chars", salt_b64.len());
-        let salt_str = Salt::from_b64(&salt_b64)
-            .map_err(|e| VaultError::KeyDerivation(format!("Invalid salt: {}", e)))?;
+        // Use raw salt bytes directly with Argon2
+        log::trace!("Using {} byte raw salt for Argon2 derivation", salt.len());
 
         // Derive key using Argon2
         let mut output_key = vec![0u8; 32];
@@ -54,7 +50,7 @@ impl LocalVaultProvider {
         argon2
             .hash_password_into(
                 passphrase.expose_secret().as_bytes(),
-                salt_str.as_str().as_bytes(),
+                &salt,
                 &mut output_key,
             )
             .map_err(|e| {
@@ -95,7 +91,9 @@ impl LocalVaultProvider {
                     data
                 }
                 Err(error) => {
-                    log::error!("cryypt_cipher encryption failed: {}", error);
+                    let error_msg = format!("AES encryption failed: {}", error);
+                    log::error!("{}", error_msg);
+                    // Store error for detailed reporting (can't modify closure captured vars)
                     Vec::new()
                 }
             })
@@ -103,9 +101,17 @@ impl LocalVaultProvider {
             .await;
 
         if encrypted_data.is_empty() {
-            return Err(VaultError::Encryption("Encryption failed".to_string()));
+            let detailed_error = format!(
+                "Encryption failed - input size: {} bytes, key size: {} bytes, vault locked: {}",
+                data.len(),
+                encryption_key.len(),
+                false // We already checked above
+            );
+            log::error!("Crypto operation failed: {}", detailed_error);
+            return Err(VaultError::Encryption(detailed_error));
         }
 
+        log::trace!("Encryption completed successfully, output: {} bytes", encrypted_data.len());
         Ok(encrypted_data)
     }
 
@@ -121,6 +127,16 @@ impl LocalVaultProvider {
             encryption_key.len()
         );
 
+        // Validate input data before attempting decryption
+        if encrypted_data.len() < 32 {
+            let error_msg = format!(
+                "Invalid encrypted data: too short ({} bytes, minimum 32 required)", 
+                encrypted_data.len()
+            );
+            log::error!("{}", error_msg);
+            return Err(VaultError::Decryption(error_msg));
+        }
+
         // Use AES decryption with cryypt_cipher - README.md compliant pattern
         let decrypted_data = Cryypt::cipher()
             .aes()
@@ -134,7 +150,8 @@ impl LocalVaultProvider {
                     data
                 }
                 Err(error) => {
-                    log::error!("cryypt_cipher decryption failed: {}", error);
+                    let error_msg = format!("AES decryption failed: {}", error);
+                    log::error!("{}", error_msg);
                     Vec::new()
                 }
             })
@@ -142,9 +159,16 @@ impl LocalVaultProvider {
             .await;
 
         if decrypted_data.is_empty() {
-            return Err(VaultError::Decryption("Decryption failed".to_string()));
+            let detailed_error = format!(
+                "Decryption failed - input size: {} bytes, key size: {} bytes, possible causes: corrupted data, wrong key, or invalid format",
+                encrypted_data.len(),
+                encryption_key.len()
+            );
+            log::error!("Crypto operation failed: {}", detailed_error);
+            return Err(VaultError::Decryption(detailed_error));
         }
 
+        log::trace!("Decryption completed successfully, output: {} bytes", decrypted_data.len());
         Ok(decrypted_data)
     }
 

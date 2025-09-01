@@ -136,21 +136,93 @@ impl Serialize for VaultValue {
     }
 }
 
-// We only deserialize the inner SecretBytes for now
-// Full deserialization with metadata support could be added later if needed
+// Full deserialization with version compatibility and metadata support
 impl<'de> Deserialize<'de> for VaultValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let bytes = Vec::<u8>::deserialize(deserializer)?;
-        let inner = Zeroizing::new(bytes);
-        Ok(VaultValue {
-            inner,
-            metadata: None,
-            provider: None,
-            key: None,
-        })
+        use serde::de::{self, MapAccess, Visitor};
+        
+        struct VaultValueVisitor;
+        
+        impl<'de> Visitor<'de> for VaultValueVisitor {
+            type Value = VaultValue;
+            
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("VaultValue with version compatibility")
+            }
+            
+            fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                // Direct bytes - legacy format compatibility
+                Ok(VaultValue {
+                    inner: Zeroizing::new(value.to_vec()),
+                    metadata: None,
+                    provider: None,
+                    key: None,
+                })
+            }
+            
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                // Array format - legacy compatibility
+                let bytes: Vec<u8> = seq.next_element()?.unwrap_or_default();
+                Ok(VaultValue {
+                    inner: Zeroizing::new(bytes),
+                    metadata: None,
+                    provider: None,
+                    key: None,
+                })
+            }
+            
+            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut version: Option<u32> = None;
+                let mut value_data: Option<Vec<u8>> = None;
+                let mut metadata: Option<serde_json::Value> = None;
+                let mut provider: Option<String> = None;
+                let mut key: Option<String> = None;
+                
+                while let Some(field_name) = map.next_key::<String>()? {
+                    match field_name.as_str() {
+                        "version" => version = Some(map.next_value()?),
+                        "value" | "inner" | "data" => value_data = Some(map.next_value()?),
+                        "metadata" => metadata = Some(map.next_value()?),
+                        "provider" => provider = Some(map.next_value()?),
+                        "key" => key = Some(map.next_value()?),
+                        _ => {
+                            // Skip unknown fields for forward compatibility
+                            let _ = map.next_value::<serde_json::Value>()?;
+                        }
+                    }
+                }
+                
+                let inner_data = value_data.ok_or_else(|| de::Error::missing_field("value"))?;
+                
+                // Version compatibility check
+                if let Some(v) = version {
+                    if v > 2 {
+                        return Err(de::Error::custom(format!("Unsupported VaultValue version: {}", v)));
+                    }
+                }
+                
+                Ok(VaultValue {
+                    inner: Zeroizing::new(inner_data),
+                    metadata,
+                    provider: None, // Provider cannot be deserialized from string
+                    key,
+                })
+            }
+        }
+        
+        deserializer.deserialize_any(VaultValueVisitor)
     }
 }
 

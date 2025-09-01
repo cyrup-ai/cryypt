@@ -5,8 +5,7 @@
 use super::super::{LocalVaultProvider, VaultEntry};
 use crate::error::{VaultError, VaultResult};
 use crate::operation::Passphrase;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-
+use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use secrecy::ExposeSecret;
 
 impl LocalVaultProvider {
@@ -33,8 +32,16 @@ impl LocalVaultProvider {
             .map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params: {}", e)))?,
         );
 
-        // Create Salt from our salt bytes
-        let salt_b64 = BASE64_STANDARD.encode(&salt);
+        // Create Salt from raw salt bytes (must be exactly 22 bytes for Argon2)
+        let salt_bytes = if salt.len() >= 22 {
+            &salt[..22]
+        } else {
+            return Err(VaultError::KeyDerivation(format!("Salt too short: {} bytes, need at least 22", salt.len())));
+        };
+        
+        // Convert bytes to base64 string and create Salt
+        use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_SALT};
+        let salt_b64 = BASE64_SALT.encode(salt_bytes);
         let salt_str = Salt::from_b64(&salt_b64)
             .map_err(|e| VaultError::KeyDerivation(format!("Invalid salt: {}", e)))?;
 

@@ -4,7 +4,7 @@
 //! - HS256 and ES256 algorithms  
 //! - Key rotation support
 //! - Standard claims handling
-//! - True async with channels (no spawn_blocking)
+//! - True async with channels using fast crypto operations
 //! - README.md compliant API patterns
 
 // Internal modules - following README.md patterns

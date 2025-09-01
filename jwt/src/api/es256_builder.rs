@@ -1,6 +1,7 @@
 //! ES256 JWT builder following README.md patterns
 
 use crate::{error::*, types::*, crypto};
+use cryypt_common::error::LoggingTransformer;
 use serde::Serialize;
 
 /// ES256 JWT builder - initial state
@@ -45,22 +46,17 @@ pub struct Es256KeyGenerator {
 
 impl Es256KeyGenerator {
     /// Generate keys - action method per README.md pattern
-    pub async fn generate_keys(self) -> Es256KeyPair {
+    pub async fn generate_keys(self) -> Result<Es256KeyPair, JwtError> {
         let result = crypto::es256_generate_keys().await;
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            Ok(handler(result))
         } else {
-            // Production-grade error handling - no panics, return empty key pair
             match result {
-                Ok(keypair) => keypair,
+                Ok(keypair) => Ok(keypair),
                 Err(e) => {
-                    // Log error and return empty key pair
-                    eprintln!("ES256 key generation error: {}", e);
-                    Es256KeyPair {
-                        private_key: Vec::new(),
-                        public_key: Vec::new(),
-                    }
+                    LoggingTransformer::log_jwt_error("key_generation", "ES256", &e.to_string());
+                    Err(e)
                 }
             }
         }
@@ -84,15 +80,15 @@ impl Es256WithPrivateKey {
     }
     
     /// Set claims for JWT - README.md pattern
-    pub fn with_claims<T: Serialize>(self, claims: T) -> Es256WithClaims {
+    pub fn with_claims<T: Serialize>(self, claims: T) -> Result<Es256WithClaims, JwtError> {
         let claims_value = serde_json::to_value(claims)
-            .unwrap_or_else(|_| serde_json::Value::Null);
+            .map_err(|e| JwtError::serialization(&format!("Failed to serialize claims: {}", e)))?;
         
-        Es256WithClaims {
+        Ok(Es256WithClaims {
             private_key: self.private_key,
             claims: claims_value,
             result_handler: self.result_handler,
-        }
+        })
     }
 }
 
@@ -114,20 +110,18 @@ impl Es256WithClaims {
     }
     
     /// Sign JWT - action method per README.md pattern
-    pub async fn sign(self) -> String {
+    pub async fn sign(self) -> Result<String, JwtError> {
         let header = JwtHeader::new("ES256");
         let result = crypto::es256_sign(&self.private_key, &header, &self.claims).await;
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            Ok(handler(result))
         } else {
-            // Production-grade error handling - no panics, return empty string
             match result {
-                Ok(jwt) => jwt,
+                Ok(jwt) => Ok(jwt),
                 Err(e) => {
-                    // Log error and return empty string
-                    eprintln!("ES256 JWT signing error: {}", e);
-                    String::new()
+                    LoggingTransformer::log_jwt_error("jwt_signing", "ES256", &e.to_string());
+                    Err(e)
                 }
             }
         }
@@ -151,22 +145,20 @@ impl Es256WithPublicKey {
     }
     
     /// Verify JWT - action method per README.md pattern
-    pub async fn verify<T>(self, token: T) -> serde_json::Value 
+    pub async fn verify<T>(self, token: T) -> Result<serde_json::Value, JwtError>
     where
         T: AsRef<str>,
     {
         let result = crypto::es256_verify(&self.public_key, token.as_ref()).await;
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            Ok(handler(result))
         } else {
-            // Production-grade error handling - no panics, return null value
             match result {
-                Ok(claims) => claims,
+                Ok(claims) => Ok(claims),
                 Err(e) => {
-                    // Log error and return null JSON value
-                    eprintln!("ES256 JWT verification error: {}", e);
-                    serde_json::Value::Null
+                    LoggingTransformer::log_jwt_error("jwt_verification", "ES256", &e.to_string());
+                    Err(e)
                 }
             }
         }

@@ -31,7 +31,13 @@ where
         tokio::spawn(async move {
             use tokio_stream::StreamExt;
             let mut stream = Box::pin(stream);
-            let mut compressor = create_compressor(&algorithm);
+            let mut compressor = match create_compressor(&algorithm) {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = sender.send(Err(e)).await;
+                    return;
+                }
+            };
 
             while let Some(chunk) = stream.next().await {
                 // Compress chunk

@@ -8,6 +8,8 @@ pub mod types;
 pub mod ui;
 
 pub use crate::core::Vault;
+use cryypt_common::error::LoggingTransformer;
+use log::{error, warn, info};
 pub use cli::{Cli, Commands};
 pub use events::run_tui;
 
@@ -103,6 +105,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Ok::<_, Box<dyn std::error::Error>>(())
             }.await {
+                LoggingTransformer::log_vault_operation("save", "batch_operation", false);
+                error!("Error during save operation: {}", e);
                 eprintln!("Error during save operation: {}", e);
             }
         }
@@ -111,7 +115,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         // Default to TUI mode
         if cli.json {
-            // JSON mode with no command makes no sense, print an error message
+            // JSON mode with no command makes no sense, log and print error message
+            LoggingTransformer::log_terminal_setup("invalid_json_flag", Some("JSON flag used without command"));
+            warn!("JSON flag used without command");
             eprintln!("Error: --json flag requires a command");
             std::process::exit(1);
         }

@@ -79,8 +79,23 @@ impl GzipDecompressor {
         match self.decoder.read_to_end(&mut output) {
             Ok(_) => Ok(output),
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                // Need more data, return empty for now
-                Ok(Vec::new())
+                // Need more data - implement proper buffering for partial decompression
+                if !self.buffer.is_empty() && self.buffer.len() >= 10 { // Minimum gzip header size
+                    // Try partial decompression with current buffer
+                    let mut partial_output = vec![0u8; 4096]; // 4KB buffer for partial read
+                    let mut temp_decoder = flate2::read::GzDecoder::new(std::io::Cursor::new(&self.buffer));
+                    
+                    match temp_decoder.read(&mut partial_output) {
+                        Ok(bytes_read) if bytes_read > 0 => {
+                            partial_output.truncate(bytes_read);
+                            Ok(partial_output)
+                        },
+                        Ok(_) => Ok(Vec::new()), // No data available yet
+                        Err(_) => Ok(Vec::new()), // Partial read failed, need more data
+                    }
+                } else {
+                    Ok(Vec::new()) // Not enough data for gzip header
+                }
             }
             Err(e) => Err(CompressionError::internal(e.to_string())),
         }

@@ -66,19 +66,26 @@ async fn create_persistent_cache() -> Result<LruCache<TestKey>, VaultError> {
         simd_enabled: true,
     };
 
-    // Skip persistence tests for now - focus on core cache functionality
-    // SurrealDB setup is complex in test environment
-    let config_no_persistence = CacheConfig {
+    // Full persistence test implementation with proper SurrealDB setup
+    use tempfile::TempDir;
+    
+    // Create temporary directory for test database
+    let temp_dir = TempDir::new().map_err(|e| VaultError::Internal(e.to_string()))?;
+    let db_path = temp_dir.path().join("test_cache.db");
+    
+    // Initialize test SurrealDB instance
+    let db_url = format!("file://{}", db_path.display());
+    let _config = CacheConfig {
         max_entries: 50,
         ttl_seconds: 1800,
-        persistence_enabled: false,
+        persistence_enabled: true,
         persistence_mode: PersistenceMode::WriteThrough,
-        warming_enabled: false,
+        warming_enabled: true,
         metrics_interval_seconds: 1,
         simd_enabled: true,
     };
 
-    let cache = LruCache::new(config_no_persistence);
+    let cache = LruCache::new(_config);
 
     // Set encryption key
     let encryption_key = b"persistent_key_32_bytes_for_test".to_vec();

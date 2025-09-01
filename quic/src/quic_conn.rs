@@ -288,7 +288,9 @@ fn flush_outbound(controller: &Arc<QuicConnectionController>) -> Result<()> {
         if msg.stream_id.is_none() {
             msg.stream_id = Some(generate_next_stream_id());
         }
-        let stream_id = msg.stream_id.unwrap();
+        let stream_id = msg.stream_id.ok_or_else(|| {
+            CryptoTransportError::from("Stream ID not allocated after assignment")
+        })?;
 
         // Attempt to send remaining data using quiche pattern
         match conn_guard.stream_send(stream_id, &msg.data, msg.fin) {

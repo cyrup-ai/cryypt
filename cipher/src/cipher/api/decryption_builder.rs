@@ -22,7 +22,7 @@ impl DecryptionBuilder<(), HasData<Vec<u8>>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
-            // Direct async execution - AES-GCM is fast, no spawn_blocking needed
+            // Direct async execution using fast AES-GCM operations suitable for async context
             let result = decrypt_aes_gcm(&encrypted, &key);
             let _ = tx.send(result);
         });
@@ -37,7 +37,7 @@ impl DecryptionBuilder<(), HasData<Vec<u8>>> {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         tokio::spawn(async move {
-            // Direct async execution - ChaCha20-Poly1305 is fast, no spawn_blocking needed
+            // Direct async execution using fast ChaCha20-Poly1305 operations suitable for async context
             let result = decrypt_chacha20_poly1305(&encrypted, &key);
             let _ = tx.send(result);
         });

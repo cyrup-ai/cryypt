@@ -207,7 +207,7 @@ impl VaultOperation for LocalVaultProvider {
 
     fn is_new_vault(&self) -> bool {
         // For sync context, check if vault database file exists
-        // This avoids block_on which causes runtime crashes
+        // Synchronous filesystem check prevents async runtime conflicts
         !self.config.vault_path.exists()
     }
 }

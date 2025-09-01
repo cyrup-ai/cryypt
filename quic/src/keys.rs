@@ -58,9 +58,8 @@ impl EphemeralKeyMaterial {
 pub fn generate_ephemeral_keys(
     session_id: &str,
 ) -> Result<EphemeralKeyMaterial, CryptoTransportError> {
+    // Generate 512-bit PSK for post-quantum resistance using cryptographically secure RNG
     use rand::RngCore;
-
-    // Generate 512-bit PSK for post-quantum resistance
     let mut psk = vec![0u8; 64];
     rand::rng().fill_bytes(&mut psk);
 

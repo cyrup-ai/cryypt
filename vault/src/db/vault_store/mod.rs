@@ -11,6 +11,49 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex as SyncMutex};
 use tokio::sync::Mutex;
 
+/// Options for backup restore operations
+#[derive(Debug, Clone)]
+pub struct BackupRestoreOptions {
+    /// Whether to overwrite existing entries
+    pub overwrite_existing: bool,
+}
+
+impl Default for BackupRestoreOptions {
+    fn default() -> Self {
+        Self {
+            overwrite_existing: false,
+        }
+    }
+}
+
+/// Statistics from backup restore operations
+#[derive(Debug, Clone)]
+pub struct BackupRestoreStats {
+    pub entries_processed: u64,
+    pub entries_restored: u64,
+    pub entries_skipped: u64,
+    pub entries_failed: u64,
+}
+
+/// Statistics from key rotation operations
+#[derive(Debug, Clone)]
+pub struct KeyRotationStats {
+    pub entries_processed: u64,
+    pub entries_rotated: u64,
+    pub entries_failed: u64,
+    pub old_salt_used: bool,
+    pub new_salt_created: bool,
+}
+
+/// Statistics from key rotation testing
+#[derive(Debug, Clone)]
+pub struct KeyRotationTestStats {
+    pub sample_entries_tested: u64,
+    pub successful_decryptions: u64,
+    pub successful_re_encryptions: u64,
+    pub failed_operations: u64,
+}
+
 // Declare submodules
 pub mod backend;
 pub mod cache;
@@ -27,6 +70,8 @@ pub struct VaultEntry {
     pub key: String,
     /// Encrypted value
     pub value: String,
+    /// Optional metadata associated with this entry
+    pub metadata: Option<serde_json::Value>,
     /// Creation timestamp
     pub created_at: Option<DateTime<Utc>>,
     /// Last modification timestamp
@@ -110,5 +155,24 @@ impl LocalVaultProvider {
         })?;
 
         Ok(provider)
+    }
+
+    /// Start TTL cleanup task if enabled in config
+    pub fn start_ttl_cleanup_if_enabled(&self) {
+        if self.config.ttl_cleanup_interval_seconds > 0 {
+            let provider_clone = self.clone();
+            let cleanup_interval = self.config.ttl_cleanup_interval_seconds;
+            
+            tokio::spawn(async move {
+                provider_clone.start_ttl_cleanup_task(cleanup_interval).await;
+            });
+            
+            log::info!(
+                "TTL cleanup task started with {} second intervals", 
+                cleanup_interval
+            );
+        } else {
+            log::debug!("TTL cleanup disabled (interval = 0)");
+        }
     }
 }

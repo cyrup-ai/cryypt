@@ -68,6 +68,8 @@ pqcrypto-traits = "0.3.5"
 uuid = { version = "1.18.0", features = ["serde", "v4"] }
 bincode = "2.0.1"
 crossbeam-channel = "0.5.15"
+crossbeam-utils = "0.8"
+crossbeam-queue = "0.3"
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", version = "0.3.0", features = ["all"] }
 async_task = { version = "0.1.0", path = "../async_task" }
 

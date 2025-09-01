@@ -5,6 +5,8 @@
 
 use super::config::{Auth, Transport};
 use crate::Result;
+use cryypt_common::error::LoggingTransformer;
+use tracing::{debug, info, warn, error};
 use std::time::Duration;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -66,12 +68,14 @@ pub struct ServerListenerBuilder {
 impl ServerListenerBuilder {
     /// Start listening for connections
     pub async fn listen(self) -> Result<()> {
-        // Validate transport type
+        // Validate transport type and log startup
         match self.transport {
             Transport::UDP => {
+                LoggingTransformer::log_server_startup("QUIC/UDP", self.port);
                 println!("🚀 QUIC server listening on UDP port {}", self.port);
             }
         }
+        LoggingTransformer::log_terminal_setup("server_auth_config", Some("Server authentication configured"));
         println!("🔐 Auth: {:?}", self.auth);
 
         // Implement actual QUIC server using quiche
@@ -122,7 +126,7 @@ impl ServerListenerBuilder {
         let socket = Arc::new(tokio::net::UdpSocket::bind(&address).await
             .map_err(QuicError::Network)?);
         
-        println!("🚀 QUIC server listening on {}", address);
+        info!("🚀 QUIC server listening on {}", address);
         
         // Connection management
         let connections: Arc<Mutex<HashMap<ConnectionId, Arc<QuicConnectionController>>>> = 
@@ -230,23 +234,23 @@ impl ServerListenerBuilder {
             match conn.stream_recv(stream_id, &mut buf) {
                 Ok((len, fin)) => {
                     let data = &buf[..len];
-                    println!("📨 Received {} bytes on stream {}: {:?}", len, stream_id, 
+                    debug!("📨 Received {} bytes on stream {}: {:?}", len, stream_id, 
                             String::from_utf8_lossy(data));
                     
                     // Echo the data back
                     let response = format!("Echo: {}", String::from_utf8_lossy(data));
                     if conn.stream_send(stream_id, response.as_bytes(), true).is_err() {
-                        println!("❌ Failed to send response on stream {}", stream_id);
+                        warn!("❌ Failed to send response on stream {}", stream_id);
                     }
                     
                     if fin {
-                        println!("🏁 Stream {} finished", stream_id);
+                        debug!("🏁 Stream {} finished", stream_id);
                         break;
                     }
                 }
                 Err(quiche::Error::Done) => break,
                 Err(e) => {
-                    println!("❌ Stream read error: {}", e);
+                    error!("❌ Stream read error: {}", e);
                     break;
                 }
             }

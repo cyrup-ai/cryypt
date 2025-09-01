@@ -194,10 +194,10 @@ impl MessagingServerBuilder {
 
     /// Start listening on the specified address using working implementation
     pub fn listen(self, addr: &str) -> impl Future<Output = crate::Result<MessagingServer>> + Send {
-        use rand::RngCore;
         
         // Generate secure random shared secret if not provided
         let shared_secret = self.shared_secret.unwrap_or_else(|| {
+            use rand::RngCore;
             let mut secret = vec![0u8; 32]; // 256-bit secret
             rand::rng().fill_bytes(&mut secret);
             secret

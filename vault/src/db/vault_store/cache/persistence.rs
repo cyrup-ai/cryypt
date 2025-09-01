@@ -41,6 +41,7 @@ where
                         id: Some(format!("cache:{:?}", operation.key)),
                         key: format!("{:?}", operation.key),
                         value: encrypted_value,
+                        metadata: None, // No metadata for cache entries 
                         created_at: Some(
                             chrono::DateTime::from_timestamp(operation.timestamp as i64, 0)
                                 .unwrap_or_default(),

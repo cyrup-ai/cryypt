@@ -9,6 +9,7 @@ pub mod normal_mode;
 pub mod terminal_setup;
 
 use crate::core::Vault;
+use cryypt_common::error::LoggingTransformer;
 use event_loop::run_event_loop;
 use terminal_setup::{setup_terminal_and_vault, cleanup_terminal};
 
@@ -34,7 +35,7 @@ pub async fn run_tui(vault: Vault) -> Result<(), Box<dyn std::error::Error>> {
     
     // Log cleanup errors but don't fail the main operation
     if let Err(cleanup_err) = cleanup_result {
-        eprintln!("Warning: Failed to cleanup terminal properly: {}", cleanup_err);
+        LoggingTransformer::log_cleanup_warning("terminal", &*cleanup_err);
         // Try minimal fallback cleanup
         use crossterm::terminal::disable_raw_mode;
         let _ = disable_raw_mode();

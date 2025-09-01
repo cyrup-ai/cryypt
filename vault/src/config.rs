@@ -12,6 +12,9 @@ pub struct VaultConfig {
     pub argon2_time_cost: u32,
     #[serde(default = "default_parallelism")]
     pub argon2_parallelism: u32,
+    /// TTL cleanup interval in seconds (0 disables cleanup)
+    #[serde(default = "default_ttl_cleanup_interval")]
+    pub ttl_cleanup_interval_seconds: u64,
 }
 
 fn default_memory_cost() -> u32 {
@@ -26,10 +29,24 @@ fn default_parallelism() -> u32 {
     4
 }
 
+fn default_ttl_cleanup_interval() -> u64 {
+    3600 // 1 hour in seconds
+}
+
 impl Default for VaultConfig {
     fn default() -> Self {
-        // Use ./tmp/cryypt for now (unsigned binary issue)
-        let config_dir = PathBuf::from("./tmp/cryypt");
+        // Use proper OS-specific config directory
+        let config_dir = match dirs::config_dir() {
+            Some(mut dir) => {
+                dir.push("cryypt");
+                dir
+            }
+            None => {
+                // Fallback to current directory if config dir unavailable
+                warn!("Could not determine OS config directory, using ./cryypt");
+                PathBuf::from("./cryypt")
+            }
+        };
 
         // Create the directory if it doesn't exist
         if !config_dir.exists()
@@ -58,6 +75,7 @@ impl Default for VaultConfig {
             argon2_memory_cost: default_memory_cost(),
             argon2_time_cost: default_time_cost(),
             argon2_parallelism: default_parallelism(),
+            ttl_cleanup_interval_seconds: default_ttl_cleanup_interval(),
         }
     }
 }

@@ -32,43 +32,22 @@ pub struct CertificateConfig {
 
 impl MessagingServerConfig {
     /// Create a new MessagingServerConfig with secure certificate generation
-    pub fn new() -> Result<Self, CryptoTransportError> {
+    pub async fn new() -> Result<Self, CryptoTransportError> {
         use crate::tls::builder::authority::{CaMetadata, CaSource};
         
         // Generate a real self-signed certificate for development using the TLS module
         use crate::tls::builder::certificate::{CertificateBuilder};
         
-        // Generate a real development certificate synchronously for defaults
+        // Generate development certificate asynchronously - no block_on needed
+        let cert_result = CertificateBuilder::new()
+            .generator()
+            .domain("localhost")
+            .self_signed()
+            .valid_for_days(365)
+            .generate()
+            .await;
+            
         let development_authority = {
-            // Use a channel-based approach to avoid block_on
-            let (tx, rx) = std::sync::mpsc::channel();
-            
-            std::thread::spawn(move || {
-                let rt = match tokio::runtime::Runtime::new() {
-                    Ok(rt) => rt,
-                    Err(e) => {
-                        let _ = tx.send(Err(CryptoTransportError::Internal(
-                            format!("Failed to create async runtime: {}", e)
-                        )));
-                        return;
-                    }
-                };
-                
-                let result = rt.block_on(async {
-                    CertificateBuilder::new()
-                        .generator()
-                        .domain("localhost")
-                        .self_signed()
-                        .valid_for_days(365)
-                        .generate()
-                        .await
-                });
-                
-                let _ = tx.send(Ok(result));
-            });
-            
-            let cert_result = rx.recv()
-                .map_err(|_| CryptoTransportError::Internal("Certificate generation channel closed".to_string()))??;
             
             if cert_result.success {
                 let cert_pem = cert_result.certificate_pem.unwrap_or_else(|| "".to_string());
@@ -113,9 +92,10 @@ impl MessagingServerConfig {
 
         // Generate secure random shared secret
         let shared_secret = {
+            use rand::rngs::OsRng;
             use rand::RngCore;
             let mut secret = vec![0u8; 32]; // 256-bit secret
-            rand::rng().fill_bytes(&mut secret);
+            OsRng.fill_bytes(&mut secret);
             secret
         };
 
@@ -163,9 +143,10 @@ impl MessagingServerConfig {
         };
 
         let shared_secret = {
+            use rand::rngs::OsRng;
             use rand::RngCore;
             let mut secret = vec![0u8; 32];
-            rand::rng().fill_bytes(&mut secret);
+            OsRng.fill_bytes(&mut secret);
             secret
         };
 

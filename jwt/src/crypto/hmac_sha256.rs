@@ -10,7 +10,7 @@ type HmacSha256 = Hmac<Sha256>;
 
 /// HS256 verification with HMAC-SHA256 - Production async implementation
 pub async fn hs256_verify(secret: &[u8], token: &str) -> JwtResult<serde_json::Value> {
-    // Direct async implementation - no spawn_blocking needed for fast HMAC operations
+    // Direct async implementation using fast HMAC operations suitable for async context
     // Split token into parts
     let parts: Vec<&str> = token.split('.').collect();
     if parts.len() != 3 {

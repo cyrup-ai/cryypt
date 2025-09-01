@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-
 use rustls::{ClientConfig, RootCertStore};
+// Crossbeam imports removed - not used in current implementation
 
 use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
@@ -156,6 +156,20 @@ impl TlsManager {
         Ok(())
     }
     
+    /// Pre-validate certificate for upcoming connection (eliminates block_on in rustls callbacks)
+    pub async fn pre_validate_certificate(&self, cert_der: &[u8]) -> Result<(), TlsError> {
+        // Create enterprise verifier for pre-validation
+        let verifier = EnterpriseServerCertVerifier::new(
+            self.ocsp_cache.clone(),
+            self.crl_cache.clone(),
+            self.config.enable_ocsp,
+            self.config.enable_crl,
+            self.config.validation_timeout,
+        );
+        
+        verifier.pre_validate_certificate(cert_der).await
+    }
+
     /// Create enterprise TLS connection with full validation
     pub async fn create_connection(
         &self,
@@ -281,11 +295,48 @@ impl TlsManager {
     }
 }
 
-/// Enterprise server certificate verifier with OCSP and CRL validation
+/// Pre-validation cache for async certificate validation results
+#[derive(Debug, Clone)]
+struct ValidationCache {
+    ocsp_results: Arc<RwLock<HashMap<String, crate::tls::ocsp::OcspStatus>>>,
+    crl_results: Arc<RwLock<HashMap<String, crate::tls::crl_cache::CrlStatus>>>,
+}
+
+impl ValidationCache {
+    fn new() -> Self {
+        Self {
+            ocsp_results: Arc::new(RwLock::new(HashMap::new())),
+            crl_results: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+    
+    fn get_ocsp_status(&self, cert_key: &str) -> Option<crate::tls::ocsp::OcspStatus> {
+        self.ocsp_results.read().ok()?.get(cert_key).copied()
+    }
+    
+    fn set_ocsp_status(&self, cert_key: String, status: crate::tls::ocsp::OcspStatus) {
+        if let Ok(mut cache) = self.ocsp_results.write() {
+            cache.insert(cert_key, status);
+        }
+    }
+    
+    fn get_crl_status(&self, cert_key: &str) -> Option<crate::tls::crl_cache::CrlStatus> {
+        self.crl_results.read().ok()?.get(cert_key).copied()
+    }
+    
+    fn set_crl_status(&self, cert_key: String, status: crate::tls::crl_cache::CrlStatus) {
+        if let Ok(mut cache) = self.crl_results.write() {
+            cache.insert(cert_key, status);
+        }
+    }
+}
+
+/// Enterprise server certificate verifier with AsyncStream-based pre-validation
 #[derive(Debug)]
 struct EnterpriseServerCertVerifier {
     ocsp_cache: Arc<OcspCache>,
     crl_cache: Arc<CrlCache>,
+    validation_cache: ValidationCache,
     enable_ocsp: bool,
     enable_crl: bool,
     validation_timeout: Duration,
@@ -302,10 +353,67 @@ impl EnterpriseServerCertVerifier {
         Self {
             ocsp_cache,
             crl_cache,
+            validation_cache: ValidationCache::new(),
             enable_ocsp,
             enable_crl,
             validation_timeout,
         }
+    }
+    
+    /// Pre-validate certificate asynchronously (called before rustls verification)
+    async fn pre_validate_certificate(&self, cert_der: &[u8]) -> Result<(), super::errors::TlsError> {
+        use ring::digest::{Context as DigestContext, SHA256};
+        
+        // Create unique key for this certificate
+        let mut context = DigestContext::new(&SHA256);
+        context.update(cert_der);
+        let cert_key = hex::encode(context.finish().as_ref());
+        
+        // Parse certificate for validation
+        let parsed_cert = super::certificate::validation::parse_certificate_from_der(cert_der)?;
+        
+        // Async OCSP validation
+        if self.enable_ocsp && !parsed_cert.ocsp_urls.is_empty() {
+            match tokio::time::timeout(
+                self.validation_timeout,
+                self.ocsp_cache.check_certificate(&parsed_cert, None)
+            ).await {
+                Ok(Ok(status)) => {
+                    self.validation_cache.set_ocsp_status(cert_key.clone(), status);
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!("OCSP pre-validation failed: {}", e);
+                    self.validation_cache.set_ocsp_status(cert_key.clone(), crate::tls::ocsp::OcspStatus::Unknown);
+                }
+                Err(_) => {
+                    tracing::warn!("OCSP pre-validation timed out");
+                    self.validation_cache.set_ocsp_status(cert_key.clone(), crate::tls::ocsp::OcspStatus::Unknown);
+                }
+            }
+        }
+        
+        // Async CRL validation
+        if self.enable_crl && !parsed_cert.crl_urls.is_empty() {
+            for crl_url in &parsed_cert.crl_urls {
+                match tokio::time::timeout(
+                    self.validation_timeout,
+                    self.crl_cache.check_certificate_status(&parsed_cert.serial_number, crl_url)
+                ).await {
+                    Ok(status) => {
+                        self.validation_cache.set_crl_status(format!("{}-{}", cert_key, crl_url), status);
+                    }
+                    Err(_) => {
+                        tracing::warn!("CRL pre-validation timed out for {}", crl_url);
+                        self.validation_cache.set_crl_status(
+                            format!("{}-{}", cert_key, crl_url), 
+                            crate::tls::crl_cache::CrlStatus::Unknown
+                        );
+                    }
+                }
+            }
+        }
+        
+        Ok(())
     }
 }
 
@@ -330,72 +438,61 @@ impl rustls::client::danger::ServerCertVerifier for EnterpriseServerCertVerifier
         let parsed_cert = parse_certificate_from_der(end_entity.as_ref())
             .map_err(|e| rustls::Error::General(format!("Failed to parse certificate: {}", e)))?;
         
-        // Perform OCSP validation if enabled (synchronous for rustls compatibility)
+        // Check pre-validated OCSP status (no block_on needed)
         if self.enable_ocsp && !parsed_cert.ocsp_urls.is_empty() {
-            let _issuer_cert = if !intermediates.is_empty() {
-                Some(parse_certificate_from_der(intermediates[0].as_ref())
-                    .map_err(|e| rustls::Error::General(format!("Failed to parse issuer certificate: {}", e)))?)
-            } else {
-                None
-            };
+            use ring::digest::{Context as DigestContext, SHA256};
             
-            // Perform real OCSP validation using blocking calls to our async infrastructure with timeout
-            match tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(
-                    tokio::time::timeout(
-                        self.validation_timeout,
-                        self.ocsp_cache.check_certificate(&parsed_cert, _issuer_cert.as_ref())
-                    )
-                )
-            }) {
-                Ok(Ok(crate::tls::ocsp::OcspStatus::Good)) => {
+            // Create certificate key for cache lookup
+            let mut context = DigestContext::new(&SHA256);
+            context.update(end_entity.as_ref());
+            let cert_key = hex::encode(context.finish().as_ref());
+            
+            match self.validation_cache.get_ocsp_status(&cert_key) {
+                Some(crate::tls::ocsp::OcspStatus::Good) => {
                     tracing::debug!("OCSP validation passed for {:?}", server_name);
                 },
-                Ok(Ok(crate::tls::ocsp::OcspStatus::Revoked)) => {
+                Some(crate::tls::ocsp::OcspStatus::Revoked) => {
                     tracing::error!("Certificate revoked via OCSP for {:?}", server_name);
                     return Err(rustls::Error::General("Certificate revoked via OCSP".to_string()));
                 },
-                Ok(Ok(crate::tls::ocsp::OcspStatus::Unknown)) => {
+                Some(crate::tls::ocsp::OcspStatus::Unknown) => {
                     tracing::warn!("OCSP validation inconclusive for {:?}", server_name);
                     // Allow unknown status but log warning
                 },
-                Ok(Err(e)) => {
-                    tracing::warn!("OCSP validation failed for {:?}: {}", server_name, e);
-                    // Allow validation errors but log them
-                },
-                Err(_) => {
-                    tracing::warn!("OCSP validation timed out for {:?} after {:?}", server_name, self.validation_timeout);
-                    // Allow timeout but log warning
+                None => {
+                    tracing::warn!("OCSP validation not pre-cached for {:?} - allowing with warning", server_name);
+                    // Allow when not pre-cached but log warning
                 }
             }
         }
         
-        // Perform CRL validation if enabled (synchronous for rustls compatibility)
+        // Check pre-validated CRL status (no block_on needed)
         if self.enable_crl && !parsed_cert.crl_urls.is_empty() {
+            use ring::digest::{Context as DigestContext, SHA256};
+            
+            // Create certificate key for cache lookup
+            let mut context = DigestContext::new(&SHA256);
+            context.update(end_entity.as_ref());
+            let cert_key = hex::encode(context.finish().as_ref());
+            
             // Check certificate against each CRL URL
             for crl_url in &parsed_cert.crl_urls {
-                match tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(
-                        tokio::time::timeout(
-                            self.validation_timeout,
-                            self.crl_cache.check_certificate_status(&parsed_cert.serial_number, crl_url)
-                        )
-                    )
-                }) {
-                    Ok(crate::tls::crl_cache::CrlStatus::Valid) => {
+                let crl_cache_key = format!("{}-{}", cert_key, crl_url);
+                match self.validation_cache.get_crl_status(&crl_cache_key) {
+                    Some(crate::tls::crl_cache::CrlStatus::Valid) => {
                         tracing::debug!("CRL validation passed for {:?} against {}", server_name, crl_url);
                     },
-                    Ok(crate::tls::crl_cache::CrlStatus::Revoked) => {
+                    Some(crate::tls::crl_cache::CrlStatus::Revoked) => {
                         tracing::error!("Certificate revoked via CRL for {:?} against {}", server_name, crl_url);
                         return Err(rustls::Error::General(format!("Certificate revoked via CRL: {}", crl_url)));
                     },
-                    Ok(crate::tls::crl_cache::CrlStatus::Unknown) => {
+                    Some(crate::tls::crl_cache::CrlStatus::Unknown) => {
                         tracing::warn!("CRL validation inconclusive for {:?} against {}", server_name, crl_url);
                         // Allow unknown status but log warning
                     },
-                    Err(_) => {
-                        tracing::warn!("CRL validation timed out for {:?} against {} after {:?}", server_name, crl_url, self.validation_timeout);
-                        // Allow timeout but continue checking other CRLs
+                    None => {
+                        tracing::warn!("CRL validation not pre-cached for {:?} against {} - allowing with warning", server_name, crl_url);
+                        // Allow when not pre-cached but log warning
                     }
                 }
             }

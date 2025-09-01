@@ -1,6 +1,7 @@
 //! HS256 JWT builder following README.md patterns
 
 use crate::{error::*, types::*, crypto};
+use cryypt_common::error::LoggingTransformer;
 use serde::Serialize;
 use std::time::Duration;
 
@@ -38,16 +39,16 @@ impl Hs256WithSecret {
     }
     
     /// Set claims for JWT - README.md pattern
-    pub fn with_claims<T: Serialize>(self, claims: T) -> Hs256WithClaims {
+    pub fn with_claims<T: Serialize>(self, claims: T) -> Result<Hs256WithClaims, JwtError> {
         let claims_value = serde_json::to_value(claims)
-            .unwrap_or_else(|_| serde_json::Value::Null);
+            .map_err(|e| JwtError::serialization(&format!("Failed to serialize claims: {}", e)))?;
         
-        Hs256WithClaims {
+        Ok(Hs256WithClaims {
             secret: self.secret,
             claims: claims_value,
             expiry: None,
             result_handler: self.result_handler,
-        }
+        })
     }
 }
 
@@ -76,7 +77,7 @@ impl Hs256WithClaims {
     }
     
     /// Sign JWT - action method per README.md pattern
-    pub async fn sign(self) -> String {
+    pub async fn sign(self) -> Result<String, JwtError> {
         let header = JwtHeader::new("HS256");
         
         // Add expiry to claims if specified
@@ -91,16 +92,13 @@ impl Hs256WithClaims {
         let result = crypto::hs256_sign(&self.secret, &header, &claims).await;
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            Ok(handler(result))
         } else {
-            // Production-grade error handling - no panics
             match result {
-                Ok(jwt) => jwt,
+                Ok(jwt) => Ok(jwt),
                 Err(e) => {
-                    // Log error and return empty string or error indicator
-                    // In production, this should be handled via proper error channels
-                    eprintln!("JWT signing error: {}", e);
-                    String::new() // Return empty string instead of panicking
+                    LoggingTransformer::log_jwt_error("jwt_signing", "HS256", &e.to_string());
+                    Err(e)
                 }
             }
         }
@@ -128,51 +126,23 @@ impl Hs256WithSecret {
 
 impl Hs256Verifier {
     /// Verify JWT - action method per README.md pattern
-    pub async fn verify<T>(self, token: T) -> serde_json::Value 
+    pub async fn verify<T>(self, token: T) -> Result<serde_json::Value, JwtError>
     where
         T: AsRef<str>,
     {
         let result = crypto::hs256_verify(&self.secret, token.as_ref()).await;
         
         if let Some(handler) = self.result_handler {
-            handler(result)
+            Ok(handler(result))
         } else {
-            // Production-grade error handling - no panics
             match result {
-                Ok(claims) => claims,
+                Ok(claims) => Ok(claims),
                 Err(e) => {
-                    // Log error and return empty JSON object
-                    eprintln!("JWT verification error: {}", e);
-                    serde_json::Value::Null
+                    LoggingTransformer::log_jwt_error("jwt_verification", "HS256", &e.to_string());
+                    Err(e)
                 }
             }
         }
     }
 }
 
-// Extend Hs256WithSecret to support direct verification
-impl Hs256WithSecret {
-    /// Verify JWT directly - README.md pattern
-    pub async fn verify<T>(self, token: T) -> serde_json::Value 
-    where
-        T: AsRef<str>,
-    {
-        let result = crypto::hs256_verify(&self.secret, token.as_ref()).await;
-        
-        if let Some(handler) = self.result_handler {
-            let handler_typed: Box<dyn Fn(JwtResult<serde_json::Value>) -> serde_json::Value + Send + Sync> = 
-                unsafe { std::mem::transmute(handler) };
-            handler_typed(result)
-        } else {
-            // Production-grade error handling - no panics  
-            match result {
-                Ok(claims) => claims,
-                Err(e) => {
-                    // Log error and return null JSON value
-                    eprintln!("JWT verification error: {}", e);
-                    serde_json::Value::Null
-                }
-            }
-        }
-    }
-}

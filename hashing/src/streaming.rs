@@ -225,7 +225,7 @@ mod tests {
     use sha2::Digest;
 
     #[tokio::test]
-    async fn test_streaming_sha256() {
+    async fn test_streaming_sha256() -> Result<()> {
         // Test data in chunks
         let data_chunks = vec![
             b"Hello ".to_vec(),
@@ -236,7 +236,7 @@ mod tests {
 
         // Hash using streaming approach
         let stream_hasher = stream_sha256(input_stream);
-        let stream_result = collect_hash(stream_hasher).await.expect("Streaming hash should succeed");
+        let stream_result = collect_hash(stream_hasher).await?;
 
         // Compare with batch approach
         let combined_data: Vec<u8> = data_chunks.into_iter().flatten().collect();
@@ -246,10 +246,11 @@ mod tests {
 
         assert_eq!(stream_result.hash, batch_hash, "Streaming and batch results should match");
         assert_eq!(stream_result.total_bytes, combined_data.len() as u64);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_streaming_chunk_processing() {
+    async fn test_streaming_chunk_processing() -> Result<()> {
         let data_chunks = vec![
             b"chunk1".to_vec(),
             b"chunk2".to_vec(),
@@ -262,7 +263,7 @@ mod tests {
         let mut bytes_seen = 0;
 
         while let Some(chunk_result) = stream_hasher.next().await {
-            let chunk = chunk_result.expect("Chunk processing should succeed");
+            let chunk = chunk_result?;
             
             if !chunk.is_final {
                 chunk_count += 1;
@@ -276,27 +277,28 @@ mod tests {
 
         assert_eq!(chunk_count, 3, "Should process 3 data chunks");
         assert_eq!(bytes_seen, 18, "Should process 18 bytes total"); // 6 + 6 + 6
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_different_algorithms() {
+    async fn test_different_algorithms() -> Result<()> {
         let data = b"test data for different algorithms";
         let chunks = vec![data[0..10].to_vec(), data[10..].to_vec()];
         
         // Test SHA-256
         let sha256_stream = stream::iter(chunks.clone());
         let sha256_hasher = stream_sha256(sha256_stream);
-        let sha256_result = collect_hash(sha256_hasher).await.expect("SHA-256 should succeed");
+        let sha256_result = collect_hash(sha256_hasher).await?;
         
         // Test SHA-384
         let sha384_stream = stream::iter(chunks.clone());
         let sha384_hasher = stream_sha384(sha384_stream);
-        let sha384_result = collect_hash(sha384_hasher).await.expect("SHA-384 should succeed");
+        let sha384_result = collect_hash(sha384_hasher).await?;
         
         // Test SHA-512
         let sha512_stream = stream::iter(chunks);
         let sha512_hasher = stream_sha512(sha512_stream);
-        let sha512_result = collect_hash(sha512_hasher).await.expect("SHA-512 should succeed");
+        let sha512_result = collect_hash(sha512_hasher).await?;
         
         // Verify different hash lengths
         assert_eq!(sha256_result.hash.len(), 32, "SHA-256 should produce 32-byte hash");
@@ -308,5 +310,6 @@ mod tests {
         assert_eq!(sha256_result.total_bytes, expected_bytes);
         assert_eq!(sha384_result.total_bytes, expected_bytes);
         assert_eq!(sha512_result.total_bytes, expected_bytes);
+        Ok(())
     }
 }
