@@ -9,6 +9,7 @@ pub async fn handle_change_passphrase(
     vault: &Vault,
     old_passphrase: Option<String>,
     new_passphrase: Option<String>,
+    passphrase_option: Option<&str>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let old_pass = match old_passphrase {

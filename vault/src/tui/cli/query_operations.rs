@@ -6,8 +6,8 @@ use crate::logging::log_security_event;
 use serde_json::json;
 use tokio_stream::StreamExt;
 
-pub async fn handle_list(vault: &Vault, use_json: bool) -> Result<(), Box<dyn std::error::Error>> {
-    if let Err(e) = ensure_unlocked(vault, use_json).await {
+pub async fn handle_list(vault: &Vault, passphrase_option: Option<&str>, use_json: bool) -> Result<(), Box<dyn std::error::Error>> {
+    if let Err(e) = ensure_unlocked(vault, passphrase_option, use_json).await {
         if use_json {
             println!(
                 "{}",
@@ -97,9 +97,10 @@ pub async fn handle_list(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
 pub async fn handle_find(
     vault: &Vault,
     pattern: &str,
+    passphrase_option: Option<&str>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if let Err(e) = ensure_unlocked(vault, use_json).await {
+    if let Err(e) = ensure_unlocked(vault, passphrase_option, use_json).await {
         if use_json {
             println!(
                 "{}",

@@ -6,8 +6,8 @@ use crate::logging::log_security_event;
 use dialoguer::{Password, theme::ColorfulTheme};
 use serde_json::json;
 
-pub async fn handle_save(vault: &Vault, use_json: bool) -> Result<(), Box<dyn std::error::Error>> {
-    if let Err(e) = ensure_unlocked(vault, use_json).await {
+pub async fn handle_save(vault: &Vault, passphrase_option: Option<&str>, use_json: bool) -> Result<(), Box<dyn std::error::Error>> {
+    if let Err(e) = ensure_unlocked(vault, passphrase_option, use_json).await {
         if use_json {
             println!(
                 "{}",
@@ -31,16 +31,16 @@ pub async fn handle_save(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
     match vault.lock().await {
         Ok(_) => {
             // Re-unlock with same passphrase that was used earlier
-            let passphrase = match std::env::var("CYSEC_PASSPHRASE") {
-                Ok(pass) => pass,
-                Err(_) => {
+            let passphrase = match passphrase_option {
+                Some(pass) => pass.to_string(),
+                None => {
                     if use_json {
                         println!(
                             "{}",
                             json!({
                                 "success": false,
                                 "operation": "save",
-                                "error": "No passphrase available for re-unlocking vault"
+                                "error": "No passphrase provided for re-unlocking vault"
                             })
                         );
                         return Ok(());

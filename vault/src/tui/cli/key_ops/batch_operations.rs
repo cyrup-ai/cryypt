@@ -13,6 +13,7 @@ pub async fn handle_batch_generate_keys(
     bits: u32,
     count: usize,
     store: &str,
+    passphrase_option: Option<&str>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if !use_json {
@@ -23,7 +24,7 @@ pub async fn handle_batch_generate_keys(
     }
 
     // Generate keys in batch using README.md pattern with on_result unwrapping
-    let master_key = derive_master_key_from_vault(vault)
+    let master_key = derive_master_key_from_vault(vault, passphrase_option)
         .await
         .map_err(|e| format!("Failed to derive master key: {}", e))?;
 

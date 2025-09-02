@@ -66,6 +66,64 @@ impl LocalVaultProvider {
         Ok(output_key)
     }
 
+    /// Derive JWT signing key from passphrase using Argon2 with different context
+    pub(crate) async fn derive_jwt_key(
+        &self,
+        passphrase: &Passphrase,
+    ) -> VaultResult<Vec<u8>> {
+        // Read or generate salt from file (same salt as encryption key for simplicity)
+        log::trace!("Getting salt for JWT key derivation...");
+        let base_salt = self.get_or_create_salt().await?;
+        
+        // Create JWT-specific salt by appending context bytes to avoid key reuse
+        let mut jwt_salt = base_salt;
+        jwt_salt.extend_from_slice(b"JWT_SIGNING_CONTEXT");
+        log::trace!("Using {} byte JWT-specific salt for key derivation", jwt_salt.len());
+
+        // Use Argon2 for secure key derivation with the same parameters as encryption key
+        use argon2::Argon2;
+
+        log::trace!(
+            "Configuring Argon2 for JWT key with memory_cost={}, time_cost={}, parallelism={}",
+            self.config.argon2_memory_cost,
+            self.config.argon2_time_cost,
+            self.config.argon2_parallelism
+        );
+
+        let argon2 = Argon2::new(
+            argon2::Algorithm::Argon2id,
+            argon2::Version::V0x13,
+            argon2::Params::new(
+                self.config.argon2_memory_cost,
+                self.config.argon2_time_cost,
+                self.config.argon2_parallelism,
+                Some(32), // 32 bytes for HS256 compliance
+            )
+            .map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params for JWT key: {}", e)))?,
+        );
+
+        // Derive JWT signing key using Argon2
+        let mut jwt_output_key = vec![0u8; 32];
+        log::trace!("Running Argon2 JWT key derivation...");
+        argon2
+            .hash_password_into(
+                passphrase.expose_secret().as_bytes(),
+                &jwt_salt,
+                &mut jwt_output_key,
+            )
+            .map_err(|e| {
+                VaultError::KeyDerivation(format!("Argon2 JWT key derivation failed: {}", e))
+            })?;
+
+        log::trace!("Successfully derived {} byte JWT signing key", jwt_output_key.len());
+
+        // Store derived JWT key in memory for session
+        let mut jwt_key_guard = self.jwt_key.lock().await;
+        *jwt_key_guard = Some(jwt_output_key.clone());
+
+        Ok(jwt_output_key)
+    }
+
     /// Encrypt data using AES with session key
     pub(crate) async fn encrypt_data(&self, data: &[u8]) -> VaultResult<Vec<u8>> {
         // Get the encryption key from session

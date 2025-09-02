@@ -19,10 +19,23 @@ impl LocalVaultProvider {
         // Validate JWT session token
         let token_guard = self.session_token.lock().await;
         if let Some(token) = token_guard.as_ref() {
-            // Validate JWT token using cryypt_jwt API - use associated function syntax
+            // Get the JWT signing key from session
+            let jwt_key_guard = self.jwt_key.lock().await;
+            let jwt_key = match jwt_key_guard.as_ref() {
+                Some(key) => key,
+                None => {
+                    // No JWT key available, vault should be locked
+                    drop(jwt_key_guard);
+                    drop(token_guard);
+                    self.lock_impl().await?;
+                    return Err(VaultError::VaultLocked);
+                }
+            };
+
+            // Validate JWT token using cryypt_jwt API with derived key
             let validation_result = JwtMasterBuilder::default()
                 .with_algorithm("HS256")
-                .with_secret(b"vault_session_key") // Use a consistent secret
+                .with_secret(jwt_key) // Use the derived JWT key
                 .verify(token.clone())
                 .await;
 

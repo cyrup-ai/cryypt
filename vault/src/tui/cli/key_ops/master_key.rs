@@ -117,12 +117,16 @@ fn prompt_for_passphrase() -> Result<String, Box<dyn std::error::Error>> {
 /// Uses Argon2id with production-strength parameters and secure salt generation
 pub async fn derive_master_key_from_vault(
     _vault: &Vault,
+    passphrase_option: Option<&str>,
 ) -> Result<[u8; 32], Box<dyn std::error::Error>> {
     // Retrieve or generate cryptographically secure salt
     let salt = retrieve_vault_salt()?;
     
-    // Prompt user for secure passphrase
-    let mut passphrase = prompt_for_passphrase()?;
+    // Get passphrase from parameter or prompt user
+    let mut passphrase = match passphrase_option {
+        Some(pass) => pass.to_string(),
+        None => prompt_for_passphrase()?,
+    };
     
     // Use high-security KDF configuration for master key derivation
     let config = KdfConfig {

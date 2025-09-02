@@ -11,6 +11,7 @@ use tokio_stream::StreamExt;
 pub async fn handle_run(
     vault: &Vault,
     command: Vec<String>,
+    passphrase_option: Option<&str>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if command.is_empty() {
@@ -19,7 +20,7 @@ pub async fn handle_run(
     }
 
     // Ensure the vault is unlocked
-    if let Err(e) = ensure_unlocked(vault, use_json).await {
+    if let Err(e) = ensure_unlocked(vault, passphrase_option, use_json).await {
         if use_json {
             println!(
                 "{}",

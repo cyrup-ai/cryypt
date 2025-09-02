@@ -9,9 +9,10 @@ pub async fn handle_put(
     vault: &Vault,
     key: &str,
     value: &str,
+    passphrase_option: Option<&str>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if let Err(e) = ensure_unlocked(vault, use_json).await {
+    if let Err(e) = ensure_unlocked(vault, passphrase_option, use_json).await {
         if use_json {
             println!(
                 "{}",

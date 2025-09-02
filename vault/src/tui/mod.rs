@@ -91,7 +91,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         let should_save = cli.save || matches!(command, Commands::Save {});
 
         // Execute CLI command
-        let result = cli::process_command(&vault, command, cli.json).await;
+        let result = cli::process_command(&vault, command, cli.passphrase.as_deref(), cli.json).await;
 
         // If save flag is true or the command is Save, explicitly save data to disk
         if should_save {

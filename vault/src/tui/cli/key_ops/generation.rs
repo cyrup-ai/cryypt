@@ -12,6 +12,7 @@ pub async fn handle_generate_key(
     version: u32,
     bits: u32,
     store: &str,
+    passphrase_option: Option<&str>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if !use_json {
@@ -22,7 +23,7 @@ pub async fn handle_generate_key(
     }
 
     // Generate the key using README.md pattern with on_result unwrapping
-    let master_key = derive_master_key_from_vault(vault)
+    let master_key = derive_master_key_from_vault(vault, passphrase_option)
         .await
         .map_err(|e| format!("Failed to derive master key: {}", e))?;
 

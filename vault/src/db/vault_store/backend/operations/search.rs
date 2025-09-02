@@ -12,9 +12,9 @@ impl LocalVaultProvider {
         // Check if vault is unlocked
         self.check_unlocked().await?;
 
-        // Basic wildcard matching for simplicity, adjust if complex regex needed
-        let db_pattern = format!("%{}%", pattern.replace('%', "\\%").replace('_', "\\_"));
-        let query = "SELECT key, value FROM vault_entries WHERE key LIKE $pattern";
+        // Use SurrealDB string::contains function for substring matching
+        let db_pattern = pattern.to_string();
+        let query = "SELECT key, value FROM vault_entries WHERE string::contains(key, $pattern)";
         let db = self.dao.db();
 
         let mut result = db
@@ -39,9 +39,8 @@ impl LocalVaultProvider {
         let mut results = Vec::with_capacity(entries.len());
         for entry in entries {
             // Decode base64 string back to encrypted bytes
-            let encrypted_bytes = BASE64_STANDARD.decode(entry.value).map_err(|_| {
-                VaultError::Serialization(serde_json::from_str::<()>("invalid base64").unwrap_err())
-            })?;
+            let encrypted_bytes = BASE64_STANDARD.decode(entry.value)
+                .map_err(|e| VaultError::Decryption(format!("Base64 decode failed: {}", e)))?;
             // Decrypt the bytes using AES decryption
             let decrypted_bytes = self.decrypt_data(&encrypted_bytes).await?;
             results.push((entry.key, VaultValue::from_bytes(decrypted_bytes)));

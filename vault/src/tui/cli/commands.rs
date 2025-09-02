@@ -23,6 +23,10 @@ pub struct Cli {
     #[arg(long)]
     pub save: bool,
 
+    /// Vault passphrase (if not provided, will prompt interactively)
+    #[arg(long)]
+    pub passphrase: Option<String>,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }

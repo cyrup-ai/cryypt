@@ -21,43 +21,44 @@ pub use commands::{Cli, Commands};
 pub async fn process_command(
     vault: &Vault,
     command: Commands,
+    passphrase_option: Option<&str>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match command {
-        Commands::Save {} => vault_ops::handle_save(vault, use_json).await,
+        Commands::Save {} => vault_ops::handle_save(vault, passphrase_option, use_json).await,
 
-        Commands::Put { key, value } => vault_ops::handle_put(vault, &key, &value, use_json).await,
+        Commands::Put { key, value } => crud_operations::put::handle_put(vault, &key, &value, passphrase_option, use_json).await,
 
-        Commands::Get { key } => vault_ops::handle_get(vault, &key, use_json).await,
+        Commands::Get { key } => crud_operations::get::handle_get(vault, &key, passphrase_option, use_json).await,
 
-        Commands::Delete { key } => vault_ops::handle_delete(vault, &key, use_json).await,
+        Commands::Delete { key } => crud_operations::delete::handle_delete(vault, &key, passphrase_option, use_json).await,
 
-        Commands::List {} => vault_ops::handle_list(vault, use_json).await,
+        Commands::List {} => query_operations::handle_list(vault, passphrase_option, use_json).await,
 
-        Commands::Find { pattern } => vault_ops::handle_find(vault, &pattern, use_json).await,
+        Commands::Find { pattern } => query_operations::handle_find(vault, &pattern, passphrase_option, use_json).await,
 
         Commands::ChangePassphrase {
             old_passphrase,
             new_passphrase,
         } => {
-            vault_ops::handle_change_passphrase(vault, old_passphrase, new_passphrase, use_json)
+            vault_ops::handle_change_passphrase(vault, old_passphrase, new_passphrase, passphrase_option, use_json)
                 .await
         }
 
-        Commands::Run { command } => run_command::handle_run(vault, command, use_json).await,
+        Commands::Run { command } => run_command::handle_run(vault, command, passphrase_option, use_json).await,
 
         Commands::GenerateKey {
             namespace,
             version,
             bits,
             store,
-        } => key_ops::handle_generate_key(vault, &namespace, version, bits, &store, use_json).await,
+        } => key_ops::handle_generate_key(vault, &namespace, version, bits, &store, passphrase_option, use_json).await,
 
         Commands::RetrieveKey {
             namespace,
             version,
             store,
-        } => key_ops::handle_retrieve_key(vault, &namespace, version, &store, use_json).await,
+        } => key_ops::handle_retrieve_key(vault, &namespace, version, &store, passphrase_option, use_json).await,
 
         Commands::BatchGenerateKeys {
             namespace,
@@ -67,7 +68,7 @@ pub async fn process_command(
             store,
         } => {
             key_ops::handle_batch_generate_keys(
-                vault, &namespace, version, bits, count, &store, use_json,
+                vault, &namespace, version, bits, count, &store, passphrase_option, use_json,
             )
             .await
         }

@@ -106,6 +106,7 @@ pub struct LocalVaultProvider {
     pub(crate) passphrase: Arc<Mutex<Option<Passphrase>>>,
     pub(crate) session_token: Arc<Mutex<Option<String>>>,
     pub(crate) encryption_key: Arc<Mutex<Option<Vec<u8>>>>,
+    pub(crate) jwt_key: Arc<Mutex<Option<Vec<u8>>>>,
 }
 
 impl LocalVaultProvider {
@@ -147,6 +148,7 @@ impl LocalVaultProvider {
             passphrase: Arc::new(Mutex::new(None)),
             session_token: Arc::new(Mutex::new(None)),
             encryption_key: Arc::new(Mutex::new(None)),
+            jwt_key: Arc::new(Mutex::new(None)),
         };
 
         // Initialize the database schema

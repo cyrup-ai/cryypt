@@ -42,7 +42,9 @@ impl LocalVaultProvider {
         // Convert bytes to base64 string and create Salt
         use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_SALT};
         let salt_b64 = BASE64_SALT.encode(salt_bytes);
-        let salt_str = Salt::from_b64(&salt_b64)
+        // Remove padding characters that Salt::from_b64() doesn't accept
+        let salt_b64_no_padding = salt_b64.trim_end_matches('=');
+        let salt_str = Salt::from_b64(salt_b64_no_padding)
             .map_err(|e| VaultError::KeyDerivation(format!("Invalid salt: {}", e)))?;
 
         // Hash the passphrase

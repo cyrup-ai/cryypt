@@ -33,12 +33,9 @@ pub struct CertificateConfig {
 impl MessagingServerConfig {
     /// Create a new MessagingServerConfig with secure certificate generation
     pub async fn new() -> Result<Self, CryptoTransportError> {
-        use crate::tls::builder::authority::{CaMetadata, CaSource};
+        // Generate development certificate using the TLS module
+        use crate::tls::builder::certificate::CertificateBuilder;
         
-        // Generate a real self-signed certificate for development using the TLS module
-        use crate::tls::builder::certificate::{CertificateBuilder};
-        
-        // Generate development certificate asynchronously - no block_on needed
         let cert_result = CertificateBuilder::new()
             .generator()
             .domain("localhost")
@@ -47,55 +44,51 @@ impl MessagingServerConfig {
             .generate()
             .await;
             
-        let development_authority = {
+        let development_authority = if cert_result.success {
+            let cert_pem = cert_result.certificate_pem.unwrap_or_else(|| "".to_string());
+            let key_pem = cert_result.private_key_pem.unwrap_or_else(|| "".to_string());
             
-            if cert_result.success {
-                let cert_pem = cert_result.certificate_pem.unwrap_or_else(|| "".to_string());
-                let key_pem = cert_result.private_key_pem.unwrap_or_else(|| "".to_string());
-                
-                CertificateAuthority {
-                    name: "development-generated".to_string(),
-                    certificate_pem: cert_pem,
-                    private_key_pem: Some(key_pem),
-                    metadata: CaMetadata {
-                        subject: "CN=localhost".to_string(),
-                        issuer: "CN=localhost".to_string(),
-                        serial_number: "generated".to_string(),
-                        valid_from: std::time::SystemTime::now(),
-                        valid_until: std::time::SystemTime::now() + Duration::from_secs(365 * 24 * 3600), // 1 year
-                        key_algorithm: "RSA".to_string(),
-                        key_size: Some(2048),
-                        fingerprint: "development-cert".to_string(),
-                    },
-                    source: CaSource::Generated,
-                }
-            } else {
-                // Fallback to minimal configuration
-                CertificateAuthority {
-                    name: "development-fallback".to_string(),
-                    certificate_pem: "-----BEGIN CERTIFICATE-----\nDEVELOPMENT_FALLBACK\n-----END CERTIFICATE-----".to_string(),
-                    private_key_pem: Some("-----BEGIN PRIVATE KEY-----\nDEVELOPMENT_FALLBACK\n-----END PRIVATE KEY-----".to_string()),
-                    metadata: CaMetadata {
-                        subject: "CN=localhost".to_string(),
-                        issuer: "CN=localhost".to_string(),
-                        serial_number: "fallback".to_string(),
-                        valid_from: std::time::SystemTime::now(),
-                        valid_until: std::time::SystemTime::now() + Duration::from_secs(3600), // 1 hour for fallback
-                        key_algorithm: "RSA".to_string(),
-                        key_size: Some(2048),
-                        fingerprint: "fallback-cert".to_string(),
-                    },
-                    source: CaSource::Generated,
-                }
+            CertificateAuthority {
+                name: "development-generated".to_string(),
+                certificate_pem: cert_pem,
+                private_key_pem: Some(key_pem),
+                metadata: crate::tls::builder::authority::CaMetadata {
+                    subject: "CN=localhost".to_string(),
+                    issuer: "CN=localhost".to_string(),
+                    serial_number: "generated".to_string(),
+                    valid_from: std::time::SystemTime::now(),
+                    valid_until: std::time::SystemTime::now() + Duration::from_secs(365 * 24 * 3600),
+                    key_algorithm: "RSA".to_string(),
+                    key_size: Some(2048),
+                    created_at: std::time::SystemTime::now(),
+                    source: crate::tls::builder::authority::CaSource::Generated,
+                },
+            }
+        } else {
+            // Fallback to minimal configuration
+            CertificateAuthority {
+                name: "development-fallback".to_string(),
+                certificate_pem: "-----BEGIN CERTIFICATE-----\nDEVELOPMENT_FALLBACK\n-----END CERTIFICATE-----".to_string(),
+                private_key_pem: Some("-----BEGIN PRIVATE KEY-----\nDEVELOPMENT_FALLBACK\n-----END PRIVATE KEY-----".to_string()),
+                metadata: crate::tls::builder::authority::CaMetadata {
+                    subject: "CN=localhost".to_string(),
+                    issuer: "CN=localhost".to_string(),
+                    serial_number: "fallback".to_string(),
+                    valid_from: std::time::SystemTime::now(),
+                    valid_until: std::time::SystemTime::now() + Duration::from_secs(3600),
+                    key_algorithm: "RSA".to_string(),
+                    key_size: Some(2048),
+                    created_at: std::time::SystemTime::now(),
+                    source: crate::tls::builder::authority::CaSource::Generated,
+                },
             }
         };
 
         // Generate secure random shared secret
         let shared_secret = {
-            use rand::rngs::OsRng;
             use rand::RngCore;
             let mut secret = vec![0u8; 32]; // 256-bit secret
-            OsRng.fill_bytes(&mut secret);
+            rand::rng().fill_bytes(&mut secret);
             secret
         };
 
@@ -134,19 +127,18 @@ impl MessagingServerConfig {
                 issuer: "CN=cryypt-dev".to_string(),
                 serial_number: "dev".to_string(),
                 valid_from: std::time::SystemTime::now(),
-                valid_until: std::time::SystemTime::now() + Duration::from_secs(30 * 24 * 3600), // 30 days
+                valid_until: std::time::SystemTime::now() + Duration::from_secs(30 * 24 * 3600),
                 key_algorithm: "RSA".to_string(),
                 key_size: Some(2048),
-                fingerprint: "development".to_string(),
+                created_at: std::time::SystemTime::now(),
+                source: crate::tls::builder::authority::CaSource::Generated,
             },
-            source: crate::tls::builder::authority::CaSource::Generated,
         };
 
         let shared_secret = {
-            use rand::rngs::OsRng;
             use rand::RngCore;
             let mut secret = vec![0u8; 32];
-            OsRng.fill_bytes(&mut secret);
+            rand::rng().fill_bytes(&mut secret);
             secret
         };
 

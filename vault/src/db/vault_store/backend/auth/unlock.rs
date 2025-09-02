@@ -85,7 +85,15 @@ impl LocalVaultProvider {
 
         log::debug!("Encryption/decryption test passed successfully");
 
-        // Step 5: Generate secure JWT session token with enhanced claims
+        // Step 5: Derive secure JWT signing key from passphrase
+        log::debug!("Deriving JWT signing key from passphrase...");
+        let jwt_key = self.derive_jwt_key(&passphrase).await?;
+        log::debug!(
+            "Successfully derived {} byte JWT signing key",
+            jwt_key.len()
+        );
+
+        // Step 6: Generate secure JWT session token with enhanced claims
         let session_claims = serde_json::json!({
             "session": "vault_unlocked",
             "vault_path": self.config.vault_path.to_string_lossy(),
@@ -96,11 +104,11 @@ impl LocalVaultProvider {
 
         let token_result = JwtMasterBuilder::default()
             .with_algorithm("HS256")
-            .with_secret(b"vault_session_key")
+            .with_secret(&jwt_key)
             .sign(session_claims)
             .await;
 
-        // Step 6: Generate JWT session token with proper error handling
+        // Step 7: Generate JWT session token with proper error handling
         let session_token = match token_result {
             Ok(token) => token,
             Err(e) => {
@@ -111,10 +119,10 @@ impl LocalVaultProvider {
             }
         };
 
-        // Step 7: Store passphrase hash for future verification (after successful validation)
+        // Step 8: Store passphrase hash for future verification (after successful validation)
         self.store_passphrase_hash(&passphrase).await?;
 
-        // Step 8: Atomically update all session state
+        // Step 9: Atomically update all session state
         {
             // Store the passphrase securely in memory (using SecretString from secrecy crate)
             let mut passphrase_guard = self.passphrase.lock().await;
