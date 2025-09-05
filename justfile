@@ -108,7 +108,7 @@ audit:
 
 # Install the cryypt binary
 install:
-    cargo install --path vault --bin cryypt
+    cargo install --path packages/vault --bin cryypt
 
 # Benchmark performance
 bench:

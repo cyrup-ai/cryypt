@@ -1,21 +1,20 @@
 [workspace]
 resolver = "3"
 members = [
-    "async_task",    # Async task coordination
-    "cipher",        # Symmetric encryption
-    "common",        # Common infrastructure
-    "compression",   # Data compression
-    "cryypt",        # Main unified crate
-    "vault",  # Secure storage
-    # "workspace-hack",   # Workspace hack
-    "examples",      # Examples
-    "hashing",       # Hash functions
-    "jwt",           # JSON Web Tokens
-    "key",           # Key management
-    "map_macro",     # Ergonomic map/set macros
-    "pqcrypto",      # Post-quantum cryptography
-    "quic",      # Post-quantum cryptography
-    "workspace-hack",          # QUIC protocol crypto
+    "packages/async_task",    # Async task coordination
+    "packages/cipher",        # Symmetric encryption
+    "packages/common",        # Common infrastructure
+    "packages/compression",   # Data compression
+    "packages/cryypt",        # Main unified crate
+    "packages/vault",         # Secure storage
+    "packages/examples",      # Examples
+    "packages/hashing",       # Hash functions
+    "packages/jwt",           # JSON Web Tokens
+    "packages/key",           # Key management
+    "packages/map_macro",     # Ergonomic map/set macros
+    "packages/pqcrypto",      # Post-quantum cryptography
+    "packages/quic",          # QUIC protocol crypto
+    "workspace-hack",         # Workspace hack (stays at root)
 ]
 
 exclude = ["tmp", "docs", "forks", "target"]
