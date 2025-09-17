@@ -28,7 +28,9 @@ impl EntropySource {
 
         // Verify entropy quality on initialization
         if !source.verify_min_entropy(MIN_ENTROPY_THRESHOLD) {
-            return Err(KeyError::InsufficientEntropy("Hardware entropy quality below minimum threshold".to_string()));
+            return Err(KeyError::InsufficientEntropy(
+                "Hardware entropy quality below minimum threshold".to_string(),
+            ));
         }
 
         source.quality_verified = true;
@@ -53,7 +55,9 @@ impl EntropySource {
     /// Generate cryptographically secure random bytes
     pub fn generate_bytes(&mut self, len: usize) -> Result<Zeroizing<Vec<u8>>> {
         if !self.quality_verified {
-            return Err(KeyError::InsufficientEntropy("Entropy quality not verified".to_string()));
+            return Err(KeyError::InsufficientEntropy(
+                "Entropy quality not verified".to_string(),
+            ));
         }
 
         let mut bytes = Zeroizing::new(vec![0u8; len]);
@@ -90,44 +94,51 @@ impl EntropySource {
         let t_tuple_estimate = self.t_tuple_test(samples);
         let lrs_estimate = self.lrs_test(samples);
         let mcv_estimate = self.mcv_test(samples);
-        
+
         // Return minimum of all estimates as per NIST SP 800-90B
-        [collision_estimate, markov_estimate, compression_estimate, 
-         t_tuple_estimate, lrs_estimate, mcv_estimate]
-            .iter()
-            .fold(f64::INFINITY, |acc, &x| acc.min(x))
+        [
+            collision_estimate,
+            markov_estimate,
+            compression_estimate,
+            t_tuple_estimate,
+            lrs_estimate,
+            mcv_estimate,
+        ]
+        .iter()
+        .fold(f64::INFINITY, |acc, &x| acc.min(x))
     }
 
     /// Collision Test - NIST SP 800-90B Section 6.3.1
     fn collision_test(&self, samples: &[u8]) -> f64 {
         let mut collisions = 0;
         let mut seen = std::collections::HashSet::new();
-        
+
         for &byte in samples {
             if !seen.insert(byte) {
                 collisions += 1;
             }
         }
-        
+
         if collisions == 0 {
             return 8.0; // Maximum entropy for 8-bit values
         }
-        
+
         // Calculate collision-based entropy estimate
-        let v = samples.len() as f64;
-        let x = collisions as f64;
+        #[allow(clippy::cast_precision_loss)]
+        let v = samples.len() as f64; // Length to f64 conversion for entropy calculation
+        let x = f64::from(collisions);
         (-((x / v) * (x / v).log2())).max(0.0)
     }
-    
+
     /// Markov Test - NIST SP 800-90B Section 6.3.3
     fn markov_test(&self, samples: &[u8]) -> f64 {
         if samples.len() < 2 {
             return 0.0;
         }
-        
+
         let mut transition_counts = [[0u32; 256]; 256];
         let mut state_counts = [0u32; 256];
-        
+
         // Build transition matrix
         for i in 0..samples.len() - 1 {
             let current = samples[i] as usize;
@@ -135,7 +146,7 @@ impl EntropySource {
             transition_counts[current][next] += 1;
             state_counts[current] += 1;
         }
-        
+
         // Calculate Markov entropy
         let mut entropy = 0.0;
         for i in 0..256 {
@@ -143,95 +154,98 @@ impl EntropySource {
                 let mut state_entropy = 0.0;
                 for j in 0..256 {
                     if transition_counts[i][j] > 0 {
-                        let p = transition_counts[i][j] as f64 / state_counts[i] as f64;
+                        let p = f64::from(transition_counts[i][j]) / f64::from(state_counts[i]);
                         state_entropy -= p * p.log2();
                     }
                 }
-                entropy += (state_counts[i] as f64 / (samples.len() - 1) as f64) * state_entropy;
+                #[allow(clippy::cast_precision_loss)]
+                let state_weight = state_counts[i] as f64 / (samples.len() - 1) as f64;
+                entropy += state_weight * state_entropy;
             }
         }
-        
+
         entropy.max(0.0)
     }
-    
+
     /// Compression Test - NIST SP 800-90B Section 6.3.4
     fn compression_test(&self, samples: &[u8]) -> f64 {
         // Use zstd compression ratio as entropy estimate
         let compressed = zstd::encode_all(samples, 1).unwrap_or_else(|_| samples.to_vec());
         let compression_ratio = compressed.len() as f64 / samples.len() as f64;
-        
+
         // Convert compression ratio to entropy estimate
         (8.0 * compression_ratio).clamp(0.0, 8.0)
     }
-    
+
     /// T-Tuple Test - NIST SP 800-90B Section 6.3.6
     fn t_tuple_test(&self, samples: &[u8]) -> f64 {
         // Implement for t=2 (bigrams)
         if samples.len() < 2 {
             return 0.0;
         }
-        
+
         let mut bigram_counts = std::collections::HashMap::new();
         let mut total_bigrams = 0;
-        
+
         for i in 0..samples.len() - 1 {
             let bigram = (samples[i], samples[i + 1]);
             *bigram_counts.entry(bigram).or_insert(0) += 1;
             total_bigrams += 1;
         }
-        
+
         let mut entropy = 0.0;
         for &count in bigram_counts.values() {
-            let p = count as f64 / total_bigrams as f64;
+            let p = f64::from(count) / f64::from(total_bigrams);
             entropy -= p * p.log2();
         }
-        
+
         (entropy / 2.0).max(0.0) // Divide by 2 for per-symbol entropy
     }
-    
+
     /// Longest Repeated Substring Test - NIST SP 800-90B Section 6.3.7
     fn lrs_test(&self, samples: &[u8]) -> f64 {
         let n = samples.len();
         if n < 2 {
             return 0.0;
         }
-        
+
         let mut max_length = 0;
-        
+
         // Find longest repeated substring
         for i in 0..n {
             for j in i + 1..n {
                 let mut length = 0;
-                while i + length < n && j + length < n && 
-                      samples[i + length] == samples[j + length] {
+                while i + length < n && j + length < n && samples[i + length] == samples[j + length]
+                {
                     length += 1;
                 }
                 max_length = max_length.max(length);
             }
         }
-        
+
         if max_length == 0 {
             return 8.0;
         }
-        
+
         // Calculate entropy based on longest repeated substring
         let entropy = (n as f64).log2() - (max_length as f64).log2();
         (entropy / n as f64 * 8.0).clamp(0.0, 8.0)
     }
-    
+
     /// Multi Most Common Value Test - NIST SP 800-90B Section 6.3.8
     fn mcv_test(&self, samples: &[u8]) -> f64 {
         let mut counts = [0u32; 256];
         for &byte in samples {
             counts[byte as usize] += 1;
         }
-        
+
         // Find most common value
         let max_count = *counts.iter().max().unwrap_or(&0);
         if max_count == 0 {
             return 0.0;
         }
-        
+
+        #[allow(clippy::cast_precision_loss)]
         let p_max = max_count as f64 / samples.len() as f64;
         -p_max.log2()
     }

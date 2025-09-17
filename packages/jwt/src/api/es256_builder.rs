@@ -82,7 +82,7 @@ impl Es256WithPrivateKey {
     /// Set claims for JWT - README.md pattern
     pub fn with_claims<T: Serialize>(self, claims: T) -> Result<Es256WithClaims, JwtError> {
         let claims_value = serde_json::to_value(claims)
-            .map_err(|e| JwtError::serialization(&format!("Failed to serialize claims: {}", e)))?;
+            .map_err(|e| JwtError::serialization(&format!("Failed to serialize claims: {e}")))?;
         
         Ok(Es256WithClaims {
             private_key: self.private_key,

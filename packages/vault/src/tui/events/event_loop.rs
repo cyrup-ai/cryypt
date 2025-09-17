@@ -42,20 +42,21 @@ pub async fn run_event_loop(
             // Update last activity timestamp on any event
             app.state.last_activity = std::time::Instant::now();
             if let Event::Key(key) = event::read()?
-                && key.kind == KeyEventKind::Press {
-                    let should_exit = match app.mode.clone() {
-                        AppMode::Normal => {
-                            handle_normal_mode_key(&mut app, key.code, key.modifiers).await
-                        }
-                        AppMode::Input(field) => {
-                            handle_input_mode_key(&mut app, &field, key.code, key.modifiers).await
-                        }
-                    };
-
-                    if should_exit {
-                        break;
+                && key.kind == KeyEventKind::Press
+            {
+                let should_exit = match app.mode.clone() {
+                    AppMode::Normal => {
+                        handle_normal_mode_key(&mut app, key.code, key.modifiers).await
                     }
+                    AppMode::Input(field) => {
+                        handle_input_mode_key(&mut app, &field, key.code, key.modifiers).await
+                    }
+                };
+
+                if should_exit {
+                    break;
                 }
+            }
         }
 
         if last_tick.elapsed() >= tick_rate {

@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::env;
 
 use super::errors::TlsError;
-use super::types::{SecureKeyMaterial, PBKDF2_ITERATIONS};
+use super::types::{PBKDF2_ITERATIONS, SecureKeyMaterial};
 
 /// Validate encryption passphrase from deployment environment
 fn validate_encryption_passphrase() -> Result<String, TlsError> {

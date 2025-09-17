@@ -13,14 +13,12 @@ impl LocalVaultProvider {
         db.query(
             "
             DEFINE TABLE IF NOT EXISTS vault_entries SCHEMAFULL;
-            DEFINE FIELD key ON TABLE vault_entries TYPE string;
             DEFINE FIELD value ON TABLE vault_entries TYPE string;
             DEFINE FIELD metadata ON TABLE vault_entries TYPE option<object>;
             DEFINE FIELD created_at ON TABLE vault_entries TYPE datetime;
             DEFINE FIELD updated_at ON TABLE vault_entries TYPE datetime;
             DEFINE FIELD expires_at ON TABLE vault_entries TYPE option<datetime>;
             DEFINE FIELD namespace ON TABLE vault_entries TYPE option<string>;
-            DEFINE INDEX vault_key ON TABLE vault_entries COLUMNS key UNIQUE;
         ",
         )
         .await

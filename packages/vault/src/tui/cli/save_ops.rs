@@ -14,7 +14,7 @@ pub async fn handle_save(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
                 json!({
                     "success": false,
                     "operation": "save",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -71,7 +71,7 @@ pub async fn handle_save(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
                 Err(e) => {
                     log_security_event(
                         "CLI_SAVE",
-                        &format!("Failed to re-unlock vault after save: {}", e),
+                        &format!("Failed to re-unlock vault after save: {e}"),
                         false,
                     );
 
@@ -81,7 +81,7 @@ pub async fn handle_save(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
                             json!({
                                 "success": false,
                                 "operation": "save",
-                                "error": format!("Failed to re-unlock vault after save: {}", e)
+                                "error": format!("Failed to re-unlock vault after save: {e}")
                             })
                         );
                         return Ok(());
@@ -94,7 +94,7 @@ pub async fn handle_save(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
         Err(e) => {
             log_security_event(
                 "CLI_SAVE",
-                &format!("Failed to save vault data: {}", e),
+                &format!("Failed to save vault data: {e}"),
                 false,
             );
 
@@ -104,7 +104,7 @@ pub async fn handle_save(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
                     json!({
                         "success": false,
                         "operation": "save",
-                        "error": format!("Failed to save vault data: {}", e)
+                        "error": format!("Failed to save vault data: {e}")
                     })
                 );
                 return Ok(());

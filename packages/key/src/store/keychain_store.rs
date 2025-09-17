@@ -2,13 +2,12 @@
 //!
 //! Uses channel-based async keychain service for "True async with channels" architecture compliance.
 
-
+use super::keychain_service::get_keychain_service;
 use crate::{
     KeyId,
     store_results::{DeleteResult, ExistsResult, ListResult, RetrieveResult, StoreResult},
     traits::{KeyEnumeration, KeyImport, KeyRetrieval, KeyStorage},
 };
-use super::keychain_service::get_keychain_service;
 
 /// OS Keychain store
 #[derive(Clone)]
@@ -114,7 +113,7 @@ impl KeyEnumeration for KeychainStore {
 
         tokio::spawn(async move {
             let result = match get_keychain_service().await {
-                Ok(service) => service.list(service_name, namespace_pattern).await,
+                Ok(service) => service.list(service_name, namespace_pattern),
                 Err(e) => Err(e),
             };
             let _ = tx.send(result);

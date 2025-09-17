@@ -3,11 +3,11 @@
 use crate::core::Vault;
 use cryypt_key::api::key_generator::derive::{KdfAlgorithm, KdfConfig, KeyDerivation};
 
-use std::io::{self, Write};
+use rpassword::read_password;
 use std::fs;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use rpassword::read_password;
 
 /// Secure wrapper for master key material with automatic memory cleanup
 #[derive(ZeroizeOnDrop)]
@@ -19,7 +19,7 @@ impl SecureMasterKey {
     fn new(key: [u8; 32]) -> Self {
         Self { key }
     }
-    
+
     fn as_bytes(&self) -> &[u8; 32] {
         &self.key
     }
@@ -45,13 +45,13 @@ fn get_vault_config_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
     } else {
         return Err("Unable to determine configuration directory".into());
     };
-    
+
     config_dir.push("cryypt");
     config_dir.push("vault");
-    
+
     // Ensure directory exists
     fs::create_dir_all(&config_dir)?;
-    
+
     Ok(config_dir)
 }
 
@@ -60,9 +60,9 @@ fn get_vault_config_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
 fn store_vault_salt(salt: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let mut salt_path = get_vault_config_dir()?;
     salt_path.push(".cryypt_salt");
-    
+
     fs::write(&salt_path, salt)?;
-    
+
     // Set restrictive permissions (Unix only)
     #[cfg(unix)]
     {
@@ -70,7 +70,7 @@ fn store_vault_salt(salt: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
         let permissions = std::fs::Permissions::from_mode(0o600); // Owner read/write only
         fs::set_permissions(&salt_path, permissions)?;
     }
-    
+
     Ok(())
 }
 
@@ -79,7 +79,7 @@ fn store_vault_salt(salt: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
 fn retrieve_vault_salt() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let mut salt_path = get_vault_config_dir()?;
     salt_path.push(".cryypt_salt");
-    
+
     if salt_path.exists() {
         let salt = fs::read(&salt_path)?;
         if salt.len() == 32 {
@@ -87,7 +87,7 @@ fn retrieve_vault_salt() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         }
         // Invalid salt file, regenerate
     }
-    
+
     // Generate new salt and store it
     let salt = generate_secure_salt()?;
     store_vault_salt(&salt)?;
@@ -99,17 +99,17 @@ fn retrieve_vault_salt() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
 fn prompt_for_passphrase() -> Result<String, Box<dyn std::error::Error>> {
     print!("Enter vault master passphrase: ");
     io::stdout().flush()?; // Ensure prompt appears before password input
-    
+
     let passphrase = read_password()?;
-    
+
     if passphrase.is_empty() {
         return Err("Passphrase cannot be empty".into());
     }
-    
+
     if passphrase.len() < 8 {
         return Err("Passphrase must be at least 8 characters".into());
     }
-    
+
     Ok(passphrase)
 }
 
@@ -121,13 +121,13 @@ pub async fn derive_master_key_from_vault(
 ) -> Result<[u8; 32], Box<dyn std::error::Error>> {
     // Retrieve or generate cryptographically secure salt
     let salt = retrieve_vault_salt()?;
-    
+
     // Get passphrase from parameter or prompt user
     let mut passphrase = match passphrase_option {
         Some(pass) => pass.to_string(),
         None => prompt_for_passphrase()?,
     };
-    
+
     // Use high-security KDF configuration for master key derivation
     let config = KdfConfig {
         algorithm: KdfAlgorithm::Argon2id,
@@ -142,19 +142,18 @@ pub async fn derive_master_key_from_vault(
     let kdf = KeyDerivation::new(config).with_salt(salt);
     let derived_key = kdf
         .derive_key(passphrase.as_bytes())
-        .await
-        .map_err(|e| format!("Master key derivation failed: {}", e))?;
-    
+        .map_err(|e| format!("Master key derivation failed: {e}"))?;
+
     // Securely clear passphrase from memory
     passphrase.zeroize();
 
     // Convert to fixed-size array with secure memory handling
     let mut master_key_bytes = [0u8; 32];
     master_key_bytes.copy_from_slice(&derived_key[..32]);
-    
+
     let secure_key = SecureMasterKey::new(master_key_bytes);
     let result = *secure_key.as_bytes();
-    
+
     // SecureMasterKey automatically zeroizes on drop
     Ok(result)
 }

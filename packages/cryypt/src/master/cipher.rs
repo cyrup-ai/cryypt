@@ -10,21 +10,21 @@ pub struct CipherMasterBuilder;
 impl CipherMasterBuilder {
     /// Use AES-256-GCM encryption - README.md pattern
     #[cfg(feature = "aes")]
-    #[must_use] 
+    #[must_use]
     pub fn aes(self) -> cryypt_cipher::AesBuilder {
         cryypt_cipher::Cipher::aes()
     }
 
     /// Use ChaCha20-Poly1305 encryption - README.md pattern
     #[cfg(feature = "chacha20")]
-    #[must_use] 
+    #[must_use]
     pub fn chacha20(self) -> cryypt_cipher::ChaChaBuilder {
         cryypt_cipher::Cipher::chacha20()
     }
 
     /// Use ChaCha20-Poly1305 encryption (alias) - README.md pattern
     #[cfg(feature = "chacha20")]
-    #[must_use] 
+    #[must_use]
     pub fn chachapoly(self) -> cryypt_cipher::ChaChaBuilder {
         cryypt_cipher::Cipher::chacha20()
     }

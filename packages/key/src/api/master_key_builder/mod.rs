@@ -3,7 +3,7 @@
 //! Contains the main entry point, builder types, and type-state markers for master key operations.
 
 use crate::bits_macro::BitSize;
-use crate::{KeyStorage};
+use crate::{KeyStorage, KeyError, Result};
 
 pub mod builders;
 pub mod providers;
@@ -18,10 +18,13 @@ pub struct MasterKey;
 
 impl MasterKey {
     /// Create a master key of specified size
-    pub fn size(size: BitSize) -> MasterKeyBuilder {
+    pub fn size(size: BitSize) -> Result<MasterKeyBuilder> {
         match size.bits {
-            256 => MasterKeyBuilder,
-            _ => panic!("Master keys must be 256 bits"),
+            256 => Ok(MasterKeyBuilder),
+            _ => Err(KeyError::InvalidKey(format!(
+                "Master keys must be 256 bits, got {} bits",
+                size.bits
+            ))),
         }
     }
 

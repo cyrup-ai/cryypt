@@ -4,7 +4,7 @@
 //! claims validation using a zero-allocation builder pattern.
 
 use super::validation::validate_standard_claims;
-use crate::error::*;
+use crate::error::JwtError;
 use serde_json::Value;
 
 /// Type alias for custom validation functions
@@ -25,6 +25,7 @@ impl ClaimsValidator {
     /// Create new claims validator
     /// Zero-allocation construction
     #[inline]
+    #[must_use]
     pub fn new() -> Self {
         Self {
             required_claims: Vec::new(),
@@ -39,6 +40,7 @@ impl ClaimsValidator {
     /// Require specific claim to be present
     /// Blazing-fast builder pattern
     #[inline]
+    #[must_use]
     pub fn require_claim(mut self, claim: &str) -> Self {
         self.required_claims.push(claim.to_string());
         self
@@ -47,6 +49,7 @@ impl ClaimsValidator {
     /// Add custom validator function
     /// Zero-allocation validator registration
     #[inline]
+    #[must_use]
     pub fn with_custom_validator<F>(mut self, validator: F) -> Self
     where
         F: Fn(&Value) -> Result<(), JwtError> + Send + Sync + 'static,
@@ -58,6 +61,7 @@ impl ClaimsValidator {
     /// Validate specific audience
     /// Blazing-fast audience validation
     #[inline]
+    #[must_use]
     pub fn with_audience(mut self, audience: &str) -> Self {
         self.audience_validation = Some(audience.to_string());
         self
@@ -66,6 +70,7 @@ impl ClaimsValidator {
     /// Validate specific issuer
     /// Blazing-fast issuer validation
     #[inline]
+    #[must_use]
     pub fn with_issuer(mut self, issuer: &str) -> Self {
         self.issuer_validation = Some(issuer.to_string());
         self
@@ -74,6 +79,7 @@ impl ClaimsValidator {
     /// Validate specific subject
     /// Blazing-fast subject validation
     #[inline]
+    #[must_use]
     pub fn with_subject(mut self, subject: &str) -> Self {
         self.subject_validation = Some(subject.to_string());
         self
@@ -82,6 +88,7 @@ impl ClaimsValidator {
     /// Set maximum token age in seconds
     /// Blazing-fast age validation
     #[inline]
+    #[must_use]
     pub fn with_max_age(mut self, max_age_seconds: i64) -> Self {
         self.max_age_seconds = Some(max_age_seconds);
         self
@@ -89,6 +96,9 @@ impl ClaimsValidator {
 
     /// Validate claims with comprehensive checks
     /// Zero-allocation validation with blazing-fast performance
+    /// 
+    /// # Errors
+    /// Returns `JwtError` if claims validation fails due to expired tokens, invalid issuer, or custom rules
     pub fn validate(&self, claims: &Value) -> Result<(), JwtError> {
         // First run standard claims validation
         validate_standard_claims(claims)?;
@@ -101,8 +111,7 @@ impl ClaimsValidator {
         for required_claim in &self.required_claims {
             if !obj.contains_key(required_claim) {
                 return Err(JwtError::InvalidClaims(format!(
-                    "Required claim '{}' is missing",
-                    required_claim
+                    "Required claim '{required_claim}' is missing"
                 )));
             }
         }
@@ -155,11 +164,11 @@ impl ClaimsValidator {
 
         // Validate max age if specified
         if let Some(max_age) = self.max_age_seconds {
-            if let Some(iat) = obj.get("iat").and_then(|v| v.as_i64()) {
-                let now = std::time::SystemTime::now()
+            if let Some(iat) = obj.get("iat").and_then(serde_json::Value::as_i64) {
+                let now = i64::try_from(std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map_err(|_| JwtError::Internal("System time error".to_string()))?
-                    .as_secs() as i64;
+                    .as_secs()).map_err(|_| JwtError::Internal("Time conversion error".to_string()))?;
 
                 if now - iat > max_age {
                     return Err(JwtError::InvalidClaims("Token is too old".to_string()));

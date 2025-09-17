@@ -8,11 +8,11 @@ impl fmt::Display for Error {
         write!(f, "{}", self.inner.kind)?;
 
         if let Some(context) = &self.inner.context {
-            write!(f, ": {}", context)?;
+            write!(f, ": {context}")?;
         }
 
         if let Some(source) = &self.inner.source {
-            write!(f, "\nCaused by: {}", source)?;
+            write!(f, "\nCaused by: {source}")?;
         }
 
         Ok(())

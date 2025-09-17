@@ -2,7 +2,7 @@
 
 use super::stream_core::GzipStream;
 use super::{GzipBuilderWithChunk, HasLevel, NoLevel};
-use crate::CompressionAlgorithm;
+use crate::{CompressionAlgorithm, GzipBuilder};
 use tokio_stream::Stream;
 
 // Streaming methods for NoLevel builder with chunk handler
@@ -29,14 +29,12 @@ where
         let handler = self.chunk_handler;
 
         // Use public GzipBuilder API - create builder and decompress
-        use crate::GzipBuilder;
         let builder = GzipBuilder::new();
         let result = builder.decompress(data).await;
 
         // Apply chunk handler to raw Vec<u8> result
-        handler(result.map(|compression_result| compression_result.to_vec())).unwrap_or_default()
+        handler(result.map(crate::compression_result::CompressionResult::to_vec)).unwrap_or_default()
     }
-
 }
 
 // Streaming methods for HasLevel builder with chunk handler
@@ -65,12 +63,10 @@ where
         let handler = self.chunk_handler;
 
         // Use public GzipBuilder API - create builder and decompress
-        use crate::GzipBuilder;
         let builder = GzipBuilder::new();
         let result = builder.decompress(data).await;
 
-        // Apply chunk handler to raw Vec<u8> result  
-        handler(result.map(|compression_result| compression_result.to_vec())).unwrap_or_default()
+        // Apply chunk handler to raw Vec<u8> result
+        handler(result.map(crate::compression_result::CompressionResult::to_vec)).unwrap_or_default()
     }
-
 }

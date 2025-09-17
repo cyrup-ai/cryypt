@@ -1,4 +1,4 @@
-//! Stream trait implementation for GzipStream
+//! Stream trait implementation for `GzipStream`
 
 use super::stream_core::GzipStream;
 use crate::Result;

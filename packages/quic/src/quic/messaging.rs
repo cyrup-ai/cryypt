@@ -2,8 +2,8 @@
 
 use crate::quic_conn::QuicConnectionHandle;
 use cryypt_common::error::LoggingTransformer;
-use tracing::{debug, info};
 use std::net::SocketAddr;
+use tracing::{debug, info};
 
 /// Messaging protocol over QUIC stream
 pub struct MessagingProtocol {
@@ -31,7 +31,11 @@ pub struct MessageBuilder {
 }
 
 impl MessageBuilder {
-    pub(super) fn new(message: String, addr: SocketAddr, handle: Option<QuicConnectionHandle>) -> Self {
+    pub(super) fn new(
+        message: String,
+        addr: SocketAddr,
+        handle: Option<QuicConnectionHandle>,
+    ) -> Self {
         Self {
             message,
             addr,

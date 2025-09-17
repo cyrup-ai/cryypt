@@ -76,7 +76,7 @@ impl<P> HashBuilder<Sha256Hash, NoData, HasSalt, P> {
             use crate::error::{HashError, Result};
             let mut stream = Box::pin(stream);
             let mut mac = Hmac::<Sha256>::new_from_slice(&key)
-                .map_err(|e| HashError::MacInitialization(format!("Failed to initialize SHA256 HMAC: {}", e)))?;
+                .map_err(|e| HashError::MacInitialization(format!("Failed to initialize SHA256 HMAC: {e}")))?;
             
             while let Some(chunk) = stream.next().await {
                 mac.update(&chunk);
@@ -151,7 +151,7 @@ pub(super) async fn sha256_hmac(data: Vec<u8>, key: Vec<u8>) -> Result<Vec<u8>> 
     type HmacSha256 = Hmac<Sha256>;
     
     let mut mac = HmacSha256::new_from_slice(&key)
-        .map_err(|e| crate::HashError::internal(format!("HMAC key error: {}", e)))?;
+        .map_err(|e| crate::HashError::internal(format!("HMAC key error: {e}")))?;
     mac.update(&data);
     Ok(mac.finalize().into_bytes().to_vec())
 }

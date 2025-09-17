@@ -9,6 +9,7 @@ pub async fn handle_put(
     vault: &Vault,
     key: &str,
     value: &str,
+    namespace: Option<&str>,
     passphrase_option: Option<&str>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -19,7 +20,7 @@ pub async fn handle_put(
                 json!({
                     "success": false,
                     "operation": "put",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -29,65 +30,64 @@ pub async fn handle_put(
     }
 
     if !use_json {
-        println!("Storing value for key '{}'...", key);
+        if let Some(ns) = namespace {
+            println!("Storing value for key '{}' in namespace '{}'...", key, ns);
+        } else {
+            println!("Storing value for key '{}'...", key);
+        }
     }
 
-    match vault.put(key, value).await {
-        Ok(request) => match request.await {
-            Ok(_) => {
-                log_security_event("CLI_PUT", &format!("Stored value for key: {}", key), true);
+    // Use namespace-aware put operation if namespace is provided
+    let put_result = if let Some(ns) = namespace {
+        vault.put_with_namespace(ns, key, value).await
+    } else {
+        vault.put(key, value).await
+    };
 
-                if use_json {
-                    println!(
-                        "{}",
-                        json!({
-                            "success": true,
-                            "operation": "put",
-                            "key": key
-                        })
-                    );
-                } else {
-                    println!("Value stored successfully");
-                }
-            }
-            Err(e) => {
-                log_security_event(
-                    "CLI_PUT",
-                    &format!("Failed to store value for key {}: {}", key, e),
-                    false,
-                );
-
-                if use_json {
-                    println!(
-                        "{}",
-                        json!({
-                            "success": false,
-                            "operation": "put",
-                            "error": format!("Failed to store value: {}", e)
-                        })
-                    );
-                    return Ok(());
-                } else {
-                    return Err(format!("Failed to store value: {}", e).into());
-                }
-            }
-        },
-        Err(e) => {
-            log_security_event(
-                "CLI_PUT",
-                &format!("Failed to store value for key {}: {}", key, e),
-                false,
-            );
+    match put_result {
+        Ok(_) => {
+            let log_msg = if let Some(ns) = namespace {
+                format!("Stored value for key: {} in namespace: {key, ns}")
+            } else {
+                format!("Stored value for key: {key}")
+            };
+            log_security_event("CLI_PUT", &log_msg, true);
 
             if use_json {
-                println!(
-                    "{}",
-                    json!({
-                        "success": false,
-                        "operation": "put",
-                        "error": format!("Failed to store value: {}", e)
-                    })
-                );
+                let mut response = json!({
+                    "success": true,
+                    "operation": "put",
+                    "key": key
+                });
+                if let Some(ns) = namespace {
+                    response["namespace"] = json!(ns);
+                }
+                println!("{}", response);
+            } else {
+                println!("Value stored successfully");
+            }
+        }
+        Err(e) => {
+            let log_msg = if let Some(ns) = namespace {
+                format!(
+                    "Failed to store value for key {} in namespace {}: {}",
+                    key, ns, e
+                )
+            } else {
+                format!("Failed to store value for key {}: {key, e}")
+            };
+            log_security_event("CLI_PUT", &log_msg, false);
+
+            if use_json {
+                let mut response = json!({
+                    "success": false,
+                    "operation": "put",
+                    "error": format!("Failed to store value: {e}")
+                });
+                if let Some(ns) = namespace {
+                    response["namespace"] = json!(ns);
+                }
+                println!("{}", response);
                 return Ok(());
             } else {
                 return Err(Box::new(e));

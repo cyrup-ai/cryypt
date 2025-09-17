@@ -4,10 +4,10 @@
 //! - macOS: security-framework integration
 //! - Linux/Windows: System certificate store locations
 
-#[cfg(target_os = "macos")]
-mod macos;
 #[cfg(not(target_os = "macos"))]
 mod cross_platform;
+#[cfg(target_os = "macos")]
+mod macos;
 
 /// Builder for keychain certificate authority operations
 #[derive(Debug, Clone)]
@@ -26,7 +26,7 @@ impl AuthorityKeychainBuilder {
         {
             macos::load_from_keychain(self.name).await
         }
-        
+
         #[cfg(not(target_os = "macos"))]
         {
             cross_platform::load_from_system_store(self.name).await

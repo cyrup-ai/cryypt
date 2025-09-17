@@ -24,7 +24,7 @@ pub fn connect_quic_client(
         let scid_bytes = random_16_bytes();
         let scid = ConnectionId::from_ref(&scid_bytes);
         let remote_addr_parsed = remote_addr.parse().map_err(|e| {
-            CryptoTransportError::Internal(format!("Invalid remote address: {}", e))
+            CryptoTransportError::Internal(format!("Invalid remote address: {e}"))
         })?;
         let mut config = crypto.build_config()?;
         let conn = connect(

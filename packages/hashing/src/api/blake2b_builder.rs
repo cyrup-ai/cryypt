@@ -42,18 +42,21 @@ impl Default for Blake2bBuilder {
 
 impl Blake2bBuilder {
     /// Create new Blake2b builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Set output size for Blake2b - README.md pattern
+    #[must_use]
     pub fn with_output_size(self, size: usize) -> Blake2bBuilderWithSize {
         Blake2bBuilderWithSize {
             output_size: size.min(64),
         }
     }
 
-    /// Add on_result handler - README.md pattern
+    /// Add `on_result` handler - README.md pattern
+    #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> Blake2bBuilderWithHandler<F, T>
     where
         F: FnOnce(Result<HashResult>) -> T + Send + 'static,
@@ -65,7 +68,8 @@ impl Blake2bBuilder {
         }
     }
 
-    /// Add on_error handler - transforms errors but passes through success
+    /// Add `on_error` handler - transforms errors but passes through success
+    #[must_use]
     pub fn on_error<E>(self, handler: E) -> Blake2bBuilderWithError<E>
     where
         E: Fn(crate::HashError) -> crate::HashError + Send + Sync + 'static,
@@ -75,7 +79,8 @@ impl Blake2bBuilder {
         }
     }
 
-    /// Add on_chunk handler for streaming - README.md pattern
+    /// Add `on_chunk` handler for streaming - README.md pattern
+    #[must_use]
     pub fn on_chunk<C>(self, handler: C) -> Blake2bBuilderWithChunk<C>
     where
         C: Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync + 'static,
@@ -86,6 +91,7 @@ impl Blake2bBuilder {
     }
 
     /// Compute hash - action takes data as argument per README.md
+    #[must_use]
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
 
@@ -122,7 +128,8 @@ impl<E> Blake2bBuilderWithError<E>
 where
     E: Fn(crate::HashError) -> crate::HashError + Send + Sync + 'static,
 {
-    /// Add on_result handler after error handler
+    /// Add `on_result` handler after error handler
+    #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> Blake2bBuilderWithHandler<F, T>
     where
         F: FnOnce(Result<HashResult>) -> T + Send + 'static,
@@ -134,7 +141,8 @@ where
         }
     }
 
-    /// Compute hash with error handler - returns AsyncHashResultWithError
+    /// Compute hash with error handler - returns `AsyncHashResultWithError`
+    #[must_use]
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResultWithError<E> {
         let data = data.into();
         let error_handler = self.error_handler;
@@ -186,7 +194,8 @@ where
 }
 
 impl Blake2bBuilderWithSize {
-    /// Add on_result handler - README.md pattern for Blake2b with custom size
+    /// Add `on_result` handler - README.md pattern for Blake2b with custom size
+    #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> Blake2bBuilderWithSizeAndHandler<F, T>
     where
         F: FnOnce(Result<HashResult>) -> T + Send + 'static,
@@ -200,6 +209,7 @@ impl Blake2bBuilderWithSize {
     }
 
     /// Compute Blake2b hash with custom size - action takes data as argument per README.md
+    #[must_use]
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
         let output_size = self.output_size;

@@ -53,6 +53,7 @@ pub type VaultBoolRequest = VaultRequest<bool>; // For put_if_absent
 pub type VaultSaveRequest = VaultRequest<()>;
 pub type VaultChangePassphraseRequest = VaultRequest<()>;
 pub type VaultPutAllRequest = VaultRequest<()>;
+pub type VaultListNamespacesRequest = VaultRequest<Vec<String>>;
 
 // Generic request type for operations returning a stream of values
 #[pin_project]
@@ -191,6 +192,42 @@ pub trait VaultOperation: Send + Sync + 'static {
             "This provider does not support namespaces".to_string(),
         )));
         VaultListRequest::new(rx)
+    }
+
+    /// Optional: Get a single value from a specific namespace
+    fn get_from_namespace(&self, _namespace: &str, _key: &str) -> VaultGetRequest {
+        let (tx, rx) = oneshot::channel();
+        let _ = tx.send(Err(VaultError::UnsupportedOperation(
+            "This provider does not support namespaces".to_string(),
+        )));
+        VaultGetRequest::new(rx)
+    }
+
+    /// Optional: Delete a key from a specific namespace
+    fn delete_from_namespace(&self, _namespace: &str, _key: &str) -> VaultUnitRequest {
+        let (tx, rx) = oneshot::channel();
+        let _ = tx.send(Err(VaultError::UnsupportedOperation(
+            "This provider does not support namespaces".to_string(),
+        )));
+        VaultUnitRequest::new(rx)
+    }
+
+    /// Optional: Find entries in a specific namespace
+    fn find_in_namespace(&self, _namespace: &str, _pattern: &str) -> VaultFindRequest {
+        let (tx, rx) = mpsc::channel(1);
+        let _ = tx.send(Err(VaultError::UnsupportedOperation(
+            "This provider does not support namespaces".to_string(),
+        )));
+        VaultFindRequest::new(rx)
+    }
+
+    /// Optional: List all available namespaces
+    fn list_namespaces(&self) -> VaultListNamespacesRequest {
+        let (tx, rx) = oneshot::channel();
+        let _ = tx.send(Err(VaultError::UnsupportedOperation(
+            "This provider does not support namespaces".to_string(),
+        )));
+        VaultListNamespacesRequest::new(rx)
     }
 
     /// Check if this is a new vault (no existing data)

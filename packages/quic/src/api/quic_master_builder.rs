@@ -3,7 +3,7 @@
 use super::quic_api::QuicServerBuilder;
 
 /// Master builder for QUIC operations following cryypt patterns
-/// 
+///
 /// Provides a unified entry point for all QUIC functionality including:
 /// - Server creation and configuration
 /// - Client connections and operations  
@@ -30,7 +30,9 @@ impl QuicMasterBuilder {
     }
 
     /// Create a file transfer server builder
-    pub fn file_transfer(self) -> crate::protocols::file_transfer::sender::FileTransferServerBuilder {
+    pub fn file_transfer(
+        self,
+    ) -> crate::protocols::file_transfer::sender::FileTransferServerBuilder {
         crate::protocols::file_transfer::sender::FileTransferServerBuilder::default()
     }
 

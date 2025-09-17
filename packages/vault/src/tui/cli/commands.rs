@@ -38,27 +38,46 @@ pub enum Commands {
         key: String,
         /// The value to store
         value: String,
+        /// Optional namespace for organizing entries
+        #[arg(long)]
+        namespace: Option<String>,
     },
 
     /// Retrieve a value from the vault
     Get {
         /// The key to retrieve
         key: String,
+        /// Optional namespace to search in
+        #[arg(long)]
+        namespace: Option<String>,
     },
 
     /// Delete a key from the vault
     Delete {
         /// The key to delete
         key: String,
+        /// Optional namespace to delete from
+        #[arg(long)]
+        namespace: Option<String>,
     },
 
     /// List all keys in the vault
-    List {},
+    List {
+        /// Optional namespace to list from
+        #[arg(long)]
+        namespace: Option<String>,
+        /// List all available namespaces
+        #[arg(long)]
+        namespaces: bool,
+    },
 
     /// Find keys matching a pattern
     Find {
         /// Regular expression pattern to match keys
         pattern: String,
+        /// Optional namespace to search in
+        #[arg(long)]
+        namespace: Option<String>,
     },
 
     /// Change the vault passphrase

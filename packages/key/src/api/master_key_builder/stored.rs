@@ -34,7 +34,7 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> S
 
                 // Store it
                 store.store(&key_id, &key).await.map_err(|e| {
-                    crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
+                    crate::KeyError::InvalidKey(format!("Failed to store master key: {e}"))
                 })?;
 
                 Ok(key)
@@ -68,7 +68,7 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static> M
 
                         // Store it
                         store.store(&key_id, &key).await.map_err(|e| {
-                            crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
+                            crate::KeyError::InvalidKey(format!("Failed to store master key: {e}"))
                         })?;
 
                         Ok(key)

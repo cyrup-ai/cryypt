@@ -4,12 +4,12 @@
 //! for QUIC transport layer.
 
 use super::config::Auth;
-use super::file_transfer::FileTransferBuilder;
+use super::file_transfer::FileTransferConfig;
 use super::stream_dispatcher::QuicStreamDispatcher;
-use crate::{quic_conn::QuicConnectionHandle, Result};
+use crate::{Result, quic_conn::QuicConnectionHandle};
 use std::net::SocketAddr;
 use std::time::Duration;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// Persistent QUIC connection for multiplexed protocols
 pub struct QuicConnection {
@@ -39,13 +39,13 @@ impl QuicConnection {
     }
 
     /// Convenience method: Upload a file
-    pub fn upload_file(&self, path: impl Into<String>) -> FileTransferBuilder {
-        FileTransferBuilder::upload(path.into(), self.addr)
+    pub fn upload_file(&self, path: impl Into<String>) -> super::file_transfer::UploadConfig {
+        super::file_transfer::FileTransferConfig::upload(path.into(), self.addr)
     }
 
     /// Convenience method: Download a file
-    pub fn download_file(&self, path: impl Into<String>) -> FileTransferBuilder {
-        FileTransferBuilder::download(path.into(), self.addr)
+    pub fn download_file(&self, path: impl Into<String>) -> super::file_transfer::DownloadConfig {
+        super::file_transfer::FileTransferConfig::download(path.into(), self.addr)
     }
 
     /// Convenience method: Send a message
@@ -57,7 +57,7 @@ impl QuicConnection {
             Some(Auth::Anonymous) => "Anonymous",
             None => "None",
         };
-        
+
         info!(
             addr = %self.addr,
             auth = auth_type,
@@ -101,7 +101,7 @@ impl QuicConnection {
             });
 
             let data = serde_json::to_vec(&request).map_err(|e| {
-                crate::CryptoTransportError::Internal(format!("Failed to serialize RPC: {}", e))
+                crate::CryptoTransportError::Internal(format!("Failed to serialize RPC: {e}"))
             })?;
 
             // Send RPC request
@@ -115,27 +115,30 @@ impl QuicConnection {
             // Wait for response with timeout
             let mut event_rx = handle.subscribe_to_events();
             let timeout_duration = Duration::from_secs(30);
-            
+
             let response = tokio::time::timeout(timeout_duration, async {
                 while let Ok(event) = event_rx.recv().await {
-                    if let crate::quic_conn::QuicConnectionEvent::InboundStreamData(_, data) = event {
+                    if let crate::quic_conn::QuicConnectionEvent::InboundStreamData(_, data) = event
+                    {
                         return String::from_utf8(data).map_err(|e| {
                             crate::CryptoTransportError::Internal(format!(
-                                "Invalid UTF-8 in response: {}", e
+                                "Invalid UTF-8 in response: {}",
+                                e
                             ))
                         });
                     }
                 }
                 Err(crate::CryptoTransportError::Internal(
-                    "Connection closed before response".to_string()
+                    "Connection closed before response".to_string(),
                 ))
-            }).await;
-            
+            })
+            .await;
+
             match response {
                 Ok(Ok(response_str)) => Ok(response_str),
                 Ok(Err(e)) => Err(e),
                 Err(_) => Err(crate::CryptoTransportError::Internal(
-                    "RPC timeout".to_string()
+                    "RPC timeout".to_string(),
                 )),
             }
         } else {

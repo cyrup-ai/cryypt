@@ -1,14 +1,14 @@
 //! Dilithium signature builder following polymorphic pattern
 
-use crate::{PqCryptoError, Result};
 use crate::algorithm::SignatureAlgorithm;
-use crate::api::builder_traits::{SignatureKeyPairBuilder, SignBuilder, VerifyBuilder};
+use crate::api::builder_traits::{SignBuilder, SignatureKeyPairBuilder, VerifyBuilder};
 use crate::api::signature_builder::ml_dsa::MlDsaBuilder;
 use crate::api::states::NeedKeyPair;
+use crate::{PqCryptoError, Result};
 use futures::Stream;
+use std::marker::PhantomData;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use std::marker::PhantomData;
 
 /// Security levels for Dilithium
 #[derive(Debug, Clone, Copy)]
@@ -65,7 +65,7 @@ impl DilithiumBuilder<NoSecurityLevel> {
 }
 
 impl<S> DilithiumBuilder<S> {
-    /// Add on_result handler - transforms pattern matching internally
+    /// Add `on_result` handler - transforms pattern matching internally
     pub fn on_result<F>(self, handler: F) -> DilithiumBuilderWithHandler<S, F, Vec<u8>>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -77,7 +77,7 @@ impl<S> DilithiumBuilder<S> {
         }
     }
 
-    /// Add on_chunk handler - transforms pattern matching internally
+    /// Add `on_chunk` handler - transforms pattern matching internally
     pub fn on_chunk<F>(self, handler: F) -> DilithiumBuilderWithChunk<S, F>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -158,7 +158,7 @@ where
 
                 // Apply handler and send result
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break; // Receiver dropped
                 }
@@ -193,7 +193,7 @@ where
 
                 // Apply handler and send result
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break; // Receiver dropped
                 }
@@ -212,7 +212,7 @@ async fn real_dilithium_generate_keypair(security_level: SecurityLevel) -> Resul
         SecurityLevel::Level3 => SignatureAlgorithm::MlDsa65,
         SecurityLevel::Level5 => SignatureAlgorithm::MlDsa87,
     };
-    
+
     // Create ML-DSA builder and generate keypair using real implementation
     let ml_dsa_builder = MlDsaBuilder {
         algorithm,
@@ -222,10 +222,10 @@ async fn real_dilithium_generate_keypair(security_level: SecurityLevel) -> Resul
         message: None,
         signature: None,
     };
-    
+
     // Generate real keypair using ML-DSA
     let keypair_result = ml_dsa_builder.generate().await?;
-    
+
     // Extract the keypair data (concatenate public and secret keys)
     let public_key = keypair_result.public_key.ok_or_else(|| {
         PqCryptoError::InternalError("Public key missing from generated keypair".to_string())
@@ -233,22 +233,26 @@ async fn real_dilithium_generate_keypair(security_level: SecurityLevel) -> Resul
     let secret_key = keypair_result.secret_key.ok_or_else(|| {
         PqCryptoError::InternalError("Secret key missing from generated keypair".to_string())
     })?;
-    
+
     // Combine keys for dilithium_builder compatibility (public_key + secret_key)
     let mut combined_keypair = public_key;
     combined_keypair.extend(secret_key);
-    
+
     Ok(combined_keypair)
 }
 
-async fn real_dilithium_sign(security_level: SecurityLevel, secret_key: Vec<u8>, message: Vec<u8>) -> Result<Vec<u8>> {
+async fn real_dilithium_sign(
+    security_level: SecurityLevel,
+    secret_key: Vec<u8>,
+    message: Vec<u8>,
+) -> Result<Vec<u8>> {
     // Map security level to ML-DSA algorithm variant
     let algorithm = match security_level {
         SecurityLevel::Level2 => SignatureAlgorithm::MlDsa44,
         SecurityLevel::Level3 => SignatureAlgorithm::MlDsa65,
         SecurityLevel::Level5 => SignatureAlgorithm::MlDsa87,
     };
-    
+
     // Create ML-DSA builder with secret key and message
     let ml_dsa_builder = MlDsaBuilder {
         algorithm,
@@ -258,21 +262,26 @@ async fn real_dilithium_sign(security_level: SecurityLevel, secret_key: Vec<u8>,
         message: Some(message),
         signature: None,
     };
-    
+
     // Sign using real ML-DSA implementation
     let signature_result = ml_dsa_builder.sign().await?;
-    
+
     Ok(signature_result.signature_vec())
 }
 
-async fn real_dilithium_verify(security_level: SecurityLevel, public_key: Vec<u8>, message: Vec<u8>, signature: Vec<u8>) -> Result<Vec<u8>> {
+async fn real_dilithium_verify(
+    security_level: SecurityLevel,
+    public_key: Vec<u8>,
+    message: Vec<u8>,
+    signature: Vec<u8>,
+) -> Result<Vec<u8>> {
     // Map security level to ML-DSA algorithm variant
     let algorithm = match security_level {
         SecurityLevel::Level2 => SignatureAlgorithm::MlDsa44,
         SecurityLevel::Level3 => SignatureAlgorithm::MlDsa65,
         SecurityLevel::Level5 => SignatureAlgorithm::MlDsa87,
     };
-    
+
     // Create ML-DSA builder with public key, message, and signature
     let ml_dsa_builder = MlDsaBuilder {
         algorithm,
@@ -282,11 +291,15 @@ async fn real_dilithium_verify(security_level: SecurityLevel, public_key: Vec<u8
         message: Some(message),
         signature: Some(signature),
     };
-    
+
     // Verify using real ML-DSA implementation
     let verification_result = ml_dsa_builder.verify().await?; // Using verify trait method
-    
+
     // Return verification result (1 for valid, 0 for invalid) - matching original API
     // Extract the boolean result from VerificationResult
-    Ok(if verification_result.is_valid() { vec![1u8] } else { vec![0u8] })
+    Ok(if verification_result.is_valid() {
+        vec![1u8]
+    } else {
+        vec![0u8]
+    })
 }

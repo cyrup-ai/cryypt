@@ -1,7 +1,5 @@
 //! AES builder type definitions
 
-
-
 /// Initial AES builder - entry point
 pub struct AesBuilder;
 
@@ -34,11 +32,13 @@ impl Default for AesBuilder {
 
 impl AesBuilder {
     /// Create new AES builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Add key to builder - README.md pattern
+    #[must_use]
     pub fn with_key<T: Into<Vec<u8>>>(self, key: T) -> AesWithKey {
         AesWithKey::new(key.into())
     }
@@ -46,11 +46,13 @@ impl AesBuilder {
 
 impl AesWithKey {
     /// Create AES builder with key
+    #[must_use]
     pub fn new(key: Vec<u8>) -> Self {
         Self { key, aad: None }
     }
 
     /// Add additional authenticated data (AAD) for AES-GCM
+    #[must_use]
     pub fn with_aad<T: Into<Vec<u8>>>(mut self, aad: T) -> Self {
         self.aad = Some(aad.into());
         self
@@ -70,6 +72,7 @@ impl AesWithKey {
     }
 
     /// Add on_result handler - transforms pattern matching internally  
+    #[must_use]
     pub fn on_result<F>(self, handler: F) -> AesWithKeyAndHandler<F, Vec<u8>>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -80,6 +83,7 @@ impl AesWithKey {
 
 impl AesWithKey {
     /// Add on_chunk handler for streaming operations
+    #[must_use]
     pub fn on_chunk<F>(self, handler: F) -> AesWithKeyAndChunkHandler<F>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,

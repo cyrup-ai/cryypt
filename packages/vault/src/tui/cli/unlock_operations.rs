@@ -42,7 +42,7 @@ pub async fn ensure_unlocked(
             Err(e) => {
                 log_security_event(
                     "CLI_UNLOCK",
-                    &format!("Failed to unlock vault: {}", e),
+                    &format!("Failed to unlock vault: {e}"),
                     false,
                 );
                 return Err(Box::new(e));

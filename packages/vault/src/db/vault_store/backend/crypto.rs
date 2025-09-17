@@ -38,7 +38,7 @@ impl LocalVaultProvider {
                 self.config.argon2_parallelism,
                 Some(32), // 32 bytes for AES-256
             )
-            .map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params: {}", e)))?,
+            .map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params: {e}")))?,
         );
 
         // Use raw salt bytes directly with Argon2
@@ -54,7 +54,7 @@ impl LocalVaultProvider {
                 &mut output_key,
             )
             .map_err(|e| {
-                VaultError::KeyDerivation(format!("Argon2 key derivation failed: {}", e))
+                VaultError::KeyDerivation(format!("Argon2 key derivation failed: {e}"))
             })?;
 
         log::trace!("Successfully derived {} byte key", output_key.len());
@@ -67,18 +67,18 @@ impl LocalVaultProvider {
     }
 
     /// Derive JWT signing key from passphrase using Argon2 with different context
-    pub(crate) async fn derive_jwt_key(
-        &self,
-        passphrase: &Passphrase,
-    ) -> VaultResult<Vec<u8>> {
+    pub(crate) async fn derive_jwt_key(&self, passphrase: &Passphrase) -> VaultResult<Vec<u8>> {
         // Read or generate salt from file (same salt as encryption key for simplicity)
         log::trace!("Getting salt for JWT key derivation...");
         let base_salt = self.get_or_create_salt().await?;
-        
+
         // Create JWT-specific salt by appending context bytes to avoid key reuse
         let mut jwt_salt = base_salt;
         jwt_salt.extend_from_slice(b"JWT_SIGNING_CONTEXT");
-        log::trace!("Using {} byte JWT-specific salt for key derivation", jwt_salt.len());
+        log::trace!(
+            "Using {} byte JWT-specific salt for key derivation",
+            jwt_salt.len()
+        );
 
         // Use Argon2 for secure key derivation with the same parameters as encryption key
         use argon2::Argon2;
@@ -99,7 +99,9 @@ impl LocalVaultProvider {
                 self.config.argon2_parallelism,
                 Some(32), // 32 bytes for HS256 compliance
             )
-            .map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params for JWT key: {}", e)))?,
+            .map_err(|e| {
+                VaultError::KeyDerivation(format!("Invalid Argon2 params for JWT key: {e}"))
+            })?,
         );
 
         // Derive JWT signing key using Argon2
@@ -112,10 +114,13 @@ impl LocalVaultProvider {
                 &mut jwt_output_key,
             )
             .map_err(|e| {
-                VaultError::KeyDerivation(format!("Argon2 JWT key derivation failed: {}", e))
+                VaultError::KeyDerivation(format!("Argon2 JWT key derivation failed: {e}"))
             })?;
 
-        log::trace!("Successfully derived {} byte JWT signing key", jwt_output_key.len());
+        log::trace!(
+            "Successfully derived {} byte JWT signing key",
+            jwt_output_key.len()
+        );
 
         // Store derived JWT key in memory for session
         let mut jwt_key_guard = self.jwt_key.lock().await;
@@ -149,7 +154,7 @@ impl LocalVaultProvider {
                     data
                 }
                 Err(error) => {
-                    let error_msg = format!("AES encryption failed: {}", error);
+                    let error_msg = format!("AES encryption failed: {error}");
                     log::error!("{}", error_msg);
                     // Return error details in a special format for later detection
                     format!("ENCRYPTION_ERROR:{}", error_msg).into_bytes()
@@ -172,12 +177,17 @@ impl LocalVaultProvider {
         // Check for error marker from on_result handler
         if let Ok(error_str) = String::from_utf8(encrypted_data.clone()) {
             if error_str.starts_with("ENCRYPTION_ERROR:") {
-                let error_details = error_str.strip_prefix("ENCRYPTION_ERROR:").unwrap_or("Unknown encryption error");
+                let error_details = error_str
+                    .strip_prefix("ENCRYPTION_ERROR:")
+                    .unwrap_or("Unknown encryption error");
                 return Err(VaultError::Encryption(error_details.to_string()));
             }
         }
 
-        log::trace!("Encryption completed successfully, output: {} bytes", encrypted_data.len());
+        log::trace!(
+            "Encryption completed successfully, output: {} bytes",
+            encrypted_data.len()
+        );
         Ok(encrypted_data)
     }
 
@@ -196,7 +206,7 @@ impl LocalVaultProvider {
         // Validate input data before attempting decryption
         if encrypted_data.len() < 32 {
             let error_msg = format!(
-                "Invalid encrypted data: too short ({} bytes, minimum 32 required)", 
+                "Invalid encrypted data: too short ({} bytes, minimum 32 required)",
                 encrypted_data.len()
             );
             log::error!("{}", error_msg);
@@ -216,7 +226,7 @@ impl LocalVaultProvider {
                     data
                 }
                 Err(error) => {
-                    let error_msg = format!("AES decryption failed: {}", error);
+                    let error_msg = format!("AES decryption failed: {error}");
                     log::error!("{}", error_msg);
                     // Return error details in a special format for later detection
                     format!("DECRYPTION_ERROR:{}", error_msg).into_bytes()
@@ -238,12 +248,17 @@ impl LocalVaultProvider {
         // Check for error marker from on_result handler
         if let Ok(error_str) = String::from_utf8(decrypted_data.clone()) {
             if error_str.starts_with("DECRYPTION_ERROR:") {
-                let error_details = error_str.strip_prefix("DECRYPTION_ERROR:").unwrap_or("Unknown decryption error");
+                let error_details = error_str
+                    .strip_prefix("DECRYPTION_ERROR:")
+                    .unwrap_or("Unknown decryption error");
                 return Err(VaultError::Decryption(error_details.to_string()));
             }
         }
 
-        log::trace!("Decryption completed successfully, output: {} bytes", decrypted_data.len());
+        log::trace!(
+            "Decryption completed successfully, output: {} bytes",
+            decrypted_data.len()
+        );
         Ok(decrypted_data)
     }
 
@@ -251,22 +266,22 @@ impl LocalVaultProvider {
     pub(crate) async fn get_or_create_salt(&self) -> VaultResult<Vec<u8>> {
         use rand::RngCore;
 
-        // Try to retrieve existing salt from encrypted database storage
-        let query = "SELECT * FROM vault_entries WHERE key = $key LIMIT 1";
+        // Try to retrieve existing salt using natural keys format
+        let salt_record_id = super::key_utils::create_record_id("__vault_salt__");
+        let query = format!("SELECT * FROM {salt_record_id}");
         let db = self.dao.db();
 
         let mut result = db
-            .query(query)
-            .bind(("key", "__vault_salt__"))
+            .query(&query)
             .await
-            .map_err(|e| VaultError::Provider(format!("DB query failed: {}", e)))?
+            .map_err(|e| VaultError::Provider(format!("DB query failed: {e}")))?
             .check()
-            .map_err(|e| VaultError::Provider(format!("DB check failed: {}", e)))?;
+            .map_err(|e| VaultError::Provider(format!("DB check failed: {e}")))?;
 
         use super::super::VaultEntry;
         let salt_entry: Option<VaultEntry> = result
             .take(0)
-            .map_err(|e| VaultError::Provider(format!("DB result take failed: {}", e)))?;
+            .map_err(|e| VaultError::Provider(format!("DB result take failed: {e}")))?;
 
         match salt_entry {
             Some(entry) => {
@@ -274,21 +289,22 @@ impl LocalVaultProvider {
 
                 // Decode salt from base64
                 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-                let salt = BASE64_STANDARD.decode(entry.value).map_err(|_| {
-                    VaultError::Crypto("Invalid stored salt data".to_string())
-                })?;
+                let salt = BASE64_STANDARD
+                    .decode(entry.value)
+                    .map_err(|_| VaultError::Crypto("Invalid stored salt data".to_string()))?;
 
                 if salt.len() == 32 {
                     Ok(salt)
                 } else {
-                    Err(VaultError::Crypto(
-                        format!("Salt corrupted: expected exactly 32 bytes, got {}", salt.len())
-                    ))
+                    Err(VaultError::Crypto(format!(
+                        "Salt corrupted: expected exactly 32 bytes, got {}",
+                        salt.len()
+                    )))
                 }
             }
             None => {
                 log::info!("No existing salt found - generating new salt");
-                
+
                 // Generate new salt
                 let mut salt = vec![0u8; 32]; // 32 bytes salt
                 rand::rng().fill_bytes(&mut salt);
@@ -297,16 +313,16 @@ impl LocalVaultProvider {
                 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
                 let salt_b64 = BASE64_STANDARD.encode(&salt);
 
-                // Use UPSERT to handle existing records
-                use base64::{engine::general_purpose::URL_SAFE_NO_PAD as BASE64_URL};
-                let key_encoded = BASE64_URL.encode("__vault_salt__".as_bytes());
-                let record_id = format!("vault_entries:{}", key_encoded);
-                let upsert_query = format!("UPSERT {} SET key = $key, value = $value, created_at = $created_at, updated_at = $updated_at", record_id);
-                
+                // Use natural keys format for consistency
+                let record_id = super::key_utils::create_record_id("__vault_salt__");
+                let upsert_query = format!(
+                    "UPSERT {} SET value = $value, created_at = $created_at, updated_at = $updated_at",
+                    record_id
+                );
+
                 let now = chrono::Utc::now();
                 match db
                     .query(upsert_query)
-                    .bind(("key", "__vault_salt__"))
                     .bind(("value", salt_b64))
                     .bind(("created_at", surrealdb::value::Datetime::from(now)))
                     .bind(("updated_at", surrealdb::value::Datetime::from(now)))
@@ -316,7 +332,7 @@ impl LocalVaultProvider {
                         log::info!("Generated and stored new encrypted salt in database");
                         Ok(salt)
                     }
-                    Err(e) => Err(VaultError::Provider(format!("Failed to store salt: {}", e)))
+                    Err(e) => Err(VaultError::Provider(format!("Failed to store salt: {e}"))),
                 }
             }
         }

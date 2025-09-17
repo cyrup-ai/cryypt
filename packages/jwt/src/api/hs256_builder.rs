@@ -41,7 +41,7 @@ impl Hs256WithSecret {
     /// Set claims for JWT - README.md pattern
     pub fn with_claims<T: Serialize>(self, claims: T) -> Result<Hs256WithClaims, JwtError> {
         let claims_value = serde_json::to_value(claims)
-            .map_err(|e| JwtError::serialization(&format!("Failed to serialize claims: {}", e)))?;
+            .map_err(|e| JwtError::serialization(&format!("Failed to serialize claims: {e}")))?;
         
         Ok(Hs256WithClaims {
             secret: self.secret,
@@ -83,7 +83,7 @@ impl Hs256WithClaims {
         // Add expiry to claims if specified
         let mut claims = self.claims;
         if let Some(expiry) = self.expiry {
-            let exp = chrono::Utc::now().timestamp() + expiry.as_secs() as i64;
+            let exp = chrono::Utc::now().timestamp() + i64::try_from(expiry.as_secs()).map_err(|_| crate::error::JwtError::Internal("Expiry time conversion error".to_string()))?;
             if let serde_json::Value::Object(ref mut map) = claims {
                 map.insert("exp".to_string(), serde_json::Value::Number(serde_json::Number::from(exp)));
             }

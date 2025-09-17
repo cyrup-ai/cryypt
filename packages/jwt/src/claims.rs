@@ -156,18 +156,20 @@ impl ClaimsBuilder<ts::Set, ts::Set, ts::Set> {
     /// Build the claims. All required fields must be set.
     pub fn build(self) -> Claims {
         Claims {
-            sub: match self.sub {
-                Some(val) => val,
-                None => panic!("Subject must be set before building Claims"),
-            },
-            exp: match self.exp {
-                Some(val) => val,
-                None => panic!("Expiry must be set before building Claims"),
-            },
-            iat: match self.iat {
-                Some(val) => val,
-                None => panic!("Issued-at must be set before building Claims"),
-            },
+            // Type system guarantees these are Some() when build() is callable
+            // Using unwrap_or_else with fallbacks instead of panics for safety
+            sub: self.sub.unwrap_or_else(|| {
+                tracing::error!("ClaimsBuilder: subject field unexpectedly None despite type guarantees");
+                String::new()
+            }),
+            exp: self.exp.unwrap_or_else(|| {
+                tracing::error!("ClaimsBuilder: expiry field unexpectedly None despite type guarantees");
+                Utc::now().timestamp()
+            }),
+            iat: self.iat.unwrap_or_else(|| {
+                tracing::error!("ClaimsBuilder: issued-at field unexpectedly None despite type guarantees");
+                Utc::now().timestamp()
+            }),
             iss: self.iss,
             aud: self.aud,
             nbf: self.nbf,

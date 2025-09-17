@@ -35,13 +35,14 @@ pub use traits::{
     AsyncRetrieveResult, AsyncStoreResult, NotResult,
 };
 
-/// BadChunk type for streaming error handling - used in on_chunk handlers
+/// `BadChunk` type for streaming error handling - used in `on_chunk` handlers
 pub struct BadChunk(Vec<u8>);
 
 impl BadChunk {
-    /// Create a BadChunk from an error
-    pub fn from_error(_e: impl std::error::Error) -> Self {
-        Self(b"BAD_CHUNK".to_vec())
+    /// Create a `BadChunk` from an error
+    pub fn from_error(e: impl std::error::Error) -> Self {
+        let error_msg = format!("ERROR: {e}");
+        Self(error_msg.into_bytes())
     }
 }
 
@@ -51,7 +52,7 @@ impl From<BadChunk> for Vec<u8> {
     }
 }
 
-/// Data chunk wrapper that implements MessageChunk for cyrup_sugars compatibility
+/// Data chunk wrapper that implements `MessageChunk` for `cyrup_sugars` compatibility
 #[derive(Debug, Clone)]
 pub struct DataChunk {
     pub data: Vec<u8>,
@@ -60,11 +61,13 @@ pub struct DataChunk {
 
 impl DataChunk {
     /// Create a new data chunk
+    #[must_use]
     pub fn new(data: Vec<u8>) -> Self {
         Self { data, error: None }
     }
 
     /// Get the data as Vec<u8>
+    #[must_use]
     pub fn into_data(self) -> Vec<u8> {
         self.data
     }
@@ -73,7 +76,7 @@ impl DataChunk {
 impl MessageChunk for DataChunk {
     fn bad_chunk(error: String) -> Self {
         Self {
-            data: format!("[ERROR] {}", error).into_bytes(),
+            data: format!("[ERROR] {error}").into_bytes(),
             error: Some(error),
         }
     }

@@ -16,22 +16,25 @@ pub struct AsyncCompressionResult {
 pub struct AsyncCompressionResultWithHandler<F> {
     receiver: oneshot::Receiver<Result<CompressionResult>>,
     handler: Option<F>,
+    completed: bool,
 }
 
 impl AsyncCompressionResult {
-    /// Create a new AsyncCompressionResult from a oneshot receiver
+    /// Create a new `AsyncCompressionResult` from a oneshot receiver
     pub(crate) fn new(receiver: oneshot::Receiver<Result<CompressionResult>>) -> Self {
         Self { receiver }
     }
 
-    /// Create an AsyncCompressionResult that's already completed
+    /// Create an `AsyncCompressionResult` that's already completed
+    #[must_use]
     pub fn ready(result: Result<CompressionResult>) -> Self {
         let (tx, rx) = oneshot::channel();
         let _ = tx.send(result);
         Self { receiver: rx }
     }
 
-    /// Create an AsyncCompressionResult that yields an error
+    /// Create an `AsyncCompressionResult` that yields an error
+    #[must_use]
     pub fn error(error: CompressionError) -> Self {
         Self::ready(Err(error))
     }
@@ -44,6 +47,7 @@ impl AsyncCompressionResult {
         AsyncCompressionResultWithHandler {
             receiver: self.receiver,
             handler: Some(handler),
+            completed: false,
         }
     }
 }
@@ -71,26 +75,34 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
+        
+        // If already completed, return Pending to avoid multiple completions
+        if this.completed {
+            return Poll::Pending;
+        }
+        
         match Pin::new(&mut this.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => {
                 // Call the user's on_result handler with the Result
                 // The handler defines what happens on error and returns unwrapped value
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(result))
                 } else {
-                    // Handler was already called, this shouldn't happen
-                    panic!("AsyncCompressionResultWithHandler polled after completion")
+                    // Handler was already called, return Pending
+                    Poll::Pending
                 }
             }
             Poll::Ready(Err(_)) => {
                 // Task dropped - this should not happen in normal operation
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(Err(CompressionError::internal(
                         "Compression resolution task dropped",
                     ))))
                 } else {
-                    // Handler was already called, this shouldn't happen
-                    panic!("AsyncCompressionResultWithHandler polled after completion")
+                    // Handler was already called, return Pending
+                    Poll::Pending
                 }
             }
             Poll::Pending => Poll::Pending,

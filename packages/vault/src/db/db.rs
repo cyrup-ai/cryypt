@@ -79,9 +79,10 @@ impl Dao {
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = path.parent()
-            && !parent.exists() {
-                std::fs::create_dir_all(parent).map_err(|e| DatabaseError::IoError { error: e })?;
-            }
+            && !parent.exists()
+        {
+            std::fs::create_dir_all(parent).map_err(|e| DatabaseError::IoError { error: e })?;
+        }
 
         // Database name from filename - zero allocation approach
         let db_name = path.file_stem().and_then(|n| n.to_str()).unwrap_or("cysec");
@@ -119,7 +120,7 @@ impl Dao {
     ) -> DatabaseResult<Surreal<Any>> {
         // Pre-allocate connection string to avoid repeated allocations
         let mut connection_string = String::with_capacity(64);
-        connection_string.push_str("surrealkv://");
+        connection_string.push_str("file://");
         connection_string.push_str(&db_path.display().to_string());
 
         for attempt in 1..=self.config.max_retries {

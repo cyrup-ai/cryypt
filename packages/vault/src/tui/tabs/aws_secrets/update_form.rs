@@ -23,7 +23,7 @@ pub fn render_aws_secrets_update(f: &mut Frame, app: &mut App, area: Rect) {
     let current_secret = app.state.aws.current_secret.clone();
 
     // Create the info widget
-    let info = Paragraph::new(format!("Updating secret: {}", current_secret))
+    let info = Paragraph::new(format!("Updating secret: {current_secret}"))
         .block(Block::default().title("Secret Info").borders(Borders::ALL))
         .style(Style::default().fg(Color::White));
 

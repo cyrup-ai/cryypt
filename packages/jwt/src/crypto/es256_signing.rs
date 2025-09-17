@@ -1,6 +1,6 @@
 //! ES256 signing with ECDSA P-256 - production implementation
 
-use crate::{error::*, types::*};
+use crate::{error::{JwtResult, JwtError}, types::JwtHeader};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use p256::{
     ecdsa::{Signature, SigningKey, signature::Signer},
@@ -8,7 +8,7 @@ use p256::{
 };
 /// ES256 signing with ECDSA P-256 - Production async implementation
 #[allow(dead_code)]
-pub async fn es256_sign(
+pub fn es256_sign(
     private_key: &[u8],
     header: &JwtHeader,
     claims: &serde_json::Value,

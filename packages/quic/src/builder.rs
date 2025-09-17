@@ -47,8 +47,16 @@ impl QuicCryptoConfig {
     pub fn set_cert_chain(&mut self, cert: Vec<u8>) {
         self.auth_config = Some(Auth::MutualTLS {
             cert,
-            key: self.auth_config.as_ref()
-                .and_then(|auth| if let Auth::MutualTLS { key, .. } = auth { Some(key.clone()) } else { None })
+            key: self
+                .auth_config
+                .as_ref()
+                .and_then(|auth| {
+                    if let Auth::MutualTLS { key, .. } = auth {
+                        Some(key.clone())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or_default(),
         });
     }
@@ -56,8 +64,16 @@ impl QuicCryptoConfig {
     /// Set private key
     pub fn set_private_key(&mut self, key: Vec<u8>) {
         self.auth_config = Some(Auth::MutualTLS {
-            cert: self.auth_config.as_ref()
-                .and_then(|auth| if let Auth::MutualTLS { cert, .. } = auth { Some(cert.clone()) } else { None })
+            cert: self
+                .auth_config
+                .as_ref()
+                .and_then(|auth| {
+                    if let Auth::MutualTLS { cert, .. } = auth {
+                        Some(cert.clone())
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or_default(),
             key,
         });
@@ -85,48 +101,74 @@ impl QuicCryptoConfig {
         if let Some(Auth::MutualTLS { cert, key }) = &self.auth_config {
             // Write certificates to secure temporary files for quiche API
             use std::fs;
+            use std::io::Write;
             use std::os::unix::fs::PermissionsExt;
             use tempfile::NamedTempFile;
-            use std::io::Write;
-            
-            let mut cert_file = NamedTempFile::new()
-                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to create temp cert file: {}", e)))?;
-            let mut key_file = NamedTempFile::new()
-                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to create temp key file: {}", e)))?;
-            
+
+            let mut cert_file = NamedTempFile::new().map_err(|e| {
+                CryptoTransportError::CertificateInvalid(format!(
+                    "Failed to create temp cert file: {}",
+                    e
+                ))
+            })?;
+            let mut key_file = NamedTempFile::new().map_err(|e| {
+                CryptoTransportError::CertificateInvalid(format!(
+                    "Failed to create temp key file: {}",
+                    e
+                ))
+            })?;
+
             // Set restrictive permissions (600)
-            fs::set_permissions(cert_file.path(), fs::Permissions::from_mode(0o600))
-                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to set cert permissions: {}", e)))?;
-            fs::set_permissions(key_file.path(), fs::Permissions::from_mode(0o600))
-                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to set key permissions: {}", e)))?;
-            
+            fs::set_permissions(cert_file.path(), fs::Permissions::from_mode(0o600)).map_err(
+                |e| {
+                    CryptoTransportError::CertificateInvalid(format!(
+                        "Failed to set cert permissions: {}",
+                        e
+                    ))
+                },
+            )?;
+            fs::set_permissions(key_file.path(), fs::Permissions::from_mode(0o600)).map_err(
+                |e| {
+                    CryptoTransportError::CertificateInvalid(format!(
+                        "Failed to set key permissions: {}",
+                        e
+                    ))
+                },
+            )?;
+
             // Write certificate and key data
-            cert_file.write_all(cert)
-                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to write cert: {}", e)))?;
-            key_file.write_all(key)
-                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to write key: {}", e)))?;
-            
-            cert_file.flush()
-                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to flush cert: {}", e)))?;
-            key_file.flush()
-                .map_err(|e| CryptoTransportError::CertificateInvalid(format!("Failed to flush key: {}", e)))?;
-            
-            let cert_path = cert_file.path().to_str()
-                .ok_or_else(|| CryptoTransportError::CertificateInvalid(
-                    "Certificate temp file path contains non-UTF-8 characters".to_string()
-                ))?;
+            cert_file.write_all(cert).map_err(|e| {
+                CryptoTransportError::CertificateInvalid(format!("Failed to write cert: {e}"))
+            })?;
+            key_file.write_all(key).map_err(|e| {
+                CryptoTransportError::CertificateInvalid(format!("Failed to write key: {e}"))
+            })?;
+
+            cert_file.flush().map_err(|e| {
+                CryptoTransportError::CertificateInvalid(format!("Failed to flush cert: {e}"))
+            })?;
+            key_file.flush().map_err(|e| {
+                CryptoTransportError::CertificateInvalid(format!("Failed to flush key: {e}"))
+            })?;
+
+            let cert_path = cert_file.path().to_str().ok_or_else(|| {
+                CryptoTransportError::CertificateInvalid(
+                    "Certificate temp file path contains non-UTF-8 characters".to_string(),
+                )
+            })?;
             config
                 .load_cert_chain_from_pem_file(cert_path)
                 .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
-                
-            let key_path = key_file.path().to_str()
-                .ok_or_else(|| CryptoTransportError::CertificateInvalid(
-                    "Key temp file path contains non-UTF-8 characters".to_string()
-                ))?;
+
+            let key_path = key_file.path().to_str().ok_or_else(|| {
+                CryptoTransportError::CertificateInvalid(
+                    "Key temp file path contains non-UTF-8 characters".to_string(),
+                )
+            })?;
             config
                 .load_priv_key_from_pem_file(key_path)
                 .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
-            
+
             // Files will be automatically cleaned up when NamedTempFile is dropped
         }
 
@@ -249,7 +291,10 @@ impl QuicCryptoBuilder {
     }
 
     /// Add a root certificate to the trust store
-    pub fn add_root_certificate(mut self, cert: rustls::pki_types::CertificateDer<'static>) -> Self {
+    pub fn add_root_certificate(
+        mut self,
+        cert: rustls::pki_types::CertificateDer<'static>,
+    ) -> Self {
         self.root_certificates.push(cert);
         self
     }
@@ -284,8 +329,10 @@ impl QuicCryptoBuilder {
         config.set_application_protos(&alpn_refs)?;
 
         // Create auth config from cert/key files
-        let cert = std::fs::read(cert_path).map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
-        let key = std::fs::read(key_path).map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+        let cert = std::fs::read(cert_path)
+            .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+        let key = std::fs::read(key_path)
+            .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
         let auth_config = Some(Auth::MutualTLS { cert, key });
 
         Ok(Arc::new(QuicCryptoConfig {
@@ -321,9 +368,13 @@ impl QuicCryptoBuilder {
         }
 
         // Set up client certificate authentication if provided
-        let auth_config = if let (Some(cert_path), Some(key_path)) = (&self.client_cert_path, &self.client_key_path) {
-            let cert = std::fs::read(cert_path).map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
-            let key = std::fs::read(key_path).map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+        let auth_config = if let (Some(cert_path), Some(key_path)) =
+            (&self.client_cert_path, &self.client_key_path)
+        {
+            let cert = std::fs::read(cert_path)
+                .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
+            let key = std::fs::read(key_path)
+                .map_err(|e| CryptoTransportError::CertificateInvalid(e.to_string()))?;
             Some(Auth::MutualTLS { cert, key })
         } else {
             None

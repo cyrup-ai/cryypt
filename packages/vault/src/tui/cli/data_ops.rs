@@ -18,7 +18,7 @@ pub async fn handle_put(
                 json!({
                     "success": false,
                     "operation": "put",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -33,7 +33,7 @@ pub async fn handle_put(
 
     match vault.put(key, value).await {
         Ok(_) => {
-            log_security_event("CLI_PUT", &format!("Stored value for key: {}", key), true);
+            log_security_event("CLI_PUT", &format!("Stored value for key: {key}"), true);
 
             if use_json {
                 println!(
@@ -51,7 +51,7 @@ pub async fn handle_put(
         Err(e) => {
             log_security_event(
                 "CLI_PUT",
-                &format!("Failed to store value for key {}: {}", key, e),
+                &format!("Failed to store value for key {}: {key, e}"),
                 false,
             );
 
@@ -61,7 +61,7 @@ pub async fn handle_put(
                     json!({
                         "success": false,
                         "operation": "put",
-                        "error": format!("Failed to store value: {}", e)
+                        "error": format!("Failed to store value: {e}")
                     })
                 );
                 return Ok(());
@@ -85,7 +85,7 @@ pub async fn handle_get(
                 json!({
                     "success": false,
                     "operation": "get",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -103,7 +103,7 @@ pub async fn handle_get(
             Ok(value) => {
                 log_security_event(
                     "CLI_GET",
-                    &format!("Retrieved value for key: {}", key),
+                    &format!("Retrieved value for key: {key}"),
                     true,
                 );
 
@@ -139,7 +139,7 @@ pub async fn handle_get(
                         } else {
                             println!("Error: Key '{}' not found", key);
                         }
-                        
+
                         // Exit with code 1 for key not found (Unix convention)
                         std::process::exit(1);
                     }
@@ -148,7 +148,7 @@ pub async fn handle_get(
             Err(e) => {
                 log_security_event(
                     "CLI_GET",
-                    &format!("Failed to retrieve value for key {}: {}", key, e),
+                    &format!("Failed to retrieve value for key {}: {key, e}"),
                     false,
                 );
 
@@ -159,19 +159,19 @@ pub async fn handle_get(
                             "success": false,
                             "operation": "get",
                             "key": key,
-                            "error": format!("Failed to retrieve value: {}", e)
+                            "error": format!("Failed to retrieve value: {e}")
                         })
                     );
                     return Ok(());
                 } else {
-                    return Err(format!("Failed to retrieve value: {}", e).into());
+                    return Err(format!("Failed to retrieve value: {e}").into());
                 }
             }
         },
         Err(e) => {
             log_security_event(
                 "CLI_GET",
-                &format!("Failed to retrieve value for key {}: {}", key, e),
+                &format!("Failed to retrieve value for key {}: {key, e}"),
                 false,
             );
 
@@ -182,7 +182,7 @@ pub async fn handle_get(
                         "success": false,
                         "operation": "get",
                         "key": key,
-                        "error": format!("Failed to retrieve value: {}", e)
+                        "error": format!("Failed to retrieve value: {e}")
                     })
                 );
                 return Ok(());
@@ -206,7 +206,7 @@ pub async fn handle_delete(
                 json!({
                     "success": false,
                     "operation": "delete",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -221,7 +221,7 @@ pub async fn handle_delete(
 
     match vault.delete(key).await {
         Ok(_) => {
-            log_security_event("CLI_DELETE", &format!("Deleted key: {}", key), true);
+            log_security_event("CLI_DELETE", &format!("Deleted key: {key}"), true);
 
             if use_json {
                 println!(
@@ -239,7 +239,7 @@ pub async fn handle_delete(
         Err(e) => {
             log_security_event(
                 "CLI_DELETE",
-                &format!("Failed to delete key {}: {}", key, e),
+                &format!("Failed to delete key {}: {key, e}"),
                 false,
             );
 
@@ -250,7 +250,7 @@ pub async fn handle_delete(
                         "success": false,
                         "operation": "delete",
                         "key": key,
-                        "error": format!("Failed to delete key: {}", e)
+                        "error": format!("Failed to delete key: {e}")
                     })
                 );
                 return Ok(());

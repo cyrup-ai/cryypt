@@ -6,5 +6,11 @@
 pub mod hs256_builder;
 pub mod rs256_builder;
 
-pub use hs256_builder::{HsJwtBuilder, HsJwtWithSecret, HsJwtWithSecretAndClaims, HsJwtWithSecretAndClaimsAndHandler, HsJwtWithSecretAndClaimsAndChunkHandler};
-pub use rs256_builder::{RsJwtBuilder, RsJwtWithPrivateKey, RsJwtWithPrivateKeyAndClaims, RsJwtWithPrivateKeyAndClaimsAndHandler, RsJwtWithPrivateKeyAndClaimsAndChunkHandler};
+pub use hs256_builder::{
+    HsJwtBuilder, HsJwtWithSecret, HsJwtWithSecretAndClaims,
+    HsJwtWithSecretAndClaimsAndChunkHandler, HsJwtWithSecretAndClaimsAndHandler,
+};
+pub use rs256_builder::{
+    RsJwtBuilder, RsJwtWithPrivateKey, RsJwtWithPrivateKeyAndClaims,
+    RsJwtWithPrivateKeyAndClaimsAndChunkHandler, RsJwtWithPrivateKeyAndClaimsAndHandler,
+};

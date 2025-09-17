@@ -5,6 +5,6 @@ use cryypt_common::error::LoggingTransformer;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize structured logging
     LoggingTransformer::init();
-    
+
     cryypt_vault::tui::run()
 }

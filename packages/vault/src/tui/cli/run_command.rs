@@ -27,7 +27,7 @@ pub async fn handle_run(
                 json!({
                     "success": false,
                     "operation": "run",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -43,7 +43,7 @@ pub async fn handle_run(
         Err(e) => {
             log_security_event(
                 "CLI_RUN",
-                &format!("Failed to load vault variables: {}", e),
+                &format!("Failed to load vault variables: {e}"),
                 false,
             );
             if use_json {
@@ -52,11 +52,11 @@ pub async fn handle_run(
                     json!({
                         "success": false,
                         "operation": "run",
-                        "error": format!("Failed to load vault variables: {}", e)
+                        "error": format!("Failed to load vault variables: {e}")
                     })
                 );
             } else {
-                return Err(format!("Failed to load vault variables: {}", e).into());
+                return Err(format!("Failed to load vault variables: {e}").into());
             }
             return Ok(());
         }
@@ -69,7 +69,7 @@ pub async fn handle_run(
             Err(e) => {
                 log_security_event(
                     "CLI_RUN",
-                    &format!("Failed to load vault variables: {}", e),
+                    &format!("Failed to load vault variables: {e}"),
                     false,
                 );
                 if use_json {
@@ -78,7 +78,7 @@ pub async fn handle_run(
                         json!({
                             "success": false,
                             "operation": "run",
-                            "error": format!("Failed to load vault variables: {}", e)
+                            "error": format!("Failed to load vault variables: {e}")
                         })
                     );
                     return Ok(());
@@ -142,7 +142,7 @@ pub async fn handle_run(
         Err(e) => {
             log_security_event(
                 "CLI_RUN",
-                &format!("Failed to execute command: {}", e),
+                &format!("Failed to execute command: {e}"),
                 false,
             );
             if use_json {
@@ -151,7 +151,7 @@ pub async fn handle_run(
                     json!({
                         "success": false,
                         "operation": "run",
-                        "error": format!("Failed to execute command: {}", e)
+                        "error": format!("Failed to execute command: {e}")
                     })
                 );
                 return Ok(());
@@ -163,7 +163,7 @@ pub async fn handle_run(
 
     log_security_event(
         "CLI_RUN",
-        &format!("Executed shell command via vault: {}", cmd_str),
+        &format!("Executed shell command via vault: {cmd_str}"),
         true,
     );
 

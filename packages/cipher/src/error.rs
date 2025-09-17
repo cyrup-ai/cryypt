@@ -31,20 +31,20 @@ pub enum CipherError {
 
     /// Invalid key length provided
     #[error("Invalid key length: expected {expected}, got {actual}")]
-    InvalidKeyLength { 
+    InvalidKeyLength {
         /// Expected key length in bytes
-        expected: usize, 
+        expected: usize,
         /// Actual key length in bytes
-        actual: usize 
+        actual: usize,
     },
 
     /// Invalid nonce length provided
     #[error("Invalid nonce length: expected {expected}, got {actual}")]
-    InvalidNonceLength { 
+    InvalidNonceLength {
         /// Expected nonce length in bytes
-        expected: usize, 
+        expected: usize,
         /// Actual nonce length in bytes
-        actual: usize 
+        actual: usize,
     },
 
     /// Cryptographic operation failed
@@ -61,11 +61,11 @@ pub enum CipherError {
 
     /// Invalid key size provided (async pattern)
     #[error("Invalid key size: expected {expected}, got {actual}")]
-    InvalidKeySize { 
+    InvalidKeySize {
         /// Expected key size in bytes
-        expected: usize, 
+        expected: usize,
         /// Actual key size in bytes
-        actual: usize 
+        actual: usize,
     },
 
     /// Encryption operation failed (async pattern)
@@ -105,7 +105,7 @@ impl From<hex::FromHexError> for CipherError {
 
 impl From<base64::DecodeError> for CipherError {
     fn from(err: base64::DecodeError) -> Self {
-        CipherError::InvalidEncryptedData(format!("Base64 decode error: {}", err))
+        CipherError::InvalidEncryptedData(format!("Base64 decode error: {err}"))
     }
 }
 

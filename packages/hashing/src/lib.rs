@@ -13,7 +13,8 @@ pub use error::{HashError, Result};
 
 // Re-export the main APIs per README.md
 pub use api::{
-    Blake2bBuilder, Blake3Builder, Hash, Sha3_256Builder, Sha3_384Builder, Sha3_512Builder, Sha256Builder,
+    Blake2bBuilder, Blake3Builder, Hash, Sha3_256Builder, Sha3_384Builder, Sha3_512Builder,
+    Sha256Builder,
 };
 
 // Re-export hash result types
@@ -28,6 +29,7 @@ pub struct Cryypt;
 
 impl Cryypt {
     /// Master builder for hash operations - README.md pattern
+    #[must_use]
     pub fn hash() -> HashMasterBuilder {
         HashMasterBuilder
     }
@@ -38,31 +40,37 @@ pub struct HashMasterBuilder;
 
 impl HashMasterBuilder {
     /// Use SHA-256 hashing - README.md pattern
+    #[must_use]
     pub fn sha256(self) -> Sha256Builder {
         Sha256Builder::new()
     }
 
     /// Use SHA3-256 hashing - README.md pattern
+    #[must_use]
     pub fn sha3_256(self) -> Sha3_256Builder {
         Sha3_256Builder::new()
     }
 
     /// Use SHA3-384 hashing - README.md pattern
+    #[must_use]
     pub fn sha3_384(self) -> Sha3_384Builder {
         Sha3_384Builder::new()
     }
 
     /// Use SHA3-512 hashing - README.md pattern
+    #[must_use]
     pub fn sha3_512(self) -> Sha3_512Builder {
         Sha3_512Builder::new()
     }
 
     /// Use Blake2b hashing - README.md pattern
+    #[must_use]
     pub fn blake2b(self) -> Blake2bBuilder {
         Blake2bBuilder::new()
     }
 
     /// Use Blake3 hashing - README.md pattern
+    #[must_use]
     pub fn blake3(self) -> Blake3Builder {
         Blake3Builder::new()
     }

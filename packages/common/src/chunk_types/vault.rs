@@ -16,6 +16,7 @@ pub struct VaultChunk {
 
 impl VaultChunk {
     /// Create a new successful vault chunk
+    #[must_use]
     pub fn new(data: Vec<u8>, operation: String, key_id: String) -> Self {
         VaultChunk {
             data,
@@ -27,6 +28,7 @@ impl VaultChunk {
     }
 
     /// Add metadata to the chunk
+    #[must_use]
     pub fn with_metadata(mut self, metadata: String) -> Self {
         self.metadata = Some(metadata);
         self

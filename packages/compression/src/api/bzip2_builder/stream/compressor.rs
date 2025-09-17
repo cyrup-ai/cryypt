@@ -10,6 +10,7 @@ pub struct Bzip2Compressor {
 }
 
 impl Bzip2Compressor {
+    #[must_use]
     pub fn new(level: u32) -> Self {
         use bzip2::Compression;
         use bzip2::write::BzEncoder;
@@ -24,12 +25,20 @@ impl Bzip2Compressor {
         }
     }
 
-    pub fn compress_chunk(&mut self, chunk: Vec<u8>) -> Result<Vec<u8>> {
+    /// Compress a single chunk of data
+    ///
+    /// # Errors
+    ///
+    /// Returns `CompressionError::Internal` if:
+    /// - The underlying encoder fails to write the input data
+    /// - The encoder fails to flush and produce compressed output
+    /// - I/O operations on the internal buffer fail
+    pub fn compress_chunk(&mut self, chunk: &[u8]) -> Result<Vec<u8>> {
         use std::io::Write;
 
         // Write input to encoder
         self.encoder
-            .write_all(&chunk)
+            .write_all(chunk)
             .map_err(|e| CompressionError::internal(e.to_string()))?;
 
         // Flush to get partial output
@@ -51,6 +60,12 @@ impl Bzip2Compressor {
         Ok(std::mem::take(&mut self.output_buffer))
     }
 
+    /// Finalize compression and return remaining compressed data
+    ///
+    /// # Errors
+    ///
+    /// Returns `CompressionError::Internal` if the encoder fails to finalize
+    /// and produce the final compressed output.
     pub fn finish(self) -> Result<Vec<u8>> {
         self.encoder
             .finish()

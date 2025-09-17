@@ -143,7 +143,7 @@ impl QuicServer {
 async fn bind_quic_server(cert: &[u8], key: &[u8], addr: &str) -> crate::Result<QuicServer> {
     // Parse address
     let socket_addr = addr.parse::<SocketAddr>().map_err(|e| {
-        crate::error::CryptoTransportError::Internal(format!("Invalid address {}: {}", addr, e))
+        crate::error::CryptoTransportError::Internal(format!("Invalid address {}: {addr, e}"))
     })?;
 
     // Create server config

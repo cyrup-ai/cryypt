@@ -1,92 +1,264 @@
-//! Builder pattern implementation for file transfer operations
+//! Production-quality file transfer builder with immutable pattern and streaming support
 
-use std::net::SocketAddr;
 use super::types::{FileOperation, FileProgress, FileTransferResult};
+use crate::error::Result;
+use futures::StreamExt as FuturesStreamExt;
+use std::future::Future;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use tokio::sync::mpsc;
+use tokio_stream::{Stream, StreamExt};
 
-/// Builder for file transfer operations
-pub struct FileTransferBuilder {
-    pub(crate) operation: FileOperation,
-    pub(crate) path: String,
-    pub(crate) addr: SocketAddr,
-    pub(crate) compressed: bool,
-    pub(crate) progress_handler: Option<Box<dyn Fn(FileProgress) + Send + Sync>>,
+/// Immutable builder for file transfer operations following README patterns
+pub struct FileTransferConfig {
+    operation: FileOperation,
+    path: PathBuf,
+    addr: SocketAddr,
+    compression: bool,
+    resume: bool,
+    result_handler:
+        Option<Box<dyn Fn(Result<FileTransferResult>) -> Result<FileTransferResult> + Send + Sync>>,
+    chunk_handler: Option<Box<dyn Fn(Result<FileProgress>) -> Result<FileProgress> + Send + Sync>>,
 }
 
-impl FileTransferBuilder {
-    pub(crate) fn upload(path: String, addr: SocketAddr) -> Self {
-        Self {
-            operation: FileOperation::Upload,
-            path,
-            addr,
-            compressed: false,
-            progress_handler: None,
+/// Builder for upload operations
+pub struct UploadConfig {
+    config: FileTransferConfig,
+}
+
+/// Builder for download operations  
+pub struct DownloadConfig {
+    config: FileTransferConfig,
+}
+
+impl FileTransferConfig {
+    /// Create a new upload configuration
+    pub fn upload(path: String, addr: SocketAddr) -> UploadConfig {
+        UploadConfig {
+            config: FileTransferConfig {
+                operation: FileOperation::Upload,
+                path: PathBuf::from(path),
+                addr,
+                compression: false,
+                resume: false,
+                result_handler: None,
+                chunk_handler: None,
+            },
         }
     }
 
-    pub(crate) fn download(path: String, addr: SocketAddr) -> Self {
-        Self {
-            operation: FileOperation::Download,
-            path,
-            addr,
-            compressed: false,
-            progress_handler: None,
+    /// Create a new download configuration
+    pub fn download(path: String, addr: SocketAddr) -> DownloadConfig {
+        DownloadConfig {
+            config: FileTransferConfig {
+                operation: FileOperation::Download,
+                path: PathBuf::from(path),
+                addr,
+                compression: false,
+                resume: false,
+                result_handler: None,
+                chunk_handler: None,
+            },
         }
     }
+}
 
-    /// Enable compression
-    pub fn compressed(mut self) -> Self {
-        self.compressed = true;
+impl UploadConfig {
+    /// Enable compression for upload
+    pub fn with_compression(mut self, enabled: bool) -> Self {
+        self.config.compression = enabled;
         self
     }
 
-    /// Set progress callback
-    pub fn with_progress<F>(mut self, handler: F) -> Self
+    /// Enable resume capability for upload
+    pub fn with_resume(mut self, enabled: bool) -> Self {
+        self.config.resume = enabled;
+        self
+    }
+
+    /// Set result handler following README on_result pattern
+    pub fn on_result<F>(mut self, handler: F) -> Self
     where
-        F: Fn(FileProgress) + Send + Sync + 'static,
+        F: Fn(Result<FileTransferResult>) -> Result<FileTransferResult> + Send + Sync + 'static,
     {
-        self.progress_handler = Some(Box::new(handler));
+        self.config.result_handler = Some(Box::new(handler));
         self
+    }
+
+    /// Set chunk handler for streaming following README on_chunk pattern
+    pub fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<FileProgress>) -> Result<FileProgress> + Send + Sync + 'static,
+    {
+        self.config.chunk_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Execute upload and return Future
+    pub fn execute(self) -> impl Future<Output = Result<FileTransferResult>> + Send {
+        execute_file_transfer(self.config)
+    }
+
+    /// Execute upload with streaming progress
+    pub fn execute_stream(
+        self,
+    ) -> (
+        impl Future<Output = Result<FileTransferResult>> + Send,
+        impl Stream<Item = FileProgress> + Send,
+    ) {
+        execute_file_transfer_stream(self.config)
     }
 }
 
-impl std::future::Future for FileTransferBuilder {
-    type Output = FileTransferResult;
+impl DownloadConfig {
+    /// Enable compression for download
+    pub fn with_compression(mut self, enabled: bool) -> Self {
+        self.config.compression = enabled;
+        self
+    }
 
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        // Log operation details
-        match self.operation {
+    /// Enable resume capability for download  
+    pub fn with_resume(mut self, enabled: bool) -> Self {
+        self.config.resume = enabled;
+        self
+    }
+
+    /// Set result handler following README on_result pattern
+    pub fn on_result<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<FileTransferResult>) -> Result<FileTransferResult> + Send + Sync + 'static,
+    {
+        self.config.result_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Set chunk handler for streaming following README on_chunk pattern
+    pub fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<FileProgress>) -> Result<FileProgress> + Send + Sync + 'static,
+    {
+        self.config.chunk_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Execute download and return Future
+    pub fn execute(self) -> impl Future<Output = Result<FileTransferResult>> + Send {
+        execute_file_transfer(self.config)
+    }
+
+    /// Execute download with streaming progress
+    pub fn execute_stream(
+        self,
+    ) -> (
+        impl Future<Output = Result<FileTransferResult>> + Send,
+        impl Stream<Item = FileProgress> + Send,
+    ) {
+        execute_file_transfer_stream(self.config)
+    }
+}
+
+/// Execute file transfer operation (Future variant) using production implementation
+async fn execute_file_transfer(config: FileTransferConfig) -> Result<FileTransferResult> {
+    let result = match config.operation {
+        FileOperation::Upload => {
+            super::upload::execute_upload_streaming(
+                config.path,
+                config.addr,
+                config.compression,
+                config.resume,
+                None, // No progress callback for Future variant
+            )
+            .await
+        }
+        FileOperation::Download => {
+            super::download::execute_download_streaming(
+                config.path,
+                config.addr,
+                config.compression,
+                config.resume,
+                None, // No progress callback for Future variant
+            )
+            .await
+        }
+    };
+
+    // Apply result handler if provided
+    if let Some(handler) = config.result_handler {
+        handler(result)
+    } else {
+        result
+    }
+}
+
+/// Execute file transfer operation with streaming (Stream variant)
+fn execute_file_transfer_stream(
+    config: FileTransferConfig,
+) -> (
+    impl Future<Output = Result<FileTransferResult>> + Send,
+    impl Stream<Item = FileProgress> + Send,
+) {
+    let (progress_tx, progress_rx) = mpsc::unbounded_channel();
+
+    let chunk_handler = config.chunk_handler;
+    let result_handler = config.result_handler;
+
+    let future = async move {
+        let progress_callback = {
+            let tx = progress_tx.clone();
+            move |progress: FileProgress| {
+                let _ = tx.send(progress);
+            }
+        };
+
+        match config.operation {
             FileOperation::Upload => {
-                println!(
-                    "📤 Uploading {} to {} (compressed: {})",
-                    self.path, self.addr, self.compressed
-                );
+                let result = super::upload::execute_upload_streaming(
+                    config.path,
+                    config.addr,
+                    config.compression,
+                    config.resume,
+                    Some(Box::new(progress_callback)),
+                )
+                .await;
+
+                // Apply result handler if provided
+                if let Some(handler) = result_handler {
+                    handler(result)
+                } else {
+                    result
+                }
             }
             FileOperation::Download => {
-                println!(
-                    "📥 Downloading {} from {} (compressed: {})",
-                    self.path, self.addr, self.compressed
-                );
+                let result = super::download::execute_download_streaming(
+                    config.path,
+                    config.addr,
+                    config.compression,
+                    config.resume,
+                    Some(Box::new(progress_callback)),
+                )
+                .await;
+
+                // Apply result handler if provided
+                if let Some(handler) = result_handler {
+                    handler(result)
+                } else {
+                    result
+                }
             }
         }
+    };
 
-        // Simulate progress callbacks
-        if let Some(ref handler) = self.progress_handler {
-            handler(FileProgress {
-                percent: 100.0,
-                bytes_transferred: 1024,
-                total_bytes: 1024,
-                mbps: 8.0,
-            });
-        }
+    // Create stream that applies chunk handler if provided
+    let stream = tokio_stream::wrappers::UnboundedReceiverStream::new(progress_rx);
+    let processed_stream = if let Some(handler) = chunk_handler {
+        FuturesStreamExt::filter_map(stream, move |progress| {
+            let result = handler(Ok(progress));
+            async move { result.ok() }
+        })
+        .boxed()
+    } else {
+        FuturesStreamExt::boxed(stream)
+    };
 
-        // Implement actual file transfer over QUIC
-        let result = match self.operation {
-            FileOperation::Upload => super::upload::execute_upload(self),
-            FileOperation::Download => super::download::execute_download(self),
-        };
-        std::task::Poll::Ready(result)
-    }
+    (future, processed_stream)
 }

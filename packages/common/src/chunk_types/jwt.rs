@@ -17,6 +17,7 @@ pub struct JwtChunk {
 
 impl JwtChunk {
     /// Create a new successful JWT chunk
+    #[must_use]
     pub fn new(token: String, operation: String, algorithm: String) -> Self {
         JwtChunk {
             token,
@@ -29,12 +30,14 @@ impl JwtChunk {
     }
 
     /// Add claims data
+    #[must_use]
     pub fn with_claims(mut self, claims: String) -> Self {
         self.claims = Some(claims);
         self
     }
 
     /// Add metadata to the chunk
+    #[must_use]
     pub fn with_metadata(mut self, metadata: String) -> Self {
         self.metadata = Some(metadata);
         self

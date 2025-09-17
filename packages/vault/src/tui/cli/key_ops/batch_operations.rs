@@ -26,7 +26,7 @@ pub async fn handle_batch_generate_keys(
     // Generate keys in batch using README.md pattern with on_result unwrapping
     let master_key = derive_master_key_from_vault(vault, passphrase_option)
         .await
-        .map_err(|e| format!("Failed to derive master key: {}", e))?;
+        .map_err(|e| format!("Failed to derive master key: {e}"))?;
 
     let keys = if store.starts_with("file:") {
         let path = store
@@ -36,18 +36,24 @@ pub async fn handle_batch_generate_keys(
 
         let mut keys = Vec::new();
         for i in 0..count {
-            let key = store
+            let key = match store
                 .generate_key(bits, namespace, version + i as u32)
-                .on_result(|result| {
-                    match result {
-                        Ok(key) => key,
-                        Err(e) => {
-                            log::error!("Batch key generation failed for index {}: {}", i, e);
-                            Vec::new() // Skip failed key
-                        }
-                    }
-                })
-                .await;
+                .await
+            {
+                Ok(key_bytes) => {
+                    log::info!("Batch key generation succeeded for index {}", i);
+                    key_bytes
+                }
+                Err(e) => {
+                    log::error!("Batch key generation failed for index {}: {}", i, e);
+                    log_security_event(
+                        "BATCH_KEY_GENERATION_FAILED",
+                        &format!("Index {}: {i, e}"),
+                        false,
+                    );
+                    Vec::new()
+                }
+            };
             if !key.is_empty() {
                 keys.push(key);
             }
@@ -61,18 +67,24 @@ pub async fn handle_batch_generate_keys(
 
         let mut keys = Vec::new();
         for i in 0..count {
-            let key = store
+            let key = match store
                 .generate_key(bits, namespace, version + i as u32)
-                .on_result(|result| {
-                    match result {
-                        Ok(key) => key,
-                        Err(e) => {
-                            log::error!("Batch key generation failed for index {}: {}", i, e);
-                            Vec::new() // Skip failed key
-                        }
-                    }
-                })
-                .await;
+                .await
+            {
+                Ok(key_bytes) => {
+                    log::info!("Batch key generation succeeded for index {}", i);
+                    key_bytes
+                }
+                Err(e) => {
+                    log::error!("Batch key generation failed for index {}: {}", i, e);
+                    log_security_event(
+                        "BATCH_KEY_GENERATION_FAILED",
+                        &format!("Index {}: {i, e}"),
+                        false,
+                    );
+                    Vec::new()
+                }
+            };
             if !key.is_empty() {
                 keys.push(key);
             }

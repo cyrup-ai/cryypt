@@ -31,6 +31,7 @@ pub struct Cryypt;
 
 impl Cryypt {
     /// Master builder for JWT operations - README.md pattern
+    #[must_use]
     pub fn jwt() -> crate::api::JwtMasterBuilder {
         crate::api::JwtMasterBuilder
     }

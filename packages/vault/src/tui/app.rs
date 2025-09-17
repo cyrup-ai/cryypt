@@ -68,10 +68,10 @@ impl App {
             }
             Err(err) => {
                 self.state.failed_unlock_attempts += 1;
-                self.state.error_message = Some(format!("Failed to unlock vault: {}", err));
+                self.state.error_message = Some(format!("Failed to unlock vault: {err}"));
                 log_security_event(
                     "TUI_UNLOCK",
-                    &format!("Failed to unlock vault: {}", err),
+                    &format!("Failed to unlock vault: {err}"),
                     false,
                 );
                 Err(err)
@@ -90,8 +90,8 @@ impl App {
                 Ok(())
             }
             Err(err) => {
-                self.state.error_message = Some(format!("Failed to lock vault: {}", err));
-                log_security_event("TUI_LOCK", &format!("Failed to lock vault: {}", err), false);
+                self.state.error_message = Some(format!("Failed to lock vault: {err}"));
+                log_security_event("TUI_LOCK", &format!("Failed to lock vault: {err}"), false);
                 Err(err)
             }
         }
@@ -107,7 +107,7 @@ impl App {
         let mut stream = match stream_result {
             Ok(s) => s,
             Err(err) => {
-                self.state.error_message = Some(format!("Failed to start search: {}", err));
+                self.state.error_message = Some(format!("Failed to start search: {err}"));
                 return;
             }
         };
@@ -117,7 +117,7 @@ impl App {
             match result {
                 Ok(item) => items.push(item),
                 Err(err) => {
-                    self.state.error_message = Some(format!("Failed to load items: {}", err));
+                    self.state.error_message = Some(format!("Failed to load items: {err}"));
                     return;
                 }
             }
@@ -140,7 +140,7 @@ impl App {
         let mut stream = match stream_result {
             Ok(s) => s,
             Err(err) => {
-                self.state.error_message = Some(format!("Failed to start search: {}", err));
+                self.state.error_message = Some(format!("Failed to start search: {err}"));
                 return;
             }
         };
@@ -150,7 +150,7 @@ impl App {
             match result {
                 Ok(item) => items.push(item),
                 Err(err) => {
-                    self.state.error_message = Some(format!("Failed to search: {}", err));
+                    self.state.error_message = Some(format!("Failed to search: {err}"));
                     return;
                 }
             }
@@ -187,8 +187,8 @@ impl App {
                 self.reload_items().await;
             }
             Err(err) => {
-                self.state.error_message = Some(format!("Failed to add entry: {}", err));
-                log_security_event("ADD_ENTRY", &format!("Failed to add entry: {}", err), false);
+                self.state.error_message = Some(format!("Failed to add entry: {err}"));
+                log_security_event("ADD_ENTRY", &format!("Failed to add entry: {err}"), false);
             }
         }
     }
@@ -228,10 +228,10 @@ impl App {
                 }
             }
             Err(err) => {
-                self.state.error_message = Some(format!("Failed to delete entry: {}", err));
+                self.state.error_message = Some(format!("Failed to delete entry: {err}"));
                 log_security_event(
                     "DELETE_ENTRY",
-                    &format!("Failed to delete entry: {}", err),
+                    &format!("Failed to delete entry: {err}"),
                     false,
                 );
             }
@@ -271,10 +271,10 @@ impl App {
                 log_security_event("PASSPHRASE_CHANGE", "Passphrase changed successfully", true);
             }
             Err(err) => {
-                self.state.error_message = Some(format!("Failed to change passphrase: {}", err));
+                self.state.error_message = Some(format!("Failed to change passphrase: {err}"));
                 log_security_event(
                     "PASSPHRASE_CHANGE",
-                    &format!("Failed to change passphrase: {}", err),
+                    &format!("Failed to change passphrase: {err}"),
                     false,
                 );
             }
@@ -282,9 +282,11 @@ impl App {
     }
 
     /// Create a PassInterface for password operations
-    pub async fn create_pass_interface(&self) -> Result<crate::tui::pass_interface::PassInterface, VaultError> {
+    pub async fn create_pass_interface(
+        &self,
+    ) -> Result<crate::tui::pass_interface::PassInterface, VaultError> {
         use std::path::PathBuf;
-        
+
         // Use the pass store path from app state, or create a default one
         let pass_store_path = if self.state.pass.store_path.is_empty() {
             // Create default pass store path in the same directory as the vault

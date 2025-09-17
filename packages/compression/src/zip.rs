@@ -8,6 +8,9 @@ use zip::{CompressionMethod, write::SimpleFileOptions};
 ///
 /// # Arguments
 /// * `data` - The data to compress
+///
+/// # Errors
+/// Returns `CompressionError` if ZIP compression fails
 pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
     let mut buffer = std::io::Cursor::new(Vec::new());
     {
@@ -15,13 +18,13 @@ pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
         let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
 
         zip.start_file("data", options).map_err(|e| {
-            CompressionError::compression_failed(format!("Failed to start ZIP file: {}", e))
+            CompressionError::compression_failed(format!("Failed to start ZIP file: {e}"))
         })?;
         zip.write_all(data).map_err(|e| {
-            CompressionError::compression_failed(format!("Failed to write to ZIP: {}", e))
+            CompressionError::compression_failed(format!("Failed to write to ZIP: {e}"))
         })?;
         zip.finish().map_err(|e| {
-            CompressionError::compression_failed(format!("Failed to finish ZIP: {}", e))
+            CompressionError::compression_failed(format!("Failed to finish ZIP: {e}"))
         })?;
     }
     Ok(buffer.into_inner())
@@ -31,19 +34,22 @@ pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
 ///
 /// # Arguments
 /// * `data` - The compressed data to decompress
+///
+/// # Errors
+/// Returns `CompressionError` if ZIP decompression fails
 pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
     let reader = std::io::Cursor::new(data);
     let mut archive = zip::ZipArchive::new(reader).map_err(|e| {
-        CompressionError::decompression_failed(format!("Failed to read ZIP archive: {}", e))
+        CompressionError::decompression_failed(format!("Failed to read ZIP archive: {e}"))
     })?;
 
     let mut file = archive.by_index(0).map_err(|e| {
-        CompressionError::decompression_failed(format!("Failed to access ZIP entry: {}", e))
+        CompressionError::decompression_failed(format!("Failed to access ZIP entry: {e}"))
     })?;
 
     let mut decompressed = Vec::new();
     file.read_to_end(&mut decompressed).map_err(|e| {
-        CompressionError::decompression_failed(format!("Failed to read ZIP data: {}", e))
+        CompressionError::decompression_failed(format!("Failed to read ZIP data: {e}"))
     })?;
 
     Ok(decompressed)
@@ -54,6 +60,9 @@ pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
 /// # Arguments
 /// * `data` - The data to compress
 /// * `level` - Compression level (0-9, higher is more compression)
+///
+/// # Errors
+/// Returns `CompressionError` if ZIP compression fails
 pub fn compress_with_level(data: &[u8], level: i32) -> Result<Vec<u8>> {
     let mut buffer = std::io::Cursor::new(Vec::new());
     {
@@ -62,20 +71,19 @@ pub fn compress_with_level(data: &[u8], level: i32) -> Result<Vec<u8>> {
         // Convert level to CompressionMethod
         let method = match level {
             0 => CompressionMethod::Stored,
-            1..=9 => CompressionMethod::Deflated,
             _ => CompressionMethod::Deflated,
         };
 
         let options = SimpleFileOptions::default().compression_method(method);
 
         zip.start_file("data", options).map_err(|e| {
-            CompressionError::compression_failed(format!("Failed to start ZIP file: {}", e))
+            CompressionError::compression_failed(format!("Failed to start ZIP file: {e}"))
         })?;
         zip.write_all(data).map_err(|e| {
-            CompressionError::compression_failed(format!("Failed to write to ZIP: {}", e))
+            CompressionError::compression_failed(format!("Failed to write to ZIP: {e}"))
         })?;
         zip.finish().map_err(|e| {
-            CompressionError::compression_failed(format!("Failed to finish ZIP: {}", e))
+            CompressionError::compression_failed(format!("Failed to finish ZIP: {e}"))
         })?;
     }
     Ok(buffer.into_inner())
@@ -84,8 +92,11 @@ pub fn compress_with_level(data: &[u8], level: i32) -> Result<Vec<u8>> {
 /// Compress multiple files into a ZIP archive
 ///
 /// # Arguments
-/// * `files` - HashMap of filename -> file data
-pub fn compress_files(files: std::collections::HashMap<String, Vec<u8>>) -> Result<Vec<u8>> {
+/// * `files` - `HashMap` of filename -> file data
+///
+/// # Errors
+/// Returns `CompressionError` if ZIP compression fails
+pub fn compress_files<H: std::hash::BuildHasher>(files: std::collections::HashMap<String, Vec<u8>, H>) -> Result<Vec<u8>> {
     let mut buffer = std::io::Cursor::new(Vec::new());
     {
         let mut zip = zip::ZipWriter::new(&mut buffer);
@@ -94,20 +105,18 @@ pub fn compress_files(files: std::collections::HashMap<String, Vec<u8>>) -> Resu
         for (filename, data) in files {
             zip.start_file(&filename, options).map_err(|e| {
                 CompressionError::compression_failed(format!(
-                    "Failed to start ZIP file '{}': {}",
-                    filename, e
+                    "Failed to start ZIP file '{filename}': {e}"
                 ))
             })?;
             zip.write_all(&data).map_err(|e| {
                 CompressionError::compression_failed(format!(
-                    "Failed to write to ZIP file '{}': {}",
-                    filename, e
+                    "Failed to write to ZIP file '{filename}': {e}"
                 ))
             })?;
         }
 
         zip.finish().map_err(|e| {
-            CompressionError::compression_failed(format!("Failed to finish ZIP archive: {}", e))
+            CompressionError::compression_failed(format!("Failed to finish ZIP archive: {e}"))
         })?;
     }
     Ok(buffer.into_inner())
@@ -119,11 +128,14 @@ pub fn compress_files(files: std::collections::HashMap<String, Vec<u8>>) -> Resu
 /// * `data` - The compressed ZIP archive data
 ///
 /// # Returns
-/// * HashMap of filename -> file data
+/// * `HashMap` of filename -> file data
+///
+/// # Errors
+/// Returns `CompressionError` if ZIP decompression fails
 pub fn decompress_files(data: &[u8]) -> Result<std::collections::HashMap<String, Vec<u8>>> {
     let reader = std::io::Cursor::new(data);
     let mut archive = zip::ZipArchive::new(reader).map_err(|e| {
-        CompressionError::decompression_failed(format!("Failed to read ZIP archive: {}", e))
+        CompressionError::decompression_failed(format!("Failed to read ZIP archive: {e}"))
     })?;
 
     let mut files = std::collections::HashMap::new();
@@ -131,8 +143,7 @@ pub fn decompress_files(data: &[u8]) -> Result<std::collections::HashMap<String,
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| {
             CompressionError::decompression_failed(format!(
-                "Failed to access ZIP entry {}: {}",
-                i, e
+                "Failed to access ZIP entry {i}: {e}"
             ))
         })?;
 
@@ -140,8 +151,7 @@ pub fn decompress_files(data: &[u8]) -> Result<std::collections::HashMap<String,
         let mut content = Vec::new();
         file.read_to_end(&mut content).map_err(|e| {
             CompressionError::decompression_failed(format!(
-                "Failed to read ZIP file '{}': {}",
-                filename, e
+                "Failed to read ZIP file '{filename}': {e}"
             ))
         })?;
 

@@ -1,10 +1,10 @@
 //! Cipher Chunk Type
 //!
-//! Chunk type for cipher operations (AES, ChaCha20 encrypt/decrypt)
+//! Chunk type for cipher operations (AES, `ChaCha20` encrypt/decrypt)
 
 use cyrup_sugars::prelude::*;
 
-/// Chunk type for cipher operations (AES, ChaCha20 encrypt/decrypt)
+/// Chunk type for cipher operations (AES, `ChaCha20` encrypt/decrypt)
 #[derive(Debug, Clone)]
 pub struct CipherChunk {
     pub data: Vec<u8>,
@@ -16,6 +16,7 @@ pub struct CipherChunk {
 
 impl CipherChunk {
     /// Create a new successful cipher chunk
+    #[must_use]
     pub fn new(data: Vec<u8>, operation: String, algorithm: String) -> Self {
         CipherChunk {
             data,
@@ -27,6 +28,7 @@ impl CipherChunk {
     }
 
     /// Add metadata to the chunk
+    #[must_use]
     pub fn with_metadata(mut self, metadata: String) -> Self {
         self.metadata = Some(metadata);
         self

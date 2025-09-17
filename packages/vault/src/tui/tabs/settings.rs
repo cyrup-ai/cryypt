@@ -58,7 +58,7 @@ pub fn render_settings_tab(f: &mut Frame, app: &mut App, area: Rect) {
             "Argon2 memory: {} KB",
             app.state.argon2_memory_cost
         )),
-        Line::from(format!("Argon2 time cost: {}", app.state.argon2_time_cost)),
+        Line::from(format!("Argon2 time cost: {app.state.argon2_time_cost}")),
     ])
     .block(
         Block::default()

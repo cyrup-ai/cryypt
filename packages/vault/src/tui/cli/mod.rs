@@ -27,15 +27,68 @@ pub async fn process_command(
     match command {
         Commands::Save {} => vault_ops::handle_save(vault, passphrase_option, use_json).await,
 
-        Commands::Put { key, value } => crud_operations::put::handle_put(vault, &key, &value, passphrase_option, use_json).await,
+        Commands::Put {
+            key,
+            value,
+            namespace,
+        } => {
+            crud_operations::put::handle_put(
+                vault,
+                &key,
+                &value,
+                namespace.as_deref(),
+                passphrase_option,
+                use_json,
+            )
+            .await
+        }
 
-        Commands::Get { key } => crud_operations::get::handle_get(vault, &key, passphrase_option, use_json).await,
+        Commands::Get { key, namespace } => {
+            crud_operations::get::handle_get(
+                vault,
+                &key,
+                namespace.as_deref(),
+                passphrase_option,
+                use_json,
+            )
+            .await
+        }
 
-        Commands::Delete { key } => crud_operations::delete::handle_delete(vault, &key, passphrase_option, use_json).await,
+        Commands::Delete { key, namespace } => {
+            crud_operations::delete::handle_delete(
+                vault,
+                &key,
+                namespace.as_deref(),
+                passphrase_option,
+                use_json,
+            )
+            .await
+        }
 
-        Commands::List {} => query_operations::handle_list(vault, passphrase_option, use_json).await,
+        Commands::List {
+            namespace,
+            namespaces,
+        } => {
+            query_operations::handle_list(
+                vault,
+                namespace.as_deref(),
+                namespaces,
+                passphrase_option,
+                use_json,
+            )
+            .await
+        }
 
-        Commands::Find { pattern } => query_operations::handle_find(vault, &pattern, passphrase_option, use_json).await,
+        Commands::Find { pattern, namespace } => {
+            query_operations::handle_find(
+                vault,
+                &pattern,
+                namespace.as_deref(),
+                passphrase_option,
+                use_json,
+            )
+            .await
+        }
 
         Commands::ChangePassphrase {
             old_passphrase,
@@ -45,20 +98,43 @@ pub async fn process_command(
                 .await
         }
 
-        Commands::Run { command } => run_command::handle_run(vault, command, passphrase_option, use_json).await,
+        Commands::Run { command } => {
+            run_command::handle_run(vault, command, passphrase_option, use_json).await
+        }
 
         Commands::GenerateKey {
             namespace,
             version,
             bits,
             store,
-        } => key_ops::handle_generate_key(vault, &namespace, version, bits, &store, passphrase_option, use_json).await,
+        } => {
+            key_ops::handle_generate_key(
+                vault,
+                &namespace,
+                version,
+                bits,
+                &store,
+                passphrase_option,
+                use_json,
+            )
+            .await
+        }
 
         Commands::RetrieveKey {
             namespace,
             version,
             store,
-        } => key_ops::handle_retrieve_key(vault, &namespace, version, &store, passphrase_option, use_json).await,
+        } => {
+            key_ops::handle_retrieve_key(
+                vault,
+                &namespace,
+                version,
+                &store,
+                passphrase_option,
+                use_json,
+            )
+            .await
+        }
 
         Commands::BatchGenerateKeys {
             namespace,
@@ -68,7 +144,14 @@ pub async fn process_command(
             store,
         } => {
             key_ops::handle_batch_generate_keys(
-                vault, &namespace, version, bits, count, &store, passphrase_option, use_json,
+                vault,
+                &namespace,
+                version,
+                bits,
+                count,
+                &store,
+                passphrase_option,
+                use_json,
             )
             .await
         }

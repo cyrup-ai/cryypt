@@ -46,11 +46,20 @@ where
                         let cache_entry =
                             Arc::new(CacheEntry::new(entry.value, self.config.ttl_seconds));
 
-                        if let Ok(parsed_key) = serde_json::from_str(&entry.key)
-                            && self.cache.insert(parsed_key, cache_entry).is_none() {
-                                self.size.fetch_add(1, Ordering::Relaxed);
-                                loaded_count += 1;
+                        // Extract key from record ID for natural keys
+                        use crate::db::vault_store::backend::key_utils;
+                        if let Some(record_id) = &entry.id {
+                            if let Ok(extracted_key) =
+                                key_utils::extract_key_from_record_id(&record_id.to_string())
+                            {
+                                if let Ok(parsed_key) = serde_json::from_str(&extracted_key)
+                                    && self.cache.insert(parsed_key, cache_entry).is_none()
+                                {
+                                    self.size.fetch_add(1, Ordering::Relaxed);
+                                    loaded_count += 1;
+                                }
                             }
+                        }
                     }
                     info!(loaded_count, "Cache warming completed");
                 }

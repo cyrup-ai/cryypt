@@ -1,7 +1,7 @@
 //! Common traits used across the cryypt ecosystem
 
 /// Trait to prevent Result types in async operations - README.md compliance
-/// This ensures that AsyncTask and AsyncStream return unwrapped values, not Result
+/// This ensures that `AsyncTask` and `AsyncStream` return unwrapped values, not Result
 #[marker]
 pub trait NotResult {}
 

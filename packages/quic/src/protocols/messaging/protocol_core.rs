@@ -1,14 +1,14 @@
 //! Core protocol functions and utilities for QUIC messaging
 
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
-use dashmap::DashMap;
 use crossbeam::utils::CachePadded;
+use dashmap::DashMap;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 use tokio::time::timeout;
 
-use super::types::LoadBalancer;
 use super::server::ServerConnectionState;
+use super::types::LoadBalancer;
 
 /// QUIC protocol constants
 pub const QUIC_PROTOCOL_VERSION: u32 = quiche::PROTOCOL_VERSION;
@@ -43,27 +43,27 @@ impl PerformanceMonitor {
             error_count: AtomicU64::new(0),
         }
     }
-    
+
     pub fn increment_messages(&self) {
         self.message_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     pub fn add_bytes_processed(&self, bytes: u64) {
         self.bytes_processed.fetch_add(bytes, Ordering::Relaxed);
     }
-    
+
     pub fn increment_connections(&self) {
         self.connection_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     pub fn decrement_connections(&self) {
         self.connection_count.fetch_sub(1, Ordering::Relaxed);
     }
-    
+
     pub fn increment_errors(&self) {
         self.error_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     pub fn get_stats(&self) -> (u64, u64, u64, u64) {
         (
             self.message_count.load(Ordering::Relaxed),
@@ -85,7 +85,7 @@ pub fn generate_connection_id() -> Vec<u8> {
 /// Connection configuration utilities
 pub fn create_quic_config() -> Result<quiche::Config, quiche::Error> {
     let mut config = quiche::Config::new(QUIC_PROTOCOL_VERSION)?;
-    
+
     config.set_application_protos(&[APPLICATION_PROTOCOL])?;
     config.set_max_idle_timeout(MAX_IDLE_TIMEOUT);
     config.set_max_recv_udp_payload_size(MAX_UDP_PAYLOAD_SIZE);
@@ -94,7 +94,7 @@ pub fn create_quic_config() -> Result<quiche::Config, quiche::Error> {
     config.set_initial_max_stream_data_bidi_remote(INITIAL_MAX_STREAM_DATA_BIDI_REMOTE);
     config.set_initial_max_streams_bidi(INITIAL_MAX_STREAMS_BIDI);
     config.set_initial_max_streams_uni(INITIAL_MAX_STREAMS_UNI);
-    
+
     Ok(config)
 }
 
@@ -116,7 +116,7 @@ impl ConnectionHealthChecker {
             health_check_interval: interval,
         }
     }
-    
+
     /// Perform health check on all connections
     pub async fn health_check_connections(
         &self,
@@ -125,24 +125,24 @@ impl ConnectionHealthChecker {
     ) -> Vec<Vec<u8>> {
         let mut unhealthy_connections = Vec::new();
         let health_threshold = 5000; // 50% health score threshold
-        
+
         // Wait for the configured health check interval before proceeding
         tokio::time::sleep(self.health_check_interval).await;
-        
+
         for entry in connections.iter() {
             let conn_id = entry.key().clone();
             let state = entry.value();
-            
+
             let health_score = state.health.health_score();
-            
+
             if health_score < health_threshold {
                 unhealthy_connections.push(conn_id);
             }
-            
+
             // Update health check timestamp for this connection
             state.health.update_health_check();
         }
-        
+
         unhealthy_connections
     }
 
@@ -165,12 +165,12 @@ impl FlowController {
             outstanding_count: AtomicU64::new(0),
         }
     }
-    
+
     /// Check if we can send more messages
     pub fn can_send(&self) -> bool {
         self.outstanding_count.load(Ordering::Relaxed) < self.max_outstanding_messages as u64
     }
-    
+
     /// Reserve a slot for outgoing message
     pub fn reserve_slot(&self) -> bool {
         let current = self.outstanding_count.load(Ordering::Relaxed);
@@ -181,12 +181,12 @@ impl FlowController {
             false
         }
     }
-    
+
     /// Release a slot when message is processed
     pub fn release_slot(&self) {
         self.outstanding_count.fetch_sub(1, Ordering::Relaxed);
     }
-    
+
     /// Get current outstanding message count
     pub fn outstanding_count(&self) -> u64 {
         self.outstanding_count.load(Ordering::Relaxed)
@@ -208,19 +208,19 @@ impl RetryManager {
             max_delay,
         }
     }
-    
+
     /// Calculate exponential backoff delay
     pub fn calculate_delay(&self, attempt: u32) -> Duration {
         let delay_ms = self.base_delay.as_millis() * (2u128.pow(attempt.min(10)));
         let delay = Duration::from_millis(delay_ms.min(self.max_delay.as_millis()) as u64);
         delay
     }
-    
+
     /// Check if we should retry
     pub fn should_retry(&self, attempt: u32) -> bool {
         attempt < self.max_retries
     }
-    
+
     /// Execute with retry logic
     pub async fn retry_with_backoff<F, T, E>(&self, mut operation: F) -> Result<T, E>
     where
@@ -229,33 +229,60 @@ impl RetryManager {
         T: std::fmt::Debug,
     {
         let mut attempt = 0;
-        
+
         loop {
             match timeout(Duration::from_secs(30), operation()).await {
                 Ok(Ok(result)) => return Ok(result),
                 Ok(Err(e)) => {
                     if self.should_retry(attempt) {
                         let delay = self.calculate_delay(attempt);
-                        tracing::warn!("Operation failed (attempt {}), retrying in {:?}: {:?}", 
-                            attempt + 1, delay, e);
+                        tracing::warn!(
+                            "Operation failed (attempt {}), retrying in {:?}: {:?}",
+                            attempt + 1,
+                            delay,
+                            e
+                        );
                         tokio::time::sleep(delay).await;
                         attempt += 1;
                     } else {
-                        tracing::error!("Operation failed after {} attempts: {:?}", 
-                            self.max_retries, e);
+                        tracing::error!(
+                            "Operation failed after {} attempts: {:?}",
+                            self.max_retries,
+                            e
+                        );
                         return Err(e);
                     }
                 }
                 Err(_) => {
                     if self.should_retry(attempt) {
                         let delay = self.calculate_delay(attempt);
-                        tracing::warn!("Operation timed out (attempt {}), retrying in {:?}", 
-                            attempt + 1, delay);
+                        tracing::warn!(
+                            "Operation timed out (attempt {}), retrying in {:?}",
+                            attempt + 1,
+                            delay
+                        );
                         tokio::time::sleep(delay).await;
                         attempt += 1;
                     } else {
                         tracing::error!("Operation timed out after {} attempts", self.max_retries);
-                        return Err(operation().await.unwrap_err()); // Return the actual error
+                        match operation().await {
+                            Ok(success) => {
+                                // Operation succeeded after timeout - this is unexpected but we should return success
+                                tracing::warn!(
+                                    "Operation succeeded unexpectedly after timeout and max retries"
+                                );
+                                return Ok(success);
+                            }
+                            Err(actual_error) => {
+                                // This is the "actual error" we wanted to return
+                                tracing::error!(
+                                    "Operation failed after {} attempts: {:?}",
+                                    self.max_retries,
+                                    actual_error
+                                );
+                                return Err(actual_error);
+                            }
+                        }
                     }
                 }
             }
@@ -276,33 +303,39 @@ impl MessageValidator {
             max_topic_length,
         }
     }
-    
+
     /// Validate message size
     pub fn validate_message_size(&self, payload: &[u8]) -> Result<(), String> {
         if payload.len() > self.max_message_size {
-            Err(format!("Message size {} exceeds maximum {}", 
-                payload.len(), self.max_message_size))
+            Err(format!(
+                "Message size {} exceeds maximum {}",
+                payload.len(),
+                self.max_message_size
+            ))
         } else {
             Ok(())
         }
     }
-    
+
     /// Validate topic name
     pub fn validate_topic(&self, topic: &str) -> Result<(), String> {
         if topic.is_empty() {
             return Err("Topic cannot be empty".to_string());
         }
-        
+
         if topic.len() > self.max_topic_length {
-            return Err(format!("Topic length {} exceeds maximum {}", 
-                topic.len(), self.max_topic_length));
+            return Err(format!(
+                "Topic length {} exceeds maximum {}",
+                topic.len(),
+                self.max_topic_length
+            ));
         }
-        
+
         // Check for invalid characters
         if topic.contains('\0') || topic.contains('\n') || topic.contains('\r') {
             return Err("Topic contains invalid characters".to_string());
         }
-        
+
         Ok(())
     }
 }
@@ -320,17 +353,17 @@ impl MetricsCollector {
             performance_monitor,
         }
     }
-    
+
     /// Get uptime in seconds
     pub fn uptime_seconds(&self) -> u64 {
         self.start_time.elapsed().as_secs()
     }
-    
+
     /// Get formatted metrics report
     pub fn get_metrics_report(&self) -> String {
         let (messages, bytes, connections, errors) = self.performance_monitor.get_stats();
         let uptime = self.uptime_seconds();
-        
+
         format!(
             "QUIC Messaging Server Metrics:\n\
              - Uptime: {}s\n\
@@ -345,8 +378,16 @@ impl MetricsCollector {
             bytes,
             connections,
             errors,
-            if uptime > 0 { messages as f64 / uptime as f64 } else { 0.0 },
-            if uptime > 0 { bytes as f64 / uptime as f64 } else { 0.0 }
+            if uptime > 0 {
+                messages as f64 / uptime as f64
+            } else {
+                0.0
+            },
+            if uptime > 0 {
+                bytes as f64 / uptime as f64
+            } else {
+                0.0
+            }
         )
     }
 }

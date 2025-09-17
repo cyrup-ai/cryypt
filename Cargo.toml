@@ -7,7 +7,7 @@ members = [
     "packages/compression",   # Data compression
     "packages/cryypt",        # Main unified crate
     "packages/vault",         # Secure storage
-    "packages/examples",      # Examples
+    "examples",               # Examples
     "packages/hashing",       # Hash functions
     "packages/jwt",           # JSON Web Tokens
     "packages/key",           # Key management
@@ -34,8 +34,22 @@ rust-version = "1.88"
 clippy.all = "warn"
 clippy.pedantic = "warn"
 
+[workspace.lints.rust]
+warnings = "allow"
+private_bounds = "allow"
+private_interfaces = "allow"
+dead_code = "allow"
+unused_imports = "allow"
+unused_variables = "allow"
+elided_lifetimes_in_paths = "allow"
+
 # Use stable versions only - remove git patches that cause version conflicts
 [patch.crates-io]
+# Force async-graphql to use git master with requires_scopes field support
+async-graphql = { git = "https://github.com/async-graphql/async-graphql", branch = "master" }
+async-graphql-derive = { git = "https://github.com/async-graphql/async-graphql", branch = "master" }
+async-graphql-parser = { git = "https://github.com/async-graphql/async-graphql", branch = "master" }
+async-graphql-value = { git = "https://github.com/async-graphql/async-graphql", branch = "master" }
 # rsa = { git = "https://github.com/RustCrypto/RSA", branch = "master" }
 # ecdsa = { git = "https://github.com/RustCrypto/signatures", branch = "master" }
 # p256 = { git = "https://github.com/RustCrypto/elliptic-curves", branch = "master" }
@@ -48,13 +62,3 @@ clippy.pedantic = "warn"
 # Force latest stable digest version for API compatibility
 [workspace.dependencies.digest]
 version = "0.10.7"
-
-# Force latest crypto-bigint for API compatibility
-[workspace.dependencies.crypto-bigint]
-version = "0.7.0-rc.2"
-
-[workspace.dependencies.rand_core]
-version = "=0.9.3"
-
-[workspace.dependencies.rand]
-version = "=0.9.2"

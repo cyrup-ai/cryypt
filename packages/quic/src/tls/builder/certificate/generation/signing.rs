@@ -5,14 +5,18 @@
 //! - CA-signed certificate creation
 //! - Parameter setup and key generation
 
-use std::time::SystemTime;
 use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair, SanType};
+use std::time::SystemTime;
 
+use super::super::super::responses::{
+    CertificateGenerationResponse, CertificateInfo, GenerationIssue, IssueSeverity,
+};
 use super::core::CertificateGeneratorWithDomain;
-use super::super::super::responses::{CertificateGenerationResponse, CertificateInfo, GenerationIssue, IssueSeverity};
 
 /// Perform complete certificate generation process
-pub async fn perform_certificate_generation(generator: CertificateGeneratorWithDomain) -> CertificateGenerationResponse {
+pub async fn perform_certificate_generation(
+    generator: CertificateGeneratorWithDomain,
+) -> CertificateGenerationResponse {
     // Create certificate parameters
     let mut params = match CertificateParams::new(generator.domains.clone()) {
         Ok(p) => p,
@@ -29,7 +33,7 @@ pub async fn perform_certificate_generation(generator: CertificateGeneratorWithD
 
     // Add SAN entries with wildcard support
     match setup_san_entries(&mut params, &generator.domains, generator.is_wildcard) {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(response) => return response,
     }
 
@@ -52,14 +56,13 @@ pub async fn perform_certificate_generation(generator: CertificateGeneratorWithD
     let key_pem = key_pair.serialize_pem();
 
     // Handle file operations if save path is specified
-    let files_created = match super::file_ops::save_certificate_files(
-        &generator.save_path,
-        &cert_pem,
-        &key_pem,
-    ).await {
-        Ok(files) => files,
-        Err(response) => return response,
-    };
+    let files_created =
+        match super::file_ops::save_certificate_files(&generator.save_path, &cert_pem, &key_pem)
+            .await
+        {
+            Ok(files) => files,
+            Err(response) => return response,
+        };
 
     // Create successful response
     CertificateGenerationResponse {
@@ -85,7 +88,8 @@ fn setup_distinguished_name(params: &mut CertificateParams, domains: &[String]) 
 fn setup_validity_period(params: &mut CertificateParams, valid_for_days: u32) {
     let now = SystemTime::now();
     params.not_before = now.into();
-    params.not_after = (now + std::time::Duration::from_secs(valid_for_days as u64 * 24 * 3600)).into();
+    params.not_after =
+        (now + std::time::Duration::from_secs(valid_for_days as u64 * 24 * 3600)).into();
 }
 
 /// Set up SAN entries with wildcard support
@@ -95,7 +99,7 @@ fn setup_san_entries(
     is_wildcard: bool,
 ) -> Result<(), CertificateGenerationResponse> {
     let mut san_entries = Vec::new();
-    
+
     for domain in domains {
         // For wildcard certificates, ensure proper wildcard format
         let domain_to_use = if is_wildcard && !domain.starts_with("*.") {
@@ -103,7 +107,7 @@ fn setup_san_entries(
         } else {
             domain.clone()
         };
-        
+
         let ia5_string = match domain_to_use.clone().try_into() {
             Ok(s) => s,
             Err(e) => {
@@ -111,7 +115,7 @@ fn setup_san_entries(
             }
         };
         san_entries.push(SanType::DnsName(ia5_string));
-        
+
         // For wildcard certificates, also add the base domain
         if is_wildcard {
             let base_domain = if domain.starts_with("*.") {
@@ -119,7 +123,7 @@ fn setup_san_entries(
             } else {
                 domain
             };
-            
+
             let base_ia5_string = match base_domain.to_string().try_into() {
                 Ok(s) => s,
                 Err(e) => {
@@ -129,7 +133,7 @@ fn setup_san_entries(
             san_entries.push(SanType::DnsName(base_ia5_string));
         }
     }
-    
+
     params.subject_alt_names = san_entries;
     Ok(())
 }
@@ -142,7 +146,9 @@ async fn create_signed_certificate(
 ) -> Result<rcgen::Certificate, CertificateGenerationResponse> {
     if generator.self_signed {
         // Self-signed certificate
-        params.self_signed(key_pair).map_err(create_self_signed_error)
+        params
+            .self_signed(key_pair)
+            .map_err(create_self_signed_error)
     } else if let Some(ca) = &generator.authority {
         // CA-signed certificate
         create_ca_signed_certificate(params, key_pair, ca)
@@ -163,7 +169,7 @@ fn create_ca_signed_certificate(
             return Err(create_no_ca_key_error());
         }
     };
-    
+
     let ca_key_pair = match rcgen::KeyPair::from_pem(ca_private_key_pem) {
         Ok(kp) => kp,
         Err(e) => {
@@ -178,22 +184,33 @@ fn create_ca_signed_certificate(
         }
     };
 
-    params.signed_by(key_pair, &ca_issuer).map_err(create_ca_signing_error)
+    params
+        .signed_by(key_pair, &ca_issuer)
+        .map_err(create_ca_signing_error)
 }
 
 /// Create certificate info for successful response
 fn create_certificate_info(generator: &CertificateGeneratorWithDomain) -> CertificateInfo {
     let now = SystemTime::now();
     CertificateInfo {
-        subject: generator.domains.first().unwrap_or(&"Unknown".to_string()).clone(),
+        subject: generator
+            .domains
+            .first()
+            .unwrap_or(&"Unknown".to_string())
+            .clone(),
         issuer: if generator.self_signed {
-            generator.domains.first().unwrap_or(&"Unknown".to_string()).clone()
+            generator
+                .domains
+                .first()
+                .unwrap_or(&"Unknown".to_string())
+                .clone()
         } else {
             "CA".to_string()
         },
         serial_number: "1".to_string(),
         valid_from: now,
-        valid_until: now + std::time::Duration::from_secs(generator.valid_for_days as u64 * 24 * 3600),
+        valid_until: now
+            + std::time::Duration::from_secs(generator.valid_for_days as u64 * 24 * 3600),
         domains: generator.domains.clone(),
         is_ca: false,
         key_algorithm: "RSA".to_string(),
@@ -211,7 +228,7 @@ fn create_parameter_error(e: rcgen::Error) -> CertificateGenerationResponse {
         private_key_pem: None,
         issues: vec![GenerationIssue {
             severity: IssueSeverity::Error,
-            message: format!("Failed to create certificate parameters: {}", e),
+            message: format!("Failed to create certificate parameters: {e}"),
             suggestion: Some("Check certificate parameters and domain names".to_string()),
         }],
     }
@@ -226,7 +243,7 @@ fn create_key_generation_error(e: rcgen::Error) -> CertificateGenerationResponse
         private_key_pem: None,
         issues: vec![GenerationIssue {
             severity: IssueSeverity::Error,
-            message: format!("Failed to generate key pair: {}", e),
+            message: format!("Failed to generate key pair: {e}"),
             suggestion: Some("Check system entropy and crypto libraries".to_string()),
         }],
     }
@@ -271,7 +288,7 @@ fn create_self_signed_error(e: rcgen::Error) -> CertificateGenerationResponse {
         private_key_pem: None,
         issues: vec![GenerationIssue {
             severity: IssueSeverity::Error,
-            message: format!("Failed to generate self-signed certificate: {}", e),
+            message: format!("Failed to generate self-signed certificate: {e}"),
             suggestion: Some("Check certificate parameters".to_string()),
         }],
     }
@@ -285,9 +302,12 @@ fn create_no_ca_key_error() -> CertificateGenerationResponse {
         private_key_pem: None,
         files_created: vec![],
         issues: vec![GenerationIssue {
-            message: "Cannot sign certificates with validation-only CA - no private key available".to_string(),
+            message: "Cannot sign certificates with validation-only CA - no private key available"
+                .to_string(),
             severity: IssueSeverity::Error,
-            suggestion: Some("Use a CA with a private key or load a different certificate authority".to_string()),
+            suggestion: Some(
+                "Use a CA with a private key or load a different certificate authority".to_string(),
+            ),
         }],
     }
 }
@@ -301,7 +321,7 @@ fn create_ca_key_parse_error(e: rcgen::Error) -> CertificateGenerationResponse {
         private_key_pem: None,
         issues: vec![GenerationIssue {
             severity: IssueSeverity::Error,
-            message: format!("Failed to parse CA private key: {}", e),
+            message: format!("Failed to parse CA private key: {e}"),
             suggestion: Some("Check CA private key format".to_string()),
         }],
     }
@@ -316,7 +336,7 @@ fn create_ca_issuer_error(e: rcgen::Error) -> CertificateGenerationResponse {
         private_key_pem: None,
         issues: vec![GenerationIssue {
             severity: IssueSeverity::Error,
-            message: format!("Failed to create CA certificate: {}", e),
+            message: format!("Failed to create CA certificate: {e}"),
             suggestion: Some("Check CA certificate parameters".to_string()),
         }],
     }
@@ -331,7 +351,7 @@ fn create_ca_signing_error(e: rcgen::Error) -> CertificateGenerationResponse {
         private_key_pem: None,
         issues: vec![GenerationIssue {
             severity: IssueSeverity::Error,
-            message: format!("Failed to create certificate signed by CA: {}", e),
+            message: format!("Failed to create certificate signed by CA: {e}"),
             suggestion: Some("Check CA certificate and certificate parameters".to_string()),
         }],
     }

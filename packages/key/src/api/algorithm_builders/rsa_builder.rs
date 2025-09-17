@@ -1,10 +1,13 @@
 //! RSA Key Builder - Polymorphic pattern for RSA keypair operations
 //!
-//! Integrates with existing KeyGenerator system while providing polymorphic
+//! Integrates with existing `KeyGenerator` system while providing polymorphic
 //! builder pattern for RSA keypair generation.
 
 // Removed unused imports after fixing redundant field names
 use futures::Stream;
+use rand::rng;
+use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
+use rsa::{RsaPrivateKey, RsaPublicKey};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -40,11 +43,13 @@ impl Default for RsaKeyBuilder {
 
 impl RsaKeyBuilder {
     /// Create new RSA key builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Set RSA key size (2048 or 4096 bits)
+    #[must_use]
     pub fn with_size(self, size_bits: u32) -> RsaKeyWithSize {
         RsaKeyWithSize { size_bits }
     }
@@ -92,36 +97,55 @@ where
             }
 
             // Generate real RSA keypair using production RSA library
-            use rsa::{RsaPrivateKey, RsaPublicKey};
-            use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
-            use rand::rng;
-
             let mut rng = rng();
-            let private_key = RsaPrivateKey::new(&mut rng, self.size_bits as usize)
-                .map_err(|e| crate::error::KeyError::KeyGeneration(format!("RSA key generation failed: {}", e)))?;
-            
+            let private_key =
+                RsaPrivateKey::new(&mut rng, self.size_bits as usize).map_err(|e| {
+                    crate::error::KeyError::KeyGeneration(format!(
+                        "RSA key generation failed: {e}"
+                    ))
+                })?;
+
             let public_key = RsaPublicKey::from(&private_key);
-            
+
             // Encode keys to DER format and combine
-            let private_der = private_key.to_pkcs1_der()
-                .map_err(|e| crate::error::KeyError::InvalidKeyFormat(format!("Private key encoding failed: {}", e)))?
+            let private_der = private_key
+                .to_pkcs1_der()
+                .map_err(|e| {
+                    crate::error::KeyError::InvalidKeyFormat(format!(
+                        "Private key encoding failed: {e}"
+                    ))
+                })?
                 .as_bytes()
                 .to_vec();
-            
-            let public_der = public_key.to_pkcs1_der()
-                .map_err(|e| crate::error::KeyError::InvalidKeyFormat(format!("Public key encoding failed: {}", e)))?
+
+            let public_der = public_key
+                .to_pkcs1_der()
+                .map_err(|e| {
+                    crate::error::KeyError::InvalidKeyFormat(format!(
+                        "Public key encoding failed: {}",
+                        e
+                    ))
+                })?
                 .as_bytes()
                 .to_vec();
-            
+
             // Combine private and public key bytes with length prefixes for parsing
             let mut keypair_bytes = Vec::new();
-            keypair_bytes.extend_from_slice(&(private_der.len() as u32).to_le_bytes());
+            
+            // Convert lengths safely, ensuring no truncation
+            let private_len = u32::try_from(private_der.len())
+                .map_err(|_| crate::error::KeyError::Internal("Private key too large".to_string()))?;
+            let public_len = u32::try_from(public_der.len())
+                .map_err(|_| crate::error::KeyError::Internal("Public key too large".to_string()))?;
+            
+            keypair_bytes.extend_from_slice(&private_len.to_le_bytes());
             keypair_bytes.extend_from_slice(&private_der);
-            keypair_bytes.extend_from_slice(&(public_der.len() as u32).to_le_bytes());
+            keypair_bytes.extend_from_slice(&public_len.to_le_bytes());
             keypair_bytes.extend_from_slice(&public_der);
 
             Ok(keypair_bytes)
-        }.await;
+        }
+        .await;
 
         // Apply result handler
         (self.handler)(result)
@@ -154,40 +178,65 @@ where
                     }
 
                     // Generate real RSA keypair using production RSA library
-                    use rsa::{RsaPrivateKey, RsaPublicKey};
-                    use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
                     use rand::rng;
+                    use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
+                    use rsa::{RsaPrivateKey, RsaPublicKey};
 
                     let mut rng = rng();
-                    let private_key = RsaPrivateKey::new(&mut rng, size_bits as usize)
-                        .map_err(|e| crate::error::KeyError::KeyGeneration(format!("RSA key generation failed: {}", e)))?;
-                    
+                    let private_key =
+                        RsaPrivateKey::new(&mut rng, size_bits as usize).map_err(|e| {
+                            crate::error::KeyError::KeyGeneration(format!(
+                                "RSA key generation failed: {}",
+                                e
+                            ))
+                        })?;
+
                     let public_key = RsaPublicKey::from(&private_key);
-                    
+
                     // Encode keys to DER format and combine
-                    let private_der = private_key.to_pkcs1_der()
-                        .map_err(|e| crate::error::KeyError::InvalidKeyFormat(format!("Private key encoding failed: {}", e)))?
+                    let private_der = private_key
+                        .to_pkcs1_der()
+                        .map_err(|e| {
+                            crate::error::KeyError::InvalidKeyFormat(format!(
+                                "Private key encoding failed: {}",
+                                e
+                            ))
+                        })?
                         .as_bytes()
                         .to_vec();
-                    
-                    let public_der = public_key.to_pkcs1_der()
-                        .map_err(|e| crate::error::KeyError::InvalidKeyFormat(format!("Public key encoding failed: {}", e)))?
+
+                    let public_der = public_key
+                        .to_pkcs1_der()
+                        .map_err(|e| {
+                            crate::error::KeyError::InvalidKeyFormat(format!(
+                                "Public key encoding failed: {}",
+                                e
+                            ))
+                        })?
                         .as_bytes()
                         .to_vec();
-                    
+
                     // Combine private and public key bytes with length prefixes for parsing
                     let mut keypair_bytes = Vec::new();
-                    keypair_bytes.extend_from_slice(&(private_der.len() as u32).to_le_bytes());
+                    
+                    // Convert lengths safely, ensuring no truncation
+                    let private_len = u32::try_from(private_der.len())
+                        .map_err(|_| crate::error::KeyError::Internal("Private key too large".to_string()))?;
+                    let public_len = u32::try_from(public_der.len())
+                        .map_err(|_| crate::error::KeyError::Internal("Public key too large".to_string()))?;
+                    
+                    keypair_bytes.extend_from_slice(&private_len.to_le_bytes());
                     keypair_bytes.extend_from_slice(&private_der);
-                    keypair_bytes.extend_from_slice(&(public_der.len() as u32).to_le_bytes());
+                    keypair_bytes.extend_from_slice(&public_len.to_le_bytes());
                     keypair_bytes.extend_from_slice(&public_der);
 
                     Ok(keypair_bytes)
-                }.await;
+                }
+                .await;
 
                 // Apply handler and send result
                 let processed_keypair = handler(result);
-                
+
                 if tx.send(processed_keypair).await.is_err() {
                     break; // Receiver dropped
                 }

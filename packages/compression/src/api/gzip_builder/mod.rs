@@ -55,6 +55,7 @@ impl Default for GzipBuilder<NoLevel> {
 
 impl GzipBuilder<NoLevel> {
     /// Create a new Gzip builder with default level
+    #[must_use]
     pub fn new() -> Self {
         Self {
             level: NoLevel,
@@ -68,7 +69,7 @@ impl GzipBuilder<NoLevel> {
 
 // Methods for adding result and chunk handlers
 impl<L> GzipBuilder<L> {
-    /// Internal implementation for on_result - called by macro
+    /// Internal implementation for `on_result` - called by macro
     fn on_result_impl<F>(self, handler: F) -> GzipBuilderWithHandler<L, F, Vec<u8>>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -80,7 +81,7 @@ impl<L> GzipBuilder<L> {
         }
     }
 
-    /// Internal implementation for on_chunk - called by macro
+    /// Internal implementation for `on_chunk` - called by macro
     fn on_chunk_impl<F>(self, handler: F) -> GzipBuilderWithChunk<L, F>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -92,7 +93,8 @@ impl<L> GzipBuilder<L> {
         }
     }
 
-    /// Add on_result handler - transforms pattern matching internally
+    /// Add `on_result` handler - transforms pattern matching internally
+    #[must_use]
     pub fn on_result<F>(self, handler: F) -> GzipBuilderWithHandler<L, F, Vec<u8>>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -100,7 +102,8 @@ impl<L> GzipBuilder<L> {
         self.on_result_impl(handler)
     }
 
-    /// Add on_chunk handler - transforms pattern matching internally
+    /// Add `on_chunk` handler - transforms pattern matching internally
+    #[must_use]
     pub fn on_chunk<F>(self, handler: F) -> GzipBuilderWithChunk<L, F>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -108,7 +111,8 @@ impl<L> GzipBuilder<L> {
         self.on_chunk_impl(handler)
     }
 
-    /// Apply on_error handler for error transformation
+    /// Apply `on_error` handler for error transformation
+    #[must_use]
     pub fn on_error<F>(mut self, handler: F) -> Self
     where
         F: Fn(CompressionError) -> CompressionError + Send + Sync + 'static,

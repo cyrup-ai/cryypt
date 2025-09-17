@@ -1,8 +1,8 @@
 //! CRL cache implementation and validation logic
 
 use std::collections::HashSet;
-use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
 
 use base64::engine::Engine;
@@ -10,8 +10,8 @@ use base64::engine::Engine;
 use x509_parser::prelude::*;
 
 use super::errors::TlsError;
-use super::types::{CrlCacheEntry, ParsedCertificate};
 use super::http_client::TlsHttpClient;
+use super::types::{CrlCacheEntry, ParsedCertificate};
 
 /// CRL validation status
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -21,9 +21,7 @@ pub enum CrlStatus {
     Unknown,
 }
 
-
-#[derive(Clone)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CrlCache {
     cache: Arc<RwLock<std::collections::HashMap<String, CrlCacheEntry>>>,
     http_client: TlsHttpClient,
@@ -54,11 +52,7 @@ impl CrlCache {
     }
 
     /// Check if certificate serial number is revoked using CRL
-    pub async fn check_certificate_status(
-        &self,
-        serial_number: &[u8],
-        crl_url: &str,
-    ) -> CrlStatus {
+    pub async fn check_certificate_status(&self, serial_number: &[u8], crl_url: &str) -> CrlStatus {
         match self.check_against_crl(serial_number, crl_url).await {
             Ok(is_revoked) => {
                 if is_revoked {
@@ -224,7 +218,7 @@ impl CrlCache {
 
         // Parse X.509 CRL using x509-parser
         let (_, crl) = parse_x509_crl(&der_bytes)
-            .map_err(|e| TlsError::CrlValidation(format!("CRL parsing failed: {}", e)))?;
+            .map_err(|e| TlsError::CrlValidation(format!("CRL parsing failed: {e}")))?;
 
         // Extract revoked certificate serial numbers
         let mut revoked_serials = HashSet::new();

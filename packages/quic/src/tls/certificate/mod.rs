@@ -21,4 +21,3 @@ pub use parsing::{
     validate_key_usage, verify_peer_certificate,
 };
 pub use validation::validate_certificate_chain;
-

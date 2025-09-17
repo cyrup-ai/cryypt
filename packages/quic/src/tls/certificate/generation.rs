@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair, SanType, Issuer};
+use rcgen::{CertificateParams, DistinguishedName, DnType, Issuer, KeyPair, SanType};
 use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 
 use tracing::info;
@@ -63,7 +63,8 @@ async fn generate_ca(
     PrivatePkcs8KeyDer<'static>,
     Issuer<'static, KeyPair>,
 )> {
-    let mut params = CertificateParams::new(Vec::default()).context("Failed to create CA params")?;
+    let mut params =
+        CertificateParams::new(Vec::default()).context("Failed to create CA params")?;
 
     params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
 
@@ -89,7 +90,9 @@ async fn generate_ca(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = tokio::fs::metadata(cert_dir.join("ca.key")).await?.permissions();
+        let mut perms = tokio::fs::metadata(cert_dir.join("ca.key"))
+            .await?
+            .permissions();
         perms.set_mode(0o600);
         tokio::fs::set_permissions(cert_dir.join("ca.key"), perms).await?;
     }
@@ -100,11 +103,7 @@ async fn generate_ca(
     // Create issuer for signing other certificates
     let issuer = Issuer::new(params, key_pair);
 
-    Ok((
-        cert_der.clone(),
-        PrivatePkcs8KeyDer::from(key_der),
-        issuer,
-    ))
+    Ok((cert_der.clone(), PrivatePkcs8KeyDer::from(key_der), issuer))
 }
 
 /// Load existing CA certificate
@@ -121,7 +120,7 @@ async fn load_ca(
     let encrypted_key_data = tokio::fs::read(cert_dir.join("ca.key")).await?;
     let decrypted_key = decrypt_private_key(&encrypted_key_data)?;
     let key_pem = String::from_utf8(decrypted_key.as_bytes().to_vec())
-        .map_err(|e| TlsError::KeyProtection(format!("Invalid UTF-8 in decrypted key: {}", e)))?;
+        .map_err(|e| TlsError::KeyProtection(format!("Invalid UTF-8 in decrypted key: {e}")))?;
 
     // Parse certificate
     let cert_der = rustls_pemfile::certs(&mut cert_pem.as_bytes())
@@ -151,7 +150,7 @@ async fn load_ca(
 
     // Create KeyPair from decrypted PEM key
     let key_pair = KeyPair::from_pem(&key_pem)?;
-    
+
     // Create Issuer from certificate PEM and key pair
     let ca_issuer = Issuer::from_ca_cert_pem(&cert_pem, key_pair)?;
 

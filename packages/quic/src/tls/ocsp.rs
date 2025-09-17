@@ -3,8 +3,8 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
 
 use der::{Decode, Encode};
@@ -14,19 +14,19 @@ use ring::digest::{Context as DigestContext, SHA256};
 use x509_cert::serial_number::SerialNumber;
 use x509_ocsp::{CertId, OcspRequest, OcspResponse};
 
-use super::types::ParsedCertificate;
 use super::errors::TlsError;
 use super::http_client::TlsHttpClient;
+use super::types::ParsedCertificate;
 
 // Well-known Object Identifiers as functions with error handling
 fn sha256_oid() -> Result<der::asn1::ObjectIdentifier, TlsError> {
     der::asn1::ObjectIdentifier::new("2.16.840.1.101.3.4.2.1")
-        .map_err(|e| TlsError::OcspValidation(format!("Invalid SHA-256 OID: {}", e)))
+        .map_err(|e| TlsError::OcspValidation(format!("Invalid SHA-256 OID: {e}")))
 }
 
 fn ocsp_nonce_oid() -> Result<der::asn1::ObjectIdentifier, TlsError> {
     der::asn1::ObjectIdentifier::new("1.3.6.1.5.5.7.48.1.2")
-        .map_err(|e| TlsError::OcspValidation(format!("Invalid OCSP nonce OID: {}", e)))
+        .map_err(|e| TlsError::OcspValidation(format!("Invalid OCSP nonce OID: {e}")))
 }
 
 /// OCSP response status
@@ -253,7 +253,7 @@ impl OcspCache {
 
         // Convert serial number
         let serial = SerialNumber::new(&cert.serial_number)
-            .map_err(|e| TlsError::OcspValidation(format!("Invalid serial number: {}", e)))?;
+            .map_err(|e| TlsError::OcspValidation(format!("Invalid serial number: {e}")))?;
 
         use x509_cert::spki::AlgorithmIdentifierOwned;
 
@@ -263,10 +263,10 @@ impl OcspCache {
                 parameters: None,
             },
             issuer_name_hash: der::asn1::OctetString::new(issuer_name_hash.as_ref()).map_err(
-                |e| TlsError::OcspValidation(format!("Failed to create issuer name hash: {}", e)),
+                |e| TlsError::OcspValidation(format!("Failed to create issuer name hash: {e}")),
             )?,
             issuer_key_hash: der::asn1::OctetString::new(issuer_key_hash.as_ref()).map_err(
-                |e| TlsError::OcspValidation(format!("Failed to create issuer key hash: {}", e)),
+                |e| TlsError::OcspValidation(format!("Failed to create issuer key hash: {e}")),
             )?,
             serial_number: serial,
         };
@@ -289,7 +289,7 @@ impl OcspCache {
         };
 
         let der_bytes = request.to_der().map_err(|e| {
-            TlsError::OcspValidation(format!("Failed to encode OCSP request: {}", e))
+            TlsError::OcspValidation(format!("Failed to encode OCSP request: {e}"))
         })?;
 
         Ok((der_bytes, nonce))
@@ -302,7 +302,7 @@ impl OcspCache {
         cert_serial: &[u8],
     ) -> Result<(OcspStatus, Option<SystemTime>), TlsError> {
         let response = OcspResponse::from_der(response_bytes).map_err(|e| {
-            TlsError::OcspValidation(format!("Failed to decode OCSP response: {}", e))
+            TlsError::OcspValidation(format!("Failed to decode OCSP response: {e}"))
         })?;
 
         // Check response status
@@ -319,7 +319,7 @@ impl OcspCache {
 
         let basic_response =
             x509_ocsp::BasicOcspResponse::from_der(response_bytes.response.as_bytes()).map_err(
-                |e| TlsError::OcspValidation(format!("Failed to parse basic OCSP response: {}", e)),
+                |e| TlsError::OcspValidation(format!("Failed to parse basic OCSP response: {e}")),
             )?;
 
         // Verify nonce matches (with safe OID handling)

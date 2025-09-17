@@ -20,21 +20,21 @@ impl ValidationCache {
             crl_results: Arc::new(RwLock::new(HashMap::new())),
         }
     }
-    
+
     pub fn get_ocsp_status(&self, cert_key: &str) -> Option<crate::tls::ocsp::OcspStatus> {
         self.ocsp_results.read().ok()?.get(cert_key).copied()
     }
-    
+
     pub fn set_ocsp_status(&self, cert_key: String, status: crate::tls::ocsp::OcspStatus) {
         if let Ok(mut cache) = self.ocsp_results.write() {
             cache.insert(cert_key, status);
         }
     }
-    
+
     pub fn get_crl_status(&self, cert_key: &str) -> Option<crate::tls::crl_cache::CrlStatus> {
         self.crl_results.read().ok()?.get(cert_key).copied()
     }
-    
+
     pub fn set_crl_status(&self, cert_key: String, status: crate::tls::crl_cache::CrlStatus) {
         if let Ok(mut cache) = self.crl_results.write() {
             cache.insert(cert_key, status);

@@ -1,11 +1,11 @@
 //! Core types and data structures for the messaging protocol
 
-use serde::{Deserialize, Serialize};
-use std::time::{Duration, SystemTime};
-use std::sync::atomic::{AtomicU64, Ordering};
-use dashmap::DashMap;
 use crossbeam::{queue::SegQueue, utils::CachePadded};
+use dashmap::DashMap;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, SystemTime};
 
 /// Get current time in milliseconds since epoch
 pub fn now_millis() -> u64 {
@@ -186,29 +186,29 @@ impl ConnectionState {
             message_count: AtomicU64::new(0),
         }
     }
-    
+
     pub fn increment_streams(&self) {
         self.active_streams.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     pub fn decrement_streams(&self) {
         self.active_streams.fetch_sub(1, Ordering::Relaxed);
     }
-    
+
     pub fn get_active_streams(&self) -> u64 {
         self.active_streams.load(Ordering::Relaxed)
     }
-    
+
     pub fn update_activity(&self) {
         if let Ok(mut last) = self.last_activity.write() {
             *last = std::time::Instant::now();
         }
     }
-    
+
     pub fn get_health_score(&self) -> u64 {
         self.health_score.load(Ordering::Relaxed)
     }
-    
+
     pub fn set_health_score(&self, score: u64) {
         self.health_score.store(score.min(100), Ordering::Relaxed);
     }
@@ -239,7 +239,7 @@ impl PriorityMessageQueue {
             total_count: AtomicU64::new(0),
         }
     }
-    
+
     /// Push message to appropriate priority queue (lock-free operation)
     pub fn push(&self, message: MessageEnvelope) {
         match message.priority {
@@ -250,7 +250,7 @@ impl PriorityMessageQueue {
         }
         self.total_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Pop highest priority message available (lock-free operation)
     pub fn pop(&self) -> Option<MessageEnvelope> {
         // Process in priority order: Critical -> High -> Normal -> Low
@@ -258,40 +258,40 @@ impl PriorityMessageQueue {
             self.total_count.fetch_sub(1, Ordering::Relaxed);
             return Some(message);
         }
-        
+
         if let Some(message) = self.high.pop() {
             self.total_count.fetch_sub(1, Ordering::Relaxed);
             return Some(message);
         }
-        
+
         if let Some(message) = self.normal.pop() {
             self.total_count.fetch_sub(1, Ordering::Relaxed);
             return Some(message);
         }
-        
+
         if let Some(message) = self.low.pop() {
             self.total_count.fetch_sub(1, Ordering::Relaxed);
             return Some(message);
         }
-        
+
         None
     }
-    
+
     /// Get total number of queued messages across all priorities
     pub fn len(&self) -> u64 {
         self.total_count.load(Ordering::Relaxed)
     }
-    
+
     /// Check if all priority queues are empty
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    
+
     /// Get count of messages per priority level
     pub fn priority_counts(&self) -> (usize, usize, usize, usize) {
         (
             self.critical.len(),
-            self.high.len(), 
+            self.high.len(),
             self.normal.len(),
             self.low.len(),
         )
@@ -310,30 +310,35 @@ impl LoadBalancer {
             round_robin_counters: DashMap::new(),
         }
     }
-    
+
     /// Select single connection using round-robin for topic
     pub fn select_round_robin(&self, topic: &str, connections: &[Vec<u8>]) -> Option<Vec<u8>> {
         if connections.is_empty() {
             return None;
         }
-        
-        let counter = self.round_robin_counters
+
+        let counter = self
+            .round_robin_counters
             .entry(topic.to_string())
             .or_insert_with(|| AtomicU64::new(0));
-            
+
         let index = counter.fetch_add(1, Ordering::Relaxed) as usize % connections.len();
         connections.get(index).cloned()
     }
-    
+
     /// Select connection with least active streams
-    pub fn select_least_connections(&self, connections: &[Vec<u8>], conn_states: &DashMap<Vec<u8>, Arc<CachePadded<ConnectionState>>>) -> Option<Vec<u8>> {
+    pub fn select_least_connections(
+        &self,
+        connections: &[Vec<u8>],
+        conn_states: &DashMap<Vec<u8>, Arc<CachePadded<ConnectionState>>>,
+    ) -> Option<Vec<u8>> {
         if connections.is_empty() {
             return None;
         }
-        
+
         let mut best_conn = None;
         let mut min_streams = u64::MAX;
-        
+
         for conn_id in connections {
             if let Some(state) = conn_states.get(conn_id) {
                 let stream_count = state.get_active_streams();
@@ -343,19 +348,23 @@ impl LoadBalancer {
                 }
             }
         }
-        
+
         best_conn
     }
-    
+
     /// Select healthiest connection
-    pub fn select_healthiest(&self, connections: &[Vec<u8>], conn_states: &DashMap<Vec<u8>, Arc<CachePadded<ConnectionState>>>) -> Option<Vec<u8>> {
+    pub fn select_healthiest(
+        &self,
+        connections: &[Vec<u8>],
+        conn_states: &DashMap<Vec<u8>, Arc<CachePadded<ConnectionState>>>,
+    ) -> Option<Vec<u8>> {
         if connections.is_empty() {
             return None;
         }
-        
+
         let mut best_conn = None;
         let mut best_health = 0u64;
-        
+
         for conn_id in connections {
             if let Some(state) = conn_states.get(conn_id) {
                 let health = state.get_health_score();
@@ -365,41 +374,52 @@ impl LoadBalancer {
                 }
             }
         }
-        
+
         best_conn
     }
-    
+
     /// Select random connection
     pub fn select_random(&self, connections: &[Vec<u8>]) -> Option<Vec<u8>> {
         if connections.is_empty() {
             return None;
         }
-        
+
         use rand::Rng;
         let index = rand::rng().random_range(0..connections.len());
         connections.get(index).cloned()
     }
-    
+
     /// Select random healthy connection (health > 50)
-    pub fn select_random_healthy(&self, connections: &[Vec<u8>], conn_states: &DashMap<Vec<u8>, Arc<CachePadded<ConnectionState>>>) -> Option<Vec<u8>> {
-        let healthy_connections: Vec<_> = connections.iter()
+    pub fn select_random_healthy(
+        &self,
+        connections: &[Vec<u8>],
+        conn_states: &DashMap<Vec<u8>, Arc<CachePadded<ConnectionState>>>,
+    ) -> Option<Vec<u8>> {
+        let healthy_connections: Vec<_> = connections
+            .iter()
             .filter(|conn_id| {
-                conn_states.get(*conn_id)
+                conn_states
+                    .get(*conn_id)
                     .map(|state| state.get_health_score() > 50)
                     .unwrap_or(false)
             })
             .collect();
-            
+
         if healthy_connections.is_empty() {
             return self.select_random(connections); // Fallback to any connection
         }
-        
+
         self.select_random(&healthy_connections.into_iter().cloned().collect::<Vec<_>>())
     }
-    
+
     /// Filter connections to only healthy ones (health score > 50%)
-    pub fn filter_healthy_connections(&self, connections: &[Vec<u8>], conn_states: &DashMap<Vec<u8>, Arc<CachePadded<ConnectionState>>>) -> Vec<Vec<u8>> {
-        connections.iter()
+    pub fn filter_healthy_connections(
+        &self,
+        connections: &[Vec<u8>],
+        conn_states: &DashMap<Vec<u8>, Arc<CachePadded<ConnectionState>>>,
+    ) -> Vec<Vec<u8>> {
+        connections
+            .iter()
             .filter_map(|conn_id| {
                 conn_states.get(conn_id).and_then(|state| {
                     if state.get_health_score() > 50 {

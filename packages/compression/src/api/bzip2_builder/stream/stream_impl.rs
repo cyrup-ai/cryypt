@@ -1,4 +1,4 @@
-//! Stream trait implementation and async iteration for Bzip2Stream
+//! Stream trait implementation and async iteration for `Bzip2Stream`
 
 use super::stream_core::Bzip2Stream;
 use crate::Result;

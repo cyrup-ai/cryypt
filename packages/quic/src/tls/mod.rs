@@ -23,7 +23,7 @@ pub mod quiche_integration;
 pub use quiche_integration::{QuicheCertificateProvider, configure_quiche_with_tls};
 
 // Public TLS manager for enterprise connections
-pub use tls_manager::{TlsManager, TlsConfig};
+pub use tls_manager::{TlsConfig, TlsManager};
 
 // Export HTTP client for internal TLS operations
 pub use http_client::TlsHttpClient;

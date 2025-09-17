@@ -1,6 +1,6 @@
 //! SurrealDB vault builder following polymorphic pattern
 
-use crate::{VaultError, VaultResult, LocalVaultProvider, VaultValue, VaultConfig};
+use crate::{LocalVaultProvider, VaultConfig, VaultError, VaultResult, VaultValue};
 use futures::Stream;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -133,7 +133,7 @@ where
 
                 // Apply handler and send result
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break; // Receiver dropped
                 }
@@ -166,7 +166,7 @@ where
 
                 // Apply handler and send result
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break; // Receiver dropped
                 }
@@ -178,20 +178,24 @@ where
 }
 
 // Production SurrealDB operations using real LocalVaultProvider
-async fn real_surrealdb_store(connection_path: String, key: String, value: Vec<u8>) -> VaultResult<Vec<u8>> {
+async fn real_surrealdb_store(
+    connection_path: String,
+    key: String,
+    value: Vec<u8>,
+) -> VaultResult<Vec<u8>> {
     // Create VaultConfig with custom vault path
     let mut config = VaultConfig::default();
     config.vault_path = connection_path.into();
-    
+
     // Create LocalVaultProvider instance
     let provider = LocalVaultProvider::new(config).await?;
-    
+
     // Convert bytes to VaultValue
     let vault_value = VaultValue::from_bytes(value);
-    
+
     // Use real LocalVaultProvider put operation
     provider.put(&key, &vault_value).await?;
-    
+
     // Return success indicator (matching original API)
     Ok(b"stored".to_vec())
 }
@@ -200,10 +204,10 @@ async fn real_surrealdb_retrieve(connection_path: String, key: String) -> VaultR
     // Create VaultConfig with custom vault path
     let mut config = VaultConfig::default();
     config.vault_path = connection_path.into();
-    
+
     // Create LocalVaultProvider instance
     let provider = LocalVaultProvider::new(config).await?;
-    
+
     // Use real LocalVaultProvider get operation
     match provider.get(&key).await? {
         Some(vault_value) => Ok(vault_value.expose_secret().to_vec()),

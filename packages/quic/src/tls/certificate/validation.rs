@@ -67,16 +67,16 @@ pub async fn validate_certificate_chain(
         if cert.issuer != issuer.subject {
             return Err(TlsError::CertificateValidation(format!(
                 "Certificate chain broken: certificate {} issuer does not match certificate {} subject",
-                i, i + 1
+                i,
+                i + 1
             )));
         }
     }
 
     // Verify the root certificate matches our CA
-    let root_cert = chain_certs.last()
-        .ok_or_else(|| TlsError::InvalidCertificateChain(
-            "Certificate chain is empty".to_string()
-        ))?;
+    let root_cert = chain_certs.last().ok_or_else(|| {
+        TlsError::InvalidCertificateChain("Certificate chain is empty".to_string())
+    })?;
     let ca_cert_parsed = parse_certificate_from_der(ca_cert.as_ref())?;
 
     if root_cert.subject != ca_cert_parsed.subject {
@@ -94,7 +94,7 @@ pub fn parse_certificate_from_der(der_data: &[u8]) -> Result<ParsedCertificate, 
     use x509_cert::Certificate;
 
     let cert = Certificate::from_der(der_data).map_err(|e| {
-        TlsError::CertificateParsing(format!("Failed to parse DER certificate: {}", e))
+        TlsError::CertificateParsing(format!("Failed to parse DER certificate: {e}"))
     })?;
 
     // Convert X509 certificate to ParsedCertificate format

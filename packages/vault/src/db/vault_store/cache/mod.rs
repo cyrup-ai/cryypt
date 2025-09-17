@@ -5,25 +5,25 @@
 
 pub mod config;
 pub mod entry;
-pub mod metrics;
-pub mod security;
-pub mod persistence;
-pub mod simd_hash;
 pub mod invalidation;
+pub mod metrics;
+pub mod persistence;
+pub mod security;
+pub mod simd_hash;
 
 // Decomposed functionality modules
-pub mod operations;
-pub mod policies; 
 pub mod background;
+pub mod operations;
+pub mod policies;
 
 // Re-export main types
 pub use config::{CacheConfig, PersistenceMode};
 pub use entry::{CacheEntry, current_timestamp};
-pub use metrics::CacheMetrics;
-pub use security::SecureValue;
-pub use persistence::{PersistenceOperation, OperationType, persist_operation};
-pub use simd_hash::simd_hash::fast_hash;
 pub use invalidation::InvalidationStrategy;
+pub use metrics::CacheMetrics;
+pub use persistence::{OperationType, PersistenceOperation, persist_operation};
+pub use security::SecureValue;
+pub use simd_hash::simd_hash::fast_hash;
 
 // Main cache implementation
 use crate::db::VaultEntry;

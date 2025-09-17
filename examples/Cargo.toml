@@ -1,0 +1,70 @@
+[package]
+name = "cryypt-examples"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cipher_api"
+path = "src/cipher_api.rs"
+
+[[bin]]
+name = "hashing_api"
+path = "src/hashing_api.rs"
+
+[[bin]]
+name = "compression_api"
+path = "src/compression_api.rs"
+
+[[bin]]
+name = "test_decompress_pattern"
+path = "src/test_decompress_pattern.rs"
+
+[[bin]]
+name = "key_api"
+path = "src/key_api.rs"
+
+[[bin]]
+name = "jwt_api"
+path = "src/jwt_api.rs"
+
+[[bin]]
+name = "vault_api"
+path = "src/vault_api.rs"
+
+[[bin]]
+name = "pqcrypto_api"
+path = "src/pqcrypto_api.rs"
+
+[[bin]]
+name = "quic_api"
+path = "src/quic_api.rs"
+
+[[bin]]
+name = "test_fluent_compression"
+path = "src/test_fluent_compression.rs"
+
+[[bin]]
+name = "test_fluent_streaming"
+path = "src/test_fluent_streaming.rs"
+
+[[bin]]
+name = "simple_delete_test"
+path = "src/simple_delete_test.rs"
+
+[dependencies]
+cryypt = { path = "../packages/cryypt", features = ["full"] }
+cryypt_compression = { path = "../packages/compression" }
+tokio = { version = "1.47.1", features = ["full"] }
+tokio-stream = "0.1.17"
+futures = "0.3.31"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
+log = "0.4.27"
+env_logger = "0.11.8"
+hex = "0.4.3"
+rcgen = { version = "0.14.3", features = ["pem"] }
+uuid = { version = "1.18.0", features = ["v4", "serde"] }
+chrono = { version = "0.4.41", features = ["serde"] }
+
+cryypt_common = { version = "0.1.0", path = "../packages/common" }
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", version = "0.3.0", features = ["all"] }

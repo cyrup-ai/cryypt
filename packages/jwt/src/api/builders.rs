@@ -13,28 +13,32 @@ pub struct JwtMasterBuilder;
 
 impl JwtMasterBuilder {
     /// Create new JWT builder - unified entry point
+    #[must_use]
     pub fn builder() -> JwtBuilder {
         JwtBuilder::new()
     }
 
     /// Set algorithm - README.md pattern following EXACT pattern from master builders
     #[inline]
+    #[must_use]
     pub fn with_algorithm(self, algorithm: &str) -> JwtBuilder {
         JwtBuilder::new().with_algorithm(algorithm)
     }
 
     /// Set secret for symmetric algorithms - README.md pattern
     #[inline]
+    #[must_use]
     pub fn with_secret(self, secret: &[u8]) -> JwtBuilder {
         JwtBuilder::new().with_secret(secret)
     }
 }
 
-/// Direct builder entry point - equivalent to Cryypt::jwt()
+/// Direct builder entry point - equivalent to `Cryypt::jwt()`
 pub struct Jwt;
 
 impl Jwt {
     /// Create new JWT builder - unified entry point
+    #[must_use]
     pub fn builder() -> JwtBuilder {
         JwtBuilder::new()
     }
@@ -92,6 +96,7 @@ impl Default for JwtBuilder {
 
 impl JwtBuilder {
     /// Create new JWT builder
+    #[must_use]
     pub fn new() -> Self {
         Self {
             algorithm: None,
@@ -102,6 +107,7 @@ impl JwtBuilder {
     }
 
     /// Get the algorithm (default to HS256 if not set)
+    #[must_use]
     pub fn get_algorithm(&self) -> String {
         self.algorithm
             .clone()
@@ -110,6 +116,7 @@ impl JwtBuilder {
 
     /// Set algorithm - README.md pattern
     #[inline]
+    #[must_use]
     pub fn with_algorithm(mut self, algorithm: &str) -> Self {
         self.algorithm = Some(algorithm.to_string());
         self
@@ -117,6 +124,7 @@ impl JwtBuilder {
 
     /// Set secret for symmetric algorithms - README.md pattern
     #[inline]
+    #[must_use]
     pub fn with_secret(mut self, secret: &[u8]) -> Self {
         self.secret = Some(secret.to_vec());
         self
@@ -124,6 +132,7 @@ impl JwtBuilder {
 
     /// Set private key for asymmetric algorithms - README.md pattern
     #[inline]
+    #[must_use]
     pub fn with_private_key(mut self, key: &[u8]) -> Self {
         self.private_key = Some(key.to_vec());
         self
@@ -131,12 +140,13 @@ impl JwtBuilder {
 
     /// Set public key for asymmetric verification - README.md pattern
     #[inline]
+    #[must_use]
     pub fn with_public_key(mut self, key: &[u8]) -> Self {
         self.public_key = Some(key.to_vec());
         self
     }
 
-    /// Add on_result handler - polymorphic based on subsequent method call (legacy)
+    /// Add `on_result` handler - polymorphic based on subsequent method call (legacy)
     pub fn on_result_legacy<F>(self, handler: F) -> JwtBuilderWithHandler<F>
     where
         F: Send + 'static,
@@ -185,6 +195,7 @@ where
 {
     /// Set algorithm
     #[inline]
+    #[must_use]
     pub fn with_algorithm(mut self, algorithm: &str) -> Self {
         self.algorithm = Some(algorithm.to_string());
         self
@@ -192,6 +203,7 @@ where
 
     /// Set secret for symmetric algorithms
     #[inline]
+    #[must_use]
     pub fn with_secret(mut self, secret: &[u8]) -> Self {
         self.secret = Some(secret.to_vec());
         self
@@ -199,6 +211,7 @@ where
 
     /// Set private key for asymmetric algorithms
     #[inline]
+    #[must_use]
     pub fn with_private_key(mut self, key: &[u8]) -> Self {
         self.private_key = Some(key.to_vec());
         self
@@ -206,12 +219,13 @@ where
 
     /// Set public key for asymmetric verification
     #[inline]
+    #[must_use]
     pub fn with_public_key(mut self, key: &[u8]) -> Self {
         self.public_key = Some(key.to_vec());
         self
     }
 
-    /// Add on_result handler after error handler
+    /// Add `on_result` handler after error handler
     pub fn on_result<F>(self, handler: F) -> JwtBuilderWithHandler<F>
     where
         F: Send + 'static,
@@ -225,7 +239,7 @@ where
         }
     }
 
-    /// Sign JWT with error handler - returns AsyncJwtResult
+    /// Sign JWT with error handler - returns `AsyncJwtResult`
     pub fn sign<C: Serialize + Send + 'static>(
         self,
         claims: C,
@@ -245,7 +259,7 @@ where
         AsyncJwtResultWithError::new(rx, error_handler)
     }
 
-    /// Verify JWT with error handler - returns AsyncJwtResult
+    /// Verify JWT with error handler - returns `AsyncJwtResult`
     pub fn verify<S: AsRef<str>>(self, token: S) -> AsyncJwtResultWithError<serde_json::Value, E> {
         let token = token.as_ref().to_string();
         let secret = self.secret;

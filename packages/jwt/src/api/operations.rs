@@ -5,14 +5,15 @@
 
 use super::builders::{JwtBuilder, JwtBuilderWithChunkHandler, JwtBuilderWithResultHandler};
 use super::validation::AsyncJwtResult;
-use crate::error::*;
+use crate::error::JwtResult;
 use serde::Serialize;
 use tokio::sync::oneshot;
 
 impl JwtBuilder {
-    /// Sign JWT without handler - returns AsyncJwtResult for String
+    /// Sign JWT without handler - returns `AsyncJwtResult` for String
     /// Zero-allocation async operation with blazing-fast performance
     #[inline]
+    #[must_use]
     pub fn sign<C: Serialize + Send + 'static>(self, claims: C) -> AsyncJwtResult<String> {
         let algorithm = self.get_algorithm();
         let secret = self.secret;
@@ -28,9 +29,10 @@ impl JwtBuilder {
         AsyncJwtResult::new(rx)
     }
 
-    /// Verify JWT without handler - returns AsyncJwtResult for Value
+    /// Verify JWT without handler - returns `AsyncJwtResult` for Value
     /// Zero-allocation async operation with blazing-fast performance
     #[inline]
+    #[must_use]
     pub fn verify<S: AsRef<str>>(self, token: S) -> AsyncJwtResult<serde_json::Value> {
         let token = token.as_ref().to_string();
         let secret = self.secret;
@@ -53,25 +55,26 @@ where
 {
     /// Sign JWT with result handler - returns Vec<u8>
     /// Zero-allocation result transformation with blazing-fast performance
+    #[must_use]
     pub async fn sign<C: Serialize + Send + 'static>(self, claims: C) -> Vec<u8> {
         let algorithm = self.algorithm.unwrap_or_else(|| "HS256".to_string());
         let result =
             super::algorithms::sign_jwt(algorithm, claims, self.secret, self.private_key).await;
 
         // Convert String result to Vec<u8> and apply handler
-        let converted_result = result.map(|s| s.into_bytes());
+        let converted_result = result.map(std::string::String::into_bytes);
         (self.result_handler)(converted_result)
     }
 
     /// Verify JWT with result handler - returns Vec<u8>
     /// Zero-allocation result transformation with blazing-fast performance
+    #[must_use]
     pub async fn verify<S: AsRef<str>>(self, token: S) -> Vec<u8> {
         let token = token.as_ref().to_string();
         let result = super::algorithms::verify_jwt(token, self.secret, self.public_key).await;
 
         // Convert serde_json::Value result to Vec<u8> and apply handler
-        let converted_result = result
-            .map(|v| v.to_string().into_bytes());
+        let converted_result = result.map(|v| v.to_string().into_bytes());
         (self.result_handler)(converted_result)
     }
 }
@@ -107,7 +110,7 @@ where
                 // Sign the JWT with blazing-fast performance
                 let result =
                     super::algorithms::sign_jwt(algorithm, claims, secret, private_key).await;
-                let converted_result = result.map(|s| s.into_bytes());
+                let converted_result = result.map(std::string::String::into_bytes);
                 let processed_chunk = handler(converted_result);
 
                 Some((
@@ -129,7 +132,7 @@ where
     /// Lock-free streaming with zero-allocation patterns
     pub fn verify_stream<S: AsRef<str> + Send + Clone + 'static>(
         self,
-        token: S,
+        token: &S,
     ) -> impl futures::Stream<Item = Vec<u8>> + Send {
         let token = token.as_ref().to_string();
         let secret = self.secret;
@@ -150,8 +153,7 @@ where
 
                 // Verify the JWT with blazing-fast performance
                 let result = super::algorithms::verify_jwt(token, secret, public_key).await;
-                let converted_result = result
-                    .map(|v| v.to_string().into_bytes());
+                let converted_result = result.map(|v| v.to_string().into_bytes());
                 let processed_chunk = handler(converted_result);
 
                 Some((

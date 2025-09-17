@@ -16,6 +16,7 @@ use cryypt_vault::error::VaultError;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
+use surrealdb::{Surreal, engine::any::{self, Any}};
 
 /// Test key type for cache operations
 #[derive(Debug, Clone, Hash, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -47,8 +48,8 @@ async fn create_test_cache() -> LruCache<TestKey> {
 
     let cache = LruCache::new(config);
 
-    // Set encryption key for secure operations
-    let encryption_key = b"test_key_32_bytes_long_for_aes256".to_vec();
+    // Set encryption key for secure operations  
+    let encryption_key = b"test_key_32_bytes_long_for_aes56".to_vec();
     cache.set_encryption_key(encryption_key).await;
 
     cache
@@ -56,7 +57,7 @@ async fn create_test_cache() -> LruCache<TestKey> {
 
 /// Create test cache with SurrealDB persistence
 async fn create_persistent_cache() -> Result<LruCache<TestKey>, VaultError> {
-    let _config = CacheConfig {
+    let config = CacheConfig {
         max_entries: 50,
         ttl_seconds: 1800,
         persistence_enabled: true,
@@ -68,24 +69,26 @@ async fn create_persistent_cache() -> Result<LruCache<TestKey>, VaultError> {
 
     // Full persistence test implementation with proper SurrealDB setup
     use tempfile::TempDir;
-    
-    // Create temporary directory for test database
-    let temp_dir = TempDir::new().map_err(|e| VaultError::Internal(e.to_string()))?;
-    let db_path = temp_dir.path().join("test_cache.db");
-    
-    // Initialize test SurrealDB instance
-    let db_url = format!("file://{}", db_path.display());
-    let _config = CacheConfig {
-        max_entries: 50,
-        ttl_seconds: 1800,
-        persistence_enabled: true,
-        persistence_mode: PersistenceMode::WriteThrough,
-        warming_enabled: true,
-        metrics_interval_seconds: 1,
-        simd_enabled: true,
-    };
 
-    let cache = LruCache::new(_config);
+    // Create temporary directory for test database
+    let temp_dir = TempDir::new().map_err(|e| VaultError::Other(e.to_string()))?;
+    let db_path = temp_dir.path().join("test_cache.db");
+
+    // Initialize test SurrealDB instance using Any engine with surrealkv:// scheme
+    let surrealkv_url = format!("surrealkv://{}", db_path.display());
+    
+    // Connect to SurrealDB using Any engine
+    let db = any::connect(&surrealkv_url)
+        .await
+        .map_err(|e| VaultError::Other(format!("Failed to connect to SurrealDB: {e}")))?;
+    
+    // Use test namespace and database
+    db.use_ns("test").use_db("cache").await
+        .map_err(|e| VaultError::Other(format!("Failed to set namespace/db: {e}")))?;
+
+    let cache = LruCache::new(config)
+        .with_persistence(Arc::new(db))
+        .await?;
 
     // Set encryption key
     let encryption_key = b"persistent_key_32_bytes_for_test".to_vec();
@@ -102,18 +105,29 @@ async fn test_cache_basic_operations() {
     let value = b"Hello, World!".to_vec();
 
     // Test insert operation
-    cache.insert(key.clone(), &value).await.expect("Cache insert should succeed in basic operations test");
+    cache
+        .insert(key.clone(), &value)
+        .await
+        .expect("Cache insert should succeed in basic operations test");
     assert_eq!(cache.len(), 1);
 
     // Test get operation
-    let retrieved = cache.get(&key).await.expect("Cache get should succeed in basic operations test").expect("Retrieved value should exist");
+    let retrieved = cache
+        .get(&key)
+        .await
+        .expect("Cache get should succeed in basic operations test")
+        .expect("Retrieved value should exist");
     assert_eq!(retrieved.as_slice(), value.as_slice());
 
     // Test contains operation
     assert!(cache.contains_key(&key));
 
     // Test remove operation
-    let removed = cache.remove(&key).await.expect("Cache remove should succeed").expect("Removed value should exist");
+    let removed = cache
+        .remove(&key)
+        .await
+        .expect("Cache remove should succeed")
+        .expect("Removed value should exist");
     assert_eq!(removed.as_slice(), value.as_slice());
     assert_eq!(cache.len(), 0);
     assert!(!cache.contains_key(&key));
@@ -132,8 +146,15 @@ async fn test_cache_concurrent_operations() {
             let value = format!("value_{}", i).into_bytes();
 
             // Insert and get operations
-            cache_clone.insert(key.clone(), &value).await.expect("Concurrent cache insert should succeed");
-            let retrieved = cache_clone.get(&key).await.expect("Concurrent cache get should succeed").expect("Retrieved value should exist");
+            cache_clone
+                .insert(key.clone(), &value)
+                .await
+                .expect("Concurrent cache insert should succeed");
+            let retrieved = cache_clone
+                .get(&key)
+                .await
+                .expect("Concurrent cache get should succeed")
+                .expect("Retrieved value should exist");
             assert_eq!(retrieved.as_slice(), value.as_slice());
 
             // Multiple access to test atomic counters
@@ -146,7 +167,9 @@ async fn test_cache_concurrent_operations() {
 
     // Wait for all tasks to complete
     for handle in handles {
-        handle.await.expect("Concurrent task should complete successfully");
+        handle
+            .await
+            .expect("Concurrent task should complete successfully");
     }
 
     assert_eq!(cache.len(), 10);
@@ -165,14 +188,17 @@ async fn test_cache_ttl_expiration() {
     };
 
     let cache = LruCache::new(config);
-    let encryption_key = b"ttl_test_key_32_bytes_for_aes256".to_vec();
+    let encryption_key = b"ttl_test_key_32_bytes_for_aes_56".to_vec();
     cache.set_encryption_key(encryption_key).await;
 
     let key = TestKey::new("ttl_test", "expiration");
     let value = b"expires_soon".to_vec();
 
     // Insert value with 1 second TTL
-    cache.insert(key.clone(), &value).await.expect("TTL test cache insert should succeed");
+    cache
+        .insert(key.clone(), &value)
+        .await
+        .expect("TTL test cache insert should succeed");
     assert!(cache.contains_key(&key));
 
     // Wait for expiration
@@ -197,31 +223,43 @@ async fn test_cache_lru_eviction() {
     };
 
     let cache = LruCache::new(config);
-    let encryption_key = b"lru_test_key_32_bytes_for_aes_256".to_vec();
+    let encryption_key = b"lru_test_key_32_bytes_for_aes_56".to_vec();
     cache.set_encryption_key(encryption_key).await;
 
     // Fill cache to capacity
     for i in 1..=3 {
         let key = TestKey::new(&format!("lru_{}", i), "eviction");
         let value = format!("value_{}", i).into_bytes();
-        cache.insert(key, &value).await.expect("Cache insert should succeed");
+        cache
+            .insert(key, &value)
+            .await
+            .expect("Cache insert should succeed");
     }
     assert_eq!(cache.len(), 3);
 
     // Access key 2 to make it recently used
     let key2 = TestKey::new("lru_2", "eviction");
     cache.get(&key2).await;
+    
+    // Small delay to ensure distinct timestamps
+    sleep(Duration::from_nanos(1)).await;
 
     // Add new item, should evict least recently used (key 1)
     let key4 = TestKey::new("lru_4", "eviction");
     let value4 = b"value_4".to_vec();
-    cache.insert(key4.clone(), &value4).await.expect("LRU test key4 insert should succeed");
+    cache
+        .insert(key4.clone(), &value4)
+        .await
+        .expect("LRU test key4 insert should succeed");
 
     // Cache should still be at capacity
     assert_eq!(cache.len(), 3);
 
     // Key 1 should be evicted, key 2 should still exist
     let key1 = TestKey::new("lru_1", "eviction");
+    let key3 = TestKey::new("lru_3", "eviction");
+    
+    
     assert!(!cache.contains_key(&key1));
     assert!(cache.contains_key(&key2));
     assert!(cache.contains_key(&key4));
@@ -244,7 +282,10 @@ async fn test_cache_metrics() {
     assert_eq!(metrics.misses.load(std::sync::atomic::Ordering::Relaxed), 1);
 
     // Test insertion
-    cache.insert(key.clone(), &value).await.expect("Cache insert should succeed");
+    cache
+        .insert(key.clone(), &value)
+        .await
+        .expect("Cache insert should succeed");
     assert_eq!(
         metrics
             .insertions
@@ -276,14 +317,20 @@ async fn test_cache_invalidation_strategies() {
     for i in 1..=5 {
         let key = TestKey::new(&format!("item_{}", i), "invalidation");
         let value = format!("data_{}", i).into_bytes();
-        cache.insert(key, &value).await.expect("Cache insert should succeed");
+        cache
+            .insert(key, &value)
+            .await
+            .expect("Cache insert should succeed");
     }
 
     // Add items with different namespace
     for i in 1..=3 {
         let key = TestKey::new(&format!("other_{}", i), "different");
         let value = format!("other_data_{}", i).into_bytes();
-        cache.insert(key, &value).await.expect("Cache insert should succeed");
+        cache
+            .insert(key, &value)
+            .await
+            .expect("Cache insert should succeed");
     }
 
     assert_eq!(cache.len(), 8);
@@ -303,23 +350,32 @@ async fn test_cache_invalidation_strategies() {
 
 #[tokio::test]
 async fn test_cache_persistence() {
-    let cache = create_persistent_cache().await.expect("Persistent cache creation should succeed");
+    let cache = create_persistent_cache()
+        .await
+        .expect("Persistent cache creation should succeed");
 
     let key = TestKey::new("persistent_test", "storage");
     let value = b"persistent_data".to_vec();
 
     // Insert data with persistence enabled
-    cache.insert(key.clone(), &value).await.expect("Cache insert should succeed");
+    cache
+        .insert(key.clone(), &value)
+        .await
+        .expect("Cache insert should succeed");
 
     // Verify data is in cache
-    let retrieved = cache.get(&key).await.expect("Cache get should succeed").expect("Retrieved value should exist");
+    let retrieved = cache
+        .get(&key)
+        .await
+        .expect("Cache get should succeed")
+        .expect("Retrieved value should exist");
     assert_eq!(retrieved.as_slice(), value.as_slice());
 
     // Verify persistence metrics
     let metrics = cache.metrics();
 
     // Give time for async persistence
-    sleep(Duration::from_millis(100)).await;
+    sleep(Duration::from_millis(500)).await;
 
     // Should have at least one persistence write
     assert!(
@@ -332,7 +388,9 @@ async fn test_cache_persistence() {
 
 #[tokio::test]
 async fn test_cache_warming() {
-    let cache = create_persistent_cache().await.expect("Persistent cache creation should succeed");
+    let cache = create_persistent_cache()
+        .await
+        .expect("Persistent cache creation should succeed");
 
     // Create test keys for warming
     let keys = vec![
@@ -344,7 +402,10 @@ async fn test_cache_warming() {
     // Pre-populate some data
     for key in &keys {
         let value = format!("warm_data_{}", key.id).into_bytes();
-        cache.insert(key.clone(), &value).await.expect("Cache insert should succeed");
+        cache
+            .insert(key.clone(), &value)
+            .await
+            .expect("Cache insert should succeed");
     }
 
     // Clear cache to test warming
@@ -368,10 +429,17 @@ async fn test_cache_secure_operations() {
     let sensitive_data = b"highly_sensitive_information".to_vec();
 
     // Store sensitive data
-    cache.insert(key.clone(), &sensitive_data).await.expect("Secure cache insert should succeed");
+    cache
+        .insert(key.clone(), &sensitive_data)
+        .await
+        .expect("Secure cache insert should succeed");
 
     // Retrieve and verify data integrity
-    let retrieved = cache.get(&key).await.expect("Cache get should succeed").expect("Retrieved value should exist");
+    let retrieved = cache
+        .get(&key)
+        .await
+        .expect("Cache get should succeed")
+        .expect("Retrieved value should exist");
     assert_eq!(retrieved.as_slice(), sensitive_data.as_slice());
 
     // Verify data is encrypted in storage (not accessible as plaintext)
@@ -393,14 +461,21 @@ async fn test_cache_bulk_operations() {
 
     // Insert all data
     for (key, value) in &test_data {
-        cache.insert(key.clone(), value).await.expect("Bulk insert should succeed");
+        cache
+            .insert(key.clone(), value)
+            .await
+            .expect("Bulk insert should succeed");
     }
 
     assert_eq!(cache.len(), 50);
 
     // Verify all data is retrievable
     for (key, expected_value) in &test_data {
-        let retrieved = cache.get(key).await.expect("Bulk get should succeed").expect("Bulk retrieved value should exist");
+        let retrieved = cache
+            .get(key)
+            .await
+            .expect("Bulk get should succeed")
+            .expect("Bulk retrieved value should exist");
         assert_eq!(retrieved.as_slice(), expected_value.as_slice());
     }
 
@@ -444,7 +519,10 @@ async fn test_cache_shutdown() {
     // Add some test data
     let key = TestKey::new("shutdown_test", "cleanup");
     let value = b"cleanup_data".to_vec();
-    cache.insert(key.clone(), &value).await.expect("Cache insert should succeed");
+    cache
+        .insert(key.clone(), &value)
+        .await
+        .expect("Cache insert should succeed");
 
     // Verify data exists
     assert!(cache.contains_key(&key));

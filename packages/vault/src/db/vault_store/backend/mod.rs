@@ -6,6 +6,7 @@
 // Import all implementation modules
 pub mod auth;
 pub mod crypto;
+pub mod key_utils;
 pub mod operations;
 pub mod passphrase;
 pub mod provider;

@@ -30,11 +30,13 @@ impl Default for Sha3_256Builder {
 
 impl Sha3_256Builder {
     /// Create new SHA3-256 builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
-    /// Add on_result handler - README.md pattern
+    /// Add `on_result` handler - README.md pattern
+    #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> Sha3_256BuilderWithHandler<F, T>
     where
         F: FnOnce(Result<HashResult>) -> T + Send + 'static,
@@ -46,7 +48,8 @@ impl Sha3_256Builder {
         }
     }
 
-    /// Add on_error handler - transforms errors but passes through success
+    /// Add `on_error` handler - transforms errors but passes through success
+    #[must_use]
     pub fn on_error<E>(self, handler: E) -> Sha3_256BuilderWithError<E>
     where
         E: Fn(crate::HashError) -> crate::HashError + Send + Sync + 'static,
@@ -56,7 +59,8 @@ impl Sha3_256Builder {
         }
     }
 
-    /// Add on_chunk handler for streaming - README.md pattern
+    /// Add `on_chunk` handler for streaming - README.md pattern
+    #[must_use]
     pub fn on_chunk<C>(self, handler: C) -> Sha3_256BuilderWithChunk<C>
     where
         C: Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync + 'static,
@@ -67,6 +71,7 @@ impl Sha3_256Builder {
     }
 
     /// Compute hash - action takes data as argument per README.md
+    #[must_use]
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
 
@@ -103,7 +108,8 @@ impl<E> Sha3_256BuilderWithError<E>
 where
     E: Fn(crate::HashError) -> crate::HashError + Send + Sync + 'static,
 {
-    /// Add on_result handler after error handler
+    /// Add `on_result` handler after error handler
+    #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> Sha3_256BuilderWithHandler<F, T>
     where
         F: FnOnce(Result<HashResult>) -> T + Send + 'static,
@@ -115,7 +121,8 @@ where
         }
     }
 
-    /// Compute hash with error handler - returns AsyncHashResultWithError
+    /// Compute hash with error handler - returns `AsyncHashResultWithError`
+    #[must_use]
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResultWithError<E> {
         let data = data.into();
         let error_handler = self.error_handler;
@@ -183,11 +190,13 @@ impl Default for Sha3_384Builder {
 
 impl Sha3_384Builder {
     /// Create new SHA3-384 builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
-    /// Add on_result handler - README.md pattern
+    /// Add `on_result` handler - README.md pattern
+    #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> Sha3_384BuilderWithHandler<F, T>
     where
         F: FnOnce(Result<HashResult>) -> T + Send + 'static,
@@ -200,6 +209,7 @@ impl Sha3_384Builder {
     }
 
     /// Compute hash - action takes data as argument per README.md
+    #[must_use]
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
 
@@ -249,11 +259,13 @@ impl Default for Sha3_512Builder {
 
 impl Sha3_512Builder {
     /// Create new SHA3-512 builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
-    /// Add on_result handler - README.md pattern
+    /// Add `on_result` handler - README.md pattern
+    #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> Sha3_512BuilderWithHandler<F, T>
     where
         F: FnOnce(Result<HashResult>) -> T + Send + 'static,
@@ -266,6 +278,7 @@ impl Sha3_512Builder {
     }
 
     /// Compute hash - action takes data as argument per README.md
+    #[must_use]
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
 

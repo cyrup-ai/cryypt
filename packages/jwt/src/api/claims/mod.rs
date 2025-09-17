@@ -4,12 +4,14 @@
 //! with comprehensive support for standard and custom claims.
 
 pub mod builder;
+pub mod standard_claims;
 pub mod extractor;
 pub mod validation;
 pub mod validator;
 
 // Re-export main types for backward compatibility
 pub use builder::ClaimsBuilder;
+pub use standard_claims::Claims;
 pub use extractor::ClaimsExtractor;
 pub use validator::ClaimsValidator;
 

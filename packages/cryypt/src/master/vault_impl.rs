@@ -113,9 +113,17 @@ where
                 if let Some(passphrase) = &self.passphrase {
                     // Attempt to unlock with provided passphrase
                     match vault.unlock(passphrase).await {
-                        Ok(()) => Ok(vault),
-                        Err(_unlock_err) => {
-                            // Unlock failed but return vault (user can unlock later)
+                        Ok(unlock_request) => {
+                            match unlock_request.await {
+                                Ok(()) => Ok(vault),
+                                Err(_unlock_err) => {
+                                    // Unlock failed but return vault (user can unlock later)
+                                    Ok(vault)
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            // Failed to create unlock request, return vault anyway
                             Ok(vault)
                         }
                     }

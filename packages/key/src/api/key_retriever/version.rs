@@ -56,7 +56,7 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverV
     }
 
     /// Retrieve all versions in range and stream results
-    pub async fn retrieve_all(self) -> Receiver<Result<SecureRetrievedKey, KeyError>> {
+    pub fn retrieve_all(self) -> Receiver<Result<SecureRetrievedKey, KeyError>> {
         let (tx, rx) = if self.stream_config.bounded {
             bounded(self.stream_config.capacity)
         } else {
@@ -90,10 +90,10 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverV
     }
 
     /// Retrieve all versions and collect into Vec
-    pub async fn retrieve_collect(self) -> Result<Vec<SecureRetrievedKey>, KeyError> {
+    pub fn retrieve_collect(self) -> Result<Vec<SecureRetrievedKey>, KeyError> {
         let count = (self.end_version - self.start_version + 1) as usize;
         let mut keys = Vec::with_capacity(count);
-        let rx = self.retrieve_all().await;
+        let rx = self.retrieve_all();
 
         for _ in 0..count {
             match rx.recv() {

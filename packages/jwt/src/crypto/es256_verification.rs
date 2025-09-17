@@ -1,6 +1,6 @@
 //! ES256 verification with ECDSA P-256 - production implementation
 
-use crate::error::*;
+use crate::error::{JwtResult, JwtError};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use p256::{
     ecdsa::{Signature, VerifyingKey, signature::Verifier},
@@ -9,7 +9,7 @@ use p256::{
 
 /// ES256 verification with ECDSA P-256 - Production async implementation
 #[allow(dead_code)]
-pub async fn es256_verify(public_key: &[u8], token: &str) -> JwtResult<serde_json::Value> {
+pub fn es256_verify(public_key: &[u8], token: &str) -> JwtResult<serde_json::Value> {
     // Direct async implementation - ECDSA verification is fast enough for direct execution
     // Split token into parts with constant-time length validation
     let parts: Vec<&str> = token.split('.').collect();
@@ -75,16 +75,18 @@ pub async fn es256_verify(public_key: &[u8], token: &str) -> JwtResult<serde_jso
     // Check expiration (exp claim)
     if let Some(exp) = claims.get("exp")
         && let Some(exp_time) = exp.as_i64()
-            && now >= exp_time {
-                return Err(JwtError::token_expired());
-            }
+        && now >= exp_time
+    {
+        return Err(JwtError::token_expired());
+    }
 
     // Check not before (nbf claim)
     if let Some(nbf) = claims.get("nbf")
         && let Some(nbf_time) = nbf.as_i64()
-            && now < nbf_time {
-                return Err(JwtError::token_not_yet_valid());
-            }
+        && now < nbf_time
+    {
+        return Err(JwtError::token_not_yet_valid());
+    }
 
     Ok(claims)
 }

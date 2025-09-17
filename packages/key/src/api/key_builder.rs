@@ -99,7 +99,7 @@ impl KeyBuilderWithStoreAndNamespace {
 }
 
 impl KeyBuilderReady {
-    /// Add on_result handler - transforms pattern matching internally
+    /// Add `on_result` handler - transforms pattern matching internally
     pub fn on_result<F>(self, handler: F) -> KeyBuilderReadyWithHandler<F>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -114,7 +114,7 @@ impl KeyBuilderReady {
         }
     }
 
-    /// Add on_chunk handler - transforms pattern matching internally
+    /// Add `on_chunk` handler - transforms pattern matching internally
     pub fn on_chunk<F>(self, handler: F) -> KeyBuilderReadyWithChunkHandler<F>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -130,7 +130,7 @@ impl KeyBuilderReady {
     }
 
     /// Generate a new key - action method per README.md
-    pub async fn generate(self) -> KeyResult {
+    pub fn generate(self) -> KeyResult {
         let result = self
             .store
             .generate_key(self.size_bits, &self.namespace, self.version);
@@ -143,7 +143,7 @@ impl KeyBuilderReady {
     }
 
     /// Retrieve an existing key - action method per README.md
-    pub async fn retrieve(self) -> KeyResult {
+    pub fn retrieve(self) -> KeyResult {
         let result = self.store.retrieve_key(&self.namespace, self.version);
 
         if let Some(handler) = self.result_handler {
@@ -263,14 +263,14 @@ impl KeyProducer for KeyBuilderReady {
     }
 }
 
-/// Utility function to generate a key using any KeyProducer
+/// Utility function to generate a key using any `KeyProducer`
 pub async fn generate_key_from_producer<T: KeyProducer>(
     producer: T,
 ) -> Result<ActualKey, KeyError> {
     producer.produce_key().await
 }
 
-/// Generate a random key using the default KeyBuilder
+/// Generate a random key using the default `KeyBuilder`
 #[allow(dead_code)]
 pub async fn generate_default_key() -> Result<ActualKey, KeyError> {
     let builder = KeyBuilder::new(256); // 256-bit key

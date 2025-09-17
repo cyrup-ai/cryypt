@@ -8,6 +8,7 @@ use tokio::sync::oneshot;
 
 impl Bzip2Builder<NoLevel> {
     /// Compress data using default compression level
+    #[must_use]
     pub fn compress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
         let original_size = data.len();
@@ -38,6 +39,7 @@ impl Bzip2Builder<NoLevel> {
     }
 
     /// Decompress data
+    #[must_use]
     pub fn decompress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
         let error_handler = self.error_handler;
@@ -68,6 +70,7 @@ impl Bzip2Builder<NoLevel> {
 
 impl Bzip2Builder<HasLevel> {
     /// Compress data using specified compression level
+    #[must_use]
     pub fn compress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
         let original_size = data.len();
@@ -100,6 +103,7 @@ impl Bzip2Builder<HasLevel> {
     }
 
     /// Decompress data
+    #[must_use]
     pub fn decompress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
         let error_handler = self.error_handler;

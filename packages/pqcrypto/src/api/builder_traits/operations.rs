@@ -15,17 +15,25 @@ pub trait CiphertextBuilder {
     fn with_ciphertext<T: Into<Vec<u8>>>(self, ciphertext: T) -> Self::Output;
 
     /// Set the ciphertext from hex
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the hex string is invalid.
     fn with_ciphertext_hex(self, hex: &str) -> Result<Self::Output>
     where
         Self: Sized,
     {
         let bytes = hex::decode(hex).map_err(|e| {
-            PqCryptoError::InvalidEncryptedData(format!("Invalid hex ciphertext: {}", e))
+            PqCryptoError::InvalidEncryptedData(format!("Invalid hex ciphertext: {e}"))
         })?;
         Ok(self.with_ciphertext(bytes))
     }
 
     /// Set the ciphertext from base64
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the base64 string is invalid.
     fn with_ciphertext_base64(self, base64: &str) -> Result<Self::Output>
     where
         Self: Sized,
@@ -34,7 +42,7 @@ pub trait CiphertextBuilder {
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
             .map_err(|e| {
-                PqCryptoError::InvalidEncryptedData(format!("Invalid base64 ciphertext: {}", e))
+                PqCryptoError::InvalidEncryptedData(format!("Invalid base64 ciphertext: {e}"))
             })?;
         Ok(self.with_ciphertext(bytes))
     }
@@ -50,7 +58,7 @@ pub trait CiphertextBuilder {
         async move {
             let ciphertext = tokio::fs::read(path)
                 .await
-                .map_err(|e| PqCryptoError::Io(format!("Failed to read ciphertext file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read ciphertext file: {e}")))?;
             Ok(self.with_ciphertext(ciphertext))
         }
     }
@@ -78,7 +86,7 @@ pub trait MessageBuilder {
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| PqCryptoError::InvalidParameters(format!("Invalid hex message: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidParameters(format!("Invalid hex message: {e}")))?;
         Ok(self.with_message(bytes))
     }
 
@@ -91,7 +99,7 @@ pub trait MessageBuilder {
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
             .map_err(|e| {
-                PqCryptoError::InvalidParameters(format!("Invalid base64 message: {}", e))
+                PqCryptoError::InvalidParameters(format!("Invalid base64 message: {e}"))
             })?;
         Ok(self.with_message(bytes))
     }
@@ -107,7 +115,7 @@ pub trait MessageBuilder {
         async move {
             let message = tokio::fs::read(path)
                 .await
-                .map_err(|e| PqCryptoError::Io(format!("Failed to read message file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read message file: {e}")))?;
             Ok(self.with_message(message))
         }
     }
@@ -127,7 +135,7 @@ pub trait SignatureDataBuilder {
         Self: Sized,
     {
         let bytes = hex::decode(hex).map_err(|e| {
-            PqCryptoError::InvalidParameters(format!("Invalid hex signature: {}", e))
+            PqCryptoError::InvalidParameters(format!("Invalid hex signature: {e}"))
         })?;
         Ok(self.with_signature(bytes))
     }
@@ -141,7 +149,7 @@ pub trait SignatureDataBuilder {
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
             .map_err(|e| {
-                PqCryptoError::InvalidParameters(format!("Invalid base64 signature: {}", e))
+                PqCryptoError::InvalidParameters(format!("Invalid base64 signature: {e}"))
             })?;
         Ok(self.with_signature(bytes))
     }
@@ -157,7 +165,7 @@ pub trait SignatureDataBuilder {
         async move {
             let signature = tokio::fs::read(path)
                 .await
-                .map_err(|e| PqCryptoError::Io(format!("Failed to read signature file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read signature file: {e}")))?;
             Ok(self.with_signature(signature))
         }
     }

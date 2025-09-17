@@ -1,7 +1,7 @@
 //! JWT token generator with validation support.
 
 use crate::{
-    claims::Claims,
+    api::claims::Claims,
     error::JwtError,
     futures::{TokenGenerationFuture, TokenVerificationFuture},
     traits::{Header, Signer},

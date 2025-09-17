@@ -4,12 +4,12 @@
 //! and batch operations.
 
 // Removed unused imports after fixing redundant field names
+use crate::api::algorithms::rsa::sign_rs256;
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use futures::Stream;
+use serde::Serialize;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use serde::Serialize;
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use crate::api::algorithms::rsa::sign_rs256;
 
 /// RS256 JWT builder - initial state
 #[derive(Debug, Clone)]
@@ -53,11 +53,13 @@ impl Default for RsJwtBuilder {
 
 impl RsJwtBuilder {
     /// Create new RS256 JWT builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Set RSA private key for RS256 signing
+    #[must_use]
     pub fn with_private_key(self, private_key: &[u8]) -> RsJwtWithPrivateKey {
         RsJwtWithPrivateKey {
             private_key: private_key.to_vec(),
@@ -67,6 +69,7 @@ impl RsJwtBuilder {
 
 impl RsJwtWithPrivateKey {
     /// Set claims for JWT
+    #[must_use]
     pub fn with_claims<T: Serialize + Clone>(self, claims: T) -> RsJwtWithPrivateKeyAndClaims<T> {
         RsJwtWithPrivateKeyAndClaims {
             private_key: self.private_key,
@@ -77,6 +80,7 @@ impl RsJwtWithPrivateKey {
 
 impl<T: Serialize + Clone> RsJwtWithPrivateKeyAndClaims<T> {
     /// Set result handler for single JWT signing
+    #[must_use]
     pub fn on_result<F, R>(self, handler: F) -> RsJwtWithPrivateKeyAndClaimsAndHandler<T, F>
     where
         F: FnOnce(crate::error::JwtResult<Vec<u8>>) -> R,
@@ -90,6 +94,7 @@ impl<T: Serialize + Clone> RsJwtWithPrivateKeyAndClaims<T> {
     }
 
     /// Set chunk handler for batch JWT signing
+    #[must_use]
     pub fn on_chunk<F>(self, handler: F) -> RsJwtWithPrivateKeyAndClaimsAndChunkHandler<T, F>
     where
         F: Fn(crate::error::JwtResult<Vec<u8>>) -> Vec<u8>,
@@ -109,6 +114,7 @@ where
     R: cryypt_common::NotResult + Send + 'static,
 {
     /// Sign single JWT with RS256
+    #[must_use]
     pub async fn sign(self) -> R {
         let result = async {
             // Yield control to allow other tasks to run
@@ -117,7 +123,8 @@ where
             // Sign JWT with RS256 using production RSA-SHA256 implementation
             let jwt_token = sign_rs256_jwt(&self.claims, &self.private_key)?;
             Ok(jwt_token.into_bytes())
-        }.await;
+        }
+        .await;
 
         // Apply result handler
         (self.handler)(result)
@@ -144,11 +151,12 @@ where
                 let result = async {
                     let jwt_token = sign_rs256_jwt(&claims, &private_key)?;
                     Ok(jwt_token.into_bytes())
-                }.await;
+                }
+                .await;
 
                 // Apply handler and send result
                 let processed_jwt = handler(result);
-                
+
                 if tx.send(processed_jwt).await.is_err() {
                     break; // Receiver dropped
                 }
@@ -171,32 +179,29 @@ fn sign_rs256_jwt<T: Serialize>(claims: &T, private_key: &[u8]) -> crate::error:
         "alg": "RS256",
         "typ": "JWT"
     });
-    
+
     // Serialize claims
     let claims_json = serde_json::to_value(claims)
         .map_err(|e| crate::error::JwtError::InvalidToken(e.to_string()))?;
-    
+
     // Base64 encode header and claims using real base64 library
     let header_bytes = serde_json::to_vec(&header)
         .map_err(|e| crate::error::JwtError::InvalidToken(e.to_string()))?;
     let claims_bytes = serde_json::to_vec(&claims_json)
         .map_err(|e| crate::error::JwtError::InvalidToken(e.to_string()))?;
-    
+
     let header_b64 = URL_SAFE_NO_PAD.encode(&header_bytes);
     let claims_b64 = URL_SAFE_NO_PAD.encode(&claims_bytes);
-    
+
     // Create signature payload
-    let signature_payload = format!("{}.{}", header_b64, claims_b64);
-    
+    let signature_payload = format!("{header_b64}.{claims_b64}");
+
     // Create RSA signature using real cryptographic implementation
     let signature = sign_rs256(&signature_payload, private_key)?;
     let signature_b64 = URL_SAFE_NO_PAD.encode(&signature);
-    
+
     // Combine into JWT
-    let jwt = format!("{}.{}.{}", header_b64, claims_b64, signature_b64);
-    
+    let jwt = format!("{header_b64}.{claims_b64}.{signature_b64}");
+
     Ok(jwt)
 }
-
-
-

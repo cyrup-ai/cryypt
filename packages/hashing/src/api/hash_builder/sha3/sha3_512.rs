@@ -79,7 +79,7 @@ impl<P> HashBuilder<Sha3_512Hash, NoData, HasSalt, P> {
             use crate::error::{HashError, Result};
             let mut stream = Box::pin(stream);
             let mut mac = Hmac::<Sha3_512>::new_from_slice(&key)
-                .map_err(|e| HashError::MacInitialization(format!("Failed to initialize SHA3-512 HMAC: {}", e)))?;
+                .map_err(|e| HashError::MacInitialization(format!("Failed to initialize SHA3-512 HMAC: {e}")))?;
             
             while let Some(chunk) = stream.next().await {
                 mac.update(&chunk);
@@ -150,7 +150,7 @@ pub async fn sha3_512_hmac(data: Vec<u8>, key: Vec<u8>) -> Result<Vec<u8>> {
     type HmacSha3_512 = Hmac<Sha3_512>;
     
     let mut mac = HmacSha3_512::new_from_slice(&key)
-        .map_err(|e| crate::HashError::internal(format!("HMAC key error: {}", e)))?;
+        .map_err(|e| crate::HashError::internal(format!("HMAC key error: {e}")))?;
     mac.update(&data);
     Ok(mac.finalize().into_bytes().to_vec())
 }

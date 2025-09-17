@@ -13,10 +13,11 @@
 //! their respective functionality. No standalone public APIs are exported.
 
 // Import all operation modules
-pub mod basic;
-pub mod ttl;
-pub mod reencryption;
-pub mod cleanup;
-pub mod backup;
-pub mod search;
 pub mod advanced;
+pub mod backup;
+pub mod basic;
+pub mod cleanup;
+pub mod namespace;
+pub mod reencryption;
+pub mod search;
+pub mod ttl;

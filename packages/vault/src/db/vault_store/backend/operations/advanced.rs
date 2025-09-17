@@ -21,13 +21,13 @@ impl LocalVaultProvider {
         // rely on unique index constraints during the insert.
 
         // Check existence first (non-atomic)
-        let exists = self.get_impl(&key).await?;
+        let exists = self.get_impl(&key, None).await?;
         if exists.is_some() {
             return Ok(false); // Key already exists
         }
 
         // Attempt to put the value
-        match self.put_impl(key, value).await {
+        match self.put_impl(key, value, None).await {
             Ok(_) => Ok(true), // Inserted successfully
             Err(VaultError::Provider(e)) if e.contains("unique index") => {
                 // If the error is due to the unique index (race condition hit), treat as non-insertion
@@ -46,7 +46,7 @@ impl LocalVaultProvider {
         // Consider using SurrealDB transactions if atomicity is required.
         for (key, value) in entries {
             // Need to clone key and value for each iteration if they are consumed by put_impl
-            self.put_impl(key.clone(), value.clone()).await?;
+            self.put_impl(key.clone(), value.clone(), None).await?;
         }
         Ok(())
     }

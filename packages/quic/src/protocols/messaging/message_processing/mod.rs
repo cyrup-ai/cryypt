@@ -9,19 +9,16 @@
 //! - `encryption_pipeline`: Streaming encryption and decryption
 //! - `combined_pipelines`: High-level combined processing workflows
 
-pub mod crypto_utils;
-pub mod compression_pipeline;
-pub mod encryption_pipeline;
 pub mod combined_pipelines;
+pub mod compression_pipeline;
+pub mod crypto_utils;
+pub mod encryption_pipeline;
 
 // Re-export key functions for backward compatibility
-pub use crypto_utils::{
-    calculate_checksum, 
-    calculate_checksum_64, 
-    calculate_authenticated_checksum, 
-    verify_authenticated_checksum, 
-    derive_connection_key
-};
-pub use compression_pipeline::{compress_payload_stream, decompress_payload_stream};
-pub use encryption_pipeline::{encrypt_payload_stream, decrypt_payload_stream};
 pub use combined_pipelines::{process_payload_forward, process_payload_reverse};
+pub use compression_pipeline::{compress_payload_stream, decompress_payload_stream};
+pub use crypto_utils::{
+    calculate_authenticated_checksum, calculate_checksum, calculate_checksum_64,
+    derive_connection_key, verify_authenticated_checksum,
+};
+pub use encryption_pipeline::{decrypt_payload_stream, encrypt_payload_stream};

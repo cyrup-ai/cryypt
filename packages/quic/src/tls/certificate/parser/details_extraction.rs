@@ -3,8 +3,8 @@
 //! This module provides functionality for extracting detailed certificate information
 //! including Subject Alternative Names, BasicConstraints, KeyUsage, and validity periods.
 
-use std::time::SystemTime;
 use der::{Decode, Reader, SliceReader, Tag, TagNumber};
+use std::time::SystemTime;
 use x509_cert::Certificate as X509CertCert;
 
 use crate::tls::errors::TlsError;
@@ -115,7 +115,9 @@ pub fn extract_certificate_details(
                                                                         match ip_bytes.try_into() {
                                                                             Ok(octets) => octets,
                                                                             Err(_) => {
-                                                                                tracing::warn!("Invalid IPv4 address bytes");
+                                                                                tracing::warn!(
+                                                                                    "Invalid IPv4 address bytes"
+                                                                                );
                                                                                 continue;
                                                                             }
                                                                         };
@@ -131,7 +133,9 @@ pub fn extract_certificate_details(
                                                                         match ip_bytes.try_into() {
                                                                             Ok(octets) => octets,
                                                                             Err(_) => {
-                                                                                tracing::warn!("Invalid IPv6 address bytes");
+                                                                                tracing::warn!(
+                                                                                    "Invalid IPv6 address bytes"
+                                                                                );
                                                                                 continue;
                                                                             }
                                                                         };

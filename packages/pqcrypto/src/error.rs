@@ -86,59 +86,59 @@ pub enum PqCryptoError {
     /// Generic internal error
     #[error("Internal error: {0}")]
     InternalError(String),
-    
+
     /// Invalid input provided
     #[error("Invalid input: {0}")]
     InvalidInput(String),
 }
 
 impl PqCryptoError {
-    /// Create an InvalidKey error with a formatted message
+    /// Create an `InvalidKey` error with a formatted message
     pub fn invalid_key(msg: impl fmt::Display) -> Self {
         Self::InvalidKey(msg.to_string())
     }
 
-    /// Create an EncapsulationFailed error with a formatted message
+    /// Create an `EncapsulationFailed` error with a formatted message
     pub fn encapsulation_failed(msg: impl fmt::Display) -> Self {
         Self::EncapsulationFailed(msg.to_string())
     }
 
-    /// Create a DecapsulationFailed error with a formatted message
+    /// Create a `DecapsulationFailed` error with a formatted message
     pub fn decapsulation_failed(msg: impl fmt::Display) -> Self {
         Self::DecapsulationFailed(msg.to_string())
     }
 
-    /// Create an InvalidCiphertext error with a formatted message
+    /// Create an `InvalidCiphertext` error with a formatted message
     pub fn invalid_ciphertext(msg: impl fmt::Display) -> Self {
         Self::InvalidCiphertext(msg.to_string())
     }
 
-    /// Create a SignatureFailed error with a formatted message
+    /// Create a `SignatureFailed` error with a formatted message
     pub fn signature_failed(msg: impl fmt::Display) -> Self {
         Self::SignatureFailed(msg.to_string())
     }
 
-    /// Create a VerificationFailed error with a formatted message
+    /// Create a `VerificationFailed` error with a formatted message
     pub fn verification_failed(msg: impl fmt::Display) -> Self {
         Self::VerificationFailed(msg.to_string())
     }
 
-    /// Create an AuthenticationFailed error with a formatted message
+    /// Create an `AuthenticationFailed` error with a formatted message
     pub fn auth_failed(msg: impl fmt::Display) -> Self {
         Self::AuthenticationFailed(msg.to_string())
     }
 
-    /// Create an InvalidEncryptedData error with a formatted message
+    /// Create an `InvalidEncryptedData` error with a formatted message
     pub fn invalid_encrypted_data(msg: impl fmt::Display) -> Self {
         Self::InvalidEncryptedData(msg.to_string())
     }
 
-    /// Create a SerializationError with a formatted message
+    /// Create a `SerializationError` with a formatted message
     pub fn serialization_error(msg: impl fmt::Display) -> Self {
         Self::SerializationError(msg.to_string())
     }
 
-    /// Create an InternalError with a formatted message
+    /// Create an `InternalError` with a formatted message
     pub fn internal(msg: impl fmt::Display) -> Self {
         Self::InternalError(msg.to_string())
     }
@@ -154,12 +154,12 @@ impl From<serde_json::Error> for PqCryptoError {
 
 impl From<base64::DecodeError> for PqCryptoError {
     fn from(err: base64::DecodeError) -> Self {
-        Self::InvalidEncryptedData(format!("Base64 decode error: {}", err))
+        Self::InvalidEncryptedData(format!("Base64 decode error: {err}"))
     }
 }
 
 impl From<hex::FromHexError> for PqCryptoError {
     fn from(err: hex::FromHexError) -> Self {
-        Self::InvalidEncryptedData(format!("Hex decode error: {}", err))
+        Self::InvalidEncryptedData(format!("Hex decode error: {err}"))
     }
 }

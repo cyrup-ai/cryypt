@@ -50,7 +50,7 @@ impl TlsConfig {
             validation_timeout: Duration::from_secs(5),
         }
     }
-    
+
     /// Create AI-optimized TLS configuration
     pub fn ai_optimized() -> Self {
         Self {

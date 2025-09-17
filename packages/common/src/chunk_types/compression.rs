@@ -17,6 +17,7 @@ pub struct CompressionChunk {
 
 impl CompressionChunk {
     /// Create a new successful compression chunk
+    #[must_use]
     pub fn new(data: Vec<u8>, operation: String, algorithm: String) -> Self {
         CompressionChunk {
             data,
@@ -29,12 +30,14 @@ impl CompressionChunk {
     }
 
     /// Add compression ratio
+    #[must_use]
     pub fn with_ratio(mut self, ratio: f64) -> Self {
         self.ratio = Some(ratio);
         self
     }
 
     /// Add metadata to the chunk
+    #[must_use]
     pub fn with_metadata(mut self, metadata: String) -> Self {
         self.metadata = Some(metadata);
         self

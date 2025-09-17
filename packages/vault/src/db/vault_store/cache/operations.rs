@@ -8,6 +8,7 @@
 //! - Size management and basic queries
 
 use super::*;
+use futures::StreamExt;
 
 impl<K> LruCache<K>
 where
@@ -92,26 +93,44 @@ where
         let key_guard = self.encryption_key.lock().await;
         let encryption_key = key_guard.as_ref().ok_or_else(|| VaultError::VaultLocked)?;
 
-        // Use AES encryption with proper fluent builder API - matches README.md pattern
-        let encrypted_data = Cryypt::cipher()
+        // Use AES encryption with proper on_chunk error handling via BadChunk pattern
+        let mut encrypted_stream = Cryypt::cipher()
             .aes()
             .with_key(encryption_key.clone())
-            .on_result(|result| match result {
+            .on_chunk(|chunk| match chunk {
                 Ok(data) => data,
-                Err(_) => Vec::new(),
+                Err(e) => {
+                    tracing::error!("Cache encryption chunk failed: {}", e);
+                    cryypt_common::BadChunk::from_error(e).into()
+                }
             })
-            .encrypt(data.to_vec())
-            .await;
+            .encrypt(data.to_vec());
 
+        // Collect stream into final encrypted data
+        let mut encrypted_data = Vec::new();
+        while let Some(chunk) = encrypted_stream.next().await {
+            encrypted_data.extend_from_slice(&chunk);
+        }
+
+        // Check for BadChunk error markers in the result
+        if encrypted_data.starts_with(b"ERROR: ") {
+            let error_msg = String::from_utf8_lossy(&encrypted_data);
+            return Err(VaultError::Encryption(error_msg.to_string()));
+        }
+
+        // Additional validation for edge cases
         if encrypted_data.is_empty() {
-            return Err(VaultError::Encryption("Encryption failed".to_string()));
+            return Err(VaultError::Encryption("AES encryption produced no output - unexpected behavior".to_string()));
         }
 
         Ok(BASE64_STANDARD.encode(encrypted_data))
     }
 
     /// Decrypt data using AES with session key - zero allocation
-    pub(crate) async fn decrypt_data(&self, encrypted_b64: &str) -> Result<Zeroizing<Vec<u8>>, VaultError> {
+    pub(crate) async fn decrypt_data(
+        &self,
+        encrypted_b64: &str,
+    ) -> Result<Zeroizing<Vec<u8>>, VaultError> {
         let key_guard = self.encryption_key.lock().await;
         let encryption_key = key_guard.as_ref().ok_or_else(|| VaultError::VaultLocked)?;
 
@@ -120,19 +139,29 @@ where
             .decode(encrypted_b64)
             .map_err(|_| VaultError::Decryption("Invalid base64".to_string()))?;
 
-        // Use AES decryption with proper fluent builder API - matches README.md pattern
-        let decrypted_data = Cryypt::cipher()
+        // Use AES decryption with proper on_chunk error handling via BadChunk pattern
+        let mut decrypted_stream = Cryypt::cipher()
             .aes()
             .with_key(encryption_key.clone())
-            .on_result(|result| match result {
+            .on_chunk(|chunk| match chunk {
                 Ok(data) => data,
-                Err(_) => Vec::new(),
+                Err(e) => {
+                    tracing::error!("Cache decryption chunk failed: {}", e);
+                    cryypt_common::BadChunk::from_error(e).into()
+                }
             })
-            .decrypt(encrypted_bytes)
-            .await;
+            .decrypt(encrypted_bytes);
 
-        if decrypted_data.is_empty() {
-            return Err(VaultError::Decryption("Decryption failed".to_string()));
+        // Collect stream into final decrypted data
+        let mut decrypted_data = Vec::new();
+        while let Some(chunk) = decrypted_stream.next().await {
+            decrypted_data.extend_from_slice(&chunk);
+        }
+
+        // Check for BadChunk error markers in the result
+        if decrypted_data.starts_with(b"ERROR: ") {
+            let error_msg = String::from_utf8_lossy(&decrypted_data);
+            return Err(VaultError::Decryption(error_msg.to_string()));
         }
 
         Ok(Zeroizing::new(decrypted_data))

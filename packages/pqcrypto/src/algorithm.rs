@@ -24,6 +24,7 @@ pub enum KemAlgorithm {
 
 impl KemAlgorithm {
     /// Get the security level of the algorithm
+    #[must_use]
     pub fn security_level(&self) -> u8 {
         match self {
             Self::MlKem512 => 1,
@@ -33,6 +34,7 @@ impl KemAlgorithm {
     }
 
     /// Get the public key size in bytes
+    #[must_use]
     pub fn public_key_size(&self) -> usize {
         match self {
             Self::MlKem512 => 800,
@@ -42,6 +44,7 @@ impl KemAlgorithm {
     }
 
     /// Get the secret key size in bytes
+    #[must_use]
     pub fn secret_key_size(&self) -> usize {
         match self {
             Self::MlKem512 => 1632,
@@ -51,6 +54,7 @@ impl KemAlgorithm {
     }
 
     /// Get the ciphertext size in bytes
+    #[must_use]
     pub fn ciphertext_size(&self) -> usize {
         match self {
             Self::MlKem512 => 768,
@@ -60,6 +64,7 @@ impl KemAlgorithm {
     }
 
     /// Get the shared secret size in bytes (always 32 for ML-KEM)
+    #[must_use]
     pub fn shared_secret_size(&self) -> usize {
         32
     }
@@ -135,20 +140,18 @@ pub enum SignatureAlgorithm {
 
 impl SignatureAlgorithm {
     /// Get the security level of the algorithm
+    #[must_use]
     pub fn security_level(&self) -> u8 {
         match self {
             Self::MlDsa44 => 2,
-            Self::MlDsa65 => 3,
-            Self::MlDsa87 => 5,
-            Self::Falcon512 => 1,
-            Self::Falcon1024 => 5,
-            Self::SphincsShaSha256_128fSimple | Self::SphincsShaSha256_128sSimple => 1,
-            Self::SphincsShaSha256_192fSimple | Self::SphincsShaSha256_192sSimple => 3,
-            Self::SphincsShaSha256_256fSimple | Self::SphincsShaSha256_256sSimple => 5,
+            Self::Falcon512 | Self::SphincsShaSha256_128fSimple | Self::SphincsShaSha256_128sSimple => 1,
+            Self::MlDsa65 | Self::SphincsShaSha256_192fSimple | Self::SphincsShaSha256_192sSimple => 3,
+            Self::MlDsa87 | Self::Falcon1024 | Self::SphincsShaSha256_256fSimple | Self::SphincsShaSha256_256sSimple => 5,
         }
     }
 
     /// Get the public key size in bytes
+    #[must_use]
     pub fn public_key_size(&self) -> usize {
         match self {
             Self::MlDsa44 => 1312,
@@ -156,16 +159,14 @@ impl SignatureAlgorithm {
             Self::MlDsa87 => 2592,
             Self::Falcon512 => 897,
             Self::Falcon1024 => 1793,
-            Self::SphincsShaSha256_128fSimple => 32,
-            Self::SphincsShaSha256_128sSimple => 32,
-            Self::SphincsShaSha256_192fSimple => 48,
-            Self::SphincsShaSha256_192sSimple => 48,
-            Self::SphincsShaSha256_256fSimple => 64,
-            Self::SphincsShaSha256_256sSimple => 64,
+            Self::SphincsShaSha256_128fSimple | Self::SphincsShaSha256_128sSimple => 32,
+            Self::SphincsShaSha256_192fSimple | Self::SphincsShaSha256_192sSimple => 48,
+            Self::SphincsShaSha256_256fSimple | Self::SphincsShaSha256_256sSimple => 64,
         }
     }
 
     /// Get the secret key size in bytes
+    #[must_use]
     pub fn secret_key_size(&self) -> usize {
         match self {
             Self::MlDsa44 => 2560,
@@ -173,16 +174,14 @@ impl SignatureAlgorithm {
             Self::MlDsa87 => 4896,
             Self::Falcon512 => 1281,
             Self::Falcon1024 => 2305,
-            Self::SphincsShaSha256_128fSimple => 64,
-            Self::SphincsShaSha256_128sSimple => 64,
-            Self::SphincsShaSha256_192fSimple => 96,
-            Self::SphincsShaSha256_192sSimple => 96,
-            Self::SphincsShaSha256_256fSimple => 128,
-            Self::SphincsShaSha256_256sSimple => 128,
+            Self::SphincsShaSha256_128fSimple | Self::SphincsShaSha256_128sSimple => 64,
+            Self::SphincsShaSha256_192fSimple | Self::SphincsShaSha256_192sSimple => 96,
+            Self::SphincsShaSha256_256fSimple | Self::SphincsShaSha256_256sSimple => 128,
         }
     }
 
     /// Get the maximum signature size in bytes
+    #[must_use]
     pub fn signature_size(&self) -> usize {
         match self {
             Self::MlDsa44 => 2420,
@@ -200,6 +199,7 @@ impl SignatureAlgorithm {
     }
 
     /// Check if this is a "fast" variant (for SPHINCS+)
+    #[must_use]
     pub fn is_fast_variant(&self) -> bool {
         matches!(
             self,
@@ -210,6 +210,7 @@ impl SignatureAlgorithm {
     }
 
     /// Check if this is a "small" variant (for SPHINCS+)
+    #[must_use]
     pub fn is_small_variant(&self) -> bool {
         matches!(
             self,

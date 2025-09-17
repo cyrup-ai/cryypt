@@ -8,6 +8,9 @@ repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 cryypt_common = { path = "../common" }
 cryypt_compression = { path = "../compression" }
@@ -89,6 +92,10 @@ pem = "3.0"
 
 # System Integration
 hostname = "0.4"
+simd-json = "0.15.1"
+tokio-util = { version = "0.7.16", features = ["time"] }
+fnv = "1.0.7"
+async-trait = "0.1"
 
 # Platform-specific dependencies
 [target.'cfg(target_os = "macos")'.dependencies]

@@ -16,6 +16,7 @@ pub struct KeyChunk {
 
 impl KeyChunk {
     /// Create a new successful key chunk
+    #[must_use]
     pub fn new(key_data: Vec<u8>, operation: String, key_type: String) -> Self {
         KeyChunk {
             key_data,
@@ -27,6 +28,7 @@ impl KeyChunk {
     }
 
     /// Add metadata to the chunk
+    #[must_use]
     pub fn with_metadata(mut self, metadata: String) -> Self {
         self.metadata = Some(metadata);
         self

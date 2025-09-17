@@ -40,7 +40,10 @@ pub struct QuicSend {
 }
 
 impl QuicSend {
-    pub(crate) fn new_with_handle(handle: crate::quic_conn::QuicConnectionHandle, stream_id: u64) -> Self {
+    pub(crate) fn new_with_handle(
+        handle: crate::quic_conn::QuicConnectionHandle,
+        stream_id: u64,
+    ) -> Self {
         Self {
             handle: Some(handle),
             stream_id: Some(stream_id),
@@ -49,7 +52,10 @@ impl QuicSend {
 
     /// Create empty send stream (for error cases)
     pub fn new() -> Self {
-        Self { handle: None, stream_id: None }
+        Self {
+            handle: None,
+            stream_id: None,
+        }
     }
 
     /// Write data with error handler - README.md pattern
@@ -122,27 +128,35 @@ pub struct QuicRecv {
 impl QuicRecv {
     /// Create empty recv stream (for error cases)
     pub fn new() -> Self {
-        Self { receiver: None, stream_id: 0 }
+        Self {
+            receiver: None,
+            stream_id: 0,
+        }
     }
 
     /// Create with real connection integration
-    pub(crate) fn new_with_handle(handle: crate::quic_conn::QuicConnectionHandle, stream_id: u64) -> Self {
+    pub(crate) fn new_with_handle(
+        handle: crate::quic_conn::QuicConnectionHandle,
+        stream_id: u64,
+    ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
-        
+
         let target_stream_id = stream_id;
         // Spawn task to listen for QUIC connection events and forward stream data
         tokio::spawn(async move {
             let mut event_rx = handle.subscribe_to_events();
-            
+
             // Forward relevant stream data to the receiver
             while let Ok(event) = event_rx.recv().await {
                 match event {
-                    crate::quic_conn::QuicConnectionEvent::InboundStreamData(event_stream_id, data) => {
+                    crate::quic_conn::QuicConnectionEvent::InboundStreamData(
+                        event_stream_id,
+                        data,
+                    ) => {
                         // Only forward data for our specific stream ID
-                        if event_stream_id == target_stream_id
-                            && tx.send(data).is_err() {
-                                break; // Receiver dropped
-                            }
+                        if event_stream_id == target_stream_id && tx.send(data).is_err() {
+                            break; // Receiver dropped
+                        }
                     }
                     crate::quic_conn::QuicConnectionEvent::StreamFinished(event_stream_id) => {
                         if event_stream_id == target_stream_id {
@@ -157,13 +171,19 @@ impl QuicRecv {
                 }
             }
         });
-        
-        Self { receiver: Some(rx), stream_id: target_stream_id }
+
+        Self {
+            receiver: Some(rx),
+            stream_id: target_stream_id,
+        }
     }
 
     /// Create empty recv stream (for error cases)
     pub fn empty() -> Self {
-        Self { receiver: None, stream_id: 0 }
+        Self {
+            receiver: None,
+            stream_id: 0,
+        }
     }
 
     /// Get the stream ID for this receive stream
@@ -254,8 +274,8 @@ pub(crate) async fn open_bi_stream_internal(
 
         // Create send/recv pair with real connection integration
         Ok((
-            QuicSend::new_with_handle(handle.clone(), stream_id), 
-            QuicRecv::new_with_handle(handle.clone(), stream_id)
+            QuicSend::new_with_handle(handle.clone(), stream_id),
+            QuicRecv::new_with_handle(handle.clone(), stream_id),
         ))
     } else {
         Err(crate::error::CryptoTransportError::Internal(
@@ -264,10 +284,7 @@ pub(crate) async fn open_bi_stream_internal(
     }
 }
 
-async fn write_all_internal(
-    send: &QuicSend,
-    data: &[u8],
-) -> crate::Result<()> {
+async fn write_all_internal(send: &QuicSend, data: &[u8]) -> crate::Result<()> {
     if let Some(ref handle) = send.handle {
         if let Some(stream_id) = send.stream_id {
             handle.send_stream_data_with_id(stream_id, data, true)

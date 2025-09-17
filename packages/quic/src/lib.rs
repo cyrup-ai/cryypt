@@ -53,10 +53,9 @@ impl Cryypt {
     }
 }
 
-// Export legacy protocol builders for backwards compatibility
+// Export protocol builders
 pub use protocols::{
-    FileTransferProgress, MessageDelivery, QuicFileTransfer, QuicMessaging, QuicRpc, RpcCall,
-    RpcResponse, TransferResult,
+    FileTransferProgress, MessageDelivery, QuicFileTransfer, QuicMessaging, TransferResult,
 };
 
 // Export low-level primitives for advanced users

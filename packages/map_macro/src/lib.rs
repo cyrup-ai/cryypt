@@ -9,7 +9,7 @@
 //!
 //! # Supported Versions of `hashbrown`
 //!
-//! Compatible with `hashbrown` version `0.14.5`. Future versions breaking SemVer
+//! Compatible with `hashbrown` version `0.14.5`. Future versions breaking `SemVer`
 //! (e.g., `0.15` or `1.0`) may not be compatible if `FromIterator` implementations
 //! change.
 //!
@@ -29,7 +29,7 @@ pub mod hashbrown {
     //! # Supported Versions of `hashbrown`
     //!
     //! Compatible with `hashbrown` version `0.14.5`. Future versions breaking
-    //! SemVer (e.g., `0.15` or `1.0`) may not be compatible if `FromIterator`
+    //! `SemVer` (e.g., `0.15` or `1.0`) may not be compatible if `FromIterator`
     //! implementations change.
     //!
     //! **Note**: You must include `hashbrown` as a dependency and avoid renaming it

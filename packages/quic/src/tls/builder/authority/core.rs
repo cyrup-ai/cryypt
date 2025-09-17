@@ -7,7 +7,6 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-
 use serde::{Deserialize, Serialize};
 
 use crate::tls::errors::TlsError;
@@ -17,8 +16,9 @@ pub(super) fn dn_hashmap_to_string(dn_map: &std::collections::HashMap<String, St
     if dn_map.is_empty() {
         return "Unknown".to_string();
     }
-    
-    dn_map.iter()
+
+    dn_map
+        .iter()
         .map(|(key, value)| format!("{}={}", key, value))
         .collect::<Vec<_>>()
         .join(", ")
@@ -26,7 +26,8 @@ pub(super) fn dn_hashmap_to_string(dn_map: &std::collections::HashMap<String, St
 
 /// Convert Vec<u8> serial number to hex string representation
 pub(super) fn serial_to_string(serial: &[u8]) -> String {
-    serial.iter()
+    serial
+        .iter()
         .map(|b| format!("{:02x}", b))
         .collect::<Vec<_>>()
         .join(":")
@@ -81,35 +82,47 @@ impl CertificateAuthority {
     /// Check if this CA can sign certificates for the given domain
     pub fn can_sign_for_domain(&self, domain: &str) -> bool {
         use crate::tls::certificate::parsing::{parse_certificate_from_pem, verify_hostname};
-        
+
         if !self.is_valid() {
             return false;
         }
-        
+
         // Parse CA certificate to check constraints
         let ca_cert = match parse_certificate_from_pem(&self.certificate_pem) {
             Ok(cert) => cert,
             Err(e) => {
-                tracing::error!("Failed to parse CA certificate for domain validation: {}", e);
+                tracing::error!(
+                    "Failed to parse CA certificate for domain validation: {}",
+                    e
+                );
                 return false;
             }
         };
-        
+
         // Check if this is a proper CA
         if !ca_cert.is_ca {
-            tracing::warn!("Certificate is not marked as CA, cannot sign for domain: {}", domain);
+            tracing::warn!(
+                "Certificate is not marked as CA, cannot sign for domain: {}",
+                domain
+            );
             return false;
         }
-        
+
         // Delegate to existing hostname verification logic
         // If the CA certificate itself can validate this domain, then it can sign for it
         match verify_hostname(&ca_cert, domain) {
             Ok(()) => {
-                tracing::debug!("CA can sign for domain '{}' - matches CA constraints", domain);
+                tracing::debug!(
+                    "CA can sign for domain '{}' - matches CA constraints",
+                    domain
+                );
                 true
             }
             Err(_) => {
-                tracing::warn!("CA certificate cannot sign for domain '{}' - no matching constraints", domain);
+                tracing::warn!(
+                    "CA certificate cannot sign for domain '{}' - no matching constraints",
+                    domain
+                );
                 false
             }
         }
@@ -131,10 +144,7 @@ impl AuthorityBuilder {
 
     /// Work with filesystem-based certificate authority
     pub fn path<P: AsRef<Path>>(self, path: P) -> super::filesystem::AuthorityFilesystemBuilder {
-        super::filesystem::AuthorityFilesystemBuilder::new(
-            self.name,
-            path.as_ref().to_path_buf(),
-        )
+        super::filesystem::AuthorityFilesystemBuilder::new(self.name, path.as_ref().to_path_buf())
     }
 
     /// Work with keychain-based certificate authority (macOS/Windows)

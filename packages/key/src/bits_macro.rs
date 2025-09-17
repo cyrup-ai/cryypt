@@ -28,12 +28,18 @@ impl Bits for u32 {
 
 impl Bits for usize {
     fn bits(self) -> BitSize {
-        BitSize { bits: self as u32 }
+        // For bit sizes, we expect reasonable values that fit in u32
+        // If the value is too large, we clamp it to u32::MAX
+        let bits = u32::try_from(self).unwrap_or(u32::MAX);
+        BitSize { bits }
     }
 }
 
 impl Bits for i32 {
     fn bits(self) -> BitSize {
-        BitSize { bits: self as u32 }
+        // For bit sizes, negative values don't make sense, so we clamp to 0
+        // Positive values are converted safely
+        let bits = if self < 0 { 0 } else { u32::try_from(self).unwrap_or(0) };
+        BitSize { bits }
     }
 }

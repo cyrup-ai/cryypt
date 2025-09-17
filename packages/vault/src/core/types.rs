@@ -143,16 +143,16 @@ impl<'de> Deserialize<'de> for VaultValue {
         D: Deserializer<'de>,
     {
         use serde::de::{self, MapAccess, Visitor};
-        
+
         struct VaultValueVisitor;
-        
+
         impl<'de> Visitor<'de> for VaultValueVisitor {
             type Value = VaultValue;
-            
+
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 formatter.write_str("VaultValue with version compatibility")
             }
-            
+
             fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
             where
                 E: de::Error,
@@ -165,7 +165,7 @@ impl<'de> Deserialize<'de> for VaultValue {
                     key: None,
                 })
             }
-            
+
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
             where
                 A: de::SeqAccess<'de>,
@@ -179,7 +179,7 @@ impl<'de> Deserialize<'de> for VaultValue {
                     key: None,
                 })
             }
-            
+
             fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
             where
                 M: MapAccess<'de>,
@@ -189,7 +189,7 @@ impl<'de> Deserialize<'de> for VaultValue {
                 let mut metadata: Option<serde_json::Value> = None;
                 let mut _provider: Option<String> = None;
                 let mut key: Option<String> = None;
-                
+
                 while let Some(field_name) = map.next_key::<String>()? {
                     match field_name.as_str() {
                         "version" => version = Some(map.next_value()?),
@@ -203,16 +203,19 @@ impl<'de> Deserialize<'de> for VaultValue {
                         }
                     }
                 }
-                
+
                 let inner_data = value_data.ok_or_else(|| de::Error::missing_field("value"))?;
-                
+
                 // Version compatibility check
                 if let Some(v) = version {
                     if v > 2 {
-                        return Err(de::Error::custom(format!("Unsupported VaultValue version: {}", v)));
+                        return Err(de::Error::custom(format!(
+                            "Unsupported VaultValue version: {}",
+                            v
+                        )));
                     }
                 }
-                
+
                 Ok(VaultValue {
                     inner: Zeroizing::new(inner_data),
                     metadata,
@@ -221,7 +224,7 @@ impl<'de> Deserialize<'de> for VaultValue {
                 })
             }
         }
-        
+
         deserializer.deserialize_any(VaultValueVisitor)
     }
 }

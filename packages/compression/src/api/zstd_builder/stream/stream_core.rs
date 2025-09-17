@@ -1,4 +1,4 @@
-//! Core ZstdStream struct and compression methods
+//! Core `ZstdStream` struct and compression methods
 
 use super::compressor::create_compressor;
 use crate::{CompressionAlgorithm, CompressionError, Result};
@@ -41,7 +41,7 @@ where
 
             while let Some(chunk) = stream.next().await {
                 // Compress chunk
-                match compressor.compress_chunk(chunk) {
+                match compressor.compress_chunk(&chunk) {
                     Ok(compressed) => {
                         let _ = sender.send(Ok(compressed)).await;
                     }

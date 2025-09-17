@@ -1,7 +1,7 @@
-//! Streaming compression operations for ZstdBuilderWithChunk
+//! Streaming compression operations for `ZstdBuilderWithChunk`
 
+use super::compress::zstd_compress;
 use super::{HasLevel, NoLevel, ZstdBuilderWithChunk};
-use super::compress::{zstd_compress};
 use crate::Result;
 use futures::Stream;
 use tokio::sync::mpsc;
@@ -36,7 +36,7 @@ where
 
                 // Apply handler and send result
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break; // Receiver dropped
                 }
@@ -75,7 +75,7 @@ where
 
                 // Apply handler and send result
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break; // Receiver dropped
                 }

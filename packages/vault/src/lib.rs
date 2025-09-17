@@ -12,12 +12,12 @@ pub use tui::aws_interface;
 pub use tui::pass_interface;
 
 // Re-export the public API
+pub use api::VaultMasterBuilder;
 pub use config::VaultConfig;
 pub use core::{Vault, VaultValue};
 pub use db::LocalVaultProvider;
 pub use error::{VaultError, VaultResult};
 pub use operation::{BoxedVaultOperation, VaultOperation};
-pub use api::VaultMasterBuilder;
 
 // Re-export vault operation builders - commented out until vault_operations module is implemented
 // pub use api::vault_operations::{

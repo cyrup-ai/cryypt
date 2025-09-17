@@ -35,7 +35,7 @@ impl KeyStretcher {
         Self::new(KdfAlgorithm::Argon2id)
     }
     /// Stretch password to cryptographic key
-    pub async fn stretch_password(
+    pub fn stretch_password(
         &self,
         password: &[u8],
         salt: &[u8],
@@ -74,7 +74,7 @@ impl KeyStretcher {
         };
 
         let kdf = KeyDerivation::new(config).with_salt(salt.to_vec());
-        let key = kdf.derive_key(password).await?;
+        let key = kdf.derive_key(password)?;
         Ok(Zeroizing::new(key))
     }
 }
@@ -97,7 +97,7 @@ impl FastKeyDerivation {
         }
     }
     /// Derive key with pre-allocated buffers (zero allocation)
-    pub async fn derive_fast(
+    pub fn derive_fast(
         &mut self,
         input: &[u8],
         salt: &[u8],
@@ -144,7 +144,7 @@ impl FastKeyDerivation {
                 let hk = Hkdf::<Sha256>::new(Some(salt_slice), input);
                 hk.expand(&[], &mut self.buffer[..output_size])
                     .map_err(|e| {
-                        KeyError::internal(format!("HKDF-SHA256 expansion failed: {}", e))
+                        KeyError::internal(format!("HKDF-SHA256 expansion failed: {e}"))
                     })?;
                 Ok(&self.buffer[..output_size])
             }
@@ -152,7 +152,7 @@ impl FastKeyDerivation {
                 let hk = Hkdf::<Sha512>::new(Some(salt_slice), input);
                 hk.expand(&[], &mut self.buffer[..output_size])
                     .map_err(|e| {
-                        KeyError::internal(format!("HKDF-SHA512 expansion failed: {}", e))
+                        KeyError::internal(format!("HKDF-SHA512 expansion failed: {e}"))
                     })?;
                 Ok(&self.buffer[..output_size])
             }
@@ -163,14 +163,14 @@ impl FastKeyDerivation {
                     2, // 2 threads for fast derivation
                     Some(output_size),
                 )
-                .map_err(|e| KeyError::internal(format!("Invalid Argon2 parameters: {}", e)))?;
+                .map_err(|e| KeyError::internal(format!("Invalid Argon2 parameters: {e}")))?;
 
                 let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
 
                 argon2
                     .hash_password_into(input, salt_slice, &mut self.buffer[..output_size])
                     .map_err(|e| {
-                        KeyError::internal(format!("Argon2 key derivation failed: {}", e))
+                        KeyError::internal(format!("Argon2 key derivation failed: {e}"))
                     })?;
 
                 Ok(&self.buffer[..output_size])

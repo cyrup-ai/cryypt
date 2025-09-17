@@ -4,7 +4,7 @@
 //! behind channels and spawned tasks, following the project's async conventions.
 
 use crate::{
-    claims::Claims,
+    api::claims::Claims,
     error::{JwtError, JwtResult},
 };
 use std::{

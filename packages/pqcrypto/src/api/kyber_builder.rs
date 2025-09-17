@@ -1,13 +1,15 @@
 //! Kyber KEM builder following polymorphic pattern
 
-use crate::{Result, KemAlgorithm};
-use crate::api::builder_traits::{KemKeyPairBuilder, EncapsulateBuilder, DecapsulateBuilder, CiphertextBuilder};
+use crate::api::builder_traits::{
+    CiphertextBuilder, DecapsulateBuilder, EncapsulateBuilder, KemKeyPairBuilder,
+};
 use crate::api::kem_builder::MlKemBuilder;
 use crate::api::states::NeedKeyPair;
+use crate::{KemAlgorithm, Result};
 use futures::Stream;
+use std::marker::PhantomData;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
-use std::marker::PhantomData;
 
 /// Security levels for Kyber
 #[derive(Debug, Clone, Copy)]
@@ -64,7 +66,7 @@ impl KyberBuilder<NoSecurityLevel> {
 }
 
 impl<S> KyberBuilder<S> {
-    /// Add on_result handler - transforms pattern matching internally
+    /// Add `on_result` handler - transforms pattern matching internally
     pub fn on_result<F>(self, handler: F) -> KyberBuilderWithHandler<S, F, Vec<u8>>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -76,7 +78,7 @@ impl<S> KyberBuilder<S> {
         }
     }
 
-    /// Add on_chunk handler - transforms pattern matching internally
+    /// Add `on_chunk` handler - transforms pattern matching internally
     pub fn on_chunk<F>(self, handler: F) -> KyberBuilderWithChunk<S, F>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -153,7 +155,7 @@ where
 
                 // Apply handler and send result
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break; // Receiver dropped
                 }
@@ -186,7 +188,7 @@ where
 
                 // Apply handler and send result
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break; // Receiver dropped
                 }
@@ -205,7 +207,7 @@ async fn real_kyber_generate_keypair(security_level: SecurityLevel) -> Result<Ve
         SecurityLevel::Level3 => KemAlgorithm::MlKem768,
         SecurityLevel::Level5 => KemAlgorithm::MlKem1024,
     };
-    
+
     // Create ML-KEM builder and generate keypair using real implementation
     let ml_kem_builder = MlKemBuilder {
         algorithm,
@@ -214,29 +216,32 @@ async fn real_kyber_generate_keypair(security_level: SecurityLevel) -> Result<Ve
         secret_key: None,
         ciphertext: None,
     };
-    
+
     // Generate real keypair using ML-KEM via KemKeyPairBuilder trait
     let keypair_result = KemKeyPairBuilder::generate(ml_kem_builder).await?;
-    
+
     // Extract the keypair data using accessor methods
     let public_key = keypair_result.public_key_vec()?;
     let secret_key = keypair_result.secret_key_vec()?;
-    
+
     // Combine keys for kyber_builder compatibility (public_key + secret_key)
     let mut combined_keypair = public_key;
     combined_keypair.extend(secret_key);
-    
+
     Ok(combined_keypair)
 }
 
-async fn real_kyber_encapsulate(security_level: SecurityLevel, public_key: Vec<u8>) -> Result<Vec<u8>> {
+async fn real_kyber_encapsulate(
+    security_level: SecurityLevel,
+    public_key: Vec<u8>,
+) -> Result<Vec<u8>> {
     // Map security level to KEM algorithm variant
     let algorithm = match security_level {
         SecurityLevel::Level1 => KemAlgorithm::MlKem512,
         SecurityLevel::Level3 => KemAlgorithm::MlKem768,
         SecurityLevel::Level5 => KemAlgorithm::MlKem1024,
     };
-    
+
     // Create ML-KEM builder and set public key
     let ml_kem_builder = MlKemBuilder {
         algorithm,
@@ -245,23 +250,27 @@ async fn real_kyber_encapsulate(security_level: SecurityLevel, public_key: Vec<u
         secret_key: None,
         ciphertext: None,
     };
-    
+
     // Set the public key and encapsulate using real ML-KEM implementation
     let ml_kem_with_pk = KemKeyPairBuilder::with_public_key(ml_kem_builder, public_key)?;
     let encapsulation_result = EncapsulateBuilder::encapsulate(ml_kem_with_pk).await?;
-    
+
     // Return the ciphertext (shared secret is kept internally)
     Ok(encapsulation_result.ciphertext().to_vec())
 }
 
-async fn real_kyber_decapsulate(security_level: SecurityLevel, secret_key: Vec<u8>, ciphertext: Vec<u8>) -> Result<Vec<u8>> {
+async fn real_kyber_decapsulate(
+    security_level: SecurityLevel,
+    secret_key: Vec<u8>,
+    ciphertext: Vec<u8>,
+) -> Result<Vec<u8>> {
     // Map security level to KEM algorithm variant
     let algorithm = match security_level {
         SecurityLevel::Level1 => KemAlgorithm::MlKem512,
         SecurityLevel::Level3 => KemAlgorithm::MlKem768,
         SecurityLevel::Level5 => KemAlgorithm::MlKem1024,
     };
-    
+
     // Create ML-KEM builder and set secret key, then ciphertext
     let ml_kem_builder = MlKemBuilder {
         algorithm,
@@ -270,12 +279,12 @@ async fn real_kyber_decapsulate(security_level: SecurityLevel, secret_key: Vec<u
         secret_key: None,
         ciphertext: None,
     };
-    
+
     // Set the secret key and ciphertext, then decapsulate using real ML-KEM implementation
     let ml_kem_with_sk = KemKeyPairBuilder::with_secret_key(ml_kem_builder, secret_key)?;
     let ml_kem_with_ct = ml_kem_with_sk.with_ciphertext(ciphertext);
     let decapsulation_result = DecapsulateBuilder::decapsulate(ml_kem_with_ct).await?;
-    
+
     // Return the shared secret
     Ok(decapsulation_result.shared_secret().as_bytes().to_vec())
 }

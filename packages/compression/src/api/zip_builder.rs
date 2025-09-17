@@ -32,6 +32,7 @@ pub struct ZipBuilder<F> {
 
 impl ZipBuilder<NoFiles> {
     /// Create a new ZIP builder
+    #[must_use]
     pub fn new() -> Self {
         Self {
             files: NoFiles,
@@ -49,7 +50,8 @@ impl Default for ZipBuilder<NoFiles> {
 
 // Methods for adding result and chunk handlers
 impl<F> ZipBuilder<F> {
-    /// Apply on_result! handler
+    /// Apply `on_result!` handler
+    #[must_use]
     pub fn on_result<H>(mut self, handler: H) -> Self
     where
         H: Fn(Result<CompressionResult>) -> Vec<u8> + Send + Sync + 'static,
@@ -58,7 +60,8 @@ impl<F> ZipBuilder<F> {
         self
     }
 
-    /// Apply on_chunk! handler for streaming
+    /// Apply `on_chunk!` handler for streaming
+    #[must_use]
     pub fn on_chunk<H>(mut self, handler: H) -> Self
     where
         H: Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync + 'static,
@@ -71,6 +74,7 @@ impl<F> ZipBuilder<F> {
 // Methods for adding files
 impl ZipBuilder<NoFiles> {
     /// Add the first file to the ZIP archive
+    #[must_use]
     pub fn add_file<N: Into<String>, T: Into<Vec<u8>>>(
         self,
         name: N,
@@ -89,6 +93,7 @@ impl ZipBuilder<NoFiles> {
 
 impl ZipBuilder<HasFiles> {
     /// Add another file to the ZIP archive
+    #[must_use]
     pub fn add_file<N: Into<String>, T: Into<Vec<u8>>>(mut self, name: N, data: T) -> Self {
         self.files.files.insert(name.into(), data.into());
         self
@@ -101,7 +106,7 @@ impl ZipBuilder<HasFiles> {
     /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
     pub async fn compress(self) -> Vec<u8> {
         let files_count = self.files.files.len();
-        let total_size: usize = self.files.files.values().map(|data| data.len()).sum();
+        let total_size: usize = self.files.files.values().map(Vec::len).sum();
 
         let result = async move {
             let compressed = zip_compress(self.files.files).await?;
@@ -160,6 +165,7 @@ impl ZipBuilder<HasFiles> {
     }
 
     /// Create ZIP archive from a stream of file data
+    #[must_use]
     pub fn compress_stream<S: Stream<Item = (String, Vec<u8>)> + Send + 'static>(
         self,
         stream: S,
@@ -176,10 +182,8 @@ pub struct ZipStream {
 
 impl ZipStream {
     /// Create a new ZIP stream from file pairs
-    pub fn new<S>(
-        stream: S,
-        handler: Option<ChunkHandler>,
-    ) -> Self
+    #[must_use]
+    pub fn new<S>(stream: S, handler: Option<ChunkHandler>) -> Self
     where
         S: Stream<Item = (String, Vec<u8>)> + Send + 'static,
     {
@@ -209,8 +213,7 @@ impl ZipStream {
 
         ZipStream {
             receiver,
-            handler: handler
-                .map(|h| Box::new(h) as StreamChunkHandler),
+            handler: handler.map(|h| Box::new(h) as StreamChunkHandler),
         }
     }
 }
@@ -251,18 +254,17 @@ impl ZipStream {
 // Internal ZIP functions with chunked async processing
 async fn zip_compress(files: HashMap<String, Vec<u8>>) -> Result<Vec<u8>> {
     // Process files in chunks to avoid blocking
-    for (_name, data) in files.iter() {
+    for data in files.values() {
         // Yield control for large files
         if data.len() > 8192 {
             tokio::task::yield_now().await;
         }
     }
-    
+
     // Use sync compression but with async coordination
-    let compressed = crate::zip::compress_files(files).map_err(|e| {
-        crate::CompressionError::internal(format!("ZIP compression failed: {}", e))
-    })?;
-    
+    let compressed = crate::zip::compress_files(files)
+        .map_err(|e| crate::CompressionError::internal(format!("ZIP compression failed: {e}")))?;
+
     Ok(compressed)
 }
 
@@ -271,11 +273,11 @@ async fn zip_decompress(data: Vec<u8>) -> Result<HashMap<String, Vec<u8>>> {
     if data.len() > 8192 {
         tokio::task::yield_now().await;
     }
-    
+
     // Use sync decompression but with async coordination
     let decompressed = crate::zip::decompress_files(&data).map_err(|e| {
-        crate::CompressionError::internal(format!("ZIP decompression failed: {}", e))
+        crate::CompressionError::internal(format!("ZIP decompression failed: {e}"))
     })?;
-    
+
     Ok(decompressed)
 }

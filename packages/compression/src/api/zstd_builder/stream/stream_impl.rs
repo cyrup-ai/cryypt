@@ -1,4 +1,4 @@
-//! Stream trait implementation for ZstdStream
+//! Stream trait implementation for `ZstdStream`
 
 use super::stream_core::ZstdStream;
 use crate::Result;

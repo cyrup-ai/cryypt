@@ -21,33 +21,25 @@ impl StreamIdManager {
 
     /// Get next client-initiated bidirectional stream ID
     pub fn next_client_bidi_stream_id(&self) -> u64 {
-        
-        self
-            .next_client_bidi
+        self.next_client_bidi
             .fetch_add(4, std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Get next client-initiated unidirectional stream ID
     pub fn next_client_uni_stream_id(&self) -> u64 {
-        
-        self
-            .next_client_uni
+        self.next_client_uni
             .fetch_add(4, std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Get next server-initiated bidirectional stream ID
     pub fn next_server_bidi_stream_id(&self) -> u64 {
-        
-        self
-            .next_server_bidi
+        self.next_server_bidi
             .fetch_add(4, std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Get next server-initiated unidirectional stream ID
     pub fn next_server_uni_stream_id(&self) -> u64 {
-        
-        self
-            .next_server_uni
+        self.next_server_uni
             .fetch_add(4, std::sync::atomic::Ordering::Relaxed)
     }
 

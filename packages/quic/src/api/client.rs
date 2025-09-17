@@ -176,7 +176,7 @@ where
 async fn connect_quic_client_internal(_server_name: &str, addr: &str) -> crate::Result<QuicClient> {
     // Parse address
     let socket_addr = addr.parse::<SocketAddr>().map_err(|e| {
-        crate::error::CryptoTransportError::Internal(format!("Invalid address {}: {}", addr, e))
+        crate::error::CryptoTransportError::Internal(format!("Invalid address {}: {addr, e}"))
     })?;
 
     // Create client config

@@ -1,9 +1,9 @@
 //! Messaging server configuration
 
-use std::time::Duration;
+use super::super::types::{CompressionAlgorithm, EncryptionAlgorithm};
 use crate::error::CryptoTransportError;
 use crate::tls::builder::CertificateAuthority;
-use super::super::types::{CompressionAlgorithm, EncryptionAlgorithm};
+use std::time::Duration;
 
 /// Production-grade messaging server configuration
 #[derive(Debug, Clone)]
@@ -35,7 +35,7 @@ impl MessagingServerConfig {
     pub async fn new() -> Result<Self, CryptoTransportError> {
         // Generate development certificate using the TLS module
         use crate::tls::builder::certificate::CertificateBuilder;
-        
+
         let cert_result = CertificateBuilder::new()
             .generator()
             .domain("localhost")
@@ -43,11 +43,15 @@ impl MessagingServerConfig {
             .valid_for_days(365)
             .generate()
             .await;
-            
+
         let development_authority = if cert_result.success {
-            let cert_pem = cert_result.certificate_pem.unwrap_or_else(|| "".to_string());
-            let key_pem = cert_result.private_key_pem.unwrap_or_else(|| "".to_string());
-            
+            let cert_pem = cert_result
+                .certificate_pem
+                .unwrap_or_else(|| "".to_string());
+            let key_pem = cert_result
+                .private_key_pem
+                .unwrap_or_else(|| "".to_string());
+
             CertificateAuthority {
                 name: "development-generated".to_string(),
                 certificate_pem: cert_pem,
@@ -57,7 +61,8 @@ impl MessagingServerConfig {
                     issuer: "CN=localhost".to_string(),
                     serial_number: "generated".to_string(),
                     valid_from: std::time::SystemTime::now(),
-                    valid_until: std::time::SystemTime::now() + Duration::from_secs(365 * 24 * 3600),
+                    valid_until: std::time::SystemTime::now()
+                        + Duration::from_secs(365 * 24 * 3600),
                     key_algorithm: "RSA".to_string(),
                     key_size: Some(2048),
                     created_at: std::time::SystemTime::now(),
@@ -68,8 +73,13 @@ impl MessagingServerConfig {
             // Fallback to minimal configuration
             CertificateAuthority {
                 name: "development-fallback".to_string(),
-                certificate_pem: "-----BEGIN CERTIFICATE-----\nDEVELOPMENT_FALLBACK\n-----END CERTIFICATE-----".to_string(),
-                private_key_pem: Some("-----BEGIN PRIVATE KEY-----\nDEVELOPMENT_FALLBACK\n-----END PRIVATE KEY-----".to_string()),
+                certificate_pem:
+                    "-----BEGIN CERTIFICATE-----\nDEVELOPMENT_FALLBACK\n-----END CERTIFICATE-----"
+                        .to_string(),
+                private_key_pem: Some(
+                    "-----BEGIN PRIVATE KEY-----\nDEVELOPMENT_FALLBACK\n-----END PRIVATE KEY-----"
+                        .to_string(),
+                ),
                 metadata: crate::tls::builder::authority::CaMetadata {
                     subject: "CN=localhost".to_string(),
                     issuer: "CN=localhost".to_string(),
@@ -109,18 +119,36 @@ impl MessagingServerConfig {
     /// Create development configuration with known settings
     pub async fn development(cert_dir: std::path::PathBuf) -> Result<Self, CryptoTransportError> {
         // Use TLS module for proper certificate generation
-        let provider = crate::tls::QuicheCertificateProvider::create_self_signed("cryypt-dev", cert_dir).await
-            .map_err(|e| CryptoTransportError::Internal(format!("Failed to create development certificates: {}", e)))?;
+        let provider =
+            crate::tls::QuicheCertificateProvider::create_self_signed("cryypt-dev", cert_dir)
+                .await
+                .map_err(|e| {
+                    CryptoTransportError::Internal(format!(
+                        "Failed to create development certificates: {}",
+                        e
+                    ))
+                })?;
 
         let authority = CertificateAuthority {
             name: "development".to_string(),
             certificate_pem: provider.get_certificate_pem().to_string(),
             private_key_pem: Some(
                 String::from_utf8(
-                    provider.get_decrypted_private_key_pem().await
-                        .map_err(|e| CryptoTransportError::Internal(format!("Failed to get private key: {}", e)))?
-                        .as_bytes().to_vec()
-                ).map_err(|e| CryptoTransportError::Internal(format!("Invalid UTF-8 in private key: {}", e)))?
+                    provider
+                        .get_decrypted_private_key_pem()
+                        .await
+                        .map_err(|e| {
+                            CryptoTransportError::Internal(format!(
+                                "Failed to get private key: {}",
+                                e
+                            ))
+                        })?
+                        .as_bytes()
+                        .to_vec(),
+                )
+                .map_err(|e| {
+                    CryptoTransportError::Internal(format!("Invalid UTF-8 in private key: {e}"))
+                })?,
             ),
             metadata: crate::tls::builder::authority::CaMetadata {
                 subject: "CN=cryypt-dev".to_string(),

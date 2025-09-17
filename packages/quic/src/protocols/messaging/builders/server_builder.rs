@@ -3,8 +3,8 @@
 use std::future::Future;
 use std::time::Duration;
 
-use super::super::types::{CompressionAlgorithm, EncryptionAlgorithm};
 use super::super::server::{MessagingServer, MessagingServerConfig};
+use super::super::types::{CompressionAlgorithm, EncryptionAlgorithm};
 
 /// Builder for configuring messaging server
 pub struct MessagingServerBuilder {
@@ -33,6 +33,7 @@ impl Default for MessagingServerBuilder {
 
 impl MessagingServerBuilder {
     /// Create a testing-oriented builder with minimal security for development and testing
+    #[cfg(not(test))]
     pub fn testing() -> Self {
         Self {
             max_message_size: 1_048_576, // 1MB
@@ -57,7 +58,7 @@ impl MessagingServerBuilder {
             shared_secret: None,
         }
     }
-    
+
     /// Create a production-oriented builder with robust defaults
     pub fn production() -> Self {
         Self {
@@ -70,7 +71,7 @@ impl MessagingServerBuilder {
             shared_secret: None,
         }
     }
-    
+
     /// Create a low-latency builder optimized for speed
     pub fn low_latency() -> Self {
         Self {
@@ -83,7 +84,7 @@ impl MessagingServerBuilder {
             shared_secret: None,
         }
     }
-    
+
     /// Create a high-throughput builder optimized for large payloads
     pub fn high_throughput() -> Self {
         Self {
@@ -96,27 +97,34 @@ impl MessagingServerBuilder {
             shared_secret: None,
         }
     }
-    
+
     /// Create a secure production builder with minimal configuration
     pub fn production_minimal() -> Self {
         // Generate cryptographically secure random shared secret
         use rand::RngCore;
         let mut shared_secret = vec![0u8; 32]; // 256-bit secret
         rand::rng().fill_bytes(&mut shared_secret);
-        
+
         Self {
             max_message_size: 65536, // 64KB
             retain_messages: false,
             delivery_timeout: Duration::from_secs(10),
             default_compression: CompressionAlgorithm::Zstd, // Enable compression for production
-            compression_level: 6, // Balanced compression level
+            compression_level: 6,                            // Balanced compression level
             default_encryption: EncryptionAlgorithm::ChaCha20Poly1305,
             shared_secret: Some(shared_secret),
         }
     }
-    
-    /// Create a testing builder with deterministic configuration for tests only
-    /// WARNING: This method uses a fixed key and should NEVER be used in production
+
+    /// Test-only builder with deterministic configuration for reproducible tests.
+    ///
+    /// This method provides fixed keys and predictable settings specifically designed
+    /// for test environments. It is automatically excluded from production builds
+    /// via the `#[cfg(test)]` attribute.
+    ///
+    /// # Security Note
+    /// Fixed keys are used intentionally for test repeatability and are never
+    /// compiled into production builds.
     #[cfg(test)]
     pub fn testing() -> Self {
         Self {
@@ -181,7 +189,6 @@ impl MessagingServerBuilder {
 
     /// Start listening on the specified address using working implementation
     pub fn listen(self, addr: &str) -> impl Future<Output = crate::Result<MessagingServer>> + Send {
-        
         // Generate secure random shared secret if not provided
         let shared_secret = self.shared_secret.unwrap_or_else(|| {
             use rand::RngCore;
@@ -189,20 +196,28 @@ impl MessagingServerBuilder {
             rand::rng().fill_bytes(&mut secret);
             secret
         });
-        
+
         let addr_string = addr.to_string();
-        let max_message_size = if self.max_message_size == 0 { 1024 * 1024 } else { self.max_message_size };
+        let max_message_size = if self.max_message_size == 0 {
+            1024 * 1024
+        } else {
+            self.max_message_size
+        };
         let retain_messages = self.retain_messages;
-        let delivery_timeout = if self.delivery_timeout.is_zero() { Duration::from_secs(30) } else { self.delivery_timeout };
+        let delivery_timeout = if self.delivery_timeout.is_zero() {
+            Duration::from_secs(30)
+        } else {
+            self.delivery_timeout
+        };
         let default_compression = self.default_compression;
         let compression_level = self.compression_level;
         let default_encryption = self.default_encryption;
-        
+
         async move {
             // Use development configuration with proper TLS integration
             let cert_dir = std::path::PathBuf::from("./certs");
             let mut config = MessagingServerConfig::development(cert_dir).await?;
-            
+
             // Override with user settings
             config.max_message_size = max_message_size;
             config.retain_messages = retain_messages;
@@ -213,14 +228,17 @@ impl MessagingServerBuilder {
             config.shared_secret = shared_secret;
             // Parse the address
             let socket_addr = addr_string.parse().map_err(|e| {
-                crate::error::CryptoTransportError::Internal(format!("Invalid address {}: {}", addr_string, e))
+                crate::error::CryptoTransportError::Internal(format!(
+                    "Invalid address {}: {}",
+                    addr_string, e
+                ))
             })?;
-            
+
             // Create messaging server with working implementation
             let messaging_server = MessagingServer::new(socket_addr, config).await?;
-            
+
             println!("🚀 QUIC messaging server created on {}", addr_string);
-            
+
             // Return the server - user can call .run().await to start it
             Ok(messaging_server)
         }

@@ -15,6 +15,7 @@ pub struct HashChunk {
 
 impl HashChunk {
     /// Create a new successful hash chunk
+    #[must_use]
     pub fn new(hash: Vec<u8>, algorithm: String) -> Self {
         HashChunk {
             hash,
@@ -25,6 +26,7 @@ impl HashChunk {
     }
 
     /// Add metadata to the chunk
+    #[must_use]
     pub fn with_metadata(mut self, metadata: String) -> Self {
         self.metadata = Some(metadata);
         self

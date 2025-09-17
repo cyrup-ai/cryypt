@@ -21,7 +21,7 @@ pub(super) fn encrypt_key_material(key_material: &[u8], master_key: &[u8; 32]) -
 
     // Create cipher with master key
     let cipher = Aes256Gcm::new_from_slice(master_key.as_ref())
-        .map_err(|e| KeyError::InvalidKey(format!("Invalid master key: {}", e)))?;
+        .map_err(|e| KeyError::InvalidKey(format!("Invalid master key: {e}")))?;
 
     // Encrypt key material
     let ciphertext = cipher
@@ -54,7 +54,7 @@ pub(super) fn decrypt_key_material(
 
     // Create cipher with master key
     let cipher = Aes256Gcm::new_from_slice(master_key.as_ref())
-        .map_err(|e| KeyError::InvalidKey(format!("Invalid master key: {}", e)))?;
+        .map_err(|e| KeyError::InvalidKey(format!("Invalid master key: {e}")))?;
 
     // Decrypt key material
     let decrypted = cipher

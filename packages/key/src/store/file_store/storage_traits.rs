@@ -38,9 +38,7 @@ impl KeyStore for FileKeyStore {
 
                 // Ensure directory exists
                 if let Some(parent) = path.parent() {
-                    fs::create_dir_all(parent)
-                        .await
-                        .map_err(KeyError::Io)?;
+                    fs::create_dir_all(parent).await.map_err(KeyError::Io)?;
                 }
 
                 // Write encrypted data to file
@@ -68,9 +66,7 @@ impl KeyStore for FileKeyStore {
         tokio::spawn(async move {
             let result = async move {
                 // Read encrypted data
-                let mut file = fs::File::open(&path)
-                    .await
-                    .map_err(KeyError::Io)?;
+                let mut file = fs::File::open(&path).await.map_err(KeyError::Io)?;
 
                 let mut encrypted_data = Zeroizing::new(Vec::new());
                 file.read_to_end(&mut encrypted_data)
@@ -106,9 +102,7 @@ impl FileKeyStore {
 
                 // Ensure directory exists
                 if let Some(parent) = path.parent() {
-                    fs::create_dir_all(parent)
-                        .await
-                        .map_err(KeyError::Io)?;
+                    fs::create_dir_all(parent).await.map_err(KeyError::Io)?;
                 }
 
                 // Write encrypted data to file
@@ -133,24 +127,23 @@ impl FileKeyStore {
         let mut keys = Vec::new();
 
         // Read directory entries
-        let entries = fs::read_dir(&self.base_path)
-            .map_err(KeyError::Io)?;
+        let entries = fs::read_dir(&self.base_path).map_err(KeyError::Io)?;
 
         for entry in entries {
-            let entry = entry
-                .map_err(KeyError::Io)?;
+            let entry = entry.map_err(KeyError::Io)?;
 
             let path = entry.path();
             if let Some(filename) = path.file_name().and_then(|n| n.to_str())
-                && let Some(name_part) = filename.strip_suffix(".key") {
-                    // Remove .key extension
-                    if let Some(last_underscore) = name_part.rfind('_') {
-                        let namespace = name_part[..last_underscore].replace('_', "/");
-                        if let Ok(version) = name_part[last_underscore + 1..].parse::<u32>() {
-                            keys.push((namespace, version));
-                        }
+                && let Some(name_part) = filename.strip_suffix(".key")
+            {
+                // Remove .key extension
+                if let Some(last_underscore) = name_part.rfind('_') {
+                    let namespace = name_part[..last_underscore].replace('_', "/");
+                    if let Ok(version) = name_part[last_underscore + 1..].parse::<u32>() {
+                        keys.push((namespace, version));
                     }
                 }
+            }
         }
 
         Ok(keys)

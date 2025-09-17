@@ -12,8 +12,8 @@
 pub mod backup_operations;
 pub mod debug_export;
 pub mod key_rotation;
-pub mod salt_management;
 pub mod rotation_testing;
+pub mod salt_management;
 
 // Re-export all functionality for backward compatibility
 // Note: Individual module imports are handled implicitly through impl blocks

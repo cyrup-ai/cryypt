@@ -85,17 +85,25 @@ where
         let entries_to_evict = current_size - target_size;
 
         // Collect entries sorted by last access time (oldest first) - lock-free
-        let mut entries_by_access: Vec<(K, u64)> = self
+        let mut entries_by_access: Vec<(K, u64, u64)> = self
             .cache
             .iter()
-            .map(|entry| (entry.key().clone(), entry.value().last_access_time()))
+            .map(|entry| {
+                let key = entry.key().clone();
+                let access_time = entry.value().last_access_time();
+                let key_hash = self.hash_key(&key);
+                debug!(key = ?key, access_time = access_time, key_hash = key_hash, "LRU eviction candidate");
+                (key, access_time, key_hash)
+            })
             .collect();
 
-        // Sort by access time (oldest first) for LRU eviction
-        entries_by_access.sort_by_key(|(_, access_time)| *access_time);
+        // Sort by access time (oldest first), then by key hash for stable ordering
+        entries_by_access.sort_by_key(|(_, access_time, key_hash)| (*access_time, *key_hash));
+        
+        debug!(entries_count = entries_by_access.len(), entries_to_evict = entries_to_evict, "LRU eviction sorting complete");
 
         // Evict oldest entries
-        for (key, _) in entries_by_access.into_iter().take(entries_to_evict) {
+        for (key, _, _) in entries_by_access.into_iter().take(entries_to_evict) {
             if self.cache.remove(&key).is_some() {
                 self.size.fetch_sub(1, Ordering::Relaxed);
                 evicted_count += 1;
@@ -162,8 +170,7 @@ where
                     .cache
                     .iter()
                     .filter_map(|entry| {
-                        if entry.value().access_count.load(Ordering::Relaxed) < min_access_count
-                        {
+                        if entry.value().access_count.load(Ordering::Relaxed) < min_access_count {
                             Some(entry.key().clone())
                         } else {
                             None

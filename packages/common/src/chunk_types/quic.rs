@@ -17,6 +17,7 @@ pub struct QuicChunk {
 
 impl QuicChunk {
     /// Create a new successful QUIC chunk
+    #[must_use]
     pub fn new(data: Vec<u8>, operation: String) -> Self {
         QuicChunk {
             data,
@@ -29,18 +30,21 @@ impl QuicChunk {
     }
 
     /// Add stream ID
+    #[must_use]
     pub fn with_stream_id(mut self, stream_id: u64) -> Self {
         self.stream_id = Some(stream_id);
         self
     }
 
     /// Add connection info
+    #[must_use]
     pub fn with_connection_info(mut self, info: String) -> Self {
         self.connection_info = Some(info);
         self
     }
 
     /// Add metadata to the chunk
+    #[must_use]
     pub fn with_metadata(mut self, metadata: String) -> Self {
         self.metadata = Some(metadata);
         self

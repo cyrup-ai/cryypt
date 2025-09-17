@@ -50,6 +50,7 @@ impl Default for ZstdBuilder<NoLevel> {
 
 impl ZstdBuilder<NoLevel> {
     /// Create a new Zstd builder with default level
+    #[must_use]
     pub fn new() -> Self {
         Self {
             level: NoLevel,
@@ -58,6 +59,7 @@ impl ZstdBuilder<NoLevel> {
     }
 
     /// Set compression level - README.md pattern
+    #[must_use]
     pub fn with_level(self, level: i32) -> ZstdBuilder<HasLevel> {
         ZstdBuilder {
             level: HasLevel(level),
@@ -67,7 +69,7 @@ impl ZstdBuilder<NoLevel> {
 }
 
 impl<L> ZstdBuilder<L> {
-    /// Internal implementation for on_result - called by macro
+    /// Internal implementation for `on_result` - called by macro
     fn on_result_impl<F>(self, handler: F) -> ZstdBuilderWithHandler<L, F, Vec<u8>>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -79,7 +81,7 @@ impl<L> ZstdBuilder<L> {
         }
     }
 
-    /// Internal implementation for on_chunk - called by macro
+    /// Internal implementation for `on_chunk` - called by macro
     fn on_chunk_impl<F>(self, handler: F) -> ZstdBuilderWithChunk<L, F>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -91,7 +93,8 @@ impl<L> ZstdBuilder<L> {
         }
     }
 
-    /// Add on_result handler - transforms pattern matching internally
+    /// Add `on_result` handler - transforms pattern matching internally
+    #[must_use]
     pub fn on_result<F>(self, handler: F) -> ZstdBuilderWithHandler<L, F, Vec<u8>>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -99,7 +102,8 @@ impl<L> ZstdBuilder<L> {
         self.on_result_impl(handler)
     }
 
-    /// Add on_chunk handler - transforms pattern matching internally
+    /// Add `on_chunk` handler - transforms pattern matching internally
+    #[must_use]
     pub fn on_chunk<F>(self, handler: F) -> ZstdBuilderWithChunk<L, F>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -107,7 +111,8 @@ impl<L> ZstdBuilder<L> {
         self.on_chunk_impl(handler)
     }
 
-    /// Apply on_error handler - README.md pattern
+    /// Apply `on_error` handler - README.md pattern
+    #[must_use]
     pub fn on_error<F>(mut self, handler: F) -> Self
     where
         F: Fn(CompressionError) -> CompressionError + Send + Sync + 'static,

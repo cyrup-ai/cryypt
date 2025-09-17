@@ -5,7 +5,7 @@
 //! - Multiple domain validation
 //! - SAN and CN checking
 
-use super::super::super::responses::{CheckResult, ValidationIssue, IssueSeverity, IssueCategory};
+use super::super::super::responses::{CheckResult, IssueCategory, IssueSeverity, ValidationIssue};
 
 /// Validate domains against certificate
 pub fn validate_domains(
@@ -30,14 +30,15 @@ fn validate_single_domain(
     issues: &mut Vec<ValidationIssue>,
 ) -> Option<CheckResult> {
     if parsed_cert.san_dns_names.contains(&domain.to_string())
-        || (parsed_cert.subject.contains_key("CN") && parsed_cert.subject.get("CN") == Some(&domain.to_string()))
+        || (parsed_cert.subject.contains_key("CN")
+            && parsed_cert.subject.get("CN") == Some(&domain.to_string()))
     {
         Some(CheckResult::Passed)
     } else {
         issues.push(ValidationIssue {
             severity: IssueSeverity::Error,
             category: IssueCategory::Domain,
-            message: format!("Certificate not valid for domain: {}", domain),
+            message: format!("Certificate not valid for domain: {domain}"),
             suggestion: Some("Check SAN entries and subject CN".to_string()),
         });
         Some(CheckResult::Failed("Domain mismatch".to_string()))
@@ -51,26 +52,33 @@ fn validate_multiple_domains(
     issues: &mut Vec<ValidationIssue>,
 ) -> Option<CheckResult> {
     let mut failed_domains = Vec::new();
-    
+
     for domain in domains {
         if !parsed_cert.san_dns_names.contains(domain)
-            && !(parsed_cert.subject.contains_key("CN") && parsed_cert.subject.get("CN") == Some(domain))
+            && !(parsed_cert.subject.contains_key("CN")
+                && parsed_cert.subject.get("CN") == Some(domain))
         {
             failed_domains.push(domain.clone());
         }
     }
-    
+
     if failed_domains.is_empty() {
         Some(CheckResult::Passed)
     } else {
         issues.push(ValidationIssue {
             severity: IssueSeverity::Error,
             category: IssueCategory::Domain,
-            message: format!("Certificate not valid for domains: {}", failed_domains.join(", ")),
-            suggestion: Some("Check SAN entries and subject CN for all required domains".to_string()),
+            message: format!(
+                "Certificate not valid for domains: {}",
+                failed_domains.join(", ")
+            ),
+            suggestion: Some(
+                "Check SAN entries and subject CN for all required domains".to_string(),
+            ),
         });
-        Some(CheckResult::Failed(
-            format!("Domain mismatch for: {}", failed_domains.join(", "))
-        ))
+        Some(CheckResult::Failed(format!(
+            "Domain mismatch for: {}",
+            failed_domains.join(", ")
+        )))
     }
 }

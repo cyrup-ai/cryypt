@@ -7,8 +7,10 @@ use der::{AnyRef, Encode, Reader, SliceReader, Tag};
 use x509_cert::Certificate as X509CertCert;
 
 // Using available const_oid constants based on actual const_oid 0.9 API
-use const_oid::db::rfc5912::{SECP_224_R_1, SECP_256_R_1, SECP_384_R_1, SECP_521_R_1, ID_EC_PUBLIC_KEY};
-use const_oid::db::rfc8410::{ID_X_25519, ID_X_448, ID_ED_25519, ID_ED_448};
+use const_oid::db::rfc5912::{
+    ID_EC_PUBLIC_KEY, SECP_224_R_1, SECP_256_R_1, SECP_384_R_1, SECP_521_R_1,
+};
+use const_oid::db::rfc8410::{ID_ED_448, ID_ED_25519, ID_X_448, ID_X_25519};
 
 /// Extract key algorithm name and size from X.509 certificate
 pub fn extract_key_info_from_cert(cert: &X509CertCert) -> (String, Option<u32>) {
@@ -42,9 +44,14 @@ pub fn extract_key_info_from_cert(cert: &X509CertCert) -> (String, Option<u32>) 
     };
 
     // Extract actual key size from certificate using production cryptographic parsing
-    let key_size = match cert.tbs_certificate.subject_public_key_info.subject_public_key.as_bytes() {
+    let key_size = match cert
+        .tbs_certificate
+        .subject_public_key_info
+        .subject_public_key
+        .as_bytes()
+    {
         Some(public_key_bits) => {
-            // Create a proper BitStringRef from the raw bytes  
+            // Create a proper BitStringRef from the raw bytes
             match der::asn1::BitStringRef::new(0, public_key_bits) {
                 Ok(public_key_ref) => {
                     extract_key_size_from_algorithm_and_key(algorithm, &public_key_ref)
@@ -73,7 +80,7 @@ pub(super) fn extract_key_size_from_algorithm_and_key(
     const RSA_ENCRYPTION_OID: &str = "1.2.840.113549.1.1.1";
     const DSA_OID: &str = "1.2.840.10040.4.1";
     const DH_OID: &str = "1.2.840.10046.2.1";
-    
+
     let oid_str = algorithm.oid.to_string();
     if oid_str == RSA_ENCRYPTION_OID {
         extract_rsa_key_size(public_key)
@@ -115,7 +122,9 @@ fn skip_element(reader: &mut der::SliceReader) -> Option<()> {
     let header_len: usize = header.encoded_len().ok()?.try_into().ok()?;
     let content_len: usize = header.length.try_into().ok()?;
     let total_len = header_len + content_len;
-    reader.read_slice(der::Length::try_from(total_len).ok()?).ok()?;
+    reader
+        .read_slice(der::Length::try_from(total_len).ok()?)
+        .ok()?;
     Some(())
 }
 

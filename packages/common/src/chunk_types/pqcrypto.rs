@@ -17,6 +17,7 @@ pub struct PqCryptoChunk {
 
 impl PqCryptoChunk {
     /// Create a new successful post-quantum crypto chunk
+    #[must_use]
     pub fn new(data: Vec<u8>, operation: String, algorithm: String) -> Self {
         PqCryptoChunk {
             data,
@@ -29,12 +30,14 @@ impl PqCryptoChunk {
     }
 
     /// Add key type
+    #[must_use]
     pub fn with_key_type(mut self, key_type: String) -> Self {
         self.key_type = Some(key_type);
         self
     }
 
     /// Add metadata to the chunk
+    #[must_use]
     pub fn with_metadata(mut self, metadata: String) -> Self {
         self.metadata = Some(metadata);
         self

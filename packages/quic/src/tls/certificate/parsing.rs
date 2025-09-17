@@ -1,9 +1,6 @@
 //! Certificate parsing and validation functions
 
-
 use std::time::SystemTime;
-
-
 
 use crate::tls::errors::TlsError;
 use crate::tls::types::{CertificateUsage, ParsedCertificate};

@@ -4,6 +4,7 @@ use cryypt_vault::api::{
     CompressionAlgorithm, CompressionOptimizer, ConnectionManager, ConnectionState, ErrorRecovery,
     StreamBuffer, StreamIdManager,
 };
+use cryypt_vault::error::VaultError;
 use std::time::Duration;
 
 #[tokio::test]
@@ -73,8 +74,9 @@ async fn test_connection_manager() {
 
 #[test]
 fn test_error_recovery() {
-    let recovery = ErrorRecovery::new(3, 100, 5000);
+    let recovery = ErrorRecovery::new();
 
     // Test that error recovery can be created
-    assert!(recovery.is_retryable(&"test error"));
+    let test_error = VaultError::Other("test error".to_string());
+    assert!(recovery.is_retryable(&test_error));
 }

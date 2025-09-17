@@ -36,7 +36,7 @@ where
 
             while let Some(chunk) = stream.next().await {
                 // Decompress chunk
-                match decompressor.decompress_chunk(chunk) {
+                match decompressor.decompress_chunk(&chunk) {
                     Ok(decompressed) => {
                         let _ = sender.send(Ok(decompressed)).await;
                     }

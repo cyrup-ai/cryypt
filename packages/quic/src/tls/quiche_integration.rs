@@ -7,8 +7,8 @@ use std::path::PathBuf;
 use tokio::fs;
 
 use super::builder::{CertificateAuthority, Tls};
-use super::key_encryption::decrypt_private_key;
 use super::errors::TlsError;
+use super::key_encryption::decrypt_private_key;
 use super::types::SecureKeyMaterial;
 
 /// QUIC certificate provider that integrates with enterprise TLS module
@@ -32,11 +32,8 @@ impl QuicheCertificateProvider {
     /// Create provider by generating self-signed certificates using TLS builder API
     pub async fn create_self_signed(name: &str, cert_dir: PathBuf) -> Result<Self, TlsError> {
         tracing::info!("Creating self-signed certificates using TLS builder API for QUIC");
-        
-        let response = Tls::authority(name)
-            .path(&cert_dir)
-            .create()
-            .await;
+
+        let response = Tls::authority(name).path(&cert_dir).create().await;
 
         if !response.success {
             return Err(TlsError::Internal(format!(
@@ -45,8 +42,11 @@ impl QuicheCertificateProvider {
             )));
         }
 
-        let authority = response.authority
-            .ok_or_else(|| TlsError::Internal("Certificate authority creation succeeded but no authority returned".to_string()))?;
+        let authority = response.authority.ok_or_else(|| {
+            TlsError::Internal(
+                "Certificate authority creation succeeded but no authority returned".to_string(),
+            )
+        })?;
 
         Ok(Self::new(authority))
     }
@@ -54,11 +54,8 @@ impl QuicheCertificateProvider {
     /// Create provider by loading existing certificates using TLS builder API
     pub async fn load_from_path(name: &str, cert_dir: PathBuf) -> Result<Self, TlsError> {
         tracing::info!("Loading existing certificates using TLS builder API for QUIC");
-        
-        let response = Tls::authority(name)
-            .path(&cert_dir)
-            .load()
-            .await;
+
+        let response = Tls::authority(name).path(&cert_dir).load().await;
 
         if !response.success {
             return Err(TlsError::Internal(format!(
@@ -67,8 +64,11 @@ impl QuicheCertificateProvider {
             )));
         }
 
-        let authority = response.authority
-            .ok_or_else(|| TlsError::Internal("Certificate authority loading succeeded but no authority returned".to_string()))?;
+        let authority = response.authority.ok_or_else(|| {
+            TlsError::Internal(
+                "Certificate authority loading succeeded but no authority returned".to_string(),
+            )
+        })?;
 
         Ok(Self::new(authority))
     }
@@ -76,11 +76,8 @@ impl QuicheCertificateProvider {
     /// Create provider by loading from keychain using TLS builder API
     pub async fn load_from_keychain(name: &str) -> Result<Self, TlsError> {
         tracing::info!("Loading certificates from keychain using TLS builder API for QUIC");
-        
-        let response = Tls::authority(name)
-            .keychain()
-            .load()
-            .await;
+
+        let response = Tls::authority(name).keychain().load().await;
 
         if !response.success {
             return Err(TlsError::Internal(format!(
@@ -89,8 +86,12 @@ impl QuicheCertificateProvider {
             )));
         }
 
-        let authority = response.authority
-            .ok_or_else(|| TlsError::Internal("Keychain certificate authority loading succeeded but no authority returned".to_string()))?;
+        let authority = response.authority.ok_or_else(|| {
+            TlsError::Internal(
+                "Keychain certificate authority loading succeeded but no authority returned"
+                    .to_string(),
+            )
+        })?;
 
         Ok(Self::new(authority))
     }
@@ -98,11 +99,8 @@ impl QuicheCertificateProvider {
     /// Create provider by loading from remote URL using TLS builder API
     pub async fn load_from_remote(name: &str, url: &str) -> Result<Self, TlsError> {
         tracing::info!("Loading certificates from remote URL using TLS builder API for QUIC");
-        
-        let response = Tls::authority(name)
-            .url(url)
-            .load()
-            .await;
+
+        let response = Tls::authority(name).url(url).load().await;
 
         if !response.success {
             return Err(TlsError::Internal(format!(
@@ -111,8 +109,12 @@ impl QuicheCertificateProvider {
             )));
         }
 
-        let authority = response.authority
-            .ok_or_else(|| TlsError::Internal("Remote certificate authority loading succeeded but no authority returned".to_string()))?;
+        let authority = response.authority.ok_or_else(|| {
+            TlsError::Internal(
+                "Remote certificate authority loading succeeded but no authority returned"
+                    .to_string(),
+            )
+        })?;
 
         Ok(Self::new(authority))
     }
@@ -123,17 +125,19 @@ impl QuicheCertificateProvider {
     }
 
     /// Get decrypted private key PEM data for quiche
-    /// 
+    ///
     /// Note: This decrypts the encrypted private key using the CRYYPT_KEY_ENCRYPTION_PASSPHRASE
     /// environment variable. The result is temporarily stored in memory for quiche loading.
     pub async fn get_decrypted_private_key_pem(&self) -> Result<SecureKeyMaterial, TlsError> {
         tracing::debug!("Decrypting private key for quiche consumption");
-        
-        let private_key_pem = self.authority.private_key_pem.as_ref()
-            .ok_or_else(|| TlsError::ValidationOnlyCA(
-                "Cannot decrypt private key for validation-only CA - no private key available".to_string()
-            ))?;
-        
+
+        let private_key_pem = self.authority.private_key_pem.as_ref().ok_or_else(|| {
+            TlsError::ValidationOnlyCA(
+                "Cannot decrypt private key for validation-only CA - no private key available"
+                    .to_string(),
+            )
+        })?;
+
         // Check if the key is encrypted or already in plain PEM format
         if private_key_pem.starts_with("-----BEGIN") {
             // Key is already in PEM format (not encrypted)
@@ -144,7 +148,7 @@ impl QuicheCertificateProvider {
         // Key appears to be encrypted data, attempt decryption
         tracing::debug!("Private key appears to be encrypted, attempting decryption");
         let encrypted_data = private_key_pem.as_bytes();
-        
+
         match decrypt_private_key(encrypted_data) {
             Ok(decrypted_key) => {
                 tracing::debug!("Successfully decrypted private key for quiche");
@@ -163,7 +167,7 @@ impl QuicheCertificateProvider {
     /// The files are cleaned up when the provider is dropped.
     pub async fn create_temp_pem_files(&mut self) -> Result<(PathBuf, PathBuf), TlsError> {
         tracing::debug!("Creating temporary PEM files for quiche loading");
-        
+
         // Create temporary directory
         let temp_dir = std::env::temp_dir().join(format!("cryypt-quic-certs-{}", {
             use std::collections::hash_map::DefaultHasher;
@@ -172,35 +176,48 @@ impl QuicheCertificateProvider {
             std::time::SystemTime::now().hash(&mut hasher);
             hasher.finish()
         }));
-        fs::create_dir_all(&temp_dir).await
-            .map_err(|e| TlsError::Internal(format!("Failed to create temporary directory: {}", e)))?;
-        
+        fs::create_dir_all(&temp_dir).await.map_err(|e| {
+            TlsError::Internal(format!("Failed to create temporary directory: {e}"))
+        })?;
+
         self.temp_dir = Some(temp_dir.clone());
 
         // Write certificate file
         let cert_path = temp_dir.join("server.crt");
-        fs::write(&cert_path, self.get_certificate_pem()).await
-            .map_err(|e| TlsError::Internal(format!("Failed to write temporary certificate file: {}", e)))?;
+        fs::write(&cert_path, self.get_certificate_pem())
+            .await
+            .map_err(|e| {
+                TlsError::Internal(format!("Failed to write temporary certificate file: {e}"))
+            })?;
 
         // Decrypt and write private key file
         let decrypted_key = self.get_decrypted_private_key_pem().await?;
         let key_path = temp_dir.join("server.key");
-        fs::write(&key_path, decrypted_key.as_bytes()).await
-            .map_err(|e| TlsError::Internal(format!("Failed to write temporary private key file: {}", e)))?;
+        fs::write(&key_path, decrypted_key.as_bytes())
+            .await
+            .map_err(|e| {
+                TlsError::Internal(format!("Failed to write temporary private key file: {e}"))
+            })?;
 
         // Set restrictive permissions on private key file
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(&key_path).await
-                .map_err(|e| TlsError::Internal(format!("Failed to get key file metadata: {}", e)))?
+            let mut perms = fs::metadata(&key_path)
+                .await
+                .map_err(|e| TlsError::Internal(format!("Failed to get key file metadata: {e}")))?
                 .permissions();
             perms.set_mode(0o600);
-            fs::set_permissions(&key_path, perms).await
-                .map_err(|e| TlsError::Internal(format!("Failed to set key file permissions: {}", e)))?;
+            fs::set_permissions(&key_path, perms).await.map_err(|e| {
+                TlsError::Internal(format!("Failed to set key file permissions: {e}"))
+            })?;
         }
 
-        tracing::debug!("Created temporary PEM files: cert={:?}, key={:?}", cert_path, key_path);
+        tracing::debug!(
+            "Created temporary PEM files: cert={:?}, key={:?}",
+            cert_path,
+            key_path
+        );
         Ok((cert_path, key_path))
     }
 
@@ -220,7 +237,10 @@ impl Drop for QuicheCertificateProvider {
         // Clean up temporary files
         if let Some(temp_dir) = &self.temp_dir {
             if temp_dir.exists() {
-                tracing::debug!("Cleaning up temporary certificate directory: {:?}", temp_dir);
+                tracing::debug!(
+                    "Cleaning up temporary certificate directory: {:?}",
+                    temp_dir
+                );
                 if let Err(e) = std::fs::remove_dir_all(temp_dir) {
                     tracing::warn!("Failed to clean up temporary certificate directory: {}", e);
                 }
@@ -238,11 +258,11 @@ pub async fn configure_quiche_with_tls(
     provider: &mut QuicheCertificateProvider,
 ) -> Result<(), TlsError> {
     tracing::info!("Configuring quiche with enterprise TLS certificates");
-    
+
     // Validate certificate authority
     if !provider.is_valid() {
         return Err(TlsError::CertificateExpired(
-            "Certificate authority is expired or invalid".to_string()
+            "Certificate authority is expired or invalid".to_string(),
         ));
     }
 
@@ -250,12 +270,21 @@ pub async fn configure_quiche_with_tls(
     let (cert_path, key_path) = provider.create_temp_pem_files().await?;
 
     // Load certificate chain into quiche
-    config.load_cert_chain_from_pem_file(&cert_path.to_string_lossy())
-        .map_err(|e| TlsError::Internal(format!("Failed to load certificate chain into quiche: {}", e)))?;
+    config
+        .load_cert_chain_from_pem_file(&cert_path.to_string_lossy())
+        .map_err(|e| {
+            TlsError::Internal(format!(
+                "Failed to load certificate chain into quiche: {}",
+                e
+            ))
+        })?;
 
     // Load private key into quiche
-    config.load_priv_key_from_pem_file(&key_path.to_string_lossy())
-        .map_err(|e| TlsError::Internal(format!("Failed to load private key into quiche: {}", e)))?;
+    config
+        .load_priv_key_from_pem_file(&key_path.to_string_lossy())
+        .map_err(|e| {
+            TlsError::Internal(format!("Failed to load private key into quiche: {e}"))
+        })?;
 
     tracing::info!("Successfully configured quiche with TLS certificates");
     Ok(())

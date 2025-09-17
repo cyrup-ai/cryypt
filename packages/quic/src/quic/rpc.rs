@@ -1,11 +1,11 @@
 //! RPC protocol over QUIC stream
 
-use tracing::{info, debug};
 use crate::quic_conn::QuicConnectionHandle;
+use serde_json::Value;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time::timeout;
-use serde_json::Value;
+use tracing::{debug, info};
 
 /// RPC protocol over QUIC stream
 pub struct RpcProtocol {
@@ -85,7 +85,7 @@ impl std::future::Future for RpcBuilder {
 
                 // Subscribe to events before sending request
                 let mut event_rx = handle_clone.subscribe_to_events();
-                
+
                 // Generate unique stream ID for this request
                 let stream_id = generate_stream_id();
 
@@ -98,7 +98,7 @@ impl std::future::Future for RpcBuilder {
                 });
 
                 let data = serde_json::to_vec(&request).map_err(|e| {
-                    crate::CryptoTransportError::Internal(format!("Failed to serialize RPC: {}", e))
+                    crate::CryptoTransportError::Internal(format!("Failed to serialize RPC: {e}"))
                 })?;
 
                 // Send RPC request to specific stream
@@ -112,45 +112,59 @@ impl std::future::Future for RpcBuilder {
                                 if sid == stream_id {
                                     // Parse JSON-RPC response
                                     let response_str = String::from_utf8(data).map_err(|e| {
-                                        crate::CryptoTransportError::Internal(format!("Invalid UTF-8 in response: {}", e))
+                                        crate::CryptoTransportError::Internal(format!(
+                                            "Invalid UTF-8 in response: {}",
+                                            e
+                                        ))
                                     })?;
-                                    
+
                                     // Validate JSON-RPC response format
-                                    let response_json: Value = serde_json::from_str(&response_str).map_err(|e| {
-                                        crate::CryptoTransportError::Internal(format!("Invalid JSON in response: {}", e))
-                                    })?;
-                                    
+                                    let response_json: Value = serde_json::from_str(&response_str)
+                                        .map_err(|e| {
+                                            crate::CryptoTransportError::Internal(format!(
+                                                "Invalid JSON in response: {}",
+                                                e
+                                            ))
+                                        })?;
+
                                     // Check for JSON-RPC 2.0 format
-                                    if response_json.get("jsonrpc") == Some(&Value::String("2.0".to_string())) {
+                                    if response_json.get("jsonrpc")
+                                        == Some(&Value::String("2.0".to_string()))
+                                    {
                                         if let Some(result) = response_json.get("result") {
                                             return Ok(result.to_string());
                                         } else if let Some(error) = response_json.get("error") {
                                             return Err(crate::CryptoTransportError::Internal(
-                                                format!("RPC error: {}", error)
+                                                format!("RPC error: {error}"),
                                             ));
                                         }
                                     }
-                                    
+
                                     // Fallback to raw response
                                     return Ok(response_str);
                                 }
-                            },
+                            }
                             crate::quic_conn::QuicConnectionEvent::StreamFinished(sid) => {
                                 if sid == stream_id {
                                     return Err(crate::CryptoTransportError::Internal(
-                                        "Stream finished without response".to_string()
+                                        "Stream finished without response".to_string(),
                                     ));
                                 }
-                            },
+                            }
                             _ => continue, // Ignore other events
                         }
                     }
-                    Err(crate::CryptoTransportError::Internal("No response received".to_string()))
-                }).await;
+                    Err(crate::CryptoTransportError::Internal(
+                        "No response received".to_string(),
+                    ))
+                })
+                .await;
 
                 match response_result {
                     Ok(result) => result,
-                    Err(_) => Err(crate::CryptoTransportError::Internal("RPC request timed out".to_string())),
+                    Err(_) => Err(crate::CryptoTransportError::Internal(
+                        "RPC request timed out".to_string(),
+                    )),
                 }
             };
 

@@ -28,6 +28,7 @@ pub struct JwtClaims {
 }
 
 impl JwtClaims {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             sub: None,
@@ -58,6 +59,7 @@ pub struct JwtHeader {
 }
 
 impl JwtHeader {
+    #[must_use]
     pub fn new(alg: &str) -> Self {
         Self {
             alg: alg.to_string(),
@@ -66,6 +68,7 @@ impl JwtHeader {
         }
     }
 
+    #[must_use]
     pub fn with_key_id(mut self, kid: String) -> Self {
         self.kid = Some(kid);
         self

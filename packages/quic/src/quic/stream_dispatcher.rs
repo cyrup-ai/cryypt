@@ -43,7 +43,10 @@ pub struct QuicStream {
 impl QuicStream {
     /// Create new QUIC stream
     pub fn new(protocol: Protocol, stream_id: u64) -> Self {
-        Self { protocol, stream_id }
+        Self {
+            protocol,
+            stream_id,
+        }
     }
 
     /// Get the protocol type for this stream

@@ -1,6 +1,6 @@
 //! JWT rotator builder following README.md patterns
 
-use crate::{error::*, types::*};
+use crate::{error::JwtResult, types::JwtClaims};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -18,6 +18,7 @@ impl Default for RotatorBuilder {
 }
 
 impl RotatorBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             keys: HashMap::new(),
@@ -27,18 +28,21 @@ impl RotatorBuilder {
     }
 
     /// Add a public key for verification - README.md pattern
+    #[must_use]
     pub fn add_key(mut self, key_id: &str, public_key: Vec<u8>) -> Self {
         self.keys.insert(key_id.to_string(), public_key);
         self
     }
 
     /// Set current private key for signing - README.md pattern
+    #[must_use]
     pub fn with_current_key(mut self, key_id: &str, private_key: Vec<u8>) -> Self {
         self.current_key = Some((key_id.to_string(), private_key));
         self
     }
 
-    /// Add result handler - README.md pattern: on_result! comes before action
+    /// Add result handler - README.md pattern: `on_result`! comes before action
+    #[must_use]
     pub fn on_result<F>(mut self, handler: F) -> Self
     where
         F: Fn(JwtResult<JwtRotator>) -> JwtRotator + Send + Sync + 'static,
@@ -48,7 +52,8 @@ impl RotatorBuilder {
     }
 
     /// Build rotator - action method per README.md pattern
-    pub async fn build(self) -> JwtRotator {
+    #[must_use]
+    pub fn build(self) -> JwtRotator {
         let rotator = JwtRotator {
             keys: self.keys,
             current_key: self.current_key,
@@ -79,6 +84,7 @@ pub struct JwtRotator {
 
 impl JwtRotator {
     /// Create new rotator instance
+    #[must_use]
     pub fn new() -> Self {
         Self {
             keys: HashMap::new(),
@@ -95,11 +101,13 @@ impl JwtRotator {
     }
 
     /// Get current key for signing
+    #[must_use]
     pub fn get_current_key(&self) -> Option<&(String, Vec<u8>)> {
         self.current_key.as_ref()
     }
 
     /// List all available keys  
+    #[must_use]
     pub fn list_keys(&self) -> Vec<&String> {
         self.keys.keys().collect()
     }
@@ -116,11 +124,12 @@ impl JwtRotator {
     }
 
     /// Sign JWT with standard claims structure
+    #[must_use]
     pub fn sign_claims(self, claims: JwtClaims) -> JwtRotatorSigner {
         self.sign(claims)
     }
 
-    /// Add result handler for verification - README.md pattern: on_result! comes before action
+    /// Add result handler for verification - README.md pattern: `on_result`! comes before action
     pub fn on_result<F>(self, handler: F) -> JwtRotatorVerifier
     where
         F: Fn(JwtResult<serde_json::Value>) -> serde_json::Value + Send + Sync + 'static,
@@ -132,31 +141,34 @@ impl JwtRotator {
     }
 
     /// Verify JWT with any available key - Production implementation
-    pub async fn verify<T>(self, token: T) -> serde_json::Value
+    pub fn verify<T>(self, token: T) -> serde_json::Value
     where
         T: AsRef<str>,
     {
         // Try to verify with each available key until one succeeds
         let token_str = token.as_ref();
-        
+
         // Try current key first (most likely to succeed)
         if let Some((_key_id, key_bytes)) = &self.current_key
-            && let Ok(claims) = crate::crypto::hmac_sha256::hs256_verify(key_bytes, token_str).await {
-                return claims;
-            }
-        
+            && let Ok(claims) = crate::crypto::hmac_sha256::hs256_verify(key_bytes, token_str)
+        {
+            return claims;
+        }
+
         // Try other keys in rotation
         for (key_id, key_bytes) in &self.keys {
             if let Some((current_id, _)) = &self.current_key
-                && key_id == current_id {
-                    continue; // Already tried current key
-                }
-            
-            if let Ok(claims) = crate::crypto::hmac_sha256::hs256_verify(key_bytes, token_str).await {
+                && key_id == current_id
+            {
+                continue; // Already tried current key
+            }
+
+            if let Ok(claims) = crate::crypto::hmac_sha256::hs256_verify(key_bytes, token_str)
+            {
                 return claims;
             }
         }
-        
+
         // If no key worked, return an error-like response
         serde_json::json!({"error": "Token verification failed", "valid": false})
     }
@@ -170,7 +182,8 @@ pub struct JwtRotatorSigner {
 }
 
 impl JwtRotatorSigner {
-    /// Add result handler - README.md pattern: on_result! comes before action
+    /// Add result handler - README.md pattern: `on_result`! comes before action
+    #[must_use]
     pub fn on_result<F>(mut self, handler: F) -> Self
     where
         F: Fn(JwtResult<String>) -> String + Send + Sync + 'static,
@@ -179,17 +192,18 @@ impl JwtRotatorSigner {
         self
     }
 
-    /// Sign JWT - this is actually called after on_result! per README.md pattern
-    pub async fn execute(self) -> String {
+    /// Sign JWT - this is actually called after `on_result`! per README.md pattern
+    #[must_use]
+    pub fn execute(self) -> String {
         // Use the current key from rotator and the claims
         let key_info = if let Some((key_id, _key_bytes)) = self.rotator.get_current_key() {
-            format!("key:{}", key_id)
+            format!("key:{key_id}")
         } else {
             "nokey".to_string()
         };
 
         let claims_str = self.claims.to_string();
-        let token = format!("header.{}.signature-{}", claims_str, key_info);
+        let token = format!("header.{claims_str}.signature-{key_info}");
 
         if let Some(handler) = self.result_handler {
             handler(Ok(token))
@@ -208,7 +222,7 @@ pub struct JwtRotatorVerifier {
 
 impl JwtRotatorVerifier {
     /// Verify JWT - action method per README.md pattern
-    pub async fn verify<T>(self, token: T) -> serde_json::Value
+    pub fn verify<T>(self, token: T) -> serde_json::Value
     where
         T: AsRef<str>,
     {
@@ -216,18 +230,18 @@ impl JwtRotatorVerifier {
         let token_str = token.as_ref();
         let available_keys = self.rotator.list_keys();
 
-        let verification_result = if !available_keys.is_empty() {
+        let verification_result = if available_keys.is_empty() {
+            serde_json::json!({
+                "verified": false,
+                "error": "No keys available"
+            })
+        } else {
             serde_json::json!({
                 "verified": true,
                 "token": token_str,
                 "tried_keys": available_keys.len(),
                 "sub": "rotator_verified",
                 "name": "Test User"
-            })
-        } else {
-            serde_json::json!({
-                "verified": false,
-                "error": "No keys available"
             })
         };
 

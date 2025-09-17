@@ -49,6 +49,7 @@ impl Default for Sha256Builder {
 
 impl Sha256Builder {
     /// Create new SHA-256 builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -58,7 +59,7 @@ impl Sha256Builder {
         Sha256BuilderWithKey { key: key.into() }
     }
 
-    /// Add on_result handler - README.md pattern
+    /// Add `on_result` handler - README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> Sha256BuilderWithHandler<F, T>
     where
         F: FnOnce(HashingResult<HashResult>) -> T + Send + 'static,
@@ -70,7 +71,7 @@ impl Sha256Builder {
         }
     }
 
-    /// Add on_error handler - transforms errors but passes through success
+    /// Add `on_error` handler - transforms errors but passes through success
     pub fn on_error<E>(self, handler: E) -> Sha256BuilderWithError<E>
     where
         E: Fn(crate::HashError) -> crate::HashError + Send + Sync + 'static,
@@ -80,7 +81,7 @@ impl Sha256Builder {
         }
     }
 
-    /// Add on_chunk handler for streaming - README.md pattern
+    /// Add `on_chunk` handler for streaming - README.md pattern
     pub fn on_chunk<C>(self, handler: C) -> Sha256BuilderWithChunk<C>
     where
         C: Fn(HashingResult<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync + 'static,
@@ -97,7 +98,7 @@ impl Sha256Builder {
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = sha256_hash(&data).await.map(|bytes| bytes.into());
+            let result = sha256_hash(&data).await.map(std::convert::Into::into);
             let _ = tx.send(result);
         });
 
@@ -112,7 +113,7 @@ where
     /// Compute hash with handler
     pub async fn compute<D: Into<Vec<u8>>>(self, data: D) -> T {
         let data = data.into();
-        let result = sha256_hash(&data).await.map(|bytes| bytes.into());
+        let result = sha256_hash(&data).await.map(std::convert::Into::into);
         (self.result_handler)(result)
     }
 }
@@ -121,7 +122,7 @@ impl<E> Sha256BuilderWithError<E>
 where
     E: Fn(crate::HashError) -> crate::HashError + Send + Sync + 'static,
 {
-    /// Add on_result handler after error handler
+    /// Add `on_result` handler after error handler
     pub fn on_result<F, T>(self, handler: F) -> Sha256BuilderWithHandler<F, T>
     where
         F: FnOnce(HashingResult<HashResult>) -> T + Send + 'static,
@@ -141,7 +142,7 @@ where
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = sha256_hash(&data).await.map(|bytes| bytes.into());
+            let result = sha256_hash(&data).await.map(std::convert::Into::into);
             let _ = tx.send(result);
         });
 
@@ -158,7 +159,7 @@ impl Sha256BuilderWithKey {
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = sha256_hmac(&key, &data).await.map(|bytes| bytes.into());
+            let result = sha256_hmac(&key, &data).await.map(std::convert::Into::into);
             let _ = tx.send(result);
         });
 
@@ -170,15 +171,15 @@ impl Sha256BuilderWithKey {
 async fn sha256_hash(data: &[u8]) -> crate::Result<Vec<u8>> {
     use sha2::{Digest, Sha256};
 
-    let mut hasher = Sha256::new();
-    
-    // Process data in 8KB chunks with yield points
     const CHUNK_SIZE: usize = 8192;
+    let mut hasher = Sha256::new();
+
+    // Process data in 8KB chunks with yield points
     for chunk in data.chunks(CHUNK_SIZE) {
         hasher.update(chunk);
         tokio::task::yield_now().await;
     }
-    
+
     let result = hasher.finalize();
     Ok(result.to_vec())
 }
@@ -188,18 +189,18 @@ async fn sha256_hmac(key: &[u8], data: &[u8]) -> crate::Result<Vec<u8>> {
     use hmac::{Hmac, Mac};
     use sha2::Sha256;
 
+    const CHUNK_SIZE: usize = 8192;
     type HmacSha256 = Hmac<Sha256>;
 
     let mut mac = HmacSha256::new_from_slice(key)
         .map_err(|_| crate::HashError::invalid_parameters("Invalid HMAC key length"))?;
-    
+
     // Process data in 8KB chunks with yield points
-    const CHUNK_SIZE: usize = 8192;
     for chunk in data.chunks(CHUNK_SIZE) {
         mac.update(chunk);
         tokio::task::yield_now().await;
     }
-    
+
     let result = mac.finalize().into_bytes();
     Ok(result.to_vec())
 }

@@ -6,8 +6,8 @@
 //! - domain: Domain validation operations
 
 pub mod basic;
-pub mod security;
 pub mod domain;
+pub mod security;
 
 // Re-export main validation types
 pub use basic::{CertificateValidator, CertificateValidatorWithInput};

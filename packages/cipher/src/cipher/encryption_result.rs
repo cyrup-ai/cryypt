@@ -36,7 +36,7 @@ impl EncodableResult {
     /// Convert to UTF-8 string (for text data)
     pub fn to_string(self) -> crate::Result<String> {
         String::from_utf8(self.data)
-            .map_err(|e| crate::CryptError::InvalidEncryptedData(format!("Invalid UTF-8: {}", e)))
+            .map_err(|e| crate::CryptError::InvalidEncryptedData(format!("Invalid UTF-8: {e}")))
     }
 
     /// Convert to UTF-8 string, replacing invalid sequences
@@ -48,7 +48,7 @@ impl EncodableResult {
     pub async fn to_file<P: AsRef<std::path::Path>>(self, path: P) -> crate::Result<()> {
         tokio::fs::write(path, &self.data)
             .await
-            .map_err(|e| crate::CryptError::Internal(format!("Failed to write file: {}", e)))
+            .map_err(|e| crate::CryptError::Internal(format!("Failed to write file: {e}")))
     }
 
     /// Get the length of the data

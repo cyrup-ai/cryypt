@@ -27,7 +27,7 @@ pub fn render_keys_tab(f: &mut Frame, app: &mut App, area: Rect) {
                 } else {
                     str_val.to_string()
                 };
-                format!("{}: {}", key, display_val)
+                format!("{}: {key, display_val}")
             } else {
                 format!("{}: [complex value]", key)
             };

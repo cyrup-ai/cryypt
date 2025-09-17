@@ -1,9 +1,9 @@
 //! ES256 key generation for ECDSA P-256
 
-use crate::{error::*, types::*};
+use crate::{error::{JwtResult, JwtError}, types::Es256KeyPair};
 /// Generate ES256 key pair - Production async implementation
 #[allow(dead_code)]
-pub async fn es256_generate_keys() -> JwtResult<Es256KeyPair> {
+pub fn es256_generate_keys() -> JwtResult<Es256KeyPair> {
     // Direct async implementation - key generation is fast enough for direct execution
     // Use the algorithms module to generate keys
     let keypair = crate::algorithms::generate_es256_keypair()?;

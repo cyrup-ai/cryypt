@@ -3,8 +3,8 @@
 //! This module provides functionality for extracting distinguished name (DN)
 //! attributes from X.509 certificates using proper ASN.1 type handling.
 
-use std::collections::HashMap;
 use der::asn1::{Ia5StringRef, PrintableStringRef, Utf8StringRef};
+use std::collections::HashMap;
 
 /// Extract name attributes from x509-cert Name structure
 pub fn extract_name_attributes(name: &x509_cert::name::Name, attrs: &mut HashMap<String, String>) {

@@ -6,12 +6,13 @@ use super::types::VaultValue;
 use crate::error::{VaultError, VaultResult};
 use crate::operation::{
     Passphrase, VaultBoolRequest, VaultChangePassphraseRequest, VaultFindRequest, VaultGetRequest,
-    VaultListRequest, VaultOperation, VaultPutAllRequest, VaultUnitRequest,
+    VaultListNamespacesRequest, VaultListRequest, VaultOperation, VaultPutAllRequest,
+    VaultUnitRequest,
 };
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{Mutex, oneshot};
 
 /// Main Vault struct for managing encrypted storage operations
 pub struct Vault {
@@ -27,7 +28,9 @@ impl Vault {
     }
 
     /// Creates a new Vault with a LocalVaultProvider using FortressEncrypt (defense-in-depth) encryption (async version)
-    pub async fn with_fortress_encryption_async(config: crate::config::VaultConfig) -> VaultResult<Self> {
+    pub async fn with_fortress_encryption_async(
+        config: crate::config::VaultConfig,
+    ) -> VaultResult<Self> {
         let vault = Self::new();
         let provider = crate::LocalVaultProvider::new(config).await?;
         vault.register_operation(provider).await;
@@ -37,7 +40,7 @@ impl Vault {
     /// Creates a new Vault with a LocalVaultProvider using FortressEncrypt (sync wrapper)
     pub fn with_fortress_encryption(config: crate::config::VaultConfig) -> VaultResult<Self> {
         let (tx, rx) = oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = Self::with_fortress_encryption_async(config).await;
             let _ = tx.send(result);
@@ -52,11 +55,11 @@ impl Vault {
         guard.push(Arc::new(provider));
     }
 
-    pub async fn unlock(&self, passphrase: &str) -> VaultResult<()> {
+    pub async fn unlock(&self, passphrase: &str) -> VaultResult<VaultUnitRequest> {
         let secure_passphrase = Passphrase::from(passphrase.to_string());
         let providers = self.providers.lock().await;
         if let Some(provider) = providers.first() {
-            provider.unlock(&secure_passphrase).await
+            Ok(provider.unlock(&secure_passphrase))
         } else {
             Err(VaultError::Configuration(
                 "No provider configured".to_string(),
@@ -64,10 +67,10 @@ impl Vault {
         }
     }
 
-    pub async fn lock(&self) -> VaultResult<()> {
+    pub async fn lock(&self) -> VaultResult<VaultUnitRequest> {
         let providers = self.providers.lock().await;
         if let Some(provider) = providers.first() {
-            provider.lock().await
+            Ok(provider.lock())
         } else {
             Err(VaultError::Configuration(
                 "No provider configured".to_string(),
@@ -258,6 +261,89 @@ impl Vault {
             provider.is_new_vault()
         } else {
             true // No provider means new vault
+        }
+    }
+
+    // Namespace-aware operations
+
+    /// Store a value in a specific namespace
+    pub async fn put_with_namespace(
+        &self,
+        namespace: &str,
+        key: &str,
+        value: &str,
+    ) -> VaultResult<VaultUnitRequest> {
+        let providers = self.providers.lock().await;
+        if let Some(provider) = providers.first() {
+            Ok(provider.put_with_namespace(
+                namespace,
+                key,
+                VaultValue::from_string(value.to_string()),
+            ))
+        } else {
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
+        }
+    }
+
+    /// Retrieve a value from a specific namespace
+    pub async fn get_from_namespace(
+        &self,
+        namespace: &str,
+        key: &str,
+    ) -> VaultResult<VaultGetRequest> {
+        let providers = self.providers.lock().await;
+        if let Some(provider) = providers.first() {
+            Ok(provider.get_from_namespace(namespace, key))
+        } else {
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
+        }
+    }
+
+    /// Delete a key from a specific namespace
+    pub async fn delete_from_namespace(
+        &self,
+        namespace: &str,
+        key: &str,
+    ) -> VaultResult<VaultUnitRequest> {
+        let providers = self.providers.lock().await;
+        if let Some(provider) = providers.first() {
+            Ok(provider.delete_from_namespace(namespace, key))
+        } else {
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
+        }
+    }
+
+    /// Find entries in a specific namespace
+    pub async fn find_in_namespace(
+        &self,
+        namespace: &str,
+        pattern: &str,
+    ) -> VaultResult<VaultFindRequest> {
+        let providers = self.providers.lock().await;
+        if let Some(provider) = providers.first() {
+            Ok(provider.find_in_namespace(namespace, pattern))
+        } else {
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
+        }
+    }
+
+    /// List all available namespaces
+    pub async fn list_namespaces(&self) -> VaultResult<VaultListNamespacesRequest> {
+        let providers = self.providers.lock().await;
+        if let Some(provider) = providers.first() {
+            Ok(provider.list_namespaces())
+        } else {
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
         }
     }
 }

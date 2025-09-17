@@ -2,12 +2,12 @@
 
 use super::super::app::App;
 use crate::core::Vault;
-use cryypt_common::error::LoggingTransformer;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use cryypt_common::error::LoggingTransformer;
 use dialoguer::{Password, theme::ColorfulTheme};
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
@@ -39,7 +39,10 @@ pub async fn setup_terminal_and_vault(
         let is_new_vault = app.vault.is_new_vault().await;
 
         if is_new_vault {
-            LoggingTransformer::log_terminal_setup("new_vault_creation", Some("Displaying password requirements"));
+            LoggingTransformer::log_terminal_setup(
+                "new_vault_creation",
+                Some("Displaying password requirements"),
+            );
             println!("Welcome! Creating a new secure vault.");
             println!();
             println!("Password Requirements:");
@@ -67,7 +70,10 @@ pub async fn setup_terminal_and_vault(
                 return Err("Passphrases do not match".into());
             }
         } else {
-            LoggingTransformer::log_terminal_setup("vault_unlock_prompt", Some("Prompting for existing vault passphrase"));
+            LoggingTransformer::log_terminal_setup(
+                "vault_unlock_prompt",
+                Some("Prompting for existing vault passphrase"),
+            );
             println!("Secure Vault - Enter passphrase to unlock");
             println!();
 

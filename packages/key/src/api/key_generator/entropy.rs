@@ -2,8 +2,8 @@
 //!
 //! Contains RNG management and entropy pool functionality for secure key generation.
 
-use rand::{RngCore, rng};
 use crate::entropy::{EntropySource, MIN_ENTROPY_THRESHOLD};
+use rand::{RngCore, rng};
 
 /// Entropy source configuration for key generation
 /// Encapsulates entropy quality and source management
@@ -109,7 +109,7 @@ impl EntropyProvider {
     fn verify_entropy_quality(&self, bytes: &[u8]) {
         let entropy_source = EntropySource::default();
         let entropy = entropy_source.estimate_entropy(bytes);
-        
+
         if entropy < MIN_ENTROPY_THRESHOLD {
             tracing::warn!(
                 "Entropy quality below threshold: {:.2} < {:.2}",

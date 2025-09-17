@@ -4,8 +4,8 @@
 //! using the cryypt cipher API for secure message processing.
 
 use super::super::types::{EncryptionAlgorithm, EncryptionMetadata};
-use cryypt_cipher::Cipher;
 use crate::error::CryptoTransportError;
+use cryypt_cipher::Cipher;
 
 /// Streaming encryption pipeline using cryypt cipher API  
 pub async fn encrypt_payload_stream(
@@ -15,7 +15,7 @@ pub async fn encrypt_payload_stream(
     key_id: String,
 ) -> crate::Result<(Vec<u8>, EncryptionMetadata)> {
     let timestamp = std::time::SystemTime::now();
-    
+
     match algorithm {
         EncryptionAlgorithm::Aes256Gcm => {
             let data_was_empty = data.is_empty();
@@ -30,14 +30,14 @@ pub async fn encrypt_payload_stream(
                 })
                 .encrypt(data)
                 .await;
-            
+
             // Check if encryption failed (empty result indicates error only if original wasn't empty)
             if encrypted.is_empty() && !data_was_empty {
                 return Err(CryptoTransportError::Internal(
-                    "AES encryption failed - produced empty result for non-empty input".to_string()
+                    "AES encryption failed - produced empty result for non-empty input".to_string(),
                 ));
             }
-            
+
             let metadata = EncryptionMetadata {
                 algorithm: "aes-256-gcm".to_string(),
                 key_id,
@@ -46,7 +46,7 @@ pub async fn encrypt_payload_stream(
                 auth_tag: Vec::new(), // AES-GCM auth tag is integrated into encrypted data
                 timestamp,
             };
-            
+
             Ok((encrypted, metadata))
         }
         EncryptionAlgorithm::ChaCha20Poly1305 => {
@@ -62,14 +62,15 @@ pub async fn encrypt_payload_stream(
                 })
                 .encrypt(data)
                 .await;
-            
+
             // Check if encryption failed (empty result indicates error only if original wasn't empty)
             if encrypted.is_empty() && !data_was_empty {
                 return Err(CryptoTransportError::Internal(
-                    "ChaCha20 encryption failed - produced empty result for non-empty input".to_string()
+                    "ChaCha20 encryption failed - produced empty result for non-empty input"
+                        .to_string(),
                 ));
             }
-            
+
             let metadata = EncryptionMetadata {
                 algorithm: "chacha20-poly1305".to_string(),
                 key_id,
@@ -78,7 +79,7 @@ pub async fn encrypt_payload_stream(
                 auth_tag: Vec::new(), // ChaCha20-Poly1305 auth tag is integrated into encrypted data
                 timestamp,
             };
-            
+
             Ok((encrypted, metadata))
         }
         EncryptionAlgorithm::None => {
@@ -116,14 +117,14 @@ pub async fn decrypt_payload_stream(
                 })
                 .decrypt(data)
                 .await;
-            
+
             // Check if decryption failed (empty result indicates error only if input wasn't empty)
             if decrypted.is_empty() && !data_was_empty {
                 return Err(CryptoTransportError::Internal(
-                    "AES decryption failed - produced empty result for non-empty input".to_string()
+                    "AES decryption failed - produced empty result for non-empty input".to_string(),
                 ));
             }
-            
+
             Ok(decrypted)
         }
         "chacha20-poly1305" => {
@@ -139,19 +140,21 @@ pub async fn decrypt_payload_stream(
                 })
                 .decrypt(data)
                 .await;
-            
+
             // Check if decryption failed (empty result indicates error only if input wasn't empty)
             if decrypted.is_empty() && !data_was_empty {
                 return Err(CryptoTransportError::Internal(
-                    "ChaCha20 decryption failed - produced empty result for non-empty input".to_string()
+                    "ChaCha20 decryption failed - produced empty result for non-empty input"
+                        .to_string(),
                 ));
             }
-            
+
             Ok(decrypted)
         }
         "none" => Ok(data), // No decryption needed
-        _ => Err(CryptoTransportError::Internal(
-            format!("Unsupported encryption algorithm: {}", metadata.algorithm)
-        ))
+        _ => Err(CryptoTransportError::Internal(format!(
+            "Unsupported encryption algorithm: {}",
+            metadata.algorithm
+        ))),
     }
 }

@@ -10,4 +10,3 @@ pub mod rpc;
 
 pub use file_transfer::{FileTransferProgress, QuicFileTransfer, TransferResult};
 pub use messaging::{MessageDelivery, QuicMessaging};
-pub use rpc::{QuicRpc, RpcCall, RpcResponse};

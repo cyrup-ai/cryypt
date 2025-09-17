@@ -14,36 +14,35 @@
 //! the single responsibility principle.
 
 // Import the modular submodules
-mod types;
 mod builders;
-mod server;
 mod message_processing;
 mod protocol_core;
+mod server;
+mod types;
 
 // Re-export main types and builders for convenience
 pub use types::{
-    CompressionAlgorithm, EncryptionAlgorithm, MessageEnvelope, MessageDelivery,
-    DistributionStrategy, MessagePriority, CompressionMetadata, EncryptionMetadata,
-    PriorityMessageQueue, LoadBalancer, ConnectionState,
+    CompressionAlgorithm, CompressionMetadata, ConnectionState, DistributionStrategy,
+    EncryptionAlgorithm, EncryptionMetadata, LoadBalancer, MessageDelivery, MessageEnvelope,
+    MessagePriority, PriorityMessageQueue,
 };
 
-pub use builders::{QuicMessaging, MessagingServerBuilder, MessagingClientBuilder};
+pub use builders::{MessagingClientBuilder, MessagingServerBuilder, QuicMessaging};
 
 pub use server::{
-    MessagingServer, MessagingServerConfig, TopicSubscriptions, 
-    ConnectionHealth, ServerConnectionState
+    ConnectionHealth, MessagingServer, MessagingServerConfig, ServerConnectionState,
+    TopicSubscriptions,
 };
 
 pub use message_processing::{
-    calculate_checksum, calculate_checksum_64, calculate_authenticated_checksum, verify_authenticated_checksum,
-    derive_connection_key, compress_payload_stream, decompress_payload_stream,
-    encrypt_payload_stream, decrypt_payload_stream,
-    process_payload_forward, process_payload_reverse,
+    calculate_authenticated_checksum, calculate_checksum, calculate_checksum_64,
+    compress_payload_stream, decompress_payload_stream, decrypt_payload_stream,
+    derive_connection_key, encrypt_payload_stream, process_payload_forward,
+    process_payload_reverse, verify_authenticated_checksum,
 };
 
 pub use protocol_core::{
-    PerformanceMonitor, ConnectionHealthChecker, FlowController,
-    RetryManager, MessageValidator, MetricsCollector,
-    QUIC_PROTOCOL_VERSION, APPLICATION_PROTOCOL, CONNECTION_TIMEOUT,
-    generate_connection_id, create_quic_config, create_client_quic_config,
+    APPLICATION_PROTOCOL, CONNECTION_TIMEOUT, ConnectionHealthChecker, FlowController,
+    MessageValidator, MetricsCollector, PerformanceMonitor, QUIC_PROTOCOL_VERSION, RetryManager,
+    create_client_quic_config, create_quic_config, generate_connection_id,
 };

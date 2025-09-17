@@ -25,6 +25,7 @@ impl ExistsResult {
         ExistsResultWithHandler {
             receiver: self.receiver,
             handler: Some(handler),
+            completed: false,
         }
     }
 }
@@ -33,6 +34,18 @@ impl ExistsResult {
 pub struct ExistsResultWithHandler<F> {
     receiver: oneshot::Receiver<Result<bool>>,
     handler: Option<F>,
+    completed: bool,
+}
+
+impl<F> ExistsResultWithHandler<F> {
+    /// Create a new ExistsResultWithHandler for testing purposes
+    pub fn new(receiver: oneshot::Receiver<Result<bool>>, handler: F) -> Self {
+        Self {
+            receiver,
+            handler: Some(handler),
+            completed: false,
+        }
+    }
 }
 
 impl<F, T> Future for ExistsResultWithHandler<F>
@@ -44,21 +57,33 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
+        
+        // If already completed, return Pending to avoid multiple completions
+        if this.completed {
+            return Poll::Pending;
+        }
+        
         match Pin::new(&mut this.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(result))
                 } else {
-                    panic!("ExistsResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Ready(Err(_)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(Err(KeyError::internal(
                         "Exists check task dropped",
                     ))))
                 } else {
-                    panic!("ExistsResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Pending => Poll::Pending,
@@ -84,6 +109,7 @@ impl DeleteResult {
         DeleteResultWithHandler {
             receiver: self.receiver,
             handler: Some(handler),
+            completed: false,
         }
     }
 }
@@ -92,6 +118,18 @@ impl DeleteResult {
 pub struct DeleteResultWithHandler<F> {
     receiver: oneshot::Receiver<Result<()>>,
     handler: Option<F>,
+    completed: bool,
+}
+
+impl<F> DeleteResultWithHandler<F> {
+    /// Create a new DeleteResultWithHandler for testing purposes
+    pub fn new(receiver: oneshot::Receiver<Result<()>>, handler: F) -> Self {
+        Self {
+            receiver,
+            handler: Some(handler),
+            completed: false,
+        }
+    }
 }
 
 impl<F, T> Future for DeleteResultWithHandler<F>
@@ -103,19 +141,31 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
+        
+        // If already completed, return Pending to avoid multiple completions
+        if this.completed {
+            return Poll::Pending;
+        }
+        
         match Pin::new(&mut this.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(result))
                 } else {
-                    panic!("DeleteResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Ready(Err(_)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(Err(KeyError::internal("Delete task dropped"))))
                 } else {
-                    panic!("DeleteResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Pending => Poll::Pending,
@@ -141,6 +191,7 @@ impl StoreResult {
         StoreResultWithHandler {
             receiver: self.receiver,
             handler: Some(handler),
+            completed: false,
         }
     }
 }
@@ -149,6 +200,18 @@ impl StoreResult {
 pub struct StoreResultWithHandler<F> {
     receiver: oneshot::Receiver<Result<()>>,
     handler: Option<F>,
+    completed: bool,
+}
+
+impl<F> StoreResultWithHandler<F> {
+    /// Create a new StoreResultWithHandler for testing purposes
+    pub fn new(receiver: oneshot::Receiver<Result<()>>, handler: F) -> Self {
+        Self {
+            receiver,
+            handler: Some(handler),
+            completed: false,
+        }
+    }
 }
 
 impl<F, T> Future for StoreResultWithHandler<F>
@@ -160,19 +223,31 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
+        
+        // If already completed, return Pending to avoid multiple completions
+        if this.completed {
+            return Poll::Pending;
+        }
+        
         match Pin::new(&mut this.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(result))
                 } else {
-                    panic!("StoreResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Ready(Err(_)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(Err(KeyError::internal("Store task dropped"))))
                 } else {
-                    panic!("StoreResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Pending => Poll::Pending,
@@ -198,6 +273,7 @@ impl RetrieveResult {
         RetrieveResultWithHandler {
             receiver: self.receiver,
             handler: Some(handler),
+            completed: false,
         }
     }
 }
@@ -206,6 +282,18 @@ impl RetrieveResult {
 pub struct RetrieveResultWithHandler<F> {
     receiver: oneshot::Receiver<Result<Vec<u8>>>,
     handler: Option<F>,
+    completed: bool,
+}
+
+impl<F> RetrieveResultWithHandler<F> {
+    /// Create a new RetrieveResultWithHandler for testing purposes
+    pub fn new(receiver: oneshot::Receiver<Result<Vec<u8>>>, handler: F) -> Self {
+        Self {
+            receiver,
+            handler: Some(handler),
+            completed: false,
+        }
+    }
 }
 
 impl<F, T> Future for RetrieveResultWithHandler<F>
@@ -217,19 +305,31 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
+        
+        // If already completed, return Pending to avoid multiple completions
+        if this.completed {
+            return Poll::Pending;
+        }
+        
         match Pin::new(&mut this.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(result))
                 } else {
-                    panic!("RetrieveResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Ready(Err(_)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(Err(KeyError::internal("Retrieve task dropped"))))
                 } else {
-                    panic!("RetrieveResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Pending => Poll::Pending,
@@ -255,6 +355,7 @@ impl ListResult {
         ListResultWithHandler {
             receiver: self.receiver,
             handler: Some(handler),
+            completed: false,
         }
     }
 }
@@ -263,6 +364,18 @@ impl ListResult {
 pub struct ListResultWithHandler<F> {
     receiver: oneshot::Receiver<Result<Vec<String>>>,
     handler: Option<F>,
+    completed: bool,
+}
+
+impl<F> ListResultWithHandler<F> {
+    /// Create a new ListResultWithHandler for testing purposes
+    pub fn new(receiver: oneshot::Receiver<Result<Vec<String>>>, handler: F) -> Self {
+        Self {
+            receiver,
+            handler: Some(handler),
+            completed: false,
+        }
+    }
 }
 
 impl<F, T> Future for ListResultWithHandler<F>
@@ -274,19 +387,31 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
+        
+        // If already completed, return Pending to avoid multiple completions
+        if this.completed {
+            return Poll::Pending;
+        }
+        
         match Pin::new(&mut this.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(result))
                 } else {
-                    panic!("ListResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Ready(Err(_)) => {
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(Err(KeyError::internal("List task dropped"))))
                 } else {
-                    panic!("ListResultWithHandler polled after completion")
+                    // Handler already taken - mark as completed and return Pending
+                    this.completed = true;
+                    Poll::Pending
                 }
             }
             Poll::Pending => Poll::Pending,

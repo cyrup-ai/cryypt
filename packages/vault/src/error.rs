@@ -81,15 +81,15 @@ impl VaultError {
     }
 
     pub fn transaction_begin_failed(_tx_id: String, msg: String) -> Self {
-        VaultError::DatabaseError(format!("Transaction begin failed: {}", msg))
+        VaultError::DatabaseError(format!("Transaction begin failed: {msg}"))
     }
 
     pub fn transaction_commit_failed(_tx_id: String, msg: String) -> Self {
-        VaultError::DatabaseError(format!("Transaction commit failed: {}", msg))
+        VaultError::DatabaseError(format!("Transaction commit failed: {msg}"))
     }
 
     pub fn transaction_operation_failed(_tx_id: String, msg: String) -> Self {
-        VaultError::DatabaseError(format!("Transaction operation failed: {}", msg))
+        VaultError::DatabaseError(format!("Transaction operation failed: {msg}"))
     }
 
     pub fn transaction_closed(tx_id: String) -> Self {
@@ -97,7 +97,7 @@ impl VaultError {
     }
 
     pub fn database_operation_failed(_tx_id: String, msg: String) -> Self {
-        VaultError::DatabaseError(format!("Database operation failed: {}", msg))
+        VaultError::DatabaseError(format!("Database operation failed: {msg}"))
     }
 }
 

@@ -8,6 +8,7 @@ use serde_json::json;
 pub async fn handle_delete(
     vault: &Vault,
     key: &str,
+    namespace: Option<&str>,
     passphrase_option: Option<&str>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -18,7 +19,7 @@ pub async fn handle_delete(
                 json!({
                     "success": false,
                     "operation": "delete",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -28,43 +29,62 @@ pub async fn handle_delete(
     }
 
     if !use_json {
-        println!("Deleting key '{}'...", key);
+        if let Some(ns) = namespace {
+            println!("Deleting key '{}' from namespace '{}'...", key, ns);
+        } else {
+            println!("Deleting key '{}'...", key);
+        }
     }
 
-    match vault.delete(key).await {
+    // Use namespace-aware delete operation if namespace is provided
+    let delete_result = if let Some(ns) = namespace {
+        vault.delete_from_namespace(ns, key).await
+    } else {
+        vault.delete(key).await
+    };
+
+    match delete_result {
         Ok(_) => {
-            log_security_event("CLI_DELETE", &format!("Deleted key: {}", key), true);
+            let log_msg = if let Some(ns) = namespace {
+                format!("Deleted key: {} from namespace: {key, ns}")
+            } else {
+                format!("Deleted key: {key}")
+            };
+            log_security_event("CLI_DELETE", &log_msg, true);
 
             if use_json {
-                println!(
-                    "{}",
-                    json!({
-                        "success": true,
-                        "operation": "delete",
-                        "key": key
-                    })
-                );
+                let mut response = json!({
+                    "success": true,
+                    "operation": "delete",
+                    "key": key
+                });
+                if let Some(ns) = namespace {
+                    response["namespace"] = json!(ns);
+                }
+                println!("{}", response);
             } else {
                 println!("Key deleted successfully");
             }
         }
         Err(e) => {
-            log_security_event(
-                "CLI_DELETE",
-                &format!("Failed to delete key {}: {}", key, e),
-                false,
-            );
+            let log_msg = if let Some(ns) = namespace {
+                format!("Failed to delete key {} from namespace {}: {key, ns, e}")
+            } else {
+                format!("Failed to delete key {}: {key, e}")
+            };
+            log_security_event("CLI_DELETE", &log_msg, false);
 
             if use_json {
-                println!(
-                    "{}",
-                    json!({
-                        "success": false,
-                        "operation": "delete",
-                        "key": key,
-                        "error": format!("Failed to delete key: {}", e)
-                    })
-                );
+                let mut response = json!({
+                    "success": false,
+                    "operation": "delete",
+                    "key": key,
+                    "error": format!("Failed to delete key: {e}")
+                });
+                if let Some(ns) = namespace {
+                    response["namespace"] = json!(ns);
+                }
+                println!("{}", response);
                 return Ok(());
             } else {
                 return Err(Box::new(e));

@@ -54,8 +54,6 @@ impl<'v> VaultWithTtl<'v> {
         }
     }
 
-
-
     /// Update TTL for existing key
     pub async fn update_ttl(self, new_ttl_seconds: u64) -> VaultResult<()> {
         let new_expiry =

@@ -19,6 +19,7 @@ impl Default for Bzip2Decompressor {
 }
 
 impl Bzip2Decompressor {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             input_buffer: Vec::with_capacity(64 * 1024),
@@ -27,12 +28,20 @@ impl Bzip2Decompressor {
         }
     }
 
-    pub fn decompress_chunk(&mut self, chunk: Vec<u8>) -> Result<Vec<u8>> {
+    /// Decompress a single chunk of data
+    ///
+    /// # Errors
+    ///
+    /// Returns `CompressionError::Internal` if:
+    /// - The compressed data is malformed or corrupted
+    /// - The decompression operation fails due to invalid input
+    /// - I/O operations on the internal buffers fail
+    pub fn decompress_chunk(&mut self, chunk: &[u8]) -> Result<Vec<u8>> {
         use bzip2::read::BzDecoder;
         use std::io::Read;
 
         // Append new data to our input buffer
-        self.input_buffer.extend_from_slice(&chunk);
+        self.input_buffer.extend_from_slice(chunk);
 
         // Try to decompress from current position
         let unconsumed = &self.input_buffer[self.consumed..];
@@ -49,7 +58,7 @@ impl Bzip2Decompressor {
             Ok(n) if n > 0 => {
                 // Calculate how much input was consumed
                 let total_in = decoder.total_in();
-                self.consumed += total_in as usize;
+                self.consumed += usize::try_from(total_in).unwrap_or(0);
 
                 // Return decompressed data (move to avoid copy)
                 Ok(std::mem::take(&mut self.output_buffer))
@@ -63,6 +72,14 @@ impl Bzip2Decompressor {
         }
     }
 
+    /// Finalize decompression and return any remaining decompressed data
+    ///
+    /// # Errors
+    ///
+    /// Returns `CompressionError::Internal` if:
+    /// - There is remaining compressed data that cannot be properly decompressed
+    /// - The final decompression operation encounters malformed data
+    /// - I/O operations on the remaining buffer data fail
     pub fn finish(mut self) -> Result<Vec<u8>> {
         use bzip2::read::BzDecoder;
         use std::io::Read;

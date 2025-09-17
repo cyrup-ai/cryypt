@@ -16,6 +16,7 @@ pub struct KeyResult {
 pub struct KeyResultWithHandler<F> {
     receiver: oneshot::Receiver<Result<Vec<u8>>>,
     handler: Option<F>,
+    completed: bool,
 }
 
 impl KeyResult {
@@ -44,6 +45,7 @@ impl KeyResult {
         KeyResultWithHandler {
             receiver: self.receiver,
             handler: Some(handler),
+            completed: false,
         }
     }
 }
@@ -71,26 +73,34 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
+        
+        // If already completed, return Pending to avoid multiple completions
+        if this.completed {
+            return Poll::Pending;
+        }
+        
         match Pin::new(&mut this.receiver).poll(cx) {
             Poll::Ready(Ok(result)) => {
                 // Call the user's on_result handler with the Result
                 // The handler defines what happens on error and returns unwrapped value
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(result))
                 } else {
-                    // Handler was already called, this shouldn't happen
-                    panic!("KeyResultWithHandler polled after completion")
+                    // Handler was already called, return Pending
+                    Poll::Pending
                 }
             }
             Poll::Ready(Err(_)) => {
                 // Task dropped - this should not happen in normal operation
                 if let Some(handler) = this.handler.take() {
+                    this.completed = true;
                     Poll::Ready(handler(Err(KeyError::internal(
                         "Key resolution task dropped",
                     ))))
                 } else {
-                    // Handler was already called, this shouldn't happen
-                    panic!("KeyResultWithHandler polled after completion")
+                    // Handler was already called, return Pending
+                    Poll::Pending
                 }
             }
             Poll::Pending => Poll::Pending,

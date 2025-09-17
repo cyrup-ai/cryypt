@@ -31,7 +31,7 @@ where
         let content_string = match serde_json::to_string(&doc) {
             Ok(content) => content,
             Err(e) => {
-                let _ = tx.send(Err(Error::Database(format!("Serialization failed: {}", e))));
+                let _ = tx.send(Err(Error::Database(format!("Serialization failed: {e}"))));
                 return Box::pin(ReceiverStream::new(rx));
             }
         };
@@ -40,7 +40,7 @@ where
             let id = Uuid::new_v4().to_string();
 
             // Use raw SQL query to avoid content() method's lifetime issues
-            let query = format!("CREATE {}:{} CONTENT {}", table, id, content_string);
+            let query = format!("CREATE {}:{} CONTENT {table, id, content_string}");
 
             match db.query(query).await {
                 Ok(_) => {
@@ -134,14 +134,14 @@ where
         let content_string = match serde_json::to_string(&doc) {
             Ok(content) => content,
             Err(e) => {
-                let _ = tx.send(Err(Error::Database(format!("Serialization failed: {}", e))));
+                let _ = tx.send(Err(Error::Database(format!("Serialization failed: {e}"))));
                 return Box::pin(ReceiverStream::new(rx));
             }
         };
 
         tokio::spawn(async move {
             // Use raw SQL query to avoid content() method's lifetime issues
-            let query = format!("UPDATE {}:{} CONTENT {}", table, id, content_string);
+            let query = format!("UPDATE {}:{} CONTENT {table, id, content_string}");
 
             match db.query(query).await {
                 Ok(mut response) => {

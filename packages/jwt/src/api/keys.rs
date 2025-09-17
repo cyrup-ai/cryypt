@@ -30,7 +30,7 @@ pub(crate) fn validate_rsa_private_key(key_der: &[u8]) -> Result<(), JwtError> {
     use rsa::{RsaPrivateKey, pkcs8::DecodePrivateKey};
 
     let _key = RsaPrivateKey::from_pkcs8_der(key_der)
-        .map_err(|e| JwtError::invalid_key(&format!("Invalid RSA private key: {}", e)))?;
+        .map_err(|e| JwtError::invalid_key(&format!("Invalid RSA private key: {e}")))?;
 
     Ok(())
 }
@@ -40,7 +40,7 @@ pub(crate) fn validate_rsa_public_key(key_der: &[u8]) -> Result<(), JwtError> {
     use rsa::{RsaPublicKey, pkcs8::DecodePublicKey};
 
     let _key = RsaPublicKey::from_public_key_der(key_der)
-        .map_err(|e| JwtError::invalid_key(&format!("Invalid RSA public key: {}", e)))?;
+        .map_err(|e| JwtError::invalid_key(&format!("Invalid RSA public key: {e}")))?;
 
     Ok(())
 }
@@ -51,13 +51,13 @@ pub(crate) fn validate_ec_private_key(key_der: &[u8], algorithm: &str) -> Result
         "ES256" => {
             use p256::{ecdsa::SigningKey, pkcs8::DecodePrivateKey};
             let _key = SigningKey::from_pkcs8_der(key_der).map_err(|e| {
-                JwtError::invalid_key(&format!("Invalid EC private key for ES256: {}", e))
+                JwtError::invalid_key(&format!("Invalid EC private key for ES256: {e}"))
             })?;
         }
         "ES384" => {
             use p384::{ecdsa::SigningKey, pkcs8::DecodePrivateKey};
             let _key = SigningKey::from_pkcs8_der(key_der).map_err(|e| {
-                JwtError::invalid_key(&format!("Invalid EC private key for ES384: {}", e))
+                JwtError::invalid_key(&format!("Invalid EC private key for ES384: {e}"))
             })?;
         }
         _ => return Err(JwtError::unsupported_algorithm(algorithm)),
@@ -72,13 +72,13 @@ pub(crate) fn validate_ec_public_key(key_der: &[u8], algorithm: &str) -> Result<
         "ES256" => {
             use p256::{ecdsa::VerifyingKey, pkcs8::DecodePublicKey};
             let _key = VerifyingKey::from_public_key_der(key_der).map_err(|e| {
-                JwtError::invalid_key(&format!("Invalid EC public key for ES256: {}", e))
+                JwtError::invalid_key(&format!("Invalid EC public key for ES256: {e}"))
             })?;
         }
         "ES384" => {
             use p384::{ecdsa::VerifyingKey, pkcs8::DecodePublicKey};
             let _key = VerifyingKey::from_public_key_der(key_der).map_err(|e| {
-                JwtError::invalid_key(&format!("Invalid EC public key for ES384: {}", e))
+                JwtError::invalid_key(&format!("Invalid EC public key for ES384: {e}"))
             })?;
         }
         _ => return Err(JwtError::unsupported_algorithm(algorithm)),
@@ -88,14 +88,15 @@ pub(crate) fn validate_ec_public_key(key_der: &[u8], algorithm: &str) -> Result<
 }
 
 /// Get recommended key size for algorithm
+/// 
+/// # Errors
+/// Returns `JwtError` if the algorithm is not supported
 pub fn get_recommended_key_size(algorithm: &str) -> Result<usize, JwtError> {
     match algorithm {
-        "HS256" => Ok(32),                      // 256 bits
-        "HS384" => Ok(48),                      // 384 bits
+        "HS256" | "ES256" => Ok(32),            // 256 bits / P-256 curve
+        "HS384" | "ES384" => Ok(48),            // 384 bits / P-384 curve
         "HS512" => Ok(64),                      // 512 bits
         "RS256" | "RS384" | "RS512" => Ok(256), // 2048 bits RSA minimum
-        "ES256" => Ok(32),                      // P-256 curve
-        "ES384" => Ok(48),                      // P-384 curve
         _ => Err(JwtError::unsupported_algorithm(algorithm)),
     }
 }

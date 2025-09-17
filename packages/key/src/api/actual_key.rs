@@ -15,6 +15,7 @@ pub struct ActualKey {
 
 impl ActualKey {
     /// Create a new key from bytes
+    #[must_use]
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         Self {
             key_bytes: Zeroizing::new(bytes),
@@ -22,6 +23,7 @@ impl ActualKey {
     }
 
     /// Get the key bytes (for external use by cryypt consumers)
+    #[must_use]
     pub fn bytes(&self) -> &[u8] {
         &self.key_bytes
     }

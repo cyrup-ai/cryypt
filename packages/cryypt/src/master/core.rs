@@ -34,7 +34,7 @@ impl Cryypt {
     /// Entry point for cipher operations - README.md pattern
     /// Example: `Cryypt::cipher().aes().with_key(key).encrypt(data).await`
     #[cfg(any(feature = "aes", feature = "chacha20"))]
-    #[must_use] 
+    #[must_use]
     pub fn cipher() -> CipherMasterBuilder {
         CipherMasterBuilder
     }
@@ -42,7 +42,7 @@ impl Cryypt {
     /// Entry point for hashing operations - README.md pattern
     /// Example: `Cryypt::hash().sha256().compute(data).await`
     #[cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b"))]
-    #[must_use] 
+    #[must_use]
     pub fn hash() -> HashMasterBuilder {
         HashMasterBuilder
     }
@@ -50,7 +50,7 @@ impl Cryypt {
     /// Entry point for compression operations - README.md pattern
     /// Example: `Cryypt::compress().zstd().compress(data).await`
     #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
-    #[must_use] 
+    #[must_use]
     pub fn compress() -> CompressMasterBuilder {
         CompressMasterBuilder
     }
@@ -58,7 +58,7 @@ impl Cryypt {
     /// Entry point for JWT operations - README.md pattern
     /// Example: `Cryypt::jwt().hs256().with_secret(secret).sign().await`
     #[cfg(feature = "jwt")]
-    #[must_use] 
+    #[must_use]
     pub fn jwt() -> cryypt_jwt::JwtMasterBuilder {
         JwtCryypt::jwt()
     }
@@ -66,7 +66,7 @@ impl Cryypt {
     /// Entry point for key operations - README.md pattern
     /// Example: `Cryypt::key().size(256.bits()).with_store(store).generate().await`
     #[cfg(feature = "key")]
-    #[must_use] 
+    #[must_use]
     pub fn key() -> KeyMasterBuilder {
         KeyMasterBuilder
     }
@@ -74,7 +74,7 @@ impl Cryypt {
     /// Entry point for vault operations - README.md pattern
     /// Example: `Cryypt::vault().with_config(config).create().await`
     #[cfg(feature = "vault")]
-    #[must_use] 
+    #[must_use]
     pub fn vault() -> VaultMasterBuilder {
         VaultMasterBuilder
     }
@@ -82,7 +82,7 @@ impl Cryypt {
     /// Entry point for post-quantum cryptography operations - README.md pattern
     /// Example: `Cryypt::pqcrypto().kyber().generate_keypair().await`
     #[cfg(feature = "pqcrypto")]
-    #[must_use] 
+    #[must_use]
     pub fn pqcrypto() -> PqcryptoMasterBuilder {
         PqcryptoMasterBuilder
     }
@@ -90,7 +90,7 @@ impl Cryypt {
     /// Entry point for QUIC operations - README.md pattern
     /// Example: `Cryypt::quic().server().with_cert(cert).bind(addr).await`
     #[cfg(feature = "quic")]
-    #[must_use] 
+    #[must_use]
     pub fn quic() -> QuicMasterBuilder {
         QuicMasterBuilder
     }

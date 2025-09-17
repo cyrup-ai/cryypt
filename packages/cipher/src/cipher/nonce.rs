@@ -136,7 +136,7 @@ impl NonceManager {
         let hk = Hkdf::<Sha3_512>::new(None, master.as_bytes());
         let mut okm = Zeroizing::new([0u8; 64]);
         hk.expand(HKDF_INFO_HMAC, &mut okm[..])
-            .map_err(|e| CipherError::HkdfExpansion(format!("HKDF expand failed: {}", e)))?;
+            .map_err(|e| CipherError::HkdfExpansion(format!("HKDF expand failed: {e}")))?;
 
         Ok(Self {
             mac_key: okm,
@@ -146,10 +146,7 @@ impl NonceManager {
     }
 
     /// Generate a fresh nonce using the supplied CSPRNG
-    pub async fn generate<'a, R>(
-        &'a self,
-        rng: &'a mut R,
-    ) -> Result<Nonce>
+    pub async fn generate<'a, R>(&'a self, rng: &'a mut R) -> Result<Nonce>
     where
         R: RngCore + CryptoRng,
     {
@@ -170,7 +167,9 @@ impl NonceManager {
     }
 
     /// Convenience wrapper using rand::rng()
-    pub async fn generate_os(&self) -> Result<Nonce> { self.generate(&mut rng()).await }
+    pub async fn generate_os(&self) -> Result<Nonce> {
+        self.generate(&mut rng()).await
+    }
 
     /// Verify nonce authenticity, freshness and replay
     pub fn verify(&self, encoded: &str) -> Result<ParsedNonce> {
@@ -251,7 +250,7 @@ impl NonceManager {
         use crate::error::CipherError;
 
         let mut mac = HmacSha3::new_from_slice(&self.mac_key[..])
-            .map_err(|e| CipherError::Hmac(format!("Failed to initialize HMAC: {}", e)))?;
+            .map_err(|e| CipherError::Hmac(format!("Failed to initialize HMAC: {e}")))?;
         mac.update(&ts.to_be_bytes());
         mac.update(rand);
         let mut out = [0u8; MAC_BYTES];
@@ -275,7 +274,7 @@ fn unix_time_nanos() -> crate::error::Result<u64> {
 
     let dur = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|e| CipherError::NonceGeneration(format!("System clock error: {}", e)))?;
+        .map_err(|e| CipherError::NonceGeneration(format!("System clock error: {e}")))?;
     Ok(dur
         .as_secs()
         .saturating_mul(1_000_000_000)

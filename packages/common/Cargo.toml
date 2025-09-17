@@ -3,6 +3,9 @@ name = "cryypt_common"
 version = "0.1.0"
 edition = "2021"
 
+[lints]
+workspace = true
+
 [dependencies]
 thiserror = "2.0.16"
 anyhow = "1.0.98"

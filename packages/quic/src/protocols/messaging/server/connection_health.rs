@@ -1,7 +1,7 @@
 //! Connection health monitoring and metrics
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use super::super::types::now_millis;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Connection health metrics for automatic failover
 #[derive(Debug)]
@@ -31,26 +31,26 @@ impl ConnectionHealth {
             last_health_check: AtomicU64::new(now_millis()),
         }
     }
-    
+
     /// Record successful message delivery
     pub fn record_success(&self) {
         self.total_attempts.fetch_add(1, Ordering::Relaxed);
         self.successful_deliveries.fetch_add(1, Ordering::Relaxed);
         self.update_success_rate();
     }
-    
+
     /// Record failed message delivery
     pub fn record_failure(&self) {
         self.total_attempts.fetch_add(1, Ordering::Relaxed);
         self.update_success_rate();
     }
-    
+
     /// Record stream error
     pub fn record_stream_error(&self) {
         self.stream_errors.fetch_add(1, Ordering::Relaxed);
         self.degrade_stability();
     }
-    
+
     /// Record connection reconnect (degrades stability)
     pub fn record_reconnect(&self) {
         let current = self.stability_score.load(Ordering::Relaxed);
@@ -60,7 +60,8 @@ impl ConnectionHealth {
 
     /// Update health check timestamp
     pub fn update_health_check(&self) {
-        self.last_health_check.store(now_millis(), Ordering::Relaxed);
+        self.last_health_check
+            .store(now_millis(), Ordering::Relaxed);
     }
 
     /// Get last health check timestamp
@@ -74,34 +75,37 @@ impl ConnectionHealth {
         let last_check = self.last_health_check.load(Ordering::Relaxed);
         current_time.saturating_sub(last_check) > 60000 // 60 seconds
     }
-    
+
     /// Calculate overall health score (0-10000 for 0-100.00%)
     pub fn health_score(&self) -> u64 {
         let success_rate = self.success_rate.load(Ordering::Relaxed);
         let stability = self.stability_score.load(Ordering::Relaxed);
-        let error_penalty = self.stream_errors.load(Ordering::Relaxed).saturating_mul(100);
-        
+        let error_penalty = self
+            .stream_errors
+            .load(Ordering::Relaxed)
+            .saturating_mul(100);
+
         // Weighted health score: 70% success rate + 30% stability - error penalty
         let base_score = (success_rate * 7 + stability * 3) / 10;
         base_score.saturating_sub(error_penalty)
     }
-    
+
     /// Check if connection is healthy (above 50% health score)
     pub fn is_healthy(&self) -> bool {
         self.health_score() > 5000
     }
-    
+
     /// Update success rate calculation
     fn update_success_rate(&self) {
         let attempts = self.total_attempts.load(Ordering::Relaxed);
         let successes = self.successful_deliveries.load(Ordering::Relaxed);
-        
+
         if attempts > 0 {
             let rate = (successes * 10000) / attempts;
             self.success_rate.store(rate, Ordering::Relaxed);
         }
     }
-    
+
     /// Degrade stability on errors
     fn degrade_stability(&self) {
         let current = self.stability_score.load(Ordering::Relaxed);
@@ -163,7 +167,8 @@ impl ConnectionReputation {
     /// Record a general security event and update reputation
     fn record_security_event(&self) {
         self.total_security_events.fetch_add(1, Ordering::Relaxed);
-        self.last_violation_time.store(now_millis(), Ordering::Relaxed);
+        self.last_violation_time
+            .store(now_millis(), Ordering::Relaxed);
         self.update_reputation_score();
     }
 
@@ -171,11 +176,11 @@ impl ConnectionReputation {
     fn update_reputation_score(&self) {
         let events = self.total_security_events.load(Ordering::Relaxed);
         let base_score = 10000u64;
-        
+
         // Each security event reduces reputation by 200 points (2%)
         let penalty = events.saturating_mul(200);
         let new_score = base_score.saturating_sub(penalty);
-        
+
         self.reputation_score.store(new_score, Ordering::Relaxed);
     }
 

@@ -9,9 +9,9 @@
 //! - `key_extraction`: Key algorithm and size information extraction
 
 pub mod core;
-pub mod name_extraction;
 pub mod details_extraction;
 pub mod key_extraction;
+pub mod name_extraction;
 
 // Re-export main parsing functions for backward compatibility
-pub use core::{parse_x509_certificate_from_der_internal, parse_certificate_from_pem_internal};
+pub use core::{parse_certificate_from_pem_internal, parse_x509_certificate_from_der_internal};

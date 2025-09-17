@@ -2,14 +2,16 @@
 //!
 //! This module handles CA loading from system certificate stores on non-macOS platforms.
 
-use std::time::SystemTime;
 use std::fs;
 use std::path::PathBuf;
+use std::time::SystemTime;
 
-use crate::tls::builder::authority::core::{CertificateAuthority, CaMetadata, CaSource, dn_hashmap_to_string, serial_to_string};
+use crate::tls::builder::authority::core::{
+    CaMetadata, CaSource, CertificateAuthority, dn_hashmap_to_string, serial_to_string,
+};
 
 pub(super) async fn load_from_system_store(
-    name: String
+    name: String,
 ) -> super::super::super::responses::CertificateAuthorityResponse {
     // Common certificate store locations
     let cert_paths = vec![
@@ -18,7 +20,7 @@ pub(super) async fn load_from_system_store(
         format!("/etc/pki/ca-trust/source/anchors/{}.crt", name),
         format!("/etc/ca-certificates/trust-source/anchors/{}.crt", name),
     ];
-    
+
     let key_paths = vec![
         format!("/etc/ssl/private/{}.key", name),
         format!("/usr/local/share/ca-certificates/{}.key", name),
@@ -28,7 +30,7 @@ pub(super) async fn load_from_system_store(
 
     let mut found_cert_path = None;
     let mut found_key_path = None;
-    
+
     // Find certificate file
     for cert_path in cert_paths {
         if PathBuf::from(&cert_path).exists() {
@@ -36,8 +38,8 @@ pub(super) async fn load_from_system_store(
             break;
         }
     }
-    
-    // Find key file  
+
+    // Find key file
     for key_path in key_paths {
         if PathBuf::from(&key_path).exists() {
             found_key_path = Some(key_path);
@@ -47,45 +49,65 @@ pub(super) async fn load_from_system_store(
 
     let cert_path = match found_cert_path {
         Some(path) => path,
-        None => return super::super::super::responses::CertificateAuthorityResponse {
-            success: false,
-            authority: None,
-            operation: super::super::super::responses::CaOperation::LoadFailed,
-            issues: vec![format!("Certificate '{}' not found in system certificate stores", name)],
-            files_created: vec![],
+        None => {
+            return super::super::super::responses::CertificateAuthorityResponse {
+                success: false,
+                authority: None,
+                operation: super::super::super::responses::CaOperation::LoadFailed,
+                issues: vec![format!(
+                    "Certificate '{}' not found in system certificate stores",
+                    name
+                )],
+                files_created: vec![],
+            };
         }
     };
-    
+
     let key_path = match found_key_path {
         Some(path) => path,
-        None => return super::super::super::responses::CertificateAuthorityResponse {
-            success: false,
-            authority: None,
-            operation: super::super::super::responses::CaOperation::LoadFailed,
-            issues: vec![format!("Private key '{}' not found in system certificate stores", name)],
-            files_created: vec![],
+        None => {
+            return super::super::super::responses::CertificateAuthorityResponse {
+                success: false,
+                authority: None,
+                operation: super::super::super::responses::CaOperation::LoadFailed,
+                issues: vec![format!(
+                    "Private key '{}' not found in system certificate stores",
+                    name
+                )],
+                files_created: vec![],
+            };
         }
     };
 
     let cert_pem = match fs::read_to_string(&cert_path) {
         Ok(content) => content,
-        Err(e) => return super::super::super::responses::CertificateAuthorityResponse {
-            success: false,
-            authority: None,
-            operation: super::super::super::responses::CaOperation::LoadFailed,
-            issues: vec![format!("Failed to read certificate file {}: {}", cert_path, e)],
-            files_created: vec![],
+        Err(e) => {
+            return super::super::super::responses::CertificateAuthorityResponse {
+                success: false,
+                authority: None,
+                operation: super::super::super::responses::CaOperation::LoadFailed,
+                issues: vec![format!(
+                    "Failed to read certificate file {}: {}",
+                    cert_path, e
+                )],
+                files_created: vec![],
+            };
         }
     };
 
     let key_pem = match fs::read_to_string(&key_path) {
         Ok(content) => content,
-        Err(e) => return super::super::super::responses::CertificateAuthorityResponse {
-            success: false,
-            authority: None,
-            operation: super::super::super::responses::CaOperation::LoadFailed,
-            issues: vec![format!("Failed to read private key file {}: {}", key_path, e)],
-            files_created: vec![],
+        Err(e) => {
+            return super::super::super::responses::CertificateAuthorityResponse {
+                success: false,
+                authority: None,
+                operation: super::super::super::responses::CaOperation::LoadFailed,
+                issues: vec![format!(
+                    "Failed to read private key file {}: {}",
+                    key_path, e
+                )],
+                files_created: vec![],
+            };
         }
     };
 
@@ -93,23 +115,27 @@ pub(super) async fn load_from_system_store(
     match crate::tls::certificate::parsing::parse_certificate_from_pem(&cert_pem) {
         Ok(parsed_cert) => {
             // Validate CA constraints
-            if let Err(e) = crate::tls::certificate::parsing::validate_basic_constraints(&parsed_cert, true) {
+            if let Err(e) =
+                crate::tls::certificate::parsing::validate_basic_constraints(&parsed_cert, true)
+            {
                 return super::super::super::responses::CertificateAuthorityResponse {
                     success: false,
                     authority: None,
                     operation: super::super::super::responses::CaOperation::LoadFailed,
-                    issues: vec![format!("Invalid CA certificate in system store: {}", e)],
+                    issues: vec![format!("Invalid CA certificate in system store: {e}")],
                     files_created: vec![],
                 };
             }
 
-            // Validate time constraints  
-            if let Err(e) = crate::tls::certificate::parsing::validate_certificate_time(&parsed_cert) {
+            // Validate time constraints
+            if let Err(e) =
+                crate::tls::certificate::parsing::validate_certificate_time(&parsed_cert)
+            {
                 return super::super::super::responses::CertificateAuthorityResponse {
                     success: false,
                     authority: None,
                     operation: super::super::super::responses::CaOperation::LoadFailed,
-                    issues: vec![format!("Expired CA certificate in system store: {}", e)],
+                    issues: vec![format!("Expired CA certificate in system store: {e}")],
                     files_created: vec![],
                 };
             }
@@ -125,7 +151,10 @@ pub(super) async fn load_from_system_store(
                                 success: false,
                                 authority: None,
                                 operation: super::super::super::responses::CaOperation::LoadFailed,
-                                issues: vec![format!("Failed to create issuer from CA cert: {}", e)],
+                                issues: vec![format!(
+                                    "Failed to create issuer from CA cert: {}",
+                                    e
+                                )],
                                 files_created: vec![],
                             };
                         }
@@ -155,22 +184,22 @@ pub(super) async fn load_from_system_store(
                         issues: vec![],
                         files_created: vec![],
                     }
-                },
+                }
                 Err(e) => super::super::super::responses::CertificateAuthorityResponse {
                     success: false,
                     authority: None,
                     operation: super::super::super::responses::CaOperation::LoadFailed,
-                    issues: vec![format!("Invalid private key in system store: {}", e)],
+                    issues: vec![format!("Invalid private key in system store: {e}")],
                     files_created: vec![],
-                }
+                },
             }
-        },
+        }
         Err(e) => super::super::super::responses::CertificateAuthorityResponse {
             success: false,
             authority: None,
             operation: super::super::super::responses::CaOperation::LoadFailed,
-            issues: vec![format!("Failed to parse system certificate: {}", e)],
+            issues: vec![format!("Failed to parse system certificate: {e}")],
             files_created: vec![],
-        }
+        },
     }
 }

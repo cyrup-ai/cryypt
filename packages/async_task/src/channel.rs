@@ -37,6 +37,7 @@ where
     T: Send + 'static,
 {
     /// Create a new async channel
+    #[must_use]
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::unbounded_channel();
         Self {
@@ -46,21 +47,25 @@ where
     }
 
     /// Send a message asynchronously
-    pub async fn send(&self, message: T) -> Result<(), ChannelError> {
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChannelError::SendFailed` if the channel is closed or the send operation fails.
+    pub fn send(&self, message: T) -> Result<(), ChannelError> {
         self.sender
             .send(message)
             .map_err(|e| ChannelError::SendFailed(e.to_string()))
     }
 
     /// Receive a message asynchronously
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChannelError::Closed` if the channel is closed or no more messages are available.
     pub async fn recv(&self) -> Result<Option<T>, ChannelError> {
         let mut receiver_guard = self.receiver.write().await;
         if let Some(ref mut receiver) = receiver_guard.as_mut() {
-            receiver
-                .recv()
-                .await
-                .map(Some)
-                .ok_or(ChannelError::Closed)
+            receiver.recv().await.map(Some).ok_or(ChannelError::Closed)
         } else {
             Err(ChannelError::Closed)
         }
@@ -82,6 +87,7 @@ impl<T> ChannelRegistry<T>
 where
     T: Send + 'static,
 {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             channels: Arc::new(RwLock::new(HashMap::new())),
@@ -98,6 +104,10 @@ where
     }
 
     /// Get a channel by name
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChannelError::NotFound` if no channel with the given name exists.
     pub async fn get(&self, name: &str) -> Result<AsyncChannel<T>, ChannelError> {
         let channels = self.channels.read().await;
         channels
@@ -107,6 +117,10 @@ where
     }
 
     /// Remove a channel
+    ///
+    /// # Errors
+    ///
+    /// Returns `ChannelError::NotFound` if no channel with the given name exists.
     pub async fn remove(&self, name: &str) -> Result<(), ChannelError> {
         let mut channels = self.channels.write().await;
         channels

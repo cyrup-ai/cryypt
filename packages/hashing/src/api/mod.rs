@@ -19,7 +19,7 @@ pub use blake2b_builder::{
     Blake2bBuilderWithSize, Blake2bBuilderWithSizeAndHandler,
 };
 
-pub use blake3_builder::{Blake3Builder, Blake3WithHandler, Blake3WithChunkHandler};
+pub use blake3_builder::{Blake3Builder, Blake3WithChunkHandler, Blake3WithHandler};
 
 pub use sha256_builder::{
     Sha256Builder, Sha256BuilderWithChunk, Sha256BuilderWithError, Sha256BuilderWithHandler,

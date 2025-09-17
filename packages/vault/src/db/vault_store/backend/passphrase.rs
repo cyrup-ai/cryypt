@@ -5,7 +5,7 @@
 use super::super::{LocalVaultProvider, VaultEntry};
 use crate::error::{VaultError, VaultResult};
 use crate::operation::Passphrase;
-use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD};
+use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use secrecy::ExposeSecret;
 
 impl LocalVaultProvider {
@@ -29,27 +29,30 @@ impl LocalVaultProvider {
                 self.config.argon2_parallelism,
                 None, // Default output length for password hashing
             )
-            .map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params: {}", e)))?,
+            .map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params: {e}")))?,
         );
 
         // Create Salt from raw salt bytes (must be exactly 22 bytes for Argon2)
         let salt_bytes = if salt.len() >= 22 {
             &salt[..22]
         } else {
-            return Err(VaultError::KeyDerivation(format!("Salt too short: {} bytes, need at least 22", salt.len())));
+            return Err(VaultError::KeyDerivation(format!(
+                "Salt too short: {} bytes, need at least 22",
+                salt.len()
+            )));
         };
-        
+
         // Convert bytes to base64 string and create Salt
         let salt_b64 = BASE64_STANDARD.encode(salt_bytes);
         // Remove padding characters that Salt::from_b64() doesn't accept
         let salt_b64_no_padding = salt_b64.trim_end_matches('=');
         let salt_str = Salt::from_b64(salt_b64_no_padding)
-            .map_err(|e| VaultError::KeyDerivation(format!("Invalid salt: {}", e)))?;
+            .map_err(|e| VaultError::KeyDerivation(format!("Invalid salt: {e}")))?;
 
         // Hash the passphrase
         let passphrase_hash = argon2
             .hash_password(passphrase.expose_secret().as_bytes(), salt_str)
-            .map_err(|e| VaultError::Crypto(format!("Failed to hash passphrase: {}", e)))?;
+            .map_err(|e| VaultError::Crypto(format!("Failed to hash passphrase: {e}")))?;
 
         let passphrase_hash = passphrase_hash.to_string().into_bytes();
 
@@ -67,8 +70,11 @@ impl LocalVaultProvider {
         let db = self.dao.db();
 
         // Use UPSERT with consistent record ID format
-        let upsert_query = format!("UPSERT {} SET key = $key, value = $value, created_at = $created_at, updated_at = $updated_at", record_id);
-        
+        let upsert_query = format!(
+            "UPSERT {} SET key = $key, value = $value, created_at = $created_at, updated_at = $updated_at",
+            record_id
+        );
+
         let now = chrono::Utc::now();
         let mut result = db
             .query(upsert_query)
@@ -78,16 +84,18 @@ impl LocalVaultProvider {
             .bind(("updated_at", surrealdb::value::Datetime::from(now)))
             .await
             .map_err(|e| {
-                VaultError::Provider(format!("Failed to upsert passphrase hash: {}", e))
+                VaultError::Provider(format!("Failed to upsert passphrase hash: {e}"))
             })?;
 
         // Consume the result to validate the operation succeeded
         let created: Vec<VaultEntry> = result
             .take(0)
-            .map_err(|e| VaultError::Provider(format!("Failed to check create result: {}", e)))?;
+            .map_err(|e| VaultError::Provider(format!("Failed to check create result: {e}")))?;
 
         if created.is_empty() {
-            return Err(VaultError::Provider("Failed to upsert passphrase hash - no record returned".to_string()));
+            return Err(VaultError::Provider(
+                "Failed to upsert passphrase hash - no record returned".to_string(),
+            ));
         }
 
         Ok(())

@@ -55,9 +55,9 @@ pub async fn handle_input_mode_key(
                     && c == 'q'
                     && app.state.search_pattern == ":q")
                     || app.state.search_pattern == "/quit")
-                {
-                    return true;
-                }
+            {
+                return true;
+            }
         }
         KeyCode::Backspace => {
             handle_backspace(app, field);

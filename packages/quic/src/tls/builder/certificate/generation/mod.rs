@@ -6,8 +6,8 @@
 //! - file_ops: File operations for saving certificates
 
 pub mod core;
-pub mod signing;
 pub mod file_ops;
+pub mod signing;
 
 // Re-export main generation types
 pub use core::{CertificateGenerator, CertificateGeneratorWithDomain};

@@ -7,9 +7,12 @@ use crate::{CompressionError, Result};
 /// # Arguments
 /// * `data` - The data to compress
 /// * `level` - Compression level (1-22, higher is more compression)
+///
+/// # Errors
+/// Returns `CompressionError` if Zstd compression fails
 pub fn compress(data: &[u8], level: i32) -> Result<Vec<u8>> {
     zstd::encode_all(data, level).map_err(|e| {
-        CompressionError::compression_failed(format!("Zstd compression failed: {}", e))
+        CompressionError::compression_failed(format!("Zstd compression failed: {e}"))
     })
 }
 
@@ -17,9 +20,12 @@ pub fn compress(data: &[u8], level: i32) -> Result<Vec<u8>> {
 ///
 /// # Arguments
 /// * `data` - The compressed data to decompress
+///
+/// # Errors
+/// Returns `CompressionError` if Zstd decompression fails
 pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
     zstd::decode_all(data).map_err(|e| {
-        CompressionError::decompression_failed(format!("Zstd decompression failed: {}", e))
+        CompressionError::decompression_failed(format!("Zstd decompression failed: {e}"))
     })
 }
 
@@ -28,6 +34,9 @@ pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
 /// # Arguments
 /// * `data` - The data to compress
 /// * `level` - Compression level (1-22, higher is more compression)
+///
+/// # Errors
+/// Returns `CompressionError` if Zstd compression fails
 pub fn compress_with_level(data: &[u8], level: i32) -> Result<Vec<u8>> {
     compress(data, level)
 }

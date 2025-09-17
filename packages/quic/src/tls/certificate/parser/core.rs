@@ -3,19 +3,21 @@
 //! This module provides the main certificate parsing functions that coordinate
 //! the various extraction operations and return structured certificate data.
 
-use std::collections::HashMap;
 use der::{Decode, Encode};
+use std::collections::HashMap;
 use x509_cert::Certificate as X509CertCert;
 
 use crate::tls::errors::TlsError;
 use crate::tls::types::ParsedCertificate;
 
-use super::name_extraction::extract_name_attributes;
 use super::details_extraction::extract_certificate_details;
 use super::key_extraction::extract_key_info_from_cert;
+use super::name_extraction::extract_name_attributes;
 
 /// Parse certificate from X509Certificate struct to extract actual certificate information
-pub fn parse_x509_certificate_from_der_internal(cert: &X509CertCert) -> Result<ParsedCertificate, TlsError> {
+pub fn parse_x509_certificate_from_der_internal(
+    cert: &X509CertCert,
+) -> Result<ParsedCertificate, TlsError> {
     // Extract subject DN using x509-cert API
     let mut subject = HashMap::new();
     extract_name_attributes(&cert.tbs_certificate.subject, &mut subject);
@@ -95,11 +97,16 @@ pub fn parse_x509_certificate_from_der_internal(cert: &X509CertCert) -> Result<P
     }
 
     // Get raw DER bytes for OCSP validation
-    let subject_der = cert.tbs_certificate.subject.to_der()
-        .map_err(|e| TlsError::CertificateParsing(format!("Failed to encode subject: {}", e)))?;
-    
-    let public_key_der = cert.tbs_certificate.subject_public_key_info.to_der()
-        .map_err(|e| TlsError::CertificateParsing(format!("Failed to encode public key: {}", e)))?;
+    let subject_der =
+        cert.tbs_certificate.subject.to_der().map_err(|e| {
+            TlsError::CertificateParsing(format!("Failed to encode subject: {e}"))
+        })?;
+
+    let public_key_der = cert
+        .tbs_certificate
+        .subject_public_key_info
+        .to_der()
+        .map_err(|e| TlsError::CertificateParsing(format!("Failed to encode public key: {e}")))?;
 
     // Extract serial number
     let serial_number = cert.tbs_certificate.serial_number.as_bytes().to_vec();
@@ -133,11 +140,11 @@ pub fn parse_certificate_from_pem_internal(pem_data: &str) -> Result<ParsedCerti
     let cert_der = rustls_pemfile::certs(&mut cursor)
         .next()
         .ok_or_else(|| TlsError::CertificateParsing("No certificate in PEM data".to_string()))?
-        .map_err(|e| TlsError::CertificateParsing(format!("Failed to parse PEM: {}", e)))?;
+        .map_err(|e| TlsError::CertificateParsing(format!("Failed to parse PEM: {e}")))?;
 
     // Parse X.509 certificate using x509-cert
     let cert = X509CertCert::from_der(&cert_der)
-        .map_err(|e| TlsError::CertificateParsing(format!("X.509 parsing failed: {}", e)))?;
+        .map_err(|e| TlsError::CertificateParsing(format!("X.509 parsing failed: {e}")))?;
 
     // Delegate to the DER function to avoid code duplication
     parse_x509_certificate_from_der_internal(&cert)

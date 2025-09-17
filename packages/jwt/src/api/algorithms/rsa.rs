@@ -17,7 +17,7 @@ use rsa::{
 #[inline]
 pub(crate) fn sign_rs256(message: &str, private_key: &[u8]) -> Result<Vec<u8>, JwtError> {
     let private_key = RsaPrivateKey::from_pkcs8_der(private_key)
-        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA private key: {}", e)))?;
+        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA private key: {e}")))?;
 
     let signing_key = SigningKey::<Sha256>::new(private_key);
     let signature = signing_key.sign(message.as_bytes());
@@ -33,7 +33,7 @@ pub(crate) fn verify_rs256(
     public_key: &[u8],
 ) -> Result<bool, JwtError> {
     let public_key = RsaPublicKey::from_public_key_der(public_key)
-        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA public key: {}", e)))?;
+        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA public key: {e}")))?;
 
     let verifying_key = VerifyingKey::<Sha256>::new(public_key);
     let signature = Signature::try_from(signature).map_err(|_| JwtError::InvalidSignature)?;
@@ -49,7 +49,7 @@ pub(crate) fn verify_rs256(
 #[inline]
 pub(crate) fn sign_rs384(message: &str, private_key: &[u8]) -> Result<Vec<u8>, JwtError> {
     let private_key = RsaPrivateKey::from_pkcs8_der(private_key)
-        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA private key: {}", e)))?;
+        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA private key: {e}")))?;
 
     let signing_key = SigningKey::<Sha384>::new(private_key);
     let signature = signing_key.sign(message.as_bytes());
@@ -65,7 +65,7 @@ pub(crate) fn verify_rs384(
     public_key: &[u8],
 ) -> Result<bool, JwtError> {
     let public_key = RsaPublicKey::from_public_key_der(public_key)
-        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA public key: {}", e)))?;
+        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA public key: {e}")))?;
 
     let verifying_key = VerifyingKey::<Sha384>::new(public_key);
     let signature = Signature::try_from(signature).map_err(|_| JwtError::InvalidSignature)?;
@@ -81,7 +81,7 @@ pub(crate) fn verify_rs384(
 #[inline]
 pub(crate) fn sign_rs512(message: &str, private_key: &[u8]) -> Result<Vec<u8>, JwtError> {
     let private_key = RsaPrivateKey::from_pkcs8_der(private_key)
-        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA private key: {}", e)))?;
+        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA private key: {e}")))?;
 
     let signing_key = SigningKey::<Sha512>::new(private_key);
     let signature = signing_key.sign(message.as_bytes());
@@ -97,7 +97,7 @@ pub(crate) fn verify_rs512(
     public_key: &[u8],
 ) -> Result<bool, JwtError> {
     let public_key = RsaPublicKey::from_public_key_der(public_key)
-        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA public key: {}", e)))?;
+        .map_err(|e| JwtError::InvalidKey(format!("Invalid RSA public key: {e}")))?;
 
     let verifying_key = VerifyingKey::<Sha512>::new(public_key);
     let signature = Signature::try_from(signature).map_err(|_| JwtError::InvalidSignature)?;

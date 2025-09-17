@@ -8,7 +8,9 @@ use std::time::SystemTime;
 
 use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair};
 
-use super::core::{CertificateAuthority, CaMetadata, CaSource, dn_hashmap_to_string, serial_to_string};
+use super::core::{
+    CaMetadata, CaSource, CertificateAuthority, dn_hashmap_to_string, serial_to_string,
+};
 
 /// Builder for filesystem certificate authority operations
 #[derive(Debug, Clone)]
@@ -63,7 +65,7 @@ impl AuthorityFilesystemBuilder {
                 success: false,
                 authority: None,
                 operation: super::super::responses::CaOperation::CreateFailed,
-                issues: vec![format!("Failed to create directory: {}", e)],
+                issues: vec![format!("Failed to create directory: {e}")],
                 files_created: vec![],
             };
         }
@@ -76,7 +78,7 @@ impl AuthorityFilesystemBuilder {
                     success: false,
                     authority: None,
                     operation: super::super::responses::CaOperation::CreateFailed,
-                    issues: vec![format!("Failed to create certificate parameters: {}", e)],
+                    issues: vec![format!("Failed to create certificate parameters: {e}")],
                     files_created: vec![],
                 };
             }
@@ -96,8 +98,8 @@ impl AuthorityFilesystemBuilder {
         .into();
 
         // Generate key pair
-        let key_pair = KeyPair::generate()
-            .map_err(|e| format!("Failed to generate key pair: {}", e));
+        let key_pair =
+            KeyPair::generate().map_err(|e| format!("Failed to generate key pair: {e}"));
 
         let key_pair = match key_pair {
             Ok(kp) => kp,
@@ -119,7 +121,7 @@ impl AuthorityFilesystemBuilder {
                     success: false,
                     authority: None,
                     operation: super::super::responses::CaOperation::CreateFailed,
-                    issues: vec![format!("Failed to generate certificate: {}", e)],
+                    issues: vec![format!("Failed to generate certificate: {e}")],
                     files_created: vec![],
                 };
             }
@@ -141,7 +143,7 @@ impl AuthorityFilesystemBuilder {
                 success: false,
                 authority: None,
                 operation: super::super::responses::CaOperation::CreateFailed,
-                issues: vec![format!("Failed to write certificate: {}", e)],
+                issues: vec![format!("Failed to write certificate: {e}")],
                 files_created,
             };
         }
@@ -152,7 +154,7 @@ impl AuthorityFilesystemBuilder {
                 success: false,
                 authority: None,
                 operation: super::super::responses::CaOperation::CreateFailed,
-                issues: vec![format!("Failed to write private key: {}", e)],
+                issues: vec![format!("Failed to write private key: {e}")],
                 files_created,
             };
         }
@@ -212,7 +214,7 @@ impl AuthorityFilesystemBuilder {
                     success: false,
                     authority: None,
                     operation: super::super::responses::CaOperation::LoadFailed,
-                    issues: vec![format!("Failed to read certificate: {}", e)],
+                    issues: vec![format!("Failed to read certificate: {e}")],
                     files_created: vec![],
                 };
             }
@@ -225,7 +227,7 @@ impl AuthorityFilesystemBuilder {
                     success: false,
                     authority: None,
                     operation: super::super::responses::CaOperation::LoadFailed,
-                    issues: vec![format!("Failed to read private key: {}", e)],
+                    issues: vec![format!("Failed to read private key: {e}")],
                     files_created: vec![],
                 };
             }
@@ -239,7 +241,7 @@ impl AuthorityFilesystemBuilder {
                     success: false,
                     authority: None,
                     operation: super::super::responses::CaOperation::LoadFailed,
-                    issues: vec![format!("Failed to parse certificate: {}", e)],
+                    issues: vec![format!("Failed to parse certificate: {e}")],
                     files_created: vec![],
                 };
             }

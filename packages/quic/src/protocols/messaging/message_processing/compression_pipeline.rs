@@ -3,10 +3,10 @@
 //! This module provides streaming compression and decompression functionality
 //! using the cryypt compression API with QUIC stream integration.
 
-use futures::StreamExt;
 use super::super::types::{CompressionAlgorithm, CompressionMetadata};
-use cryypt_compression::Compress;
 use crate::error::CryptoTransportError;
+use cryypt_compression::Compress;
+use futures::StreamExt;
 
 /// Streaming compression pipeline using cryypt compression API with QUIC stream integration
 pub async fn compress_payload_stream(
@@ -16,12 +16,12 @@ pub async fn compress_payload_stream(
 ) -> crate::Result<(Vec<u8>, CompressionMetadata)> {
     let original_size = data.len();
     let timestamp = std::time::SystemTime::now();
-    
+
     match algorithm {
         CompressionAlgorithm::Zstd => {
             let mut compressed_chunks = Vec::new();
             let mut chunk_count = 0;
-            
+
             // Use cryypt streaming compression API with QUIC-optimized chunks
             let stream = Compress::zstd()
                 .with_level(level as i32)
@@ -36,19 +36,19 @@ pub async fn compress_payload_stream(
                     }
                 })
                 .compress(data);
-            
+
             let mut pinned_stream = Box::pin(stream);
-            
+
             while let Some(chunk) = pinned_stream.next().await {
                 if !chunk.is_empty() {
                     compressed_chunks.extend_from_slice(&chunk);
                     chunk_count += 1;
                 }
             }
-            
+
             let compressed_size = compressed_chunks.len();
             let algorithm_name = "zstd".to_string();
-            
+
             let metadata = CompressionMetadata {
                 algorithm: algorithm_name,
                 level,
@@ -57,7 +57,7 @@ pub async fn compress_payload_stream(
                 chunks: chunk_count,
                 timestamp,
             };
-            
+
             Ok((compressed_chunks, metadata))
         }
         CompressionAlgorithm::None => {
@@ -92,27 +92,30 @@ pub async fn decompress_payload_stream(
                 })
                 .decompress(data)
                 .await;
-            
+
             // Check if decompression failed (empty result indicates error only if original wasn't empty)
             if decompressed_chunks.is_empty() && metadata.original_size > 0 {
                 return Err(CryptoTransportError::Internal(
-                    "Zstd decompression failed - produced empty result for non-empty input".to_string()
+                    "Zstd decompression failed - produced empty result for non-empty input"
+                        .to_string(),
                 ));
             }
-            
+
             // Verify decompressed size matches expected
             if decompressed_chunks.len() != metadata.original_size {
-                return Err(CryptoTransportError::Internal(
-                    format!("Decompressed size mismatch: expected {}, got {}", 
-                        metadata.original_size, decompressed_chunks.len())
-                ));
+                return Err(CryptoTransportError::Internal(format!(
+                    "Decompressed size mismatch: expected {}, got {}",
+                    metadata.original_size,
+                    decompressed_chunks.len()
+                )));
             }
-            
+
             Ok(decompressed_chunks)
         }
         "none" => Ok(data), // No decompression needed
-        _ => Err(CryptoTransportError::Internal(
-            format!("Unsupported compression algorithm: {}", metadata.algorithm)
-        ))
+        _ => Err(CryptoTransportError::Internal(format!(
+            "Unsupported compression algorithm: {}",
+            metadata.algorithm
+        ))),
     }
 }

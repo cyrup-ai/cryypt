@@ -19,6 +19,13 @@ impl Quic {
     pub fn client() -> super::client::QuicClientBuilder {
         super::client::QuicClientBuilder::new()
     }
+
+    /// Create a file transfer protocol instance
+    pub fn file_transfer(
+        addr: SocketAddr,
+    ) -> crate::quic::file_transfer::types::FileTransferProtocol {
+        crate::quic::file_transfer::types::FileTransferProtocol::new(addr)
+    }
 }
 
 /// Direct entry point for QUIC functionality
@@ -38,6 +45,14 @@ impl QuicMasterBuilder {
     /// Create a QUIC client builder
     pub fn client(self) -> super::client::QuicClientBuilder {
         super::client::QuicClientBuilder::new()
+    }
+
+    /// Create a file transfer protocol instance
+    pub fn file_transfer(
+        self,
+        addr: SocketAddr,
+    ) -> crate::quic::file_transfer::types::FileTransferProtocol {
+        crate::quic::file_transfer::types::FileTransferProtocol::new(addr)
     }
 }
 

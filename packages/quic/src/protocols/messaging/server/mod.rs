@@ -9,9 +9,9 @@
 //! Decomposed for maintainability and single responsibility principle.
 
 pub mod config;
-pub mod topic_manager; 
 pub mod connection_health;
 pub mod core;
+pub mod topic_manager;
 
 // Re-export all public types and functions for convenience
 pub use config::MessagingServerConfig;

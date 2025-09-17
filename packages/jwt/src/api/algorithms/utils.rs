@@ -26,33 +26,33 @@ pub(crate) fn base64_url_decode(input: &str) -> Result<Vec<u8>, base64::DecodeEr
 pub(crate) fn validate_standard_claims(claims: &serde_json::Value) -> Result<(), JwtError> {
     if let Some(obj) = claims.as_object() {
         // Expiration time (exp) validation
-        if let Some(exp) = obj.get("exp").and_then(|v| v.as_i64()) {
-            let now = std::time::SystemTime::now()
+        if let Some(exp) = obj.get("exp").and_then(serde_json::Value::as_i64) {
+            let now = i64::try_from(std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|_| JwtError::Internal("System time error".to_string()))?
-                .as_secs() as i64;
+                .as_secs()).map_err(|_| JwtError::Internal("Time conversion error".to_string()))?;
             if now > exp {
                 return Err(JwtError::TokenExpired);
             }
         }
 
         // Not before time (nbf) validation
-        if let Some(nbf) = obj.get("nbf").and_then(|v| v.as_i64()) {
-            let now = std::time::SystemTime::now()
+        if let Some(nbf) = obj.get("nbf").and_then(serde_json::Value::as_i64) {
+            let now = i64::try_from(std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|_| JwtError::Internal("System time error".to_string()))?
-                .as_secs() as i64;
+                .as_secs()).map_err(|_| JwtError::Internal("Time conversion error".to_string()))?;
             if now < nbf {
                 return Err(JwtError::TokenNotYetValid);
             }
         }
 
         // Issued at time (iat) validation - should not be in the future
-        if let Some(iat) = obj.get("iat").and_then(|v| v.as_i64()) {
-            let now = std::time::SystemTime::now()
+        if let Some(iat) = obj.get("iat").and_then(serde_json::Value::as_i64) {
+            let now = i64::try_from(std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|_| JwtError::Internal("System time error".to_string()))?
-                .as_secs() as i64;
+                .as_secs()).map_err(|_| JwtError::Internal("Time conversion error".to_string()))?;
             // Allow 5 minutes of clock skew for iat
             if iat > now + 300 {
                 return Err(JwtError::InvalidClaims(
@@ -63,27 +63,30 @@ pub(crate) fn validate_standard_claims(claims: &serde_json::Value) -> Result<(),
 
         // JWT ID (jti) validation - should be a string if present
         if let Some(jti) = obj.get("jti")
-            && !jti.is_string() {
-                return Err(JwtError::InvalidClaims(
-                    "JWT ID must be a string".to_string(),
-                ));
-            }
+            && !jti.is_string()
+        {
+            return Err(JwtError::InvalidClaims(
+                "JWT ID must be a string".to_string(),
+            ));
+        }
 
         // Issuer (iss) validation - should be a string if present
         if let Some(iss) = obj.get("iss")
-            && !iss.is_string() {
-                return Err(JwtError::InvalidClaims(
-                    "Issuer must be a string".to_string(),
-                ));
-            }
+            && !iss.is_string()
+        {
+            return Err(JwtError::InvalidClaims(
+                "Issuer must be a string".to_string(),
+            ));
+        }
 
         // Subject (sub) validation - should be a string if present
         if let Some(sub) = obj.get("sub")
-            && !sub.is_string() {
-                return Err(JwtError::InvalidClaims(
-                    "Subject must be a string".to_string(),
-                ));
-            }
+            && !sub.is_string()
+        {
+            return Err(JwtError::InvalidClaims(
+                "Subject must be a string".to_string(),
+            ));
+        }
 
         // Audience (aud) validation - should be a string or array of strings if present
         if let Some(aud) = obj.get("aud") {

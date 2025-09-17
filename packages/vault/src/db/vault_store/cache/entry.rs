@@ -31,7 +31,8 @@ impl CacheEntry {
             return false;
         }
         let now = current_timestamp();
-        now.saturating_sub(self.created_at) > self.ttl_seconds
+        let ttl_nanoseconds = self.ttl_seconds * 1_000_000_000; // Convert seconds to nanoseconds
+        now.saturating_sub(self.created_at) > ttl_nanoseconds
     }
 
     pub fn touch(&self) {
@@ -45,11 +46,11 @@ impl CacheEntry {
     }
 }
 
-/// Get current timestamp in seconds since UNIX epoch - zero allocation
+/// Get current timestamp in nanoseconds since UNIX epoch - zero allocation
 #[inline]
 pub fn current_timestamp() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
+        .map(|d| d.as_nanos() as u64)
         .unwrap_or(0)
 }

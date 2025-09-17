@@ -1,6 +1,6 @@
 //! Concrete chunk types for all cryypt streaming operations
 //!
-//! These types implement the MessageChunk trait and represent
+//! These types implement the `MessageChunk` trait and represent
 //! the data flowing through various streaming operations throughout the cryypt ecosystem.
 
 pub mod cipher;

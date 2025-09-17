@@ -50,13 +50,14 @@ impl Default for VaultConfig {
 
         // Create the directory if it doesn't exist
         if !config_dir.exists()
-            && let Err(e) = std::fs::create_dir_all(&config_dir) {
-                warn!(
-                    path = %config_dir.display(),
-                    error = %e,
-                    "Failed to create config directory"
-                );
-            }
+            && let Err(e) = std::fs::create_dir_all(&config_dir)
+        {
+            warn!(
+                path = %config_dir.display(),
+                error = %e,
+                "Failed to create config directory"
+            );
+        }
 
         // Set appropriate permissions on Unix systems
         #[cfg(unix)]
@@ -71,7 +72,7 @@ impl Default for VaultConfig {
 
         Self {
             vault_path: config_dir.join("vault.db"),
-            // salt_path removed - salt now stored encrypted in SurrealDB  
+            // salt_path removed - salt now stored encrypted in SurrealDB
             argon2_memory_cost: default_memory_cost(),
             argon2_time_cost: default_time_cost(),
             argon2_parallelism: default_parallelism(),

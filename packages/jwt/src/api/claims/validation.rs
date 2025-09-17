@@ -3,7 +3,7 @@
 //! This module provides blazing-fast, zero-allocation JWT claims validation
 //! with comprehensive security checks for standard claims.
 
-use crate::error::*;
+use crate::error::JwtError;
 use serde_json::Value;
 
 /// Validate standard JWT claims with blazing-fast performance
@@ -12,11 +12,11 @@ use serde_json::Value;
 pub(crate) fn validate_standard_claims(claims: &serde_json::Value) -> Result<(), JwtError> {
     if let Some(obj) = claims.as_object() {
         // Check expiration with blazing-fast time handling
-        if let Some(exp) = obj.get("exp").and_then(|v| v.as_i64()) {
-            let now = std::time::SystemTime::now()
+        if let Some(exp) = obj.get("exp").and_then(serde_json::Value::as_i64) {
+            let now = i64::try_from(std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|_| JwtError::Internal("System time error".to_string()))?
-                .as_secs() as i64;
+                .as_secs()).map_err(|_| JwtError::Internal("Time conversion error".to_string()))?;
 
             if now > exp {
                 return Err(JwtError::TokenExpired);
@@ -24,11 +24,11 @@ pub(crate) fn validate_standard_claims(claims: &serde_json::Value) -> Result<(),
         }
 
         // Check not before with blazing-fast time handling
-        if let Some(nbf) = obj.get("nbf").and_then(|v| v.as_i64()) {
-            let now = std::time::SystemTime::now()
+        if let Some(nbf) = obj.get("nbf").and_then(serde_json::Value::as_i64) {
+            let now = i64::try_from(std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|_| JwtError::Internal("System time error".to_string()))?
-                .as_secs() as i64;
+                .as_secs()).map_err(|_| JwtError::Internal("Time conversion error".to_string()))?;
 
             if now < nbf {
                 return Err(JwtError::TokenNotYetValid);
@@ -37,19 +37,19 @@ pub(crate) fn validate_standard_claims(claims: &serde_json::Value) -> Result<(),
 
         // Validate exp > nbf if both present with zero-allocation checks
         if let (Some(exp), Some(nbf)) = (
-            obj.get("exp").and_then(|v| v.as_i64()),
-            obj.get("nbf").and_then(|v| v.as_i64()),
-        )
-            && exp <= nbf {
-                return Err(JwtError::InvalidClaims("exp must be after nbf".to_string()));
-            }
+            obj.get("exp").and_then(serde_json::Value::as_i64),
+            obj.get("nbf").and_then(serde_json::Value::as_i64),
+        ) && exp <= nbf
+        {
+            return Err(JwtError::InvalidClaims("exp must be after nbf".to_string()));
+        }
 
         // Validate issued at time if present
-        if let Some(iat) = obj.get("iat").and_then(|v| v.as_i64()) {
-            let now = std::time::SystemTime::now()
+        if let Some(iat) = obj.get("iat").and_then(serde_json::Value::as_i64) {
+            let now = i64::try_from(std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|_| JwtError::Internal("System time error".to_string()))?
-                .as_secs() as i64;
+                .as_secs()).map_err(|_| JwtError::Internal("Time conversion error".to_string()))?;
 
             // Allow some clock skew (5 minutes)
             if iat > now + 300 {

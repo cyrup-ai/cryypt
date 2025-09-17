@@ -103,21 +103,19 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
 
     /// Stream single key retrieval with default configuration
     #[inline]
-    pub async fn retrieve_stream(self) -> Receiver<Result<SecureRetrievedKey, KeyError>> {
+    pub fn retrieve_stream(self) -> Receiver<Result<SecureRetrievedKey, KeyError>> {
         self.retrieve_stream_with_config(StreamConfig::default_bounded())
-            .await
     }
 
     /// Stream single key retrieval with unbounded channel
     #[inline]
-    pub async fn retrieve_stream_unbounded(self) -> Receiver<Result<SecureRetrievedKey, KeyError>> {
+    pub fn retrieve_stream_unbounded(self) -> Receiver<Result<SecureRetrievedKey, KeyError>> {
         self.retrieve_stream_with_config(StreamConfig::unbounded())
-            .await
     }
 
     /// Stream with custom configuration
     #[inline]
-    pub async fn retrieve_stream_with_config(
+    pub fn retrieve_stream_with_config(
         self,
         config: StreamConfig,
     ) -> Receiver<Result<SecureRetrievedKey, KeyError>> {

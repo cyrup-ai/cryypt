@@ -18,20 +18,24 @@ impl TopicSubscriptionManager {
             connection_to_topics: DashMap::new(),
         }
     }
-    
+
     /// Subscribe a connection to a topic using lock-free operations
     pub fn subscribe(&self, conn_id: Vec<u8>, topic: String) {
         // Add connection to topic subscribers
-        let subscribers = self.topic_to_connections.entry(topic.clone())
+        let subscribers = self
+            .topic_to_connections
+            .entry(topic.clone())
             .or_insert_with(DashSet::new);
         subscribers.insert(conn_id.clone());
-        
+
         // Add topic to connection's subscriptions
-        let topics = self.connection_to_topics.entry(conn_id)
+        let topics = self
+            .connection_to_topics
+            .entry(conn_id)
             .or_insert_with(DashSet::new);
         topics.insert(topic);
     }
-    
+
     /// Unsubscribe a connection from a topic
     pub fn unsubscribe(&self, conn_id: &[u8], topic: &str) {
         if let Some(subscribers) = self.topic_to_connections.get(topic) {
@@ -41,14 +45,15 @@ impl TopicSubscriptionManager {
             topics.remove(topic);
         }
     }
-    
+
     /// Get all connections subscribed to a topic
     pub fn get_subscribers(&self, topic: &str) -> Vec<Vec<u8>> {
-        self.topic_to_connections.get(topic)
+        self.topic_to_connections
+            .get(topic)
             .map(|subscribers| subscribers.iter().map(|item| item.key().clone()).collect())
             .unwrap_or_default()
     }
-    
+
     /// Remove all subscriptions for a connection (called on disconnect)
     pub fn remove_connection(&self, conn_id: &[u8]) {
         if let Some((_, topics)) = self.connection_to_topics.remove(conn_id) {

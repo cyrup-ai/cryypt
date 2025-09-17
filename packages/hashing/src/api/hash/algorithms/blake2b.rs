@@ -40,23 +40,28 @@ impl Default for Blake2bBuilder {
 
 impl Blake2bBuilder {
     /// Create new Blake2b builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Add Blake2b key
+    #[must_use]
     pub fn with_key<K: Into<Vec<u8>>>(self, key: K) -> Blake2bBuilderWithKey {
         Blake2bBuilderWithKey { key: key.into() }
     }
 
     /// Compute Blake2b hash
+    #[must_use]
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
 
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = blake2b_hash(data, None, 64).await.map(|bytes| bytes.into());
+            let result = blake2b_hash(data, None, 64)
+                .await
+                .map(std::convert::Into::into);
             let _ = tx.send(result);
         });
 
@@ -66,6 +71,7 @@ impl Blake2bBuilder {
 
 impl Blake2bBuilderWithKey {
     /// Compute keyed Blake2b hash
+    #[must_use]
     pub fn compute<T: Into<Vec<u8>>>(self, data: T) -> AsyncHashResult {
         let data = data.into();
         let key = self.key;
@@ -75,7 +81,7 @@ impl Blake2bBuilderWithKey {
         tokio::spawn(async move {
             let result = blake2b_hash(data, Some(key), 64)
                 .await
-                .map(|bytes| bytes.into());
+                .map(std::convert::Into::into);
             let _ = tx.send(result);
         });
 
@@ -92,32 +98,32 @@ async fn blake2b_hash(
     use blake2::digest::{Digest, KeyInit, Mac};
     use blake2::{Blake2b512, Blake2bMac512};
 
+    const CHUNK_SIZE: usize = 8192;
+
     if let Some(key) = key {
         // Use Blake2b as MAC with chunked processing
         let mut mac = <Blake2bMac512 as KeyInit>::new_from_slice(&key)
-            .map_err(|e| crate::HashError::internal(format!("Blake2b key error: {}", e)))?;
-        
+            .map_err(|e| crate::HashError::internal(format!("Blake2b key error: {e}")))?;
+
         // Process data in 8KB chunks with yield points
-        const CHUNK_SIZE: usize = 8192;
         for chunk in data.chunks(CHUNK_SIZE) {
             mac.update(chunk);
             tokio::task::yield_now().await;
         }
-        
+
         let result = mac.finalize().into_bytes().to_vec();
         // Truncate to requested size
         Ok(result[..output_size.min(64) as usize].to_vec())
     } else {
         // Use Blake2b as hash with chunked processing
         let mut hasher = Blake2b512::default();
-        
+
         // Process data in 8KB chunks with yield points
-        const CHUNK_SIZE: usize = 8192;
         for chunk in data.chunks(CHUNK_SIZE) {
             hasher.update(chunk);
             tokio::task::yield_now().await;
         }
-        
+
         let result = hasher.finalize().to_vec();
         // Truncate to requested size
         Ok(result[..output_size.min(64) as usize].to_vec())

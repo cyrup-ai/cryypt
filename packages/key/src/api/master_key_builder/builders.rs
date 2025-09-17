@@ -33,7 +33,7 @@ impl MasterKeyBuilder {
     /// From hex string (no storage)
     pub fn from_hex(hex_str: &str) -> crate::Result<RawMasterKey> {
         let decoded = hex::decode(hex_str)
-            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid hex string: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid hex string: {e}")))?;
 
         if decoded.len() != 32 {
             return Err(crate::KeyError::InvalidKey(format!(
@@ -51,7 +51,7 @@ impl MasterKeyBuilder {
     pub fn from_base64(base64_str: &str) -> crate::Result<RawMasterKey> {
         let decoded = STANDARD
             .decode(base64_str)
-            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid base64 string: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid base64 string: {e}")))?;
 
         if decoded.len() != 32 {
             return Err(crate::KeyError::InvalidKey(format!(
@@ -121,7 +121,7 @@ impl<S: KeyStorage + KeyRetrieval + KeyImport + Send + Sync + Clone + 'static>
 
                         // Store it
                         store.store(&key_id, &key).await.map_err(|e| {
-                            crate::KeyError::InvalidKey(format!("Failed to store master key: {}", e))
+                            crate::KeyError::InvalidKey(format!("Failed to store master key: {e}"))
                         })?;
 
                         Ok(hex::encode(&key))

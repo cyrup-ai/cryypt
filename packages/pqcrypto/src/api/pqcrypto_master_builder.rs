@@ -1,7 +1,7 @@
-//! PQCrypto master builder for polymorphic API
+//! `PQCrypto` master builder for polymorphic API
 
-use super::kyber_builder::KyberBuilder;
 use super::dilithium_builder::DilithiumBuilder;
+use super::kyber_builder::KyberBuilder;
 
 /// Master builder for post-quantum cryptography operations
 pub struct PqCryptoMasterBuilder;
@@ -13,7 +13,7 @@ impl Default for PqCryptoMasterBuilder {
 }
 
 impl PqCryptoMasterBuilder {
-    /// Create a new PQCrypto master builder
+    /// Create a new `PQCrypto` master builder
     pub fn new() -> Self {
         Self
     }

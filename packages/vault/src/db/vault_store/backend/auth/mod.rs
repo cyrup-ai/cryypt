@@ -6,3 +6,6 @@ pub mod lock;
 pub mod passphrase;
 pub mod session;
 pub mod unlock;
+
+// Re-export key types
+pub use session::AuthState;

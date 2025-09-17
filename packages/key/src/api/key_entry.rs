@@ -2,19 +2,20 @@
 
 use super::{Key256Builder, RawKeyBuilder};
 use crate::bits_macro::BitSize;
+use crate::{KeyError, Result};
 
 /// Entry point for key operations
 pub struct Key;
 
 impl Key {
     /// Create a key with specified bit size
-    pub fn size(size: BitSize) -> Key256Builder {
+    pub fn size(size: BitSize) -> Result<Key256Builder> {
         match size.bits {
-            256 => Key256Builder,
-            _ => panic!(
+            256 => Ok(Key256Builder),
+            _ => Err(KeyError::InvalidKey(format!(
                 "Unsupported key size: {} bits. Only 256-bit keys are currently supported.",
                 size.bits
-            ),
+            ))),
         }
     }
 

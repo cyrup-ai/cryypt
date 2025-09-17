@@ -8,6 +8,10 @@ repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[lints]
+[lints.rust]
+warnings = "warn"
+
 [[bin]]
 name = "vault"
 path = "src/main.rs"
@@ -61,8 +65,10 @@ cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "mai
 fastrand = "2.3.0"
 dashmap = "7.0.0-rc2"
 async-stream = "0.3.6"
-async_task = { version = "0.1.0", path = "../async_task" }
+async_task = { path = "../async_task" }
 rpassword = "7.4.0"
 rand_core = { version = "0.9", features = ["os_rng"] }
 getrandom = "0.3.3"
 
+[dev-dependencies]
+tempfile = "3.21.0"

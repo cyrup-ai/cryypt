@@ -1,10 +1,11 @@
 //! AES Key Builder - Polymorphic pattern for AES key operations
 //!
-//! Integrates with existing KeyGenerator system while providing polymorphic
+//! Integrates with existing `KeyGenerator` system while providing polymorphic
 //! builder pattern that matches cipher module design.
 
 // Removed unused imports after fixing redundant field names
 use futures::Stream;
+use rand::RngCore;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -40,6 +41,7 @@ impl Default for AesKeyBuilder {
 
 impl AesKeyBuilder {
     /// Create new AES key builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -72,6 +74,7 @@ impl AesKeyWithSize {
 
 impl AesKeyBuilder {
     /// Set AES key size (128, 192, or 256 bits)
+    #[must_use]
     pub fn with_size(self, size_bits: u32) -> AesKeyWithSize {
         AesKeyWithSize { size_bits }
     }
@@ -96,14 +99,14 @@ where
             // Generate secure AES key
             let size_bytes = (self.size_bits / 8) as usize;
             let mut key_bytes = vec![0u8; size_bytes];
-            
+
             // Use secure random generation
-            use rand::RngCore;
             let mut rng = rand::rng();
             rng.fill_bytes(&mut key_bytes);
 
             Ok(key_bytes)
-        }.await;
+        }
+        .await;
 
         // Apply result handler
         (self.handler)(result)
@@ -138,18 +141,18 @@ where
                     // Generate secure AES key
                     let size_bytes = (size_bits / 8) as usize;
                     let mut key_bytes = vec![0u8; size_bytes];
-                    
+
                     // Use secure random generation
-                    use rand::RngCore;
                     let mut rng = rand::rng();
                     rng.fill_bytes(&mut key_bytes);
 
                     Ok(key_bytes)
-                }.await;
+                }
+                .await;
 
                 // Apply handler and send result
                 let processed_key = handler(result);
-                
+
                 if tx.send(processed_key).await.is_err() {
                     break; // Receiver dropped
                 }

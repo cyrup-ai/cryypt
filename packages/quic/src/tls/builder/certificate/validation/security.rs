@@ -2,19 +2,24 @@
 //!
 //! This module handles advanced security validation including:
 //! - OCSP validation for revocation checking
-//! - CRL validation for revocation checking 
+//! - CRL validation for revocation checking
 //! - Certificate chain validation against CA
 //! - Security constraints validation
 
 use std::collections::HashMap;
 use std::time::{Instant, SystemTime};
 
-use super::basic::CertificateValidatorWithInput;
+use super::super::super::responses::{
+    CertificateInfo, CertificateValidationResponse, CheckResult, IssueCategory, IssueSeverity,
+    ValidationIssue, ValidationPerformance, ValidationSummary,
+};
 use super::super::types::InputSource;
-use super::super::super::responses::{CertificateValidationResponse, CertificateInfo, ValidationSummary, CheckResult, ValidationIssue, IssueSeverity, IssueCategory, ValidationPerformance};
+use super::basic::CertificateValidatorWithInput;
 
 /// Perform full security validation with all checks
-pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -> CertificateValidationResponse {
+pub async fn perform_full_validation(
+    validator: CertificateValidatorWithInput,
+) -> CertificateValidationResponse {
     use crate::tls::certificate::{
         parse_certificate_from_pem, validate_basic_constraints, validate_certificate_time,
         validate_key_usage,
@@ -55,10 +60,10 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
             issues.push(ValidationIssue {
                 severity: IssueSeverity::Error,
                 category: IssueCategory::Expiry,
-                message: format!("Time validation failed: {}", e),
+                message: format!("Time validation failed: {e}"),
                 suggestion: Some("Check certificate validity period".to_string()),
             });
-            CheckResult::Failed(format!("Time validation: {}", e))
+            CheckResult::Failed(format!("Time validation: {e}"))
         }
     };
 
@@ -71,7 +76,7 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
         issues.push(ValidationIssue {
             severity: IssueSeverity::Warning,
             category: IssueCategory::KeyUsage,
-            message: format!("Basic constraints issue: {}", e),
+            message: format!("Basic constraints issue: {e}"),
             suggestion: Some("Check certificate basic constraints extension".to_string()),
         });
     }
@@ -85,7 +90,7 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
         issues.push(ValidationIssue {
             severity: IssueSeverity::Warning,
             category: IssueCategory::KeyUsage,
-            message: format!("Key usage issue: {}", e),
+            message: format!("Key usage issue: {e}"),
             suggestion: Some("Check certificate key usage extension".to_string()),
         });
     }
@@ -106,8 +111,16 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
             });
 
             // Continue with basic validation only
-            let domain_check = super::domain::validate_domains(&parsed_cert, &validator.domain, &validator.domains, &mut issues);
-            let is_valid = time_result.is_ok() && domain_check.as_ref().map_or(true, |c| matches!(c, CheckResult::Passed));
+            let domain_check = super::domain::validate_domains(
+                &parsed_cert,
+                &validator.domain,
+                &validator.domains,
+                &mut issues,
+            );
+            let is_valid = time_result.is_ok()
+                && domain_check
+                    .as_ref()
+                    .map_or(true, |c| matches!(c, CheckResult::Passed));
 
             return CertificateValidationResponse {
                 is_valid,
@@ -135,7 +148,9 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
 
     // OCSP validation
     let ocsp_start = Instant::now();
-    let ocsp_result = tls_manager.validate_certificate_ocsp(&cert_content, None).await;
+    let ocsp_result = tls_manager
+        .validate_certificate_ocsp(&cert_content, None)
+        .await;
     validation_breakdown.insert("ocsp_validation".to_string(), ocsp_start.elapsed());
 
     let ocsp_check = match &ocsp_result {
@@ -144,10 +159,12 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
             issues.push(ValidationIssue {
                 severity: IssueSeverity::Error,
                 category: IssueCategory::Revocation,
-                message: format!("OCSP validation failed: {}", e),
-                suggestion: Some("Certificate may be revoked or OCSP responder unavailable".to_string()),
+                message: format!("OCSP validation failed: {e}"),
+                suggestion: Some(
+                    "Certificate may be revoked or OCSP responder unavailable".to_string(),
+                ),
             });
-            CheckResult::Failed(format!("OCSP: {}", e))
+            CheckResult::Failed(format!("OCSP: {e}"))
         }
     };
 
@@ -162,10 +179,10 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
             issues.push(ValidationIssue {
                 severity: IssueSeverity::Error,
                 category: IssueCategory::Revocation,
-                message: format!("CRL validation failed: {}", e),
+                message: format!("CRL validation failed: {e}"),
                 suggestion: Some("Certificate may be revoked or CRL unavailable".to_string()),
             });
-            CheckResult::Failed(format!("CRL: {}", e))
+            CheckResult::Failed(format!("CRL: {e}"))
         }
     };
 
@@ -174,10 +191,9 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
         let chain_start = Instant::now();
         let chain_result = crate::tls::certificate::validate_certificate_chain(
             &cert_content,
-            &rustls::pki_types::CertificateDer::from(
-                authority.certificate_pem.as_bytes().to_vec(),
-            ),
-        ).await;
+            &rustls::pki_types::CertificateDer::from(authority.certificate_pem.as_bytes().to_vec()),
+        )
+        .await;
         validation_breakdown.insert("chain_validation".to_string(), chain_start.elapsed());
 
         match chain_result {
@@ -186,10 +202,12 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
                 issues.push(ValidationIssue {
                     severity: IssueSeverity::Error,
                     category: IssueCategory::Chain,
-                    message: format!("Certificate chain validation failed: {}", e),
-                    suggestion: Some("Certificate may not be signed by the provided CA".to_string()),
+                    message: format!("Certificate chain validation failed: {e}"),
+                    suggestion: Some(
+                        "Certificate may not be signed by the provided CA".to_string(),
+                    ),
                 });
-                Some(CheckResult::Failed(format!("Chain: {}", e)))
+                Some(CheckResult::Failed(format!("Chain: {e}")))
             }
         }
     } else {
@@ -197,14 +215,23 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
     };
 
     // Domain validation
-    let domain_check = super::domain::validate_domains(&parsed_cert, &validator.domain, &validator.domains, &mut issues);
+    let domain_check = super::domain::validate_domains(
+        &parsed_cert,
+        &validator.domain,
+        &validator.domains,
+        &mut issues,
+    );
 
     // Overall validity check
     let is_valid = time_result.is_ok()
         && ocsp_result.is_ok()
         && crl_result.is_ok()
-        && domain_check.as_ref().map_or(true, |c| matches!(c, CheckResult::Passed))
-        && ca_check.as_ref().map_or(true, |c| matches!(c, CheckResult::Passed));
+        && domain_check
+            .as_ref()
+            .map_or(true, |c| matches!(c, CheckResult::Passed))
+        && ca_check
+            .as_ref()
+            .map_or(true, |c| matches!(c, CheckResult::Passed));
 
     // Get cache statistics
     let (cache_hits, cache_misses) = tls_manager.get_cache_stats();
@@ -233,20 +260,18 @@ pub async fn perform_full_validation(validator: CertificateValidatorWithInput) -
 }
 
 /// Get certificate content from input source
-async fn get_certificate_content(input_source: &InputSource) -> Result<String, CertificateValidationResponse> {
+async fn get_certificate_content(
+    input_source: &InputSource,
+) -> Result<String, CertificateValidationResponse> {
     match input_source {
-        InputSource::File(path) => {
-            match tokio::fs::read_to_string(&path).await {
-                Ok(content) => Ok(content),
-                Err(e) => Err(create_file_read_error(e)),
-            }
+        InputSource::File(path) => match tokio::fs::read_to_string(&path).await {
+            Ok(content) => Ok(content),
+            Err(e) => Err(create_file_read_error(e)),
         },
         InputSource::String(content) => Ok(content.clone()),
-        InputSource::Bytes(bytes) => {
-            match String::from_utf8(bytes.clone()) {
-                Ok(content) => Ok(content),
-                Err(e) => Err(create_utf8_error(e)),
-            }
+        InputSource::Bytes(bytes) => match String::from_utf8(bytes.clone()) {
+            Ok(content) => Ok(content),
+            Err(e) => Err(create_utf8_error(e)),
         },
     }
 }
@@ -257,7 +282,7 @@ fn create_file_read_error(e: std::io::Error) -> CertificateValidationResponse {
         is_valid: false,
         certificate_info: create_default_cert_info("Failed to read"),
         validation_summary: ValidationSummary {
-            parsing: CheckResult::Failed(format!("Failed to read file: {}", e)),
+            parsing: CheckResult::Failed(format!("Failed to read file: {e}")),
             time_validity: CheckResult::Skipped,
             domain_match: None,
             ca_validation: None,
@@ -267,7 +292,7 @@ fn create_file_read_error(e: std::io::Error) -> CertificateValidationResponse {
         issues: vec![ValidationIssue {
             severity: IssueSeverity::Error,
             category: IssueCategory::Parsing,
-            message: format!("Failed to read certificate file: {}", e),
+            message: format!("Failed to read certificate file: {e}"),
             suggestion: Some("Check file path and permissions".to_string()),
         }],
         performance: ValidationPerformance {
@@ -287,7 +312,7 @@ fn create_utf8_error(e: std::string::FromUtf8Error) -> CertificateValidationResp
         is_valid: false,
         certificate_info: create_default_cert_info("Invalid UTF-8"),
         validation_summary: ValidationSummary {
-            parsing: CheckResult::Failed(format!("Invalid UTF-8: {}", e)),
+            parsing: CheckResult::Failed(format!("Invalid UTF-8: {e}")),
             time_validity: CheckResult::Skipped,
             domain_match: None,
             ca_validation: None,
@@ -297,7 +322,7 @@ fn create_utf8_error(e: std::string::FromUtf8Error) -> CertificateValidationResp
         issues: vec![ValidationIssue {
             severity: IssueSeverity::Error,
             category: IssueCategory::Parsing,
-            message: format!("Certificate bytes are not valid UTF-8: {}", e),
+            message: format!("Certificate bytes are not valid UTF-8: {e}"),
             suggestion: Some("Ensure certificate is in PEM format".to_string()),
         }],
         performance: ValidationPerformance {
@@ -313,15 +338,15 @@ fn create_utf8_error(e: std::string::FromUtf8Error) -> CertificateValidationResp
 
 /// Create parse error response
 fn create_parse_error_response(
-    e: Box<dyn std::error::Error + Send + Sync>, 
-    start_time: Instant, 
-    validation_breakdown: HashMap<String, std::time::Duration>
+    e: Box<dyn std::error::Error + Send + Sync>,
+    start_time: Instant,
+    validation_breakdown: HashMap<String, std::time::Duration>,
 ) -> CertificateValidationResponse {
     CertificateValidationResponse {
         is_valid: false,
         certificate_info: create_default_cert_info("Parse failed"),
         validation_summary: ValidationSummary {
-            parsing: CheckResult::Failed(format!("Parse error: {}", e)),
+            parsing: CheckResult::Failed(format!("Parse error: {e}")),
             time_validity: CheckResult::Skipped,
             domain_match: None,
             ca_validation: None,
@@ -331,7 +356,7 @@ fn create_parse_error_response(
         issues: vec![ValidationIssue {
             severity: IssueSeverity::Error,
             category: IssueCategory::Parsing,
-            message: format!("Failed to parse certificate: {}", e),
+            message: format!("Failed to parse certificate: {e}"),
             suggestion: Some("Ensure certificate is in valid PEM format".to_string()),
         }],
         performance: ValidationPerformance {

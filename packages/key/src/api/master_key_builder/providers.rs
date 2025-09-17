@@ -36,11 +36,11 @@ impl MasterKeyProvider for PassphraseMasterKey {
         use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_SALT};
         let salt_b64 = BASE64_SALT.encode(&salt_bytes[..22]);
         let salt = SaltString::from_b64(&salt_b64)
-            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {e}")))?;
 
         let password_hash = argon2
             .hash_password(self.passphrase.as_bytes(), &salt)
-            .map_err(|e| crate::KeyError::InvalidKey(format!("Password hashing failed: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Password hashing failed: {e}")))?;
 
         let hash_output = password_hash
             .hash
@@ -110,11 +110,11 @@ impl MasterKeyProvider for EnvMasterKey {
         // Use first 22 bytes for salt (Argon2 requirement) - encode as base64
         let salt_b64 = BASE64_SALT.encode(&salt_bytes[..22]);
         let salt = SaltString::from_b64(&salt_b64)
-            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {e}")))?;
 
         let password_hash = argon2
             .hash_password(value.as_bytes(), &salt)
-            .map_err(|e| crate::KeyError::InvalidKey(format!("Password hashing failed: {}", e)))?;
+            .map_err(|e| crate::KeyError::InvalidKey(format!("Password hashing failed: {e}")))?;
 
         let hash_output = password_hash
             .hash

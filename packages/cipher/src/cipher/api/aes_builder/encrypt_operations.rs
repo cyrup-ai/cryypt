@@ -20,6 +20,7 @@ impl AesWithKey {
     }
 
     /// Encrypt data with encodable result - provides additional formatting methods
+    #[must_use]
     pub fn encrypt_encodable<T: Into<Vec<u8>>>(
         self,
         data: T,
@@ -63,40 +64,37 @@ where
     F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
 {
     /// Encrypt data in chunks - returns stream of encrypted chunks
+    #[must_use]
     pub fn encrypt<T: Into<Vec<u8>>>(self, data: T) -> impl futures::Stream<Item = Vec<u8>> {
         use tokio::sync::mpsc;
-        
+
         let data = data.into();
         let key = self.key;
         let aad = self.aad;
         let handler = self.chunk_handler;
-        
+
         let (tx, rx) = mpsc::channel(16);
-        
+
         tokio::spawn(async move {
             const CHUNK_SIZE: usize = 64 * 1024; // 64KB chunks
-            
+
             for chunk in data.chunks(CHUNK_SIZE) {
                 // Encrypt each chunk with unique nonce
                 let result = aes_encrypt_chunk(&key, chunk, aad.as_deref()).await;
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break;
                 }
             }
         });
-        
+
         tokio_stream::wrappers::ReceiverStream::new(rx)
     }
 }
 
 // Chunk-specific encryption function for streaming
-async fn aes_encrypt_chunk(
-    key: &[u8],
-    data: &[u8],
-    aad: Option<&[u8]>,
-) -> Result<Vec<u8>> {
+async fn aes_encrypt_chunk(key: &[u8], data: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
     use aes_gcm::{
         Aes256Gcm, KeyInit,
         aead::{Aead, generic_array::GenericArray},
@@ -123,7 +121,7 @@ async fn aes_encrypt_chunk(
 
     // Build chunk result: [CHUNK_LEN(4)][AAD_LEN(4)][AAD][NONCE(12)][CIPHERTEXT]
     let mut result = Vec::new();
-    
+
     // Length prefix for this chunk
     let chunk_data_len = if let Some(aad_data) = aad {
         4 + aad_data.len() + 12 + ciphertext.len()

@@ -25,21 +25,23 @@ pub enum HashError {
 
     #[error("Hash finalization error: {0}")]
     Finalization(String),
-    
+
     #[error("Internal error: {0}")]
     Internal(String),
-    
+
     #[error("Invalid parameters: {0}")]
     InvalidParameters(String),
 }
 
 impl HashError {
     /// Create an internal error (legacy compatibility)
+    #[must_use]
     pub fn internal(msg: impl Into<String>) -> Self {
         Self::Internal(msg.into())
     }
-    
-    /// Create an invalid_parameters error (legacy compatibility)
+
+    /// Create an `invalid_parameters` error (legacy compatibility)
+    #[must_use]
     pub fn invalid_parameters(msg: impl Into<String>) -> Self {
         Self::InvalidParameters(msg.into())
     }

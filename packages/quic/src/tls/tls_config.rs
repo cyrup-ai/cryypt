@@ -22,7 +22,7 @@ pub struct TlsManager {
     ca_cert: CertificateDer<'static>,
     #[allow(dead_code)]
     ca_key: PrivatePkcs8KeyDer<'static>,
-    #[allow(dead_code)] // Used by TLS configuration methods - library infrastructure  
+    #[allow(dead_code)] // Used by TLS configuration methods - library infrastructure
     server_cert: CertificateDer<'static>,
     #[allow(dead_code)] // Used by TLS configuration methods - library infrastructure
     server_key: PrivatePkcs8KeyDer<'static>,

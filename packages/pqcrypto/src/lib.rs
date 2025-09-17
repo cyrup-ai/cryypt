@@ -41,8 +41,8 @@ pub use self::shared_secret::SharedSecret;
 // Re-export builder traits
 pub use self::api::{
     CiphertextBuilder, DecapsulateBuilder, EncapsulateBuilder, KemBuilder, KemKeyPairBuilder,
-    MessageBuilder, SignBuilder, SignatureBuilder, SignatureDataBuilder, SignatureKeyPairBuilder,
-    VerifyBuilder, PqCryptoMasterBuilder,
+    MessageBuilder, PqCryptoMasterBuilder, SignBuilder, SignatureBuilder, SignatureDataBuilder,
+    SignatureKeyPairBuilder, VerifyBuilder,
 };
 
 /// Prelude for post-quantum cryptography

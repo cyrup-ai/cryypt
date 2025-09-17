@@ -3,7 +3,6 @@
 //! Provides polymorphic builder pattern for Blake3 hashing with both single-result
 //! and streaming chunk operations.
 
-
 use futures::Stream;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -32,29 +31,28 @@ impl Default for Blake3Builder {
 
 impl Blake3Builder {
     /// Create new Blake3 builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Set result handler for single hash computation
+    #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> Blake3WithHandler<F>
     where
         F: FnOnce(crate::Result<Vec<u8>>) -> T,
         T: cryypt_common::NotResult,
     {
-        Blake3WithHandler {
-            handler,
-        }
+        Blake3WithHandler { handler }
     }
 
     /// Set chunk handler for streaming hash computation
+    #[must_use]
     pub fn on_chunk<F>(self, handler: F) -> Blake3WithChunkHandler<F>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8>,
     {
-        Blake3WithChunkHandler {
-            handler,
-        }
+        Blake3WithChunkHandler { handler }
     }
 }
 
@@ -64,6 +62,7 @@ where
     T: cryypt_common::NotResult + Send + 'static,
 {
     /// Compute Blake3 hash of data
+    #[must_use]
     pub async fn compute(self, data: &[u8]) -> T {
         let result = async {
             // Yield control to allow other tasks to run
@@ -72,7 +71,8 @@ where
             // Compute Blake3 hash using production Blake3 cryptography
             let hash = blake3_hash(data);
             Ok(hash)
-        }.await;
+        }
+        .await;
 
         // Apply result handler
         (self.handler)(result)
@@ -105,11 +105,12 @@ where
                 let result = async {
                     let progress_hash = blake3_incremental_hash(chunk, i, total_chunks);
                     Ok(progress_hash)
-                }.await;
+                }
+                .await;
 
                 // Apply handler and send result
                 let processed_chunk = handler(result);
-                
+
                 if tx.send(processed_chunk).await.is_err() {
                     break; // Receiver dropped
                 }
@@ -129,12 +130,16 @@ fn blake3_hash(data: &[u8]) -> Vec<u8> {
 fn blake3_incremental_hash(chunk: &[u8], chunk_index: usize, total_chunks: usize) -> Vec<u8> {
     // Use Blake3 hasher for incremental computation with progress metadata
     let mut hasher = blake3::Hasher::new();
-    
+
     // Include progress metadata in hash computation
-    hasher.update(&(chunk_index as u32).to_le_bytes());
-    hasher.update(&(total_chunks as u32).to_le_bytes());
-    hasher.update(&(chunk.len() as u32).to_le_bytes());
+    hasher.update(&u32::try_from(chunk_index).unwrap_or(u32::MAX).to_le_bytes());
+    hasher.update(
+        &u32::try_from(total_chunks)
+            .unwrap_or(u32::MAX)
+            .to_le_bytes(),
+    );
+    hasher.update(&u32::try_from(chunk.len()).unwrap_or(u32::MAX).to_le_bytes());
     hasher.update(chunk);
-    
+
     hasher.finalize().as_bytes().to_vec()
 }

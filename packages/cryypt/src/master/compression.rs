@@ -10,7 +10,7 @@ pub struct CompressMasterBuilder;
 impl CompressMasterBuilder {
     /// Use Zstandard compression - README.md pattern
     #[cfg(feature = "zstd")]
-    #[must_use] 
+    #[must_use]
     pub fn zstd(
         self,
     ) -> cryypt_compression::ZstdBuilder<cryypt_compression::api::zstd_builder::NoLevel> {
@@ -19,7 +19,7 @@ impl CompressMasterBuilder {
 
     /// Use Gzip compression - README.md pattern
     #[cfg(feature = "gzip")]
-    #[must_use] 
+    #[must_use]
     pub fn gzip(
         self,
     ) -> cryypt_compression::GzipBuilder<cryypt_compression::api::gzip_builder::NoLevel> {

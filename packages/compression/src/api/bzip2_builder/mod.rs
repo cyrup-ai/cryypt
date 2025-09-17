@@ -51,6 +51,7 @@ impl Default for Bzip2Builder<NoLevel> {
 
 impl Bzip2Builder<NoLevel> {
     /// Create a new Bzip2 builder with default level
+    #[must_use]
     pub fn new() -> Self {
         Self {
             level: NoLevel,
@@ -63,7 +64,7 @@ impl Bzip2Builder<NoLevel> {
 
 // Methods for adding result and chunk handlers
 impl<L> Bzip2Builder<L> {
-    /// Internal implementation for on_result - called by macro
+    /// Internal implementation for `on_result` - called by macro
     fn on_result_impl<F>(self, handler: F) -> Bzip2BuilderWithHandler<L, F, Vec<u8>>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -75,7 +76,7 @@ impl<L> Bzip2Builder<L> {
         }
     }
 
-    /// Internal implementation for on_chunk - called by macro
+    /// Internal implementation for `on_chunk` - called by macro
     fn on_chunk_impl<F>(self, handler: F) -> Bzip2BuilderWithChunk<L, F>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -87,7 +88,8 @@ impl<L> Bzip2Builder<L> {
         }
     }
 
-    /// Add on_result handler - transforms pattern matching internally
+    /// Add `on_result` handler - transforms pattern matching internally
+    #[must_use]
     pub fn on_result<F>(self, handler: F) -> Bzip2BuilderWithHandler<L, F, Vec<u8>>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -96,7 +98,8 @@ impl<L> Bzip2Builder<L> {
         self.on_result_impl(handler)
     }
 
-    /// Add on_chunk handler - transforms pattern matching internally
+    /// Add `on_chunk` handler - transforms pattern matching internally
+    #[must_use]
     pub fn on_chunk<F>(self, handler: F) -> Bzip2BuilderWithChunk<L, F>
     where
         F: Fn(Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -105,7 +108,8 @@ impl<L> Bzip2Builder<L> {
         self.on_chunk_impl(handler)
     }
 
-    /// Apply on_error handler for error transformation
+    /// Apply `on_error` handler for error transformation
+    #[must_use]
     pub fn on_error<F>(mut self, handler: F) -> Self
     where
         F: Fn(CompressionError) -> CompressionError + Send + Sync + 'static,

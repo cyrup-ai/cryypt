@@ -5,8 +5,8 @@
 //! - Input source handling
 //! - Basic parsing and time validation
 
-use super::super::types::InputSource;
 use super::super::super::authority::CertificateAuthority;
+use super::super::types::InputSource;
 
 /// Certificate validator builder
 #[derive(Debug, Clone)]

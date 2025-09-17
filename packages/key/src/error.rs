@@ -36,45 +36,45 @@ pub enum KeyError {
     /// Random number generation failed
     #[error("Random number generation failed: {0}")]
     RandomGeneration(String),
-    
+
     /// Invalid key provided
     #[error("Invalid key: {0}")]
     InvalidKey(String),
-    
+
     /// Encryption operation failed
     #[error("Encryption failed: {0}")]
     EncryptionFailed(String),
-    
+
     /// Decryption operation failed
     #[error("Decryption failed: {0}")]
     DecryptionFailed(String),
-    
+
     /// I/O operation failed
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     /// Internal error occurred
     #[error("Internal error: {0}")]
     Internal(String),
-    
+
     /// Invalid key size provided
     #[error("Invalid key size: expected {expected}, got {actual}")]
-    InvalidKeySize { 
+    InvalidKeySize {
         /// Expected key size in bytes
-        expected: usize, 
+        expected: usize,
         /// Actual key size in bytes
-        actual: usize 
+        actual: usize,
     },
-    
+
     /// Key not found in storage
     #[error("Key not found: id={id}, version={version}")]
-    KeyNotFound { 
+    KeyNotFound {
         /// Key identifier
-        id: String, 
+        id: String,
         /// Key version number
-        version: u32 
+        version: u32,
     },
-    
+
     /// Storage backend error occurred
     #[error("Storage backend error: {operation} failed - {details}")]
     StorageBackendError {
@@ -83,14 +83,14 @@ pub enum KeyError {
         /// Detailed error information
         details: String,
     },
-    
+
     /// Storage backend is temporarily unavailable
     #[error("Storage temporarily unavailable: {reason}")]
     StorageUnavailable {
         /// Reason for unavailability
         reason: String,
     },
-    
+
     /// Storage backend connection failed
     #[error("Storage connection failed: {backend_type} - {details}")]
     StorageConnectionFailed {
@@ -106,7 +106,7 @@ impl KeyError {
     pub fn invalid_key(msg: impl Into<String>) -> Self {
         Self::InvalidKey(msg.into())
     }
-    
+
     /// Create an internal error (legacy compatibility)
     pub fn internal(msg: impl Into<String>) -> Self {
         Self::Internal(msg.into())

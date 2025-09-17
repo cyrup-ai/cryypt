@@ -9,10 +9,10 @@
 //! - `client_builder`: Client builder with connection and messaging functionality
 
 pub mod api;
-pub mod server_builder;
 pub mod client_builder;
+pub mod server_builder;
 
 // Re-export main types for backward compatibility
 pub use api::QuicMessaging;
-pub use server_builder::MessagingServerBuilder;
 pub use client_builder::MessagingClientBuilder;
+pub use server_builder::MessagingServerBuilder;

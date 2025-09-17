@@ -1,4 +1,4 @@
-//! Core Bzip2Stream struct and creation methods
+//! Core `Bzip2Stream` struct and creation methods
 
 use super::factory::{create_bzip2_compressor, create_bzip2_decompressor};
 use crate::{CompressionAlgorithm, CompressionError, Result};
@@ -35,7 +35,7 @@ where
 
             while let Some(chunk) = stream.next().await {
                 // Compress chunk
-                match compressor.compress_chunk(chunk) {
+                match compressor.compress_chunk(&chunk) {
                     Ok(compressed) if !compressed.is_empty() => {
                         if sender.send(Ok(compressed)).await.is_err() {
                             break; // Receiver dropped
@@ -87,7 +87,7 @@ where
 
             while let Some(chunk) = stream.next().await {
                 // Decompress chunk
-                match decompressor.decompress_chunk(chunk) {
+                match decompressor.decompress_chunk(&chunk) {
                     Ok(decompressed) if !decompressed.is_empty() => {
                         if sender.send(Ok(decompressed)).await.is_err() {
                             break; // Receiver dropped

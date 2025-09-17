@@ -20,6 +20,7 @@ pub struct HashBuilder<H, D, S, P> {
 // Methods for adding result handler
 impl<H, D, S, P> HashBuilder<H, D, S, P> {
     /// Apply on_result! handler
+    #[must_use]
     pub fn on_result<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<HashResult>) -> Vec<u8> + Send + Sync + 'static,
@@ -29,6 +30,7 @@ impl<H, D, S, P> HashBuilder<H, D, S, P> {
     }
     
     /// Apply on_chunk! handler for streaming
+    #[must_use]
     pub fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<Vec<u8>>) -> Option<Vec<u8>> + Send + Sync + 'static,
@@ -38,6 +40,7 @@ impl<H, D, S, P> HashBuilder<H, D, S, P> {
     }
     
     /// Apply on_error handler - transforms errors but passes through success
+    #[must_use]
     pub fn on_error<E>(mut self, handler: E) -> Self
     where
         E: Fn(HashError) -> HashError + Send + Sync + 'static,
@@ -50,6 +53,7 @@ impl<H, D, S, P> HashBuilder<H, D, S, P> {
 // Methods for adding key (for HMAC)
 impl<H, D, P> HashBuilder<H, D, NoSalt, P> {
     /// Set the key for HMAC operations
+    #[must_use]
     pub fn with_key<T: Into<Vec<u8>>>(self, key: T) -> HashBuilder<H, D, HasSalt, P> {
         HashBuilder {
             hasher: self.hasher,
@@ -66,6 +70,7 @@ impl<H, D, P> HashBuilder<H, D, NoSalt, P> {
 // Methods for setting passes (for iterative hashing)
 impl<H, D, S> HashBuilder<H, D, S, NoPasses> {
     /// Set the number of passes for iterative hashing
+    #[must_use]
     pub fn with_passes(self, passes: HashPasses) -> HashBuilder<H, D, S, HasPasses> {
         HashBuilder {
             hasher: self.hasher,

@@ -62,20 +62,157 @@ impl<F> AesWithKeyAndChunkHandler<F>
 where
     F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
 {
-    /// Decrypt data - action takes data as argument per README.md  
-    /// Returns processed result using chunk handler
-    pub async fn decrypt<T: Into<Vec<u8>>>(self, data: T) -> Vec<u8> {
+    /// Decrypt chunked data - returns stream of decrypted chunks
+    pub fn decrypt<T: Into<Vec<u8>>>(self, data: T) -> impl futures::Stream<Item = Vec<u8>> {
+        use tokio::sync::mpsc;
+
         let data = data.into();
         let key = self.key;
         let aad = self.aad;
         let handler = self.chunk_handler;
 
-        // Perform AES-GCM decryption
-        let result = aes_decrypt_with_aad(&key, &data, aad.as_deref()).await;
+        let (tx, rx) = mpsc::channel(16);
 
-        // Apply chunk handler
-        handler(result)
+        tokio::spawn(async move {
+            let mut offset = 0;
+
+            while offset < data.len() {
+                // Read chunk length (4 bytes)
+                if offset + 4 > data.len() {
+                    let error_result = Err(CryptError::InvalidEncryptedData(
+                        "Cannot read chunk length".to_string(),
+                    ));
+                    let processed_chunk = handler(error_result);
+                    if tx.send(processed_chunk).await.is_err() {
+                        break;
+                    }
+                    break;
+                }
+
+                let chunk_len = u32::from_le_bytes([
+                    data[offset],
+                    data[offset + 1],
+                    data[offset + 2],
+                    data[offset + 3],
+                ]) as usize;
+                offset += 4;
+
+                // Read the chunk data
+                if offset + chunk_len > data.len() {
+                    let error_result = Err(CryptError::InvalidEncryptedData(
+                        "Chunk data truncated".to_string(),
+                    ));
+                    let processed_chunk = handler(error_result);
+                    if tx.send(processed_chunk).await.is_err() {
+                        break;
+                    }
+                    break;
+                }
+
+                let chunk_data = &data[offset..offset + chunk_len];
+                offset += chunk_len;
+
+                // Decrypt this chunk
+                let result = aes_decrypt_chunk(&key, chunk_data, aad.as_deref()).await;
+                let processed_chunk = handler(result);
+
+                if tx.send(processed_chunk).await.is_err() {
+                    break;
+                }
+            }
+        });
+
+        tokio_stream::wrappers::ReceiverStream::new(rx)
     }
+}
+
+// Chunk-specific decryption function for streaming
+async fn aes_decrypt_chunk(
+    key: &[u8],
+    chunk_data: &[u8],
+    expected_aad: Option<&[u8]>,
+) -> Result<Vec<u8>> {
+    use aes_gcm::{
+        Aes256Gcm, KeyInit,
+        aead::{Aead, generic_array::GenericArray},
+    };
+
+    if key.len() != 32 {
+        return Err(CryptError::InvalidKeySize {
+            expected: 32,
+            actual: key.len(),
+        });
+    }
+
+    // Parse chunk format: [AAD_LEN(4)][AAD][NONCE(12)][CIPHERTEXT]
+    let mut offset = 0;
+
+    // Read AAD length
+    if chunk_data.len() < 4 {
+        return Err(CryptError::InvalidEncryptedData(
+            "Cannot read AAD length from chunk".to_string(),
+        ));
+    }
+    let aad_len = u32::from_le_bytes([
+        chunk_data[offset],
+        chunk_data[offset + 1],
+        chunk_data[offset + 2],
+        chunk_data[offset + 3],
+    ]) as usize;
+    offset += 4;
+
+    // Read AAD if present
+    let stored_aad = if aad_len > 0 {
+        if chunk_data.len() < offset + aad_len {
+            return Err(CryptError::InvalidEncryptedData(
+                "Cannot read AAD data from chunk".to_string(),
+            ));
+        }
+        let aad = chunk_data[offset..offset + aad_len].to_vec();
+        offset += aad_len;
+        Some(aad)
+    } else {
+        None
+    };
+
+    // Verify AAD matches expected (if provided)
+    if let Some(expected) = expected_aad {
+        match &stored_aad {
+            Some(stored) if stored != expected => {
+                return Err(CryptError::DecryptionFailed(
+                    "AAD mismatch in chunk".to_string(),
+                ));
+            }
+            None => {
+                return Err(CryptError::DecryptionFailed(
+                    "Expected AAD but none found in chunk".to_string(),
+                ));
+            }
+            _ => {} // AAD matches
+        }
+    }
+
+    // Read nonce (12 bytes)
+    if chunk_data.len() < offset + 12 {
+        return Err(CryptError::InvalidEncryptedData(
+            "Cannot read nonce from chunk".to_string(),
+        ));
+    }
+    let nonce_bytes = &chunk_data[offset..offset + 12];
+    let nonce = GenericArray::from_slice(nonce_bytes);
+    offset += 12;
+
+    // Read actual ciphertext
+    let actual_ciphertext = &chunk_data[offset..];
+
+    let cipher = Aes256Gcm::new(GenericArray::from_slice(key));
+
+    // Decrypt the chunk
+    let plaintext = cipher
+        .decrypt(nonce, actual_ciphertext)
+        .map_err(|e| CryptError::DecryptionFailed(format!("Chunk decryption failed: {e}")))?;
+
+    Ok(plaintext)
 }
 
 // Internal decryption function using true async (backwards compatibility)

@@ -4,7 +4,7 @@
 //! of expired tokens to prevent memory leaks.
 
 use crate::{
-    claims::Claims,
+    api::claims::Claims,
     error::{JwtError, JwtResult},
     futures::{CleanupStartFuture, TokenGenerationFuture, TokenVerificationFuture},
     generator::Generator,

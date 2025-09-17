@@ -62,12 +62,13 @@ pub mod transactions;
 // Re-export key types from submodules would go here when needed
 
 /// Vault entry stored in SurrealDB
+///
+/// With natural keys, the key is embedded in the record ID rather than stored as a separate field.
+/// Use backend::key_utils::extract_key_from_record_id() to get the key from the ID.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultEntry {
-    /// Unique identifier
+    /// Unique identifier containing the key (format: "vault_entries:escaped_key")
     pub id: Option<surrealdb::RecordId>,
-    /// Entry key
-    pub key: String,
     /// Encrypted value
     pub value: String,
     /// Optional metadata associated with this entry
@@ -87,8 +88,10 @@ pub struct VaultEntry {
 pub(crate) fn map_dao_error(e: DaoError) -> VaultError {
     match e {
         DaoError::NotFound => VaultError::ItemNotFound,
-        DaoError::Database(msg) => VaultError::Provider(format!("SurrealDB error: {}", msg)),
-        DaoError::Serialization(msg) => VaultError::Other(format!("DAO serialization error: {}", msg)),
+        DaoError::Database(msg) => VaultError::Provider(format!("SurrealDB error: {msg}")),
+        DaoError::Serialization(msg) => {
+            VaultError::Other(format!("DAO serialization error: {msg}"))
+        }
         DaoError::InvalidInput(msg) => VaultError::InvalidInput(msg),
         DaoError::Conflict(msg) => VaultError::Conflict(msg),
         DaoError::InvalidId => VaultError::InvalidInput("Invalid ID format".into()),
@@ -118,7 +121,7 @@ impl LocalVaultProvider {
         // Ensure parent directory exists before connecting
         if let Some(parent) = config.vault_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
-                VaultError::Provider(format!("Failed to create vault directory: {}", e))
+                VaultError::Provider(format!("Failed to create vault directory: {e}"))
             })?;
         }
 
@@ -134,7 +137,7 @@ impl LocalVaultProvider {
 
         // Use a default namespace and database
         db.use_ns("vault").use_db("vault").await.map_err(|e| {
-            VaultError::Provider(format!("Failed to set namespace/database: {}", e))
+            VaultError::Provider(format!("Failed to set namespace/database: {e}"))
         })?;
 
         let db = Arc::new(db);
@@ -152,7 +155,7 @@ impl LocalVaultProvider {
 
         // Initialize the database schema
         provider.initialize_schema().await.map_err(|e| {
-            VaultError::Provider(format!("Failed to initialize database schema: {}", e))
+            VaultError::Provider(format!("Failed to initialize database schema: {e}"))
         })?;
 
         Ok(provider)
@@ -163,13 +166,15 @@ impl LocalVaultProvider {
         if self.config.ttl_cleanup_interval_seconds > 0 {
             let provider_clone = self.clone();
             let cleanup_interval = self.config.ttl_cleanup_interval_seconds;
-            
+
             tokio::spawn(async move {
-                provider_clone.start_ttl_cleanup_task(cleanup_interval).await;
+                provider_clone
+                    .start_ttl_cleanup_task(cleanup_interval)
+                    .await;
             });
-            
+
             log::info!(
-                "TTL cleanup task started with {} second intervals", 
+                "TTL cleanup task started with {} second intervals",
                 cleanup_interval
             );
         } else {

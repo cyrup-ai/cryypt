@@ -44,7 +44,7 @@ pub async fn handle_change_passphrase(
             Err(e) => {
                 log_security_event(
                     "CLI_UNLOCK",
-                    &format!("Failed to unlock vault for passphrase change: {}", e),
+                    &format!("Failed to unlock vault for passphrase change: {e}"),
                     false,
                 );
 
@@ -54,7 +54,7 @@ pub async fn handle_change_passphrase(
                         json!({
                             "success": false,
                             "operation": "change_passphrase",
-                            "error": format!("Failed to unlock vault: {}", e)
+                            "error": format!("Failed to unlock vault: {e}")
                         })
                     );
                     return Ok(());
@@ -89,7 +89,7 @@ pub async fn handle_change_passphrase(
         Err(e) => {
             log_security_event(
                 "CLI_PASSPHRASE_CHANGE",
-                &format!("Failed to change passphrase: {}", e),
+                &format!("Failed to change passphrase: {e}"),
                 false,
             );
 
@@ -99,7 +99,7 @@ pub async fn handle_change_passphrase(
                     json!({
                         "success": false,
                         "operation": "change_passphrase",
-                        "error": format!("Failed to change passphrase: {}", e)
+                        "error": format!("Failed to change passphrase: {e}")
                     })
                 );
                 return Ok(());

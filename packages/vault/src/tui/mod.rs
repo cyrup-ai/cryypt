@@ -8,10 +8,10 @@ pub mod types;
 pub mod ui;
 
 pub use crate::core::Vault;
-use cryypt_common::error::LoggingTransformer;
-use log::{error, warn};
 pub use cli::{Cli, Commands};
+use cryypt_common::error::LoggingTransformer;
 pub use events::run_tui;
+use log::{error, warn};
 
 // Entry point for the TUI application
 #[tokio::main]
@@ -52,20 +52,21 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         // Ensure parent directories exist
         if let Some(parent) = config.vault_path.parent()
-            && !parent.exists() {
-                let _ = std::fs::create_dir_all(parent);
+            && !parent.exists()
+        {
+            let _ = std::fs::create_dir_all(parent);
 
-                // Set appropriate permissions on Unix systems
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    if let Ok(metadata) = std::fs::metadata(parent) {
-                        let mut perms = metadata.permissions();
-                        perms.set_mode(0o700); // rwx------ (only owner can access)
-                        let _ = std::fs::set_permissions(parent, perms);
-                    }
+            // Set appropriate permissions on Unix systems
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if let Ok(metadata) = std::fs::metadata(parent) {
+                    let mut perms = metadata.permissions();
+                    perms.set_mode(0o700); // rwx------ (only owner can access)
+                    let _ = std::fs::set_permissions(parent, perms);
                 }
             }
+        }
 
         // salt_path directory creation removed - salt now stored encrypted in SurrealDB
 
@@ -84,7 +85,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         let should_save = cli.save || matches!(command, Commands::Save {});
 
         // Execute CLI command
-        let result = cli::process_command(&vault, command, cli.passphrase.as_deref(), cli.json).await;
+        let result =
+            cli::process_command(&vault, command, cli.passphrase.as_deref(), cli.json).await;
 
         // If save flag is true or the command is Save, explicitly save data to disk
         if should_save {
@@ -97,7 +99,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                     vault.unlock(pass).await?;
                 }
                 Ok::<_, Box<dyn std::error::Error>>(())
-            }.await {
+            }
+            .await
+            {
                 LoggingTransformer::log_vault_operation("save", "batch_operation", false);
                 error!("Error during save operation: {}", e);
                 eprintln!("Error during save operation: {}", e);
@@ -109,7 +113,10 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         // Default to TUI mode
         if cli.json {
             // JSON mode with no command makes no sense, log and print error message
-            LoggingTransformer::log_terminal_setup("invalid_json_flag", Some("JSON flag used without command"));
+            LoggingTransformer::log_terminal_setup(
+                "invalid_json_flag",
+                Some("JSON flag used without command"),
+            );
             warn!("JSON flag used without command");
             eprintln!("Error: --json flag requires a command");
             std::process::exit(1);

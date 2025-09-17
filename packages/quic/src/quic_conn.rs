@@ -1,6 +1,9 @@
 use std::{
     collections::VecDeque,
-    sync::{Arc, Mutex, atomic::{AtomicU64, Ordering}},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use tokio::sync::broadcast;
@@ -90,7 +93,7 @@ impl QuicConnectionHandle {
     pub fn subscribe_to_events(&self) -> broadcast::Receiver<QuicConnectionEvent> {
         self.controller.event_tx.subscribe()
     }
-    
+
     /// Send data to a specific stream ID
     pub fn send_stream_data_with_id(&self, stream_id: u64, data: &[u8], fin: bool) -> Result<()> {
         let mut queue = self.controller.outbound_queue.lock().map_err(|_| {
@@ -109,9 +112,7 @@ impl QuicConnectionHandle {
 
 /// Main QUIC connection loop: fully non-blocking, no "WouldBlock," no partial blocking calls.
 /// We define it as a normal function returning `impl Future<Output=Result<()>>`.
-pub async fn quic_connection_main_loop(
-    controller: Arc<QuicConnectionController>,
-) -> Result<()> {
+pub async fn quic_connection_main_loop(controller: Arc<QuicConnectionController>) -> Result<()> {
     let mut recv_buf = vec![0u8; 65535];
 
     loop {
@@ -279,11 +280,11 @@ fn flush_outbound(controller: &Arc<QuicConnectionController>) -> Result<()> {
         CryptoTransportError::from("Failed to acquire outbound queue lock for flush")
     })?;
 
-    // Process queue using proper index management pattern from quiche examples  
+    // Process queue using proper index management pattern from quiche examples
     let i = 0;
     while i < queue.len() {
         let msg = &mut queue[i];
-        
+
         // Allocate stream ID if not already set
         if msg.stream_id.is_none() {
             msg.stream_id = Some(generate_next_stream_id());
@@ -307,7 +308,9 @@ fn flush_outbound(controller: &Arc<QuicConnectionController>) -> Result<()> {
                     // Don't increment i since we removed an element
                 }
             }
-            Err(quiche::Error::Done) | Err(quiche::Error::FlowControl) | Err(quiche::Error::StreamLimit) => {
+            Err(quiche::Error::Done)
+            | Err(quiche::Error::FlowControl)
+            | Err(quiche::Error::StreamLimit) => {
                 // Flow control or stream limits - stop processing queue
                 break;
             }

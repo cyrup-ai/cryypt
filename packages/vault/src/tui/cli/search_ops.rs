@@ -14,7 +14,7 @@ pub async fn handle_list(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
                 json!({
                     "success": false,
                     "operation": "list",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -31,18 +31,18 @@ pub async fn handle_list(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
     let mut stream = match stream_result {
         Ok(s) => s,
         Err(e) => {
-            log_security_event("CLI_LIST", &format!("Failed to list keys: {}", e), false);
+            log_security_event("CLI_LIST", &format!("Failed to list keys: {e}"), false);
             if use_json {
                 println!(
                     "{}",
                     json!({
                         "success": false,
                         "operation": "list",
-                        "error": format!("Failed to list keys: {}", e)
+                        "error": format!("Failed to list keys: {e}")
                     })
                 );
             } else {
-                return Err(format!("Failed to list keys: {}", e).into());
+                return Err(format!("Failed to list keys: {e}").into());
             }
             return Ok(());
         }
@@ -53,14 +53,14 @@ pub async fn handle_list(vault: &Vault, use_json: bool) -> Result<(), Box<dyn st
         match result {
             Ok(item) => results.push(item),
             Err(e) => {
-                log_security_event("CLI_LIST", &format!("Failed to list keys: {}", e), false);
+                log_security_event("CLI_LIST", &format!("Failed to list keys: {e}"), false);
                 if use_json {
                     println!(
                         "{}",
                         json!({
                             "success": false,
                             "operation": "list",
-                            "error": format!("Failed to list keys: {}", e)
+                            "error": format!("Failed to list keys: {e}")
                         })
                     );
                     return Ok(());
@@ -107,7 +107,7 @@ pub async fn handle_find(
                 json!({
                     "success": false,
                     "operation": "find",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -126,7 +126,7 @@ pub async fn handle_find(
         Err(e) => {
             log_security_event(
                 "CLI_FIND",
-                &format!("Failed to find keys matching pattern {}: {}", pattern, e),
+                &format!("Failed to find keys matching pattern {}: {pattern, e}"),
                 false,
             );
             if use_json {
@@ -136,11 +136,11 @@ pub async fn handle_find(
                         "success": false,
                         "operation": "find",
                         "pattern": pattern,
-                        "error": format!("Failed to find keys: {}", e)
+                        "error": format!("Failed to find keys: {e}")
                     })
                 );
             } else {
-                return Err(format!("Failed to find keys: {}", e).into());
+                return Err(format!("Failed to find keys: {e}").into());
             }
             return Ok(());
         }
@@ -153,7 +153,7 @@ pub async fn handle_find(
             Err(e) => {
                 log_security_event(
                     "CLI_FIND",
-                    &format!("Failed to find keys matching pattern {}: {}", pattern, e),
+                    &format!("Failed to find keys matching pattern {}: {pattern, e}"),
                     false,
                 );
                 if use_json {
@@ -163,7 +163,7 @@ pub async fn handle_find(
                             "success": false,
                             "operation": "find",
                             "pattern": pattern,
-                            "error": format!("Failed to find keys: {}", e)
+                            "error": format!("Failed to find keys: {e}")
                         })
                     );
                     return Ok(());
@@ -176,7 +176,7 @@ pub async fn handle_find(
 
     log_security_event(
         "CLI_FIND",
-        &format!("Found keys matching pattern: {}", pattern),
+        &format!("Found keys matching pattern: {pattern}"),
         true,
     );
 

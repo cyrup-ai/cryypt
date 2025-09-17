@@ -36,7 +36,7 @@ impl VaultMasterBuilder {
     }
 
     /// Create a vault with configuration - README.md pattern
-    #[must_use] 
+    #[must_use]
     pub fn with_config(self, config: cryypt_vault::config::VaultConfig) -> VaultWithPath {
         VaultWithPath {
             path: "./vault".to_string(),
@@ -55,8 +55,11 @@ impl VaultMasterBuilder {
     }
 
     /// Create `SurrealDB` vault builder - polymorphic pattern
-    #[must_use] 
-    pub fn surrealdb(self) -> cryypt_vault::api::SurrealDbBuilder<cryypt_vault::api::surrealdb_builder::NoConnection> {
+    #[must_use]
+    pub fn surrealdb(
+        self,
+    ) -> cryypt_vault::api::SurrealDbBuilder<cryypt_vault::api::surrealdb_builder::NoConnection>
+    {
         cryypt_vault::api::SurrealDbBuilder::new()
     }
 }

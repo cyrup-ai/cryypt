@@ -99,7 +99,7 @@ impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> KeyGeneratorBatc
 
     /// Generate multiple keys and stream results securely
     /// Each key is generated in isolation to prevent cross-contamination
-    pub async fn generate_all(self) -> Receiver<Result<Vec<u8>, KeyError>> {
+    pub fn generate_all(self) -> Receiver<Result<Vec<u8>, KeyError>> {
         let (tx, rx) = if self.stream_config.bounded {
             bounded(self.stream_config.capacity)
         } else {
@@ -135,10 +135,10 @@ impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> KeyGeneratorBatc
 
     /// Generate multiple keys and collect into Vec securely
     /// Optimized collection with secure memory handling
-    pub async fn generate_collect(self) -> Result<Vec<Vec<u8>>, KeyError> {
+    pub fn generate_collect(self) -> Result<Vec<Vec<u8>>, KeyError> {
         let count = self.count;
         let mut keys = Vec::with_capacity(count);
-        let rx = self.generate_all().await;
+        let rx = self.generate_all();
 
         // Collect all results securely
         for _ in 0..count {

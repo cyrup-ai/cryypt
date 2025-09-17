@@ -6,6 +6,7 @@ use tokio::sync::oneshot;
 
 impl ZstdBuilder<NoLevel> {
     /// Compress data using default level (3) - README.md pattern
+    #[must_use]
     pub fn compress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
         let original_size = data.len();
@@ -28,6 +29,7 @@ impl ZstdBuilder<NoLevel> {
     }
 
     /// Decompress data - README.md pattern
+    #[must_use]
     pub fn decompress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
 
@@ -46,6 +48,7 @@ impl ZstdBuilder<NoLevel> {
 
 impl ZstdBuilder<HasLevel> {
     /// Compress data using configured level - README.md pattern
+    #[must_use]
     pub fn compress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
         let original_size = data.len();
@@ -68,6 +71,7 @@ impl ZstdBuilder<HasLevel> {
     }
 
     /// Decompress data - README.md pattern
+    #[must_use]
     pub fn decompress<T: Into<Vec<u8>>>(self, data: T) -> AsyncCompressionResult {
         let data = data.into();
 

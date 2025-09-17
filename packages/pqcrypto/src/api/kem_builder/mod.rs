@@ -33,7 +33,7 @@ pub struct KemBuilderWithSecretKey {
 }
 
 impl KemBuilder {
-    /// Add on_result handler - README.md pattern
+    /// Add `on_result` handler - `README.md` pattern
     pub fn on_result<F, T>(self, handler: F) -> KemBuilderWithHandler<F, T>
     where
         F: FnOnce(crate::Result<(Vec<u8>, Vec<u8>)>) -> T + Send + 'static,
@@ -54,7 +54,7 @@ impl KemBuilder {
 }
 
 impl KemBuilderWithSecretKey {
-    /// Add on_result handler for decapsulation - README.md pattern
+    /// Add `on_result` handler for decapsulation - `README.md` pattern
     pub fn on_result<F, T>(self, handler: F) -> KemBuilderWithDecapHandler<F, T>
     where
         F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,
@@ -75,7 +75,7 @@ where
     /// Decapsulate using real ML-KEM cryptography  
     pub async fn decapsulate(self, secret_key: Vec<u8>, ciphertext: Vec<u8>) -> T {
         let handler = self.result_handler;
-        
+
         // Perform real ML-KEM decapsulation using production cryptography
         let result = Self::perform_mlkem_decapsulation(&secret_key, &ciphertext).await;
         handler(result)
@@ -85,12 +85,12 @@ where
     #[inline]
     async fn perform_mlkem_decapsulation(
         secret_key: &[u8],
-        ciphertext: &[u8]
+        ciphertext: &[u8],
     ) -> crate::Result<Vec<u8>> {
         // Use ML-KEM-768 for decapsulation with actual cryptographic implementation
         use pqcrypto_mlkem::mlkem768;
-        use pqcrypto_traits::kem::{SecretKey, Ciphertext, SharedSecret};
-        
+        use pqcrypto_traits::kem::{Ciphertext, SecretKey, SharedSecret};
+
         // Validate secret key size for ML-KEM-768
         if secret_key.len() != mlkem768::secret_key_bytes() {
             return Err(crate::PqCryptoError::InvalidKeySize {
@@ -102,19 +102,21 @@ where
         // Validate ciphertext size for ML-KEM-768
         if ciphertext.len() != mlkem768::ciphertext_bytes() {
             return Err(crate::PqCryptoError::InvalidParameters(format!(
-                "Invalid ML-KEM-768 ciphertext size: expected {}, got {}", 
-                mlkem768::ciphertext_bytes(), 
+                "Invalid ML-KEM-768 ciphertext size: expected {}, got {}",
+                mlkem768::ciphertext_bytes(),
                 ciphertext.len()
             )));
         }
-        
+
         // Convert bytes to secret key and ciphertext types
-        let sk = mlkem768::SecretKey::from_bytes(secret_key)
-            .map_err(|_| crate::PqCryptoError::InvalidKey("Invalid ML-KEM secret key format".to_string()))?;
-        
-        let ct = mlkem768::Ciphertext::from_bytes(ciphertext)
-            .map_err(|_| crate::PqCryptoError::InvalidParameters("Invalid ML-KEM ciphertext format".to_string()))?;
-        
+        let sk = mlkem768::SecretKey::from_bytes(secret_key).map_err(|_| {
+            crate::PqCryptoError::InvalidKey("Invalid ML-KEM secret key format".to_string())
+        })?;
+
+        let ct = mlkem768::Ciphertext::from_bytes(ciphertext).map_err(|_| {
+            crate::PqCryptoError::InvalidParameters("Invalid ML-KEM ciphertext format".to_string())
+        })?;
+
         // Perform decapsulation
         let shared_secret = mlkem768::decapsulate(&ct, &sk);
         Ok(shared_secret.as_bytes().to_vec())
@@ -129,30 +131,34 @@ where
     /// Generate keypair and apply result handler
     pub async fn generate_keypair(self) -> T {
         let handler = self.result_handler;
-        
+
         // Generate real ML-KEM keypair using production cryptography
         let result = async {
             // Use ML-KEM-768 as default security level for keypair generation
             use pqcrypto_mlkem::mlkem768;
             use pqcrypto_traits::kem::{PublicKey, SecretKey};
-            
+
             let (public_key, secret_key) = mlkem768::keypair();
-            Ok((public_key.as_bytes().to_vec(), secret_key.as_bytes().to_vec()))
-        }.await;
-        
+            Ok((
+                public_key.as_bytes().to_vec(),
+                secret_key.as_bytes().to_vec(),
+            ))
+        }
+        .await;
+
         handler(result)
     }
 
     /// Encapsulate and apply result handler
     pub async fn encapsulate(self, public_key: Vec<u8>) -> T {
         let handler = self.result_handler;
-        
+
         // Perform real ML-KEM encapsulation using production cryptography
         let result = async {
             // Use ML-KEM-768 for encapsulation with actual cryptographic implementation
             use pqcrypto_mlkem::mlkem768;
-            use pqcrypto_traits::kem::{PublicKey, Ciphertext, SharedSecret};
-            
+            use pqcrypto_traits::kem::{Ciphertext, PublicKey, SharedSecret};
+
             // Validate public key size for ML-KEM-768
             if public_key.len() != mlkem768::public_key_bytes() {
                 return Err(crate::PqCryptoError::InvalidKeySize {
@@ -160,16 +166,21 @@ where
                     actual: public_key.len(),
                 });
             }
-            
+
             // Convert bytes to public key type
-            let pk = mlkem768::PublicKey::from_bytes(&public_key)
-                .map_err(|_| crate::PqCryptoError::InvalidKey("Invalid ML-KEM public key format".to_string()))?;
-            
+            let pk = mlkem768::PublicKey::from_bytes(&public_key).map_err(|_| {
+                crate::PqCryptoError::InvalidKey("Invalid ML-KEM public key format".to_string())
+            })?;
+
             // Perform encapsulation
             let (shared_secret, ciphertext) = mlkem768::encapsulate(&pk);
-            Ok((ciphertext.as_bytes().to_vec(), shared_secret.as_bytes().to_vec()))
-        }.await;
-        
+            Ok((
+                ciphertext.as_bytes().to_vec(),
+                shared_secret.as_bytes().to_vec(),
+            ))
+        }
+        .await;
+
         handler(result)
     }
 
@@ -285,13 +296,15 @@ pub type MlKemWithCiphertext = MlKemBuilder<HasCiphertext>;
 impl MlKemBuilder<HasKeyPair> {
     /// Get the public key bytes
     pub fn public_key(&self) -> Result<&[u8]> {
-        self.public_key.as_deref()
+        self.public_key
+            .as_deref()
             .ok_or_else(|| PqCryptoError::internal("Public key not available in HasKeyPair state"))
     }
 
     /// Get the secret key bytes  
     pub fn secret_key(&self) -> Result<&[u8]> {
-        self.secret_key.as_deref()
+        self.secret_key
+            .as_deref()
             .ok_or_else(|| PqCryptoError::internal("Secret key not available in HasKeyPair state"))
     }
 

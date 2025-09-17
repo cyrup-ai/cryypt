@@ -88,7 +88,7 @@ impl<P> HashBuilder<Blake2bHash, NoData, HasSalt, P> {
             use crate::error::{HashError, Result};
             let mut stream = Box::pin(stream);
             let mut mac = Blake2bMac512::new_from_slice(&key)
-                .map_err(|e| HashError::MacInitialization(format!("Failed to initialize BLAKE2b MAC: {}", e)))?;
+                .map_err(|e| HashError::MacInitialization(format!("Failed to initialize BLAKE2b MAC: {e}")))?;
             
             while let Some(chunk) = stream.next().await {
                 mac.update(&chunk);
@@ -154,7 +154,7 @@ pub(super) async fn blake2b_hash(data: Vec<u8>, key: Option<Vec<u8>>, output_siz
     if let Some(key) = key {
         // Use Blake2b as MAC
         let mut mac = <Blake2bMac512 as KeyInit>::new_from_slice(&key)
-            .map_err(|e| crate::HashError::internal(format!("Blake2b key error: {}", e)))?;
+            .map_err(|e| crate::HashError::internal(format!("Blake2b key error: {e}")))?;
         mac.update(&data);
         let result = mac.finalize().into_bytes().to_vec();
         // Truncate to requested size

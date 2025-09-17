@@ -6,14 +6,14 @@
 //! - Common types for certificate operations
 
 // Public modules
-pub mod validation;
-pub mod generation; 
+pub mod generation;
 pub mod types;
+pub mod validation;
 
 // Re-export main types for public API compatibility
-pub use validation::{CertificateValidator, CertificateValidatorWithInput};
 pub use generation::{CertificateGenerator, CertificateGeneratorWithDomain};
 pub use types::InputSource;
+pub use validation::{CertificateValidator, CertificateValidatorWithInput};
 
 /// Main certificate builder entry point
 #[derive(Debug, Clone)]

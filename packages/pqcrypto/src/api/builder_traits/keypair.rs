@@ -21,41 +21,65 @@ pub trait KemKeyPairBuilder {
         Self: Sized + Send;
 
     /// Load key pair from bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the key pair bytes are invalid or if key loading fails.
     fn with_keypair<T: Into<Vec<u8>>>(self, public_key: T, secret_key: T) -> Result<Self::Output>
     where
         Self: Sized;
 
     /// Load public key from bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key bytes are invalid or if key loading fails.
     fn with_public_key<T: Into<Vec<u8>>>(self, public_key: T) -> Result<Self::PublicKeyOutput>
     where
         Self: Sized;
 
     /// Load secret key from bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key bytes are invalid or if key loading fails.
     fn with_secret_key<T: Into<Vec<u8>>>(self, secret_key: T) -> Result<Self::SecretKeyOutput>
     where
         Self: Sized;
 
     /// Load public key from hex
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the hex string is invalid or if key loading fails.
     fn with_public_key_hex(self, hex: &str) -> Result<Self::PublicKeyOutput>
     where
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex public key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex public key: {e}")))?;
         self.with_public_key(bytes)
     }
 
     /// Load secret key from hex
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the hex string is invalid or if key loading fails.
     fn with_secret_key_hex(self, hex: &str) -> Result<Self::SecretKeyOutput>
     where
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex secret key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex secret key: {e}")))?;
         self.with_secret_key(bytes)
     }
 
     /// Load public key from base64
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the base64 string is invalid or if key loading fails.
     fn with_public_key_base64(self, base64: &str) -> Result<Self::PublicKeyOutput>
     where
         Self: Sized,
@@ -63,11 +87,15 @@ pub trait KemKeyPairBuilder {
         use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
-            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 public key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 public key: {e}")))?;
         self.with_public_key(bytes)
     }
 
     /// Load secret key from base64
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the base64 string is invalid or if key loading fails.
     fn with_secret_key_base64(self, base64: &str) -> Result<Self::SecretKeyOutput>
     where
         Self: Sized,
@@ -75,7 +103,7 @@ pub trait KemKeyPairBuilder {
         use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
-            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 secret key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 secret key: {e}")))?;
         self.with_secret_key(bytes)
     }
 
@@ -91,10 +119,10 @@ pub trait KemKeyPairBuilder {
         async move {
             let public_key = tokio::fs::read(public_key_path)
                 .await
-                .map_err(|e| PqCryptoError::Io(format!("Failed to read public key file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read public key file: {e}")))?;
             let secret_key = tokio::fs::read(secret_key_path)
                 .await
-                .map_err(|e| PqCryptoError::Io(format!("Failed to read secret key file: {}", e)))?;
+                .map_err(|e| PqCryptoError::Io(format!("Failed to read secret key file: {e}")))?;
             self.with_keypair(public_key, secret_key)
         }
     }
@@ -115,41 +143,65 @@ pub trait SignatureKeyPairBuilder {
         Self: Sized + Send;
 
     /// Load key pair from bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the key pair bytes are invalid or if key loading fails.
     fn with_keypair<T: Into<Vec<u8>>>(self, public_key: T, secret_key: T) -> Result<Self::Output>
     where
         Self: Sized;
 
     /// Load public key from bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key bytes are invalid or if key loading fails.
     fn with_public_key<T: Into<Vec<u8>>>(self, public_key: T) -> Result<Self::PublicKeyOutput>
     where
         Self: Sized;
 
     /// Load secret key from bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key bytes are invalid or if key loading fails.
     fn with_secret_key<T: Into<Vec<u8>>>(self, secret_key: T) -> Result<Self::SecretKeyOutput>
     where
         Self: Sized;
 
     /// Load public key from hex
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the hex string is invalid or if key loading fails.
     fn with_public_key_hex(self, hex: &str) -> Result<Self::PublicKeyOutput>
     where
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex public key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex public key: {e}")))?;
         self.with_public_key(bytes)
     }
 
     /// Load secret key from hex
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the hex string is invalid or if key loading fails.
     fn with_secret_key_hex(self, hex: &str) -> Result<Self::SecretKeyOutput>
     where
         Self: Sized,
     {
         let bytes = hex::decode(hex)
-            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex secret key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid hex secret key: {e}")))?;
         self.with_secret_key(bytes)
     }
 
     /// Load public key from base64
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the base64 string is invalid or if key loading fails.
     fn with_public_key_base64(self, base64: &str) -> Result<Self::PublicKeyOutput>
     where
         Self: Sized,
@@ -157,11 +209,15 @@ pub trait SignatureKeyPairBuilder {
         use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
-            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 public key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 public key: {e}")))?;
         self.with_public_key(bytes)
     }
 
     /// Load secret key from base64
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the base64 string is invalid or if key loading fails.
     fn with_secret_key_base64(self, base64: &str) -> Result<Self::SecretKeyOutput>
     where
         Self: Sized,
@@ -169,7 +225,7 @@ pub trait SignatureKeyPairBuilder {
         use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(base64)
-            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 secret key: {}", e)))?;
+            .map_err(|e| PqCryptoError::InvalidKey(format!("Invalid base64 secret key: {e}")))?;
         self.with_secret_key(bytes)
     }
 }

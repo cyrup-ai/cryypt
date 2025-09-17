@@ -43,6 +43,7 @@ impl Default for Sha3_256Builder {
 
 impl Sha3_256Builder {
     /// Create new SHA3-256 builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -54,7 +55,7 @@ impl Sha3_256Builder {
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = sha3_256_hash(&data).await.map(|bytes| bytes.into());
+            let result = sha3_256_hash(&data).await.map(std::convert::Into::into);
             let _ = tx.send(result);
         });
 
@@ -70,6 +71,7 @@ impl Default for Sha3_384Builder {
 
 impl Sha3_384Builder {
     /// Create new SHA3-384 builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -81,7 +83,7 @@ impl Sha3_384Builder {
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = sha3_384_hash(&data).await.map(|bytes| bytes.into());
+            let result = sha3_384_hash(&data).await.map(std::convert::Into::into);
             let _ = tx.send(result);
         });
 
@@ -97,6 +99,7 @@ impl Default for Sha3_512Builder {
 
 impl Sha3_512Builder {
     /// Create new SHA3-512 builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -108,7 +111,7 @@ impl Sha3_512Builder {
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = sha3_512_hash(&data).await.map(|bytes| bytes.into());
+            let result = sha3_512_hash(&data).await.map(std::convert::Into::into);
             let _ = tx.send(result);
         });
 
@@ -120,15 +123,15 @@ impl Sha3_512Builder {
 async fn sha3_256_hash(data: &[u8]) -> crate::Result<Vec<u8>> {
     use sha3::{Digest, Sha3_256};
 
-    let mut hasher = Sha3_256::new();
-    
-    // Process data in 8KB chunks with yield points
     const CHUNK_SIZE: usize = 8192;
+    let mut hasher = Sha3_256::new();
+
+    // Process data in 8KB chunks with yield points
     for chunk in data.chunks(CHUNK_SIZE) {
         hasher.update(chunk);
         tokio::task::yield_now().await;
     }
-    
+
     let result = hasher.finalize();
     Ok(result.to_vec())
 }
@@ -137,15 +140,15 @@ async fn sha3_256_hash(data: &[u8]) -> crate::Result<Vec<u8>> {
 async fn sha3_384_hash(data: &[u8]) -> crate::Result<Vec<u8>> {
     use sha3::{Digest, Sha3_384};
 
-    let mut hasher = Sha3_384::new();
-    
-    // Process data in 8KB chunks with yield points
     const CHUNK_SIZE: usize = 8192;
+    let mut hasher = Sha3_384::new();
+
+    // Process data in 8KB chunks with yield points
     for chunk in data.chunks(CHUNK_SIZE) {
         hasher.update(chunk);
         tokio::task::yield_now().await;
     }
-    
+
     let result = hasher.finalize();
     Ok(result.to_vec())
 }
@@ -154,15 +157,15 @@ async fn sha3_384_hash(data: &[u8]) -> crate::Result<Vec<u8>> {
 async fn sha3_512_hash(data: &[u8]) -> crate::Result<Vec<u8>> {
     use sha3::{Digest, Sha3_512};
 
-    let mut hasher = Sha3_512::new();
-    
-    // Process data in 8KB chunks with yield points
     const CHUNK_SIZE: usize = 8192;
+    let mut hasher = Sha3_512::new();
+
+    // Process data in 8KB chunks with yield points
     for chunk in data.chunks(CHUNK_SIZE) {
         hasher.update(chunk);
         tokio::task::yield_now().await;
     }
-    
+
     let result = hasher.finalize();
     Ok(result.to_vec())
 }

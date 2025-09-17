@@ -43,17 +43,18 @@ pub struct ExecutorMetrics {
     pub average_execution_time: std::time::Duration,
 }
 
-/// Trait for task execution (avoiding async_trait)
+/// Trait for task execution (avoiding `async_trait`)
 trait TaskExecution {
-    #[allow(dead_code)] // Library method - reserved for future task execution functionality  
+    #[allow(dead_code)] // Library method - reserved for future task execution functionality
     fn execute(&self) -> Pin<Box<dyn Future<Output = TaskResult<()>> + Send + '_>>;
 }
 
 impl AsyncExecutor {
     /// Create new async executor
+    #[must_use]
     pub fn new(config: ExecutorConfig) -> Self {
         let semaphore = Arc::new(Semaphore::new(config.max_concurrent_tasks));
-        
+
         Self {
             semaphore,
             config,
@@ -63,23 +64,32 @@ impl AsyncExecutor {
     }
 
     /// Execute a single task
+    ///
+    /// # Errors
+    ///
+    /// Returns `TaskError::Cancelled` if the task was cancelled or the executor is shutting down,
+    /// `TaskError::Timeout` if the task exceeds the configured timeout, or any error from the task itself.
     pub async fn execute_task<T>(&self, task: AsyncTask<T>) -> TaskResult<T>
     where
         T: Send + 'static,
     {
-        let _permit = self.semaphore.acquire().await.map_err(|_| TaskError::Cancelled)?;
-        
+        let _permit = self
+            .semaphore
+            .acquire()
+            .await
+            .map_err(|_| TaskError::Cancelled)?;
+
         let start_time = std::time::Instant::now();
         let result = if let Some(timeout) = self.config.task_timeout {
             task.execute_with_timeout(timeout).await
         } else {
             task.execute().await
         };
-        
+
         if self.config.enable_metrics {
             self.update_metrics(&result, start_time.elapsed()).await;
         }
-        
+
         result
     }
 
@@ -99,18 +109,22 @@ impl AsyncExecutor {
 
     async fn update_metrics<T>(&self, result: &TaskResult<T>, duration: std::time::Duration) {
         let mut metrics = self.metrics.write().await;
-        
+
         match result {
             Ok(_) => metrics.tasks_executed += 1,
             Err(TaskError::Cancelled) => metrics.tasks_cancelled += 1,
             Err(_) => metrics.tasks_failed += 1,
         }
-        
+
         // Simple moving average
         let total_tasks = metrics.tasks_executed + metrics.tasks_failed + metrics.tasks_cancelled;
         if total_tasks > 0 {
-            let total_nanos = metrics.average_execution_time.as_nanos() * (total_tasks - 1) as u128 + duration.as_nanos();
-            metrics.average_execution_time = std::time::Duration::from_nanos((total_nanos / total_tasks as u128) as u64);
+            let total_nanos = metrics.average_execution_time.as_nanos()
+                * u128::from(total_tasks - 1)
+                + duration.as_nanos();
+            metrics.average_execution_time = std::time::Duration::from_nanos(
+                u64::try_from(total_nanos / u128::from(total_tasks)).unwrap_or(u64::MAX),
+            );
         }
     }
 }
@@ -125,4 +139,3 @@ impl Clone for ExecutorMetrics {
         }
     }
 }
-

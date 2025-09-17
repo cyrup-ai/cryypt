@@ -87,19 +87,21 @@ async fn create_essential_schema(db: &Surreal<Any>) -> Result<(), VaultError> {
 /// Run internal migration system (replacing surrealdb-migrations)
 async fn run_structured_migrations(db: &Surreal<Any>) -> Result<(), VaultError> {
     debug!("Running internal migration system");
-    
+
     // Record that we've completed basic migrations
-    let _ = db.query(
-        r#"
+    let _ = db
+        .query(
+            r#"
         INSERT INTO migrations {
             version: '1.0.0',
             name: 'initial_schema',
             executed_at: time::now(),
             checksum: 'internal_migration_system'
         }
-        "#
-    ).await;
-    
+        "#,
+        )
+        .await;
+
     info!("Internal migration system completed");
     Ok(())
 }

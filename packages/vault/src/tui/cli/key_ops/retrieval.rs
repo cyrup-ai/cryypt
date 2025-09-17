@@ -24,7 +24,7 @@ pub async fn handle_retrieve_key(
     // Retrieve the key using README.md pattern with on_result unwrapping
     let master_key = derive_master_key_from_vault(vault, passphrase_option)
         .await
-        .map_err(|e| format!("Failed to derive master key: {}", e))?;
+        .map_err(|e| format!("Failed to derive master key: {e}"))?;
 
     let key_bytes = if store.starts_with("file:") {
         let path = store
@@ -32,36 +32,34 @@ pub async fn handle_retrieve_key(
             .ok_or("Invalid file store path format")?;
         let store = FileKeyStore::at(path).with_master_key(master_key);
 
-        store
-            .retrieve_key(namespace, version)
-            .on_result(|result| {
-                match result {
-                    Ok(key) => key,
-                    Err(e) => {
-                        log::error!("Key retrieval failed: {}", e);
-                        Vec::new() // Return empty key on error
-                    }
-                }
-            })
-            .await
+        match store.retrieve_key(namespace, version).await {
+            Ok(key_bytes) => {
+                log::info!("Key retrieval successful");
+                key_bytes
+            }
+            Err(e) => {
+                log::error!("Key retrieval failed: {}", e);
+                log_security_event("KEY_RETRIEVAL_FAILED", &e.to_string(), false);
+                Vec::new()
+            }
+        }
     } else {
         // Use temporary file store for "memory" option
         let temp_dir = std::env::temp_dir();
         let temp_path = temp_dir.join(".cryypt_temp_keys");
         let store = FileKeyStore::at(temp_path).with_master_key(master_key);
 
-        store
-            .retrieve_key(namespace, version)
-            .on_result(|result| {
-                match result {
-                    Ok(key) => key,
-                    Err(e) => {
-                        log::error!("Key retrieval failed: {}", e);
-                        Vec::new() // Return empty key on error
-                    }
-                }
-            })
-            .await
+        match store.retrieve_key(namespace, version).await {
+            Ok(key_bytes) => {
+                log::info!("Key retrieval successful");
+                key_bytes
+            }
+            Err(e) => {
+                log::error!("Key retrieval failed: {}", e);
+                log_security_event("KEY_RETRIEVAL_FAILED", &e.to_string(), false);
+                Vec::new()
+            }
+        }
     };
 
     // Key bytes are now fully unwrapped
@@ -69,7 +67,7 @@ pub async fn handle_retrieve_key(
         let key_id = format!("{}:v{}", namespace, version);
         log_security_event(
             "CLI_RETRIEVE_KEY",
-            &format!("Failed to retrieve key: {}", key_id),
+            &format!("Failed to retrieve key: {key_id}"),
             false,
         );
 
@@ -90,7 +88,7 @@ pub async fn handle_retrieve_key(
         let key_id = format!("{}:v{}", namespace, version);
         log_security_event(
             "CLI_RETRIEVE_KEY",
-            &format!("Retrieved key: {}", key_id),
+            &format!("Retrieved key: {key_id}"),
             true,
         );
 

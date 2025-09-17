@@ -1,4 +1,4 @@
-//! Async task coordination without async_trait
+//! Async task coordination without `async_trait`
 
 use std::future::Future;
 use std::pin::Pin;
@@ -19,7 +19,8 @@ pub enum TaskError {
 
 /// Result type for async tasks
 pub type TaskResult<T> = Result<T, TaskError>;
-pub type TaskFn<T> = Arc<dyn Fn() -> Pin<Box<dyn Future<Output = TaskResult<T>> + Send>> + Send + Sync>;
+pub type TaskFn<T> =
+    Arc<dyn Fn() -> Pin<Box<dyn Future<Output = TaskResult<T>> + Send>> + Send + Sync>;
 
 /// Async task that can be executed without blocking
 pub struct AsyncTask<T> {
@@ -42,11 +43,21 @@ where
     }
 
     /// Execute the task asynchronously
+    ///
+    /// # Errors
+    ///
+    /// Returns `TaskError::ExecutionFailed` if the task execution fails,
+    /// `TaskError::Cancelled` if the task was cancelled, or other task-specific errors.
     pub async fn execute(&self) -> TaskResult<T> {
         (self.inner)().await
     }
 
     /// Execute with timeout
+    ///
+    /// # Errors
+    ///
+    /// Returns `TaskError::Timeout` if the task exceeds the timeout duration,
+    /// or any error returned by the underlying task execution.
     pub async fn execute_with_timeout(&self, duration: std::time::Duration) -> TaskResult<T> {
         match tokio::time::timeout(duration, self.execute()).await {
             Ok(result) => result,
@@ -55,6 +66,11 @@ where
     }
 
     /// Execute with cancellation support
+    ///
+    /// # Errors
+    ///
+    /// Returns `TaskError::Cancelled` if the task was cancelled via the provided receiver,
+    /// or any error returned by the underlying task execution.
     pub async fn execute_with_cancellation(
         &self,
         mut cancel_rx: tokio::sync::oneshot::Receiver<()>,
@@ -87,15 +103,18 @@ impl<T> AsyncTaskBuilder<T>
 where
     T: Send + 'static,
 {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    #[must_use]
     pub fn with_timeout(mut self, duration: std::time::Duration) -> Self {
         self.timeout = Some(duration);
         self
     }
 
+    #[must_use]
     pub fn cancellable(mut self) -> Self {
         self.cancellable = true;
         self
@@ -109,4 +128,3 @@ where
         AsyncTask::new(f)
     }
 }
-

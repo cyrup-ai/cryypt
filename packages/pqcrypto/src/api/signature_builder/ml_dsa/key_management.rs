@@ -110,13 +110,15 @@ impl SignatureKeyPairBuilder for MlDsaBuilder<NeedKeyPair> {
 impl MlDsaBuilder<HasKeyPair> {
     /// Get the public key bytes
     pub fn public_key(&self) -> Result<&[u8]> {
-        self.public_key.as_deref()
+        self.public_key
+            .as_deref()
             .ok_or_else(|| PqCryptoError::internal("Public key not available in HasKeyPair state"))
     }
 
     /// Get the secret key bytes  
     pub fn secret_key(&self) -> Result<&[u8]> {
-        self.secret_key.as_deref()
+        self.secret_key
+            .as_deref()
             .ok_or_else(|| PqCryptoError::internal("Secret key not available in HasKeyPair state"))
     }
 

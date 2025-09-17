@@ -2,7 +2,7 @@
 
 use super::super::{Bzip2BuilderWithChunk, HasLevel, NoLevel};
 use super::stream_core::Bzip2Stream;
-use crate::CompressionAlgorithm;
+use crate::{Bzip2Builder, CompressionAlgorithm};
 use tokio_stream::Stream;
 
 // Streaming methods for NoLevel builder with chunk handler
@@ -30,12 +30,11 @@ where
         let handler = self.chunk_handler;
 
         // Use public Bzip2Builder API - create builder and decompress
-        use crate::Bzip2Builder;
         let builder = Bzip2Builder::new();
         let result = builder.decompress(data).await;
 
         // Apply chunk handler to raw Vec<u8> result
-        handler(result.map(|compression_result| compression_result.to_vec())).unwrap_or_default()
+        handler(result.map(crate::compression_result::CompressionResult::to_vec)).unwrap_or_default()
     }
 }
 
@@ -66,11 +65,10 @@ where
         let handler = self.chunk_handler;
 
         // Use public Bzip2Builder API - create builder and decompress
-        use crate::Bzip2Builder;
         let builder = Bzip2Builder::new();
         let result = builder.decompress(data).await;
 
         // Apply chunk handler to raw Vec<u8> result
-        handler(result.map(|compression_result| compression_result.to_vec())).unwrap_or_default()
+        handler(result.map(crate::compression_result::CompressionResult::to_vec)).unwrap_or_default()
     }
 }

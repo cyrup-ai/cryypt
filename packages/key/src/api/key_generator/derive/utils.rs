@@ -35,7 +35,7 @@ pub async fn derive_key_auto(
             algorithm,
             iterations: 3,
             memory_cost: 65536, // 64 MB
-            parallelism: num_cpus::get().min(8) as u32,
+            parallelism: u32::try_from(num_cpus::get().min(8)).unwrap_or(8),
             salt_size: salt.len(),
             output_size,
         },
@@ -57,7 +57,7 @@ pub async fn derive_key_auto(
         },
         KdfAlgorithm::HkdfSha256 => KdfConfig {
             algorithm,
-            iterations: 1, // HKDF doesn't use iterations
+            iterations: 1,  // HKDF doesn't use iterations
             memory_cost: 0, // HKDF doesn't use memory cost
             parallelism: 1, // HKDF doesn't use parallelism
             salt_size: salt.len(),
@@ -65,7 +65,7 @@ pub async fn derive_key_auto(
         },
         KdfAlgorithm::HkdfSha512 => KdfConfig {
             algorithm,
-            iterations: 1, // HKDF doesn't use iterations
+            iterations: 1,  // HKDF doesn't use iterations
             memory_cost: 0, // HKDF doesn't use memory cost
             parallelism: 1, // HKDF doesn't use parallelism
             salt_size: salt.len(),
@@ -74,6 +74,6 @@ pub async fn derive_key_auto(
     };
 
     let kdf = KeyDerivation::new(config).with_salt(salt.to_vec());
-    let key = kdf.derive_key(input).await?;
+    let key = kdf.derive_key(input)?;
     Ok(Zeroizing::new(key))
 }

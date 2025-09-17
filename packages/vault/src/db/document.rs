@@ -129,21 +129,22 @@ impl DocumentDao {
     pub async fn delete_by_key(&self, key: String) -> Result<bool, Error> {
         // First find the document to get its ID
         if let Some(doc) = self.find_by_key(key).await?
-            && let Some(id) = doc.id {
-                let mut stream = self.dao.delete(&id);
-                let mut items = Vec::new();
+            && let Some(id) = doc.id
+        {
+            let mut stream = self.dao.delete(&id);
+            let mut items = Vec::new();
 
-                while let Some(result) = stream.next().await {
-                    match result {
-                        Ok(item) => items.push(item),
-                        Err(e) => return Err(e),
-                    }
-                }
-
-                if !items.is_empty() {
-                    return Ok(true);
+            while let Some(result) = stream.next().await {
+                match result {
+                    Ok(item) => items.push(item),
+                    Err(e) => return Err(e),
                 }
             }
+
+            if !items.is_empty() {
+                return Ok(true);
+            }
+        }
 
         Ok(false)
     }

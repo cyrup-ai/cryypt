@@ -29,7 +29,7 @@ impl<S: KeyStorage> KeyGeneratorReady<S> {
 
     /// Generate key with default unwrapping - README.md pattern
     /// Returns unwrapped Vec<u8> with default error handling (empty Vec on error)
-    pub async fn generate(self) -> Vec<u8> {
+    pub fn generate(self) -> Vec<u8> {
         let size_bits = self.size_bits;
         let namespace = self.namespace;
         let version = self.version;

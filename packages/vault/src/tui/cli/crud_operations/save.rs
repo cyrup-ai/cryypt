@@ -6,7 +6,11 @@ use crate::logging::log_security_event;
 use dialoguer::{Password, theme::ColorfulTheme};
 use serde_json::json;
 
-pub async fn handle_save(vault: &Vault, passphrase_option: Option<&str>, use_json: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn handle_save(
+    vault: &Vault,
+    passphrase_option: Option<&str>,
+    use_json: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     if let Err(e) = ensure_unlocked(vault, passphrase_option, use_json).await {
         if use_json {
             println!(
@@ -14,7 +18,7 @@ pub async fn handle_save(vault: &Vault, passphrase_option: Option<&str>, use_jso
                 json!({
                     "success": false,
                     "operation": "save",
-                    "error": format!("Failed to unlock vault: {}", e)
+                    "error": format!("Failed to unlock vault: {e}")
                 })
             );
             return Ok(());
@@ -71,7 +75,7 @@ pub async fn handle_save(vault: &Vault, passphrase_option: Option<&str>, use_jso
                 Err(e) => {
                     log_security_event(
                         "CLI_SAVE",
-                        &format!("Failed to re-unlock vault after save: {}", e),
+                        &format!("Failed to re-unlock vault after save: {e}"),
                         false,
                     );
 
@@ -81,7 +85,7 @@ pub async fn handle_save(vault: &Vault, passphrase_option: Option<&str>, use_jso
                             json!({
                                 "success": false,
                                 "operation": "save",
-                                "error": format!("Failed to re-unlock vault after save: {}", e)
+                                "error": format!("Failed to re-unlock vault after save: {e}")
                             })
                         );
                         return Ok(());
@@ -94,7 +98,7 @@ pub async fn handle_save(vault: &Vault, passphrase_option: Option<&str>, use_jso
         Err(e) => {
             log_security_event(
                 "CLI_SAVE",
-                &format!("Failed to save vault data: {}", e),
+                &format!("Failed to save vault data: {e}"),
                 false,
             );
 
@@ -104,7 +108,7 @@ pub async fn handle_save(vault: &Vault, passphrase_option: Option<&str>, use_jso
                     json!({
                         "success": false,
                         "operation": "save",
-                        "error": format!("Failed to save vault data: {}", e)
+                        "error": format!("Failed to save vault data: {e}")
                     })
                 );
                 return Ok(());

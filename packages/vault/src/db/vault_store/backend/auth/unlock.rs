@@ -54,7 +54,7 @@ impl LocalVaultProvider {
             }
             Err(e) => {
                 log::error!("Encryption test failed: {}", e);
-                return Err(VaultError::Crypto(format!("Encryption test failed: {}", e)));
+                return Err(VaultError::Crypto(format!("Encryption test failed: {e}")));
             }
         };
 
@@ -68,7 +68,7 @@ impl LocalVaultProvider {
             }
             Err(e) => {
                 log::error!("Decryption test failed: {}", e);
-                return Err(VaultError::Crypto(format!("Decryption test failed: {}", e)));
+                return Err(VaultError::Crypto(format!("Decryption test failed: {e}")));
             }
         };
 

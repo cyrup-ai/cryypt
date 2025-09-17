@@ -47,23 +47,23 @@ impl KeyDerivation {
     }
     /// Derive a key from input material
     /// Returns derived key bytes with automatic cleanup
-    pub async fn derive_key(&self, input: &[u8]) -> Result<Vec<u8>, KeyError> {
+    pub fn derive_key(&self, input: &[u8]) -> Result<Vec<u8>, KeyError> {
         let salt = self
             .salt
             .as_ref()
             .ok_or_else(|| KeyError::invalid_key("Salt not provided for key derivation"))?;
 
         match self.config.algorithm {
-            KdfAlgorithm::Pbkdf2Sha256 => self.derive_pbkdf2_sha256(input, salt).await,
-            KdfAlgorithm::Pbkdf2Sha512 => self.derive_pbkdf2_sha512(input, salt).await,
-            KdfAlgorithm::Argon2id => self.derive_argon2id(input, salt).await,
-            KdfAlgorithm::HkdfSha256 => self.derive_hkdf_sha256(input, salt).await,
-            KdfAlgorithm::HkdfSha512 => self.derive_hkdf_sha512(input, salt).await,
+            KdfAlgorithm::Pbkdf2Sha256 => self.derive_pbkdf2_sha256(input, salt),
+            KdfAlgorithm::Pbkdf2Sha512 => self.derive_pbkdf2_sha512(input, salt),
+            KdfAlgorithm::Argon2id => self.derive_argon2id(input, salt),
+            KdfAlgorithm::HkdfSha256 => self.derive_hkdf_sha256(input, salt),
+            KdfAlgorithm::HkdfSha512 => self.derive_hkdf_sha512(input, salt),
         }
     }
 
     /// Derive key using PBKDF2 with SHA-256
-    async fn derive_pbkdf2_sha256(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
+    fn derive_pbkdf2_sha256(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
         let iterations = NonZeroU32::new(self.config.iterations)
             .ok_or_else(|| KeyError::invalid_key("PBKDF2 iterations must be non-zero"))?;
 
@@ -74,7 +74,7 @@ impl KeyDerivation {
     }
 
     /// Derive key using PBKDF2 with SHA-512
-    async fn derive_pbkdf2_sha512(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
+    fn derive_pbkdf2_sha512(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
         let iterations = NonZeroU32::new(self.config.iterations)
             .ok_or_else(|| KeyError::invalid_key("PBKDF2 iterations must be non-zero"))?;
 
@@ -85,7 +85,7 @@ impl KeyDerivation {
     }
 
     /// Derive key using Argon2id
-    async fn derive_argon2id(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
+    fn derive_argon2id(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
         use argon2::{Algorithm, Params, Version};
 
         let params = Params::new(
@@ -94,36 +94,36 @@ impl KeyDerivation {
             self.config.parallelism,
             Some(self.config.output_size),
         )
-        .map_err(|e| KeyError::internal(format!("Invalid Argon2 parameters: {}", e)))?;
+        .map_err(|e| KeyError::internal(format!("Invalid Argon2 parameters: {e}")))?;
 
         let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
 
         let mut output = vec![0u8; self.config.output_size];
         argon2
             .hash_password_into(input, salt, &mut output)
-            .map_err(|e| KeyError::internal(format!("Argon2 key derivation failed: {}", e)))?;
+            .map_err(|e| KeyError::internal(format!("Argon2 key derivation failed: {e}")))?;
 
         Ok(output)
     }
 
     /// Derive key using HKDF with SHA-256
-    async fn derive_hkdf_sha256(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
+    fn derive_hkdf_sha256(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
         let hk = Hkdf::<Sha256>::new(Some(salt), input);
         let mut output = vec![0u8; self.config.output_size];
 
         hk.expand(&[], &mut output)
-            .map_err(|e| KeyError::internal(format!("HKDF-SHA256 expansion failed: {}", e)))?;
+            .map_err(|e| KeyError::internal(format!("HKDF-SHA256 expansion failed: {e}")))?;
 
         Ok(output)
     }
 
     /// Derive key using HKDF with SHA-512
-    async fn derive_hkdf_sha512(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
+    fn derive_hkdf_sha512(&self, input: &[u8], salt: &[u8]) -> Result<Vec<u8>, KeyError> {
         let hk = Hkdf::<Sha512>::new(Some(salt), input);
         let mut output = vec![0u8; self.config.output_size];
 
         hk.expand(&[], &mut output)
-            .map_err(|e| KeyError::internal(format!("HKDF-SHA512 expansion failed: {}", e)))?;
+            .map_err(|e| KeyError::internal(format!("HKDF-SHA512 expansion failed: {e}")))?;
 
         Ok(output)
     }

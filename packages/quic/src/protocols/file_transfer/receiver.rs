@@ -3,12 +3,12 @@
 //! Contains client builder, download logic, and file receiving functionality
 //! for the file transfer protocol.
 
-use super::{FileMetadata, TransferResult, FileTransferMessage};
+use super::{FileMetadata, FileTransferMessage, TransferResult};
 use crate::{QuicConnectionHandle, QuicCryptoBuilder, connect_quic_client, error::Result};
 use std::path::{Path, PathBuf};
-use tokio::time::Duration;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use tokio::time::Duration;
 use uuid::Uuid;
 
 /// Client builder with fluent API
@@ -72,29 +72,35 @@ impl FileTransferClientBuilder {
     /// List files available on the server
     pub async fn list_files(self) -> Result<Vec<FileMetadata>> {
         let connection = self.establish_connection().await?;
-        
+
         // Send list request
         let list_request = FileTransferMessage::ListRequest;
-        let request_data = serde_json::to_vec(&list_request).map_err(|e| {
-            std::io::Error::other(format!("Serialization error: {}", e))
-        })?;
-        
+        let request_data = serde_json::to_vec(&list_request)
+            .map_err(|e| std::io::Error::other(format!("Serialization error: {e}")))?;
+
         connection.send_stream_data(&request_data, false)?;
-        
+
         // Wait for response with timeout
         let mut event_rx = connection.subscribe_to_events();
         let file_list = tokio::time::timeout(Duration::from_secs(30), async {
             while let Ok(event) = event_rx.recv().await {
                 if let crate::quic_conn::QuicConnectionEvent::InboundStreamData(_, data) = event
-                    && let Ok(FileTransferMessage::ListResponse { files }) = serde_json::from_slice(&data) {
-                        return Ok(files);
-                    }
+                    && let Ok(FileTransferMessage::ListResponse { files }) =
+                        serde_json::from_slice(&data)
+                {
+                    return Ok(files);
+                }
             }
-            Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "No file list received"))
-        }).await.map_err(|_| {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "No file list received",
+            ))
+        })
+        .await
+        .map_err(|_| {
             std::io::Error::new(std::io::ErrorKind::TimedOut, "File list request timeout")
         })??;
-        
+
         Ok(file_list)
     }
 
@@ -104,7 +110,7 @@ impl FileTransferClientBuilder {
             .with_verify_peer(self.verify_server)
             .with_max_idle_timeout(self.timeout_secs * 1000)
             .with_initial_max_data(10_000_000_000); // 10GB
-        
+
         // Add certificate verification for production security
         if self.verify_server {
             // Parse server address to get hostname for certificate verification
@@ -113,22 +119,25 @@ impl FileTransferClientBuilder {
             } else {
                 &self.server_addr
             };
-            
+
             crypto_builder = crypto_builder
                 .with_server_name(server_hostname)
                 .with_certificate_verification(true)
                 .with_hostname_verification(true);
-                
+
             // Load system certificate store for production
             let cert_result = rustls_native_certs::load_native_certs();
             for cert in cert_result.certs {
                 crypto_builder = crypto_builder.add_root_certificate(cert);
             }
             if !cert_result.errors.is_empty() {
-                tracing::warn!("Some certificate loading errors occurred: {:?}", cert_result.errors);
+                tracing::warn!(
+                    "Some certificate loading errors occurred: {:?}",
+                    cert_result.errors
+                );
             }
         }
-        
+
         // Add client certificate authentication if provided
         if let (Some(cert_path), Some(key_path)) = (&self.client_cert, &self.client_key) {
             crypto_builder = crypto_builder
@@ -222,32 +231,31 @@ pub(crate) async fn execute_download_protocol(
 ) -> Result<TransferResult> {
     let start_time = std::time::Instant::now();
     let file_id = Uuid::new_v4();
-    
+
     // 1. Send download request
     let download_request = FileTransferMessage::DownloadRequest {
         file_id,
         filename: remote_filename.to_string(),
         resume_offset: if resume { Some(0) } else { None },
     };
-    
-    let request_data = serde_json::to_vec(&download_request).map_err(|e| {
-        std::io::Error::other(format!("Serialization error: {}", e))
-    })?;
-    
+
+    let request_data = serde_json::to_vec(&download_request)
+        .map_err(|e| std::io::Error::other(format!("Serialization error: {e}")))?;
+
     connection.send_stream_data(&request_data, false)?;
-    
+
     // 2. Create output file
-    let mut file = File::create(output_path).await.map_err(|e| {
-        std::io::Error::other(format!("Failed to create output file: {}", e))
-    })?;
-    
+    let mut file = File::create(output_path)
+        .await
+        .map_err(|e| std::io::Error::other(format!("Failed to create output file: {e}")))?;
+
     let mut bytes_transferred = 0u64;
     let mut received_checksum = String::new();
     let mut transfer_success = false;
-    
+
     // 3. Receive file data chunks from QUIC connection
     let mut event_rx = connection.subscribe_to_events();
-    
+
     // Timeout for the entire download operation
     let download_timeout = tokio::time::timeout(Duration::from_secs(300), async {
         while let Ok(event) = event_rx.recv().await {
@@ -256,37 +264,46 @@ pub(crate) async fn execute_download_protocol(
                     // End of stream
                     break;
                 }
-                
+
                 // Try to parse as protocol message first
                 if let Ok(message) = serde_json::from_slice::<FileTransferMessage>(&data) {
                     match message {
-                        FileTransferMessage::DataChunk { file_id: chunk_file_id, data: chunk_data, is_final, .. } => {
+                        FileTransferMessage::DataChunk {
+                            file_id: chunk_file_id,
+                            data: chunk_data,
+                            is_final,
+                            ..
+                        } => {
                             // Verify file_id matches our request
                             if chunk_file_id != file_id {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
-                                    "File ID mismatch in data chunk"
+                                    "File ID mismatch in data chunk",
                                 ));
                             }
-                            
+
                             file.write_all(&chunk_data).await.map_err(|e| {
-                                std::io::Error::other(format!("File write error: {}", e))
+                                std::io::Error::other(format!("File write error: {e}"))
                             })?;
                             bytes_transferred += chunk_data.len() as u64;
-                            
+
                             if is_final {
                                 break;
                             }
                         }
-                        FileTransferMessage::TransferComplete { file_id: complete_file_id, checksum, success } => {
+                        FileTransferMessage::TransferComplete {
+                            file_id: complete_file_id,
+                            checksum,
+                            success,
+                        } => {
                             // Verify file_id matches our request
                             if complete_file_id != file_id {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
-                                    "File ID mismatch in transfer complete"
+                                    "File ID mismatch in transfer complete",
                                 ));
                             }
-                            
+
                             received_checksum = checksum;
                             transfer_success = success;
                             break;
@@ -298,53 +315,53 @@ pub(crate) async fn execute_download_protocol(
                     }
                 } else {
                     // Treat as raw chunk data if not a protocol message
-                    file.write_all(&data).await.map_err(|e| {
-                        std::io::Error::other(format!("File write error: {}", e))
-                    })?;
+                    file.write_all(&data)
+                        .await
+                        .map_err(|e| std::io::Error::other(format!("File write error: {e}")))?;
                     bytes_transferred += data.len() as u64;
                 }
             }
         }
-        
+
         Ok::<(), std::io::Error>(())
     });
-    
+
     // Handle timeout
     download_timeout.await.map_err(|_| {
         std::io::Error::new(std::io::ErrorKind::TimedOut, "Download operation timed out")
     })??;
-    
-    file.flush().await.map_err(|e| {
-        std::io::Error::other(format!("File flush error: {}", e))
-    })?;
-    
+
+    file.flush()
+        .await
+        .map_err(|e| std::io::Error::other(format!("File flush error: {e}")))?;
+
     // 4. Verify checksum if requested and available
     let checksum_verified = if verify_checksum && !received_checksum.is_empty() {
         use cryypt_hashing::Hash;
         use tokio::io::AsyncReadExt;
-        
+
         let mut file_for_hash = File::open(output_path).await.map_err(|e| {
-            std::io::Error::other(format!("Failed to reopen file for checksum: {}", e))
+            std::io::Error::other(format!("Failed to reopen file for checksum: {e}"))
         })?;
-        
+
         let mut buffer = Vec::new();
         file_for_hash.read_to_end(&mut buffer).await.map_err(|e| {
-            std::io::Error::other(format!("Failed to read file for checksum: {}", e))
+            std::io::Error::other(format!("Failed to read file for checksum: {e}"))
         })?;
-        
+
         let computed_hash = Hash::sha3_256()
             .compute(buffer)
             .await
-            .map_err(|e| std::io::Error::other(format!("Hash computation error: {}", e)))?;
-        
+            .map_err(|e| std::io::Error::other(format!("Hash computation error: {e}")))?;
+
         let computed_checksum = hex::encode(computed_hash);
         computed_checksum == received_checksum
     } else {
         true // Skip verification if not requested or no checksum provided
     };
-    
+
     let final_success = transfer_success && checksum_verified && bytes_transferred > 0;
-    
+
     Ok(TransferResult {
         file_id,
         filename: remote_filename.to_string(),

@@ -7,7 +7,9 @@
 
 use std::path::PathBuf;
 
-use super::super::super::responses::{CertificateGenerationResponse, GeneratedFile, FileType, GenerationIssue, IssueSeverity};
+use super::super::super::responses::{
+    CertificateGenerationResponse, FileType, GeneratedFile, GenerationIssue, IssueSeverity,
+};
 
 /// Save certificate files to specified path
 pub async fn save_certificate_files(
@@ -64,7 +66,7 @@ fn create_directory_error(
         private_key_pem: Some(key_pem.to_string()),
         issues: vec![GenerationIssue {
             severity: IssueSeverity::Error,
-            message: format!("Failed to create directory: {}", e),
+            message: format!("Failed to create directory: {e}"),
             suggestion: Some("Check directory permissions".to_string()),
         }],
     }
@@ -84,7 +86,7 @@ fn create_cert_write_error(
         private_key_pem: Some(key_pem.to_string()),
         issues: vec![GenerationIssue {
             severity: IssueSeverity::Error,
-            message: format!("Failed to write certificate file: {}", e),
+            message: format!("Failed to write certificate file: {e}"),
             suggestion: Some("Check file permissions".to_string()),
         }],
     }
@@ -104,7 +106,7 @@ fn create_key_write_error(
         private_key_pem: Some(key_pem.to_string()),
         issues: vec![GenerationIssue {
             severity: IssueSeverity::Error,
-            message: format!("Failed to write private key file: {}", e),
+            message: format!("Failed to write private key file: {e}"),
             suggestion: Some("Check file permissions".to_string()),
         }],
     }

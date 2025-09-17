@@ -59,9 +59,9 @@ where
     /// Internal ML-DSA verification implementation using real cryptography
     #[inline]
     async fn perform_mldsa_verification(
-        public_key: &[u8], 
-        signature: &[u8], 
-        message: &[u8]
+        public_key: &[u8],
+        signature: &[u8],
+        message: &[u8],
     ) -> crate::Result<bool> {
         // Use ML-DSA-65 as default algorithm (can be parameterized in future)
         let algorithm = SignatureAlgorithm::MlDsa65;
@@ -105,7 +105,8 @@ where
             }
             _ => {
                 return Err(PqCryptoError::UnsupportedAlgorithm(format!(
-                    "Algorithm {:?} not supported for ML-DSA verification", algorithm
+                    "Algorithm {:?} not supported for ML-DSA verification",
+                    algorithm
                 )));
             }
         };

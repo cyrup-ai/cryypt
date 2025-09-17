@@ -58,11 +58,11 @@ fn decrypt_aes_gcm(encrypted: &[u8], key: &[u8]) -> crate::Result<Vec<u8>> {
     let nonce = Nonce::from_slice(nonce_bytes);
 
     let cipher = Aes256Gcm::new_from_slice(key)
-        .map_err(|e| CryptError::InvalidKey(format!("Invalid AES key: {}", e)))?;
+        .map_err(|e| CryptError::InvalidKey(format!("Invalid AES key: {e}")))?;
 
     cipher
         .decrypt(nonce, ciphertext_with_tag)
-        .map_err(|e| CryptError::DecryptionFailed(format!("AES decryption failed: {}", e)))
+        .map_err(|e| CryptError::DecryptionFailed(format!("AES decryption failed: {e}")))
 }
 
 fn decrypt_chacha20_poly1305(encrypted: &[u8], key: &[u8]) -> crate::Result<Vec<u8>> {
@@ -76,9 +76,9 @@ fn decrypt_chacha20_poly1305(encrypted: &[u8], key: &[u8]) -> crate::Result<Vec<
     let nonce = Nonce::from_slice(nonce_bytes);
 
     let cipher = ChaCha20Poly1305::new_from_slice(key)
-        .map_err(|e| CryptError::InvalidKey(format!("Invalid ChaCha20 key: {}", e)))?;
+        .map_err(|e| CryptError::InvalidKey(format!("Invalid ChaCha20 key: {e}")))?;
 
     cipher
         .decrypt(nonce, ciphertext_with_tag)
-        .map_err(|e| CryptError::DecryptionFailed(format!("ChaCha20 decryption failed: {}", e)))
+        .map_err(|e| CryptError::DecryptionFailed(format!("ChaCha20 decryption failed: {e}")))
 }

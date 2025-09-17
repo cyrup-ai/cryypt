@@ -22,7 +22,7 @@ impl BytesChunk {
 impl MessageChunk for BytesChunk {
     fn bad_chunk(error: String) -> Self {
         Self {
-            data: format!("[ERROR] {}", error).into_bytes(),
+            data: format!("[ERROR] {error}").into_bytes(),
             error: Some(error),
         }
     }
@@ -52,7 +52,7 @@ impl StringChunk {
 impl MessageChunk for StringChunk {
     fn bad_chunk(error: String) -> Self {
         Self {
-            data: format!("[ERROR] {}", error),
+            data: format!("[ERROR] {error}"),
             error: Some(error),
         }
     }

@@ -19,14 +19,14 @@ impl LocalVaultProvider {
             .query(query)
             .bind(("key", "__vault_passphrase_hash__"))
             .await
-            .map_err(|e| VaultError::Provider(format!("DB query failed: {}", e)))?
+            .map_err(|e| VaultError::Provider(format!("DB query failed: {e}")))?
             .check()
-            .map_err(|e| VaultError::Provider(format!("DB check failed: {}", e)))?;
+            .map_err(|e| VaultError::Provider(format!("DB check failed: {e}")))?;
 
         use super::super::super::VaultEntry;
         let hash_entry: Option<VaultEntry> = result
             .take(0)
-            .map_err(|e| VaultError::Provider(format!("DB result take failed: {}", e)))?;
+            .map_err(|e| VaultError::Provider(format!("DB result take failed: {e}")))?;
 
         match hash_entry {
             Some(entry) => {
@@ -48,7 +48,7 @@ impl LocalVaultProvider {
                 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 
                 let parsed_hash = PasswordHash::new(&stored_hash_str).map_err(|e| {
-                    VaultError::Crypto(format!("Invalid stored hash format: {}", e))
+                    VaultError::Crypto(format!("Invalid stored hash format: {e}"))
                 })?;
 
                 let argon2 = Argon2::default();
