@@ -1,7 +1,7 @@
-//! Legacy KeyStore API Implementation
+//! Legacy `KeyStore` API Implementation
 //!
 //! This module provides backward compatibility functions and utilities
-//! that were part of the original file_store implementation.
+//! that were part of the original `file_store` implementation.
 
 use super::core::FileKeyStore;
 use crate::api::KeyStore;
@@ -13,6 +13,7 @@ impl FileKeyStore {
     }
 
     /// Legacy key generation method (kept for compatibility)
+    #[must_use]
     pub fn generate_key_legacy(
         &self,
         size_bits: u32,
@@ -23,6 +24,7 @@ impl FileKeyStore {
     }
 
     /// Legacy key retrieval method (kept for compatibility)
+    #[must_use]
     pub fn retrieve_key_legacy(&self, namespace: &str, version: u32) -> crate::KeyResult {
         <Self as KeyStore>::retrieve_key(self, namespace, version)
     }

@@ -31,37 +31,44 @@ impl EncapsulationResult {
     }
 
     /// Get the algorithm used
+    #[must_use]
     pub fn algorithm(&self) -> super::KemAlgorithm {
         self.algorithm
     }
 
     /// Get the ciphertext as bytes
+    #[must_use]
     pub fn ciphertext(&self) -> &[u8] {
         &self.ciphertext
     }
 
     /// Get the ciphertext as a vector
+    #[must_use]
     pub fn ciphertext_vec(&self) -> Vec<u8> {
         self.ciphertext.clone()
     }
 
     /// Get the shared secret
+    #[must_use]
     pub fn shared_secret(&self) -> &super::SharedSecret {
         &self.shared_secret
     }
 
     /// Convert ciphertext to hex string
+    #[must_use]
     pub fn ciphertext_hex(&self) -> String {
         hex::encode(&self.ciphertext)
     }
 
     /// Convert ciphertext to base64 string
+    #[must_use]
     pub fn ciphertext_base64(&self) -> String {
         use base64::Engine;
         base64::engine::general_purpose::STANDARD.encode(&self.ciphertext)
     }
 
     /// Get the size of the ciphertext in bytes
+    #[must_use]
     pub fn ciphertext_size(&self) -> usize {
         self.ciphertext.len()
     }
@@ -86,16 +93,19 @@ impl DecapsulationResult {
     }
 
     /// Get the algorithm used
+    #[must_use]
     pub fn algorithm(&self) -> super::KemAlgorithm {
         self.algorithm
     }
 
     /// Get the shared secret
+    #[must_use]
     pub fn shared_secret(&self) -> &super::SharedSecret {
         &self.shared_secret
     }
 
     /// Convert to owned shared secret
+    #[must_use]
     pub fn into_shared_secret(self) -> super::SharedSecret {
         self.shared_secret
     }
@@ -129,42 +139,50 @@ impl SignatureResult {
     }
 
     /// Get the algorithm used
+    #[must_use]
     pub fn algorithm(&self) -> super::SignatureAlgorithm {
         self.algorithm
     }
 
     /// Get the signature as bytes
+    #[must_use]
     pub fn signature(&self) -> &[u8] {
         &self.signature
     }
 
     /// Get the signature as a vector
+    #[must_use]
     pub fn signature_vec(&self) -> Vec<u8> {
         self.signature.clone()
     }
 
     /// Get the message if included (for non-detached signatures)
+    #[must_use]
     pub fn message(&self) -> Option<&[u8]> {
         self.message.as_deref()
     }
 
     /// Convert signature to hex string
+    #[must_use]
     pub fn signature_hex(&self) -> String {
         hex::encode(&self.signature)
     }
 
     /// Convert signature to base64 string
+    #[must_use]
     pub fn signature_base64(&self) -> String {
         use base64::Engine;
         base64::engine::general_purpose::STANDARD.encode(&self.signature)
     }
 
     /// Get the size of the signature in bytes
+    #[must_use]
     pub fn signature_size(&self) -> usize {
         self.signature.len()
     }
 
     /// Check if this is a detached signature
+    #[must_use]
     pub fn is_detached(&self) -> bool {
         self.message.is_none()
     }
@@ -196,21 +214,28 @@ impl VerificationResult {
     }
 
     /// Get the algorithm used
+    #[must_use]
     pub fn algorithm(&self) -> super::SignatureAlgorithm {
         self.algorithm
     }
 
     /// Check if the signature is valid
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         self.is_valid
     }
 
     /// Get the verified message (if any)
+    #[must_use]
     pub fn message(&self) -> Option<&[u8]> {
         self.message.as_deref()
     }
 
     /// Convert to a Result type, returning an error if invalid
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the signature verification failed.
     pub fn to_result(self) -> Result<Option<Vec<u8>>> {
         if self.is_valid {
             Ok(self.message)
@@ -251,6 +276,7 @@ mod option_base64_serde {
     use base64::Engine;
     use serde::{Deserialize, Deserializer, Serializer};
 
+    #[allow(clippy::ref_option)]
     pub fn serialize<S>(
         value: &Option<Vec<u8>>,
         serializer: S,
@@ -258,7 +284,7 @@ mod option_base64_serde {
     where
         S: Serializer,
     {
-        match value {
+        match value.as_ref() {
             Some(bytes) => {
                 let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
                 serializer.serialize_some(&encoded)

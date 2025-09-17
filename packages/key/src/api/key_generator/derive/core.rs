@@ -1,6 +1,6 @@
 //! Core Key Derivation Implementation
 //!
-//! This module provides the main KeyDerivation struct with secure key derivation
+//! This module provides the main `KeyDerivation` struct with secure key derivation
 //! operations and automatic cleanup of sensitive data.
 
 use super::config::{KdfAlgorithm, KdfConfig};
@@ -51,6 +51,13 @@ impl KeyDerivation {
     }
     /// Derive a key from input material
     /// Returns derived key bytes with automatic cleanup
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - No salt was provided for key derivation
+    /// - KDF parameters are invalid (e.g., zero iterations for PBKDF2)
+    /// - The underlying cryptographic operation fails
     pub fn derive_key(&self, input: &[u8]) -> Result<Vec<u8>, KeyError> {
         let salt = self
             .salt
@@ -139,6 +146,7 @@ impl KeyDerivation {
     }
 
     /// Get the KDF configuration
+    #[must_use]
     pub fn config(&self) -> &KdfConfig {
         &self.config
     }

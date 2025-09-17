@@ -49,7 +49,7 @@ pub(crate) fn generate_secure_key_id(namespace: &str, version: u32) -> SimpleKey
     let unique_id = hex::encode(id_bytes);
 
     // Use format! since this is not in hot path and security is paramount
-    let id_str = format!("{}:v{}:{}", namespace, version, unique_id);
+    let id_str = format!("{namespace}:v{version}:{unique_id}");
     SimpleKeyId::new(id_str)
 }
 
@@ -64,7 +64,7 @@ pub struct StreamConfig {
 impl StreamConfig {
     /// Create bounded stream configuration with specified capacity
     /// Bounded channels provide backpressure control
-    #[inline(always)]
+    #[must_use]
     pub const fn bounded(capacity: usize) -> Self {
         Self {
             capacity,
@@ -74,7 +74,7 @@ impl StreamConfig {
 
     /// Create unbounded stream configuration
     /// Use with caution - no backpressure control
-    #[inline(always)]
+    #[must_use]
     pub const fn unbounded() -> Self {
         Self {
             capacity: 0,
@@ -83,14 +83,14 @@ impl StreamConfig {
     }
 
     /// Default bounded configuration optimized for single key generation
-    #[inline(always)]
+    #[must_use]
     pub const fn default_bounded() -> Self {
         Self::bounded(1)
     }
 }
 
 impl Default for StreamConfig {
-    #[inline(always)]
+
     fn default() -> Self {
         Self::default_bounded()
     }

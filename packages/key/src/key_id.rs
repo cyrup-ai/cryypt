@@ -31,7 +31,7 @@ pub trait KeyId: Send + Sync + fmt::Debug + fmt::Display {
 pub struct SimpleKeyId(String);
 
 impl SimpleKeyId {
-    /// Create a new SimpleKeyId from a string identifier
+    /// Create a new `SimpleKeyId` from a string identifier
     pub fn new(id: impl Into<String>) -> Self {
         Self(id.into())
     }

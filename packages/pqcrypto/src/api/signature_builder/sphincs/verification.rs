@@ -1,7 +1,10 @@
 //! SPHINCS+ signature verification operations
 
 use super::super::super::super::{SignatureAlgorithm, VerificationResult};
-use super::super::super::{builder_traits::*, states::*};
+use super::super::super::{
+    builder_traits::{VerifyBuilder, AsyncVerificationResult},
+    states::HasSignature
+};
 use super::core::SphincsBuilder;
 use crate::PqCryptoError;
 use pqcrypto_traits::sign::{DetachedSignature, PublicKey};

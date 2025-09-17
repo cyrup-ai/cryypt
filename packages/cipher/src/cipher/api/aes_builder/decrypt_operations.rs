@@ -113,7 +113,7 @@ where
                 offset += chunk_len;
 
                 // Decrypt this chunk
-                let result = aes_decrypt_chunk(&key, chunk_data, aad.as_deref()).await;
+                let result = aes_decrypt_chunk(&key, chunk_data, aad.as_deref());
                 let processed_chunk = handler(result);
 
                 if tx.send(processed_chunk).await.is_err() {
@@ -127,7 +127,7 @@ where
 }
 
 // Chunk-specific decryption function for streaming
-async fn aes_decrypt_chunk(
+fn aes_decrypt_chunk(
     key: &[u8],
     chunk_data: &[u8],
     expected_aad: Option<&[u8]>,
@@ -227,6 +227,8 @@ pub(super) async fn aes_decrypt_with_aad(
     ciphertext: &[u8],
     expected_aad: Option<&[u8]>,
 ) -> Result<Vec<u8>> {
+    const CHUNK_SIZE: usize = 8192;
+    
     use aes_gcm::{
         Aes256Gcm, KeyInit,
         aead::{Aead, generic_array::GenericArray},
@@ -247,7 +249,6 @@ pub(super) async fn aes_decrypt_with_aad(
     }
 
     // Process data in chunks to avoid blocking
-    const CHUNK_SIZE: usize = 8192;
     if ciphertext.len() > CHUNK_SIZE {
         tokio::task::yield_now().await;
     }

@@ -13,7 +13,7 @@ where
 {
     /// Apply result handler and retrieve key - internal execution method
     /// USERS USE SEXY SYNTAX Ok => result IN CLOSURES - internal macros handle transformation
-    /// This method follows EXACT pattern from AesWithKeyAndHandler::encrypt
+    /// This method follows EXACT pattern from `AesWithKeyAndHandler::encrypt`
     pub async fn execute<I: Into<String>>(self, key_id: I) -> T {
         let store = self.store;
         let key_id = key_id.into();
@@ -87,7 +87,7 @@ where
                 Err(operation_status.to_key_error())
             } else {
                 // Comprehensive key validation using existing entropy system
-                Self::validate_key_material(&key_bytes).map(|_| key_bytes)
+                Self::validate_key_material(&key_bytes).map(|()| key_bytes)
             }
         }
         .await;
@@ -137,8 +137,7 @@ where
         // 4. Use existing NIST SP 800-90B entropy estimation for validation
         let entropy_source = crate::entropy::EntropySource::new().map_err(|e| {
             crate::KeyError::InvalidKeyFormat(format!(
-                "Failed to initialize entropy validation: {}",
-                e
+                "Failed to initialize entropy validation: {e}"
             ))
         })?;
 
@@ -163,20 +162,19 @@ where
                 // Valid for some HMAC keys (512 bits)
                 Ok(())
             }
-            len if len >= 16 && len <= 4096 => {
+            len if (16..=4096).contains(&len) => {
                 // Reasonable range for other cryptographic keys
                 Ok(())
             }
             len => Err(crate::KeyError::InvalidKeyFormat(format!(
-                "Unusual key size: {} bytes (may indicate corrupted key)",
-                len
+                "Unusual key size: {len} bytes (may indicate corrupted key)"
             ))),
         }
     }
 
     /// Retrieve key - action takes key ID as argument, follows README.md pattern
     /// USERS USE SEXY SYNTAX Ok => result IN CLOSURES - internal macros handle transformation
-    /// This method follows EXACT pattern from AesWithKeyAndHandler::encrypt
+    /// This method follows EXACT pattern from `AesWithKeyAndHandler::encrypt`
     pub async fn retrieve<I: Into<String>>(self, key_id: I) -> T {
         self.execute(key_id).await
     }

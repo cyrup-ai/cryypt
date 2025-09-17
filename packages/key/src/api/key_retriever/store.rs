@@ -50,7 +50,7 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
             .on_result(|result| match result {
                 Ok(bytes) => bytes,
                 Err(e) => {
-                    log::error!("Key retrieval failed: {}", e);
+                    log::error!("Key retrieval failed: {e}");
                     Vec::new()
                 }
             })
@@ -78,8 +78,16 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
         handler(result)
     }
 
-    /// Retrieve an existing key and return ActualKey for use with on_result! macro
+    /// Retrieve an existing key and return `ActualKey` for use with `on_result`! macro
     /// This enables the README.md pattern with .await?
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - The key is not found in the storage backend
+    /// - Storage backend access fails (file I/O errors, keychain errors, etc.)
+    /// - Key deserialization fails due to data corruption
+    /// - Access permissions are insufficient
     #[inline]
     pub async fn retrieve_key(self) -> Result<crate::api::ActualKey, KeyError> {
         let key_id = self.generate_key_id(None);

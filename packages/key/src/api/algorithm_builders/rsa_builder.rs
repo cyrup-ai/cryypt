@@ -122,8 +122,7 @@ where
                 .to_pkcs1_der()
                 .map_err(|e| {
                     crate::error::KeyError::InvalidKeyFormat(format!(
-                        "Public key encoding failed: {}",
-                        e
+                        "Public key encoding failed: {e}"
                     ))
                 })?
                 .as_bytes()
@@ -169,6 +168,10 @@ where
 
                 // Generate individual RSA keypair
                 let result = async {
+                    use rand::rng;
+                    use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
+                    use rsa::{RsaPrivateKey, RsaPublicKey};
+                    
                     // Validate RSA key size
                     if !matches!(size_bits, 2048 | 4096) {
                         return Err(crate::error::KeyError::InvalidKeySize {
@@ -178,16 +181,12 @@ where
                     }
 
                     // Generate real RSA keypair using production RSA library
-                    use rand::rng;
-                    use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
-                    use rsa::{RsaPrivateKey, RsaPublicKey};
 
                     let mut rng = rng();
                     let private_key =
                         RsaPrivateKey::new(&mut rng, size_bits as usize).map_err(|e| {
                             crate::error::KeyError::KeyGeneration(format!(
-                                "RSA key generation failed: {}",
-                                e
+                                "RSA key generation failed: {e}"
                             ))
                         })?;
 
@@ -198,8 +197,7 @@ where
                         .to_pkcs1_der()
                         .map_err(|e| {
                             crate::error::KeyError::InvalidKeyFormat(format!(
-                                "Private key encoding failed: {}",
-                                e
+                                "Private key encoding failed: {e}"
                             ))
                         })?
                         .as_bytes()
@@ -209,8 +207,7 @@ where
                         .to_pkcs1_der()
                         .map_err(|e| {
                             crate::error::KeyError::InvalidKeyFormat(format!(
-                                "Public key encoding failed: {}",
-                                e
+                                "Public key encoding failed: {e}"
                             ))
                         })?
                         .as_bytes()

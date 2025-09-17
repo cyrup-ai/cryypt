@@ -14,6 +14,13 @@ use zeroize::Zeroize;
 impl<S: KeyStorage + KeyImport> KeyGeneratorReady<S> {
     /// Generate a single key using secure random bytes
     /// Pure async implementation without blocking operations
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - The key size is not secure (must be 128, 192, 256, 384, or 512 bits)
+    /// - Secure random number generation fails
+    /// - Key storage operation fails
     pub async fn generate_key(self) -> Result<crate::api::ActualKey, KeyError> {
         let key_bytes = self.generate_internal().await?;
         Ok(crate::api::ActualKey::from_bytes(key_bytes))
@@ -48,7 +55,7 @@ impl<S: KeyStorage + KeyImport> KeyGeneratorReady<S> {
             .on_result(|result| match result {
                 Ok(()) => {}
                 Err(e) => {
-                    log::error!("Failed to store generated key: {}", e);
+                    log::error!("Failed to store generated key: {e}");
                 }
             })
             .await;
@@ -67,6 +74,12 @@ pub struct KeyGeneratorBatch<S: KeyStorage + KeyImport + Send + Sync + Clone + '
 impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> KeyGeneratorReady<S> {
     /// Create a batch generator for multiple keys
     /// Each key is generated independently for maximum security
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - The requested count is zero (must generate at least one key)
+    /// - The count exceeds the maximum safe batch size
     #[inline]
     pub fn batch(self, count: usize) -> Result<KeyGeneratorBatch<S>, KeyError> {
         if count == 0 {
@@ -92,6 +105,7 @@ impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> KeyGeneratorRead
 impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> KeyGeneratorBatch<S> {
     /// Configure the stream for batch generation
     #[inline]
+    #[must_use]
     pub fn with_stream_config(mut self, config: StreamConfig) -> Self {
         self.stream_config = config;
         self
@@ -99,6 +113,13 @@ impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> KeyGeneratorBatc
 
     /// Generate multiple keys and stream results securely
     /// Each key is generated in isolation to prevent cross-contamination
+    /// 
+    /// # Errors
+    /// 
+    /// Each generated key in the stream can return an error if:
+    /// - The key size is not secure (must be 128, 192, 256, 384, or 512 bits)
+    /// - Secure random number generation fails for that key
+    /// - Key storage operation fails for that key
     pub fn generate_all(self) -> Receiver<Result<Vec<u8>, KeyError>> {
         let (tx, rx) = if self.stream_config.bounded {
             bounded(self.stream_config.capacity)
@@ -135,6 +156,13 @@ impl<S: KeyStorage + KeyImport + Send + Sync + Clone + 'static> KeyGeneratorBatc
 
     /// Generate multiple keys and collect into Vec securely
     /// Optimized collection with secure memory handling
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Any individual key generation fails (see `generate_key` for details)
+    /// - The channel communication fails during batch processing
+    /// - Memory allocation fails for the collected keys
     pub fn generate_collect(self) -> Result<Vec<Vec<u8>>, KeyError> {
         let count = self.count;
         let mut keys = Vec::with_capacity(count);

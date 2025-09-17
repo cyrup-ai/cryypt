@@ -102,7 +102,7 @@ pub enum KeyError {
 }
 
 impl KeyError {
-    /// Create an invalid_key error (legacy compatibility)
+    /// Create an `invalid_key` error (legacy compatibility)
     pub fn invalid_key(msg: impl Into<String>) -> Self {
         Self::InvalidKey(msg.into())
     }

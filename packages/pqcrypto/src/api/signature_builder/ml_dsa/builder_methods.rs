@@ -1,6 +1,9 @@
 //! ML-DSA builder pattern methods for message and signature data
 
-use super::super::super::{builder_traits::*, states::*};
+use super::super::super::{
+    builder_traits::{MessageBuilder, SignatureDataBuilder},
+    states::{HasMessage, HasSignature}
+};
 use super::types::MlDsaBuilder;
 use std::marker::PhantomData;
 

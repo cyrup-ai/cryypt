@@ -58,7 +58,7 @@ impl AesWithKey {
         self
     }
 
-    /// Internal implementation for on_result - called by macro
+    /// Internal implementation for `on_result` - called by macro
     pub(super) fn on_result_impl<F>(self, handler: F) -> AesWithKeyAndHandler<F, Vec<u8>>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -71,7 +71,7 @@ impl AesWithKey {
         }
     }
 
-    /// Add on_result handler - transforms pattern matching internally  
+    /// Add `on_result` handler - transforms pattern matching internally  
     #[must_use]
     pub fn on_result<F>(self, handler: F) -> AesWithKeyAndHandler<F, Vec<u8>>
     where
@@ -82,7 +82,7 @@ impl AesWithKey {
 }
 
 impl AesWithKey {
-    /// Add on_chunk handler for streaming operations
+    /// Add `on_chunk` handler for streaming operations
     #[must_use]
     pub fn on_chunk<F>(self, handler: F) -> AesWithKeyAndChunkHandler<F>
     where

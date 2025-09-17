@@ -46,6 +46,7 @@ impl KemBuilder {
     }
 
     /// Set secret key for decapsulation operations
+    #[must_use]
     pub fn with_secret_key(self, _key: Vec<u8>) -> KemBuilderWithSecretKey {
         KemBuilderWithSecretKey {
             _phantom: std::marker::PhantomData,
@@ -55,6 +56,7 @@ impl KemBuilder {
 
 impl KemBuilderWithSecretKey {
     /// Add `on_result` handler for decapsulation - `README.md` pattern
+    #[allow(clippy::unused_self)] // self consumed for builder pattern state transition
     pub fn on_result<F, T>(self, handler: F) -> KemBuilderWithDecapHandler<F, T>
     where
         F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,
@@ -73,17 +75,17 @@ where
     T: Send + 'static,
 {
     /// Decapsulate using real ML-KEM cryptography  
-    pub async fn decapsulate(self, secret_key: Vec<u8>, ciphertext: Vec<u8>) -> T {
+    pub fn decapsulate(self, secret_key: &[u8], ciphertext: &[u8]) -> T {
         let handler = self.result_handler;
 
         // Perform real ML-KEM decapsulation using production cryptography
-        let result = Self::perform_mlkem_decapsulation(&secret_key, &ciphertext).await;
+        let result = Self::perform_mlkem_decapsulation(secret_key, ciphertext);
         handler(result)
     }
 
     /// Internal ML-KEM decapsulation implementation using real cryptography
     #[inline]
-    async fn perform_mlkem_decapsulation(
+    fn perform_mlkem_decapsulation(
         secret_key: &[u8],
         ciphertext: &[u8],
     ) -> crate::Result<Vec<u8>> {
@@ -192,8 +194,7 @@ where
             1024 => KemAlgorithm::MlKem1024,
             _ => {
                 return Err(PqCryptoError::UnsupportedAlgorithm(format!(
-                    "ML-KEM-{} is not supported. Use 512, 768, or 1024",
-                    security_level
+                    "ML-KEM-{security_level} is not supported. Use 512, 768, or 1024"
                 )));
             }
         };
@@ -277,6 +278,7 @@ impl<State> MlKemBuilder<State> {
     }
 
     /// Get the algorithm used by this builder
+    #[must_use]
     pub fn algorithm(&self) -> KemAlgorithm {
         self.algorithm
     }
@@ -295,13 +297,21 @@ pub type MlKemWithCiphertext = MlKemBuilder<HasCiphertext>;
 // Public key access methods for HasKeyPair state
 impl MlKemBuilder<HasKeyPair> {
     /// Get the public key bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key is not available in the current state.
     pub fn public_key(&self) -> Result<&[u8]> {
         self.public_key
             .as_deref()
             .ok_or_else(|| PqCryptoError::internal("Public key not available in HasKeyPair state"))
     }
 
-    /// Get the secret key bytes  
+    /// Get the secret key bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key is not available in the current state.
     pub fn secret_key(&self) -> Result<&[u8]> {
         self.secret_key
             .as_deref()
@@ -309,6 +319,10 @@ impl MlKemBuilder<HasKeyPair> {
     }
 
     /// Get the public key as a vector
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key is not available in the current state.
     pub fn public_key_vec(&self) -> Result<Vec<u8>> {
         self.public_key
             .clone()
@@ -316,6 +330,10 @@ impl MlKemBuilder<HasKeyPair> {
     }
 
     /// Get the secret key as a vector
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key is not available in the current state.
     pub fn secret_key_vec(&self) -> Result<Vec<u8>> {
         self.secret_key
             .clone()

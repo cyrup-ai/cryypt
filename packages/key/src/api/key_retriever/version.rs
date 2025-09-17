@@ -20,6 +20,13 @@ pub struct KeyRetrieverVersionRange<S: KeyStorage + KeyRetrieval + Send + Sync +
 
 impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverReady<S> {
     /// Retrieve all versions in range
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Start or end version is zero (versions must be non-zero)
+    /// - Start version is greater than end version
+    /// - Version range exceeds 100 versions (security limit)
     #[inline]
     pub fn retrieve_versions(
         self,
@@ -50,6 +57,7 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
 impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverVersionRange<S> {
     /// Configure the stream for version range retrieval
     #[inline]
+    #[must_use]
     pub fn with_stream_config(mut self, config: StreamConfig) -> Self {
         self.stream_config = config;
         self
@@ -90,6 +98,13 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverV
     }
 
     /// Retrieve all versions and collect into Vec
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Any individual key version retrieval fails (storage errors, key not found, etc.)
+    /// - Channel communication fails during version processing
+    /// - Memory allocation fails for the collected keys
     pub fn retrieve_collect(self) -> Result<Vec<SecureRetrievedKey>, KeyError> {
         let count = (self.end_version - self.start_version + 1) as usize;
         let mut keys = Vec::with_capacity(count);

@@ -1,6 +1,9 @@
 //! SPHINCS+ message and signature builders
 
-use super::super::super::{builder_traits::*, states::*};
+use super::super::super::{
+    builder_traits::{MessageBuilder, SignatureDataBuilder},
+    states::{HasMessage, HasSignature}
+};
 use super::core::SphincsBuilder;
 use std::marker::PhantomData;
 

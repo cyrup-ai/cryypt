@@ -1,6 +1,6 @@
-//! Channel-based keychain service using async_task patterns
+//! Channel-based keychain service using `async_task` patterns
 //!
-//! Replaces problematic Parker-based static singleton with RequestResponsePattern
+//! Replaces problematic Parker-based static singleton with `RequestResponsePattern`
 //! to eliminate thread safety violations per TURD.md Phase 1 requirements.
 
 use crate::KeyError;
@@ -56,7 +56,7 @@ impl KeychainServiceManager {
                     } => {
                         // Direct keychain operations without Parker
                         Self::perform_store(&service_name, &key_id, &data)
-                            .map(|_| KeychainResponse::Stored)
+                            .map(|()| KeychainResponse::Stored)
                     }
                     KeychainRequest::Retrieve {
                         service_name,
@@ -67,7 +67,7 @@ impl KeychainServiceManager {
                         service_name,
                         key_id,
                     } => Self::perform_delete(&service_name, &key_id)
-                        .map(|_| KeychainResponse::Deleted),
+                        .map(|()| KeychainResponse::Deleted),
                     KeychainRequest::Exists {
                         service_name,
                         key_id,
@@ -159,7 +159,7 @@ impl KeychainServiceManager {
     }
 
     /// List operation (returns error as keychains don't support enumeration)
-    pub fn list(&self, _service_name: String, _pattern: String) -> Result<Vec<String>, KeyError> {
+    pub fn list(_service_name: String, _pattern: String) -> Result<Vec<String>, KeyError> {
         Err(KeyError::Internal(
             "Keychain does not support listing keys".to_string(),
         ))

@@ -1,7 +1,10 @@
 //! FALCON (Fast-Fourier Lattice-based Compact Signatures over NTRU) implementation
 
 use super::super::super::{SignatureAlgorithm, SignatureResult, VerificationResult};
-use super::super::{builder_traits::*, states::*};
+use super::super::{
+    builder_traits::{SignatureKeyPairBuilder, MessageBuilder, SignatureDataBuilder, SignBuilder, AsyncSignatureResult, VerifyBuilder, AsyncVerificationResult},
+    states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey, HasMessage, HasSignature}
+};
 use super::common::BaseSignatureBuilder;
 use crate::{PqCryptoError, Result};
 use pqcrypto_traits::sign::{
@@ -132,13 +135,21 @@ pub type FalconWithSignature = FalconBuilder<HasSignature>;
 // Public key access methods for FALCON HasKeyPair state
 impl FalconBuilder<HasKeyPair> {
     /// Get the public key bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key is not available in the current state.
     pub fn public_key(&self) -> Result<&[u8]> {
         self.public_key
             .as_deref()
             .ok_or_else(|| PqCryptoError::internal("Public key not available in HasKeyPair state"))
     }
 
-    /// Get the secret key bytes  
+    /// Get the secret key bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key is not available in the current state.
     pub fn secret_key(&self) -> Result<&[u8]> {
         self.secret_key
             .as_deref()
@@ -146,6 +157,10 @@ impl FalconBuilder<HasKeyPair> {
     }
 
     /// Get the public key as a vector
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key is not available in the current state.
     pub fn public_key_vec(&self) -> Result<Vec<u8>> {
         self.public_key
             .clone()
@@ -153,6 +168,10 @@ impl FalconBuilder<HasKeyPair> {
     }
 
     /// Get the secret key as a vector
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key is not available in the current state.
     pub fn secret_key_vec(&self) -> Result<Vec<u8>> {
         self.secret_key
             .clone()

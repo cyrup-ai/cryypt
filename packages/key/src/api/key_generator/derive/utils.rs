@@ -10,6 +10,7 @@ use zeroize::Zeroizing;
 
 /// Constant-time key comparison for derived keys
 /// Prevents timing attacks when comparing derived keys
+#[must_use]
 #[inline]
 pub fn constant_time_compare(a: &[u8], b: &[u8]) -> bool {
     use subtle::ConstantTimeEq;
@@ -18,6 +19,13 @@ pub fn constant_time_compare(a: &[u8], b: &[u8]) -> bool {
 
 /// Secure key derivation with automatic parameter selection
 /// Chooses optimal parameters based on available system resources
+/// 
+/// # Errors
+/// 
+/// Returns an error if:
+/// - The key derivation operation fails with the selected algorithm
+/// - Invalid parameters are provided for the chosen KDF
+/// - System resources are insufficient for the operation
 pub async fn derive_key_auto(
     input: &[u8],
     salt: &[u8],
@@ -39,7 +47,7 @@ pub async fn derive_key_auto(
             salt_size: salt.len(),
             output_size,
         },
-        KdfAlgorithm::Pbkdf2Sha256 => KdfConfig {
+        KdfAlgorithm::Pbkdf2Sha256 | KdfAlgorithm::Pbkdf2Sha512 => KdfConfig {
             algorithm,
             iterations: 600_000,
             memory_cost: 0,
@@ -47,23 +55,7 @@ pub async fn derive_key_auto(
             salt_size: salt.len(),
             output_size,
         },
-        KdfAlgorithm::Pbkdf2Sha512 => KdfConfig {
-            algorithm,
-            iterations: 600_000,
-            memory_cost: 0,
-            parallelism: 1,
-            salt_size: salt.len(),
-            output_size,
-        },
-        KdfAlgorithm::HkdfSha256 => KdfConfig {
-            algorithm,
-            iterations: 1,  // HKDF doesn't use iterations
-            memory_cost: 0, // HKDF doesn't use memory cost
-            parallelism: 1, // HKDF doesn't use parallelism
-            salt_size: salt.len(),
-            output_size,
-        },
-        KdfAlgorithm::HkdfSha512 => KdfConfig {
+        KdfAlgorithm::HkdfSha256 | KdfAlgorithm::HkdfSha512 => KdfConfig {
             algorithm,
             iterations: 1,  // HKDF doesn't use iterations
             memory_cost: 0, // HKDF doesn't use memory cost

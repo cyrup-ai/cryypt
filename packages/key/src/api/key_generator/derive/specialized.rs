@@ -21,20 +21,30 @@ pub struct KeyStretcher {
 
 impl KeyStretcher {
     /// Create new key stretcher with specified algorithm
+    #[must_use]
     pub fn new(algorithm: KdfAlgorithm) -> Self {
         Self { algorithm }
     }
 
     /// Create key stretcher optimized for interactive use
+    #[must_use]
     pub fn interactive() -> Self {
         Self::new(KdfAlgorithm::Argon2id)
     }
 
     /// Create key stretcher optimized for server use
+    #[must_use]
     pub fn server() -> Self {
         Self::new(KdfAlgorithm::Argon2id)
     }
     /// Stretch password to cryptographic key
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - The selected algorithm is not supported for password stretching
+    /// - The underlying key derivation operation fails
+    /// - Invalid parameters are provided to the KDF
     pub fn stretch_password(
         &self,
         password: &[u8],
@@ -89,6 +99,7 @@ pub struct FastKeyDerivation {
 
 impl FastKeyDerivation {
     /// Create new fast key derivation context
+    #[must_use]
     pub fn new(algorithm: KdfAlgorithm, max_output_size: usize, max_salt_size: usize) -> Self {
         Self {
             algorithm,
@@ -97,6 +108,14 @@ impl FastKeyDerivation {
         }
     }
     /// Derive key with pre-allocated buffers (zero allocation)
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Output size exceeds the pre-allocated buffer capacity
+    /// - Salt size exceeds the pre-allocated salt buffer capacity
+    /// - PBKDF2 iterations parameter is zero
+    /// - The underlying cryptographic operation fails (HKDF expansion, Argon2 hashing)
     pub fn derive_fast(
         &mut self,
         input: &[u8],

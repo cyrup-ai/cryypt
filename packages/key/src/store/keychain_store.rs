@@ -113,7 +113,7 @@ impl KeyEnumeration for KeychainStore {
 
         tokio::spawn(async move {
             let result = match get_keychain_service().await {
-                Ok(service) => service.list(service_name, namespace_pattern),
+                Ok(_service) => super::keychain_service::KeychainServiceManager::list(service_name, namespace_pattern),
                 Err(e) => Err(e),
             };
             let _ = tx.send(result);

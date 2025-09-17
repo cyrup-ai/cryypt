@@ -42,6 +42,7 @@ pub struct Cryypt;
 
 impl Cryypt {
     /// Master builder for cipher operations - README.md pattern
+    #[must_use]
     pub fn cipher() -> CipherMasterBuilder {
         CipherMasterBuilder
     }
@@ -52,11 +53,13 @@ pub struct CipherMasterBuilder;
 
 impl CipherMasterBuilder {
     /// Use AES-256-GCM encryption - README.md pattern
+    #[must_use]
     pub fn aes(self) -> AesBuilder {
         AesBuilder::new()
     }
 
     /// Use ChaCha20-Poly1305 encryption - README.md pattern
+    #[must_use]
     pub fn chacha20(self) -> ChaChaBuilder {
         ChaChaBuilder::new()
     }

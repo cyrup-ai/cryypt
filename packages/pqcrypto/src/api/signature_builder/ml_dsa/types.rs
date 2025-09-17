@@ -1,6 +1,6 @@
 //! ML-DSA type definitions and aliases
 
-use super::super::super::states::*;
+use super::super::super::states::{HasKeyPair, HasSecretKey, HasPublicKey, HasMessage, HasSignature};
 use crate::algorithm::SignatureAlgorithm;
 use std::marker::PhantomData;
 

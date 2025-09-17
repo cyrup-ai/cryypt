@@ -36,13 +36,14 @@ impl FileKeyStore {
 
     /// Derive a file path from namespace and version
     pub(super) fn key_path(&self, namespace: &str, version: u32) -> PathBuf {
-        let safe_id = format!("{}_{}", namespace.replace(['/', ':'], "_"), version);
-        self.base_path.join(format!("{}.key", safe_id))
+        let safe_id = format!("{}_{version}", namespace.replace(['/', ':'], "_"));
+        self.base_path.join(format!("{safe_id}.key"))
     }
 }
 
 impl FileKeyStoreBuilder {
     /// Set the master key and build the store
+    #[must_use]
     pub fn with_master_key(self, master_key: [u8; 32]) -> FileKeyStore {
         FileKeyStore {
             base_path: self.base_path,

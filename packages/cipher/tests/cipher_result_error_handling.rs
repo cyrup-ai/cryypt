@@ -1,4 +1,4 @@
-//! Tests for cipher_result Future error handling - ensuring no panics occur
+//! Tests for `cipher_result` Future error handling - ensuring no panics occur
 
 use cryypt_cipher::{CipherResult, CipherResultWithHandler};
 use cryypt_cipher::CipherError;

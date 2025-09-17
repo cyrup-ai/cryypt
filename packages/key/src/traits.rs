@@ -45,7 +45,7 @@ pub trait FullKeyStore:
 {
 }
 
-/// Automatically implement FullKeyStore for types that implement all components
+/// Automatically implement `FullKeyStore` for types that implement all components
 impl<T> FullKeyStore for T where
     T: KeyStorage + KeyRetrieval + KeyImport + KeyGeneration + KeyEnumeration
 {

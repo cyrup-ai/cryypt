@@ -2,7 +2,7 @@
 
 /// Trait to convert numeric values to bits
 pub trait Bits {
-    /// Convert this value to a BitSize representing the number of bits
+    /// Convert this value to a `BitSize` representing the number of bits
     fn bits(self) -> BitSize;
 }
 
@@ -15,6 +15,7 @@ pub struct BitSize {
 
 impl BitSize {
     /// Convert to bytes
+    #[must_use]
     pub fn bytes(&self) -> usize {
         self.bits / 8
     }
@@ -23,7 +24,7 @@ impl BitSize {
 impl Bits for i32 {
     fn bits(self) -> BitSize {
         BitSize {
-            bits: self as usize,
+            bits: usize::try_from(self.max(0)).unwrap_or(0),
         }
     }
 }
@@ -46,7 +47,7 @@ impl Bits for usize {
 impl Bits for i64 {
     fn bits(self) -> BitSize {
         BitSize {
-            bits: self as usize,
+            bits: usize::try_from(self.max(0)).unwrap_or(0),
         }
     }
 }
@@ -54,7 +55,7 @@ impl Bits for i64 {
 impl Bits for u64 {
     fn bits(self) -> BitSize {
         BitSize {
-            bits: self as usize,
+            bits: usize::try_from(self).unwrap_or(usize::MAX),
         }
     }
 }

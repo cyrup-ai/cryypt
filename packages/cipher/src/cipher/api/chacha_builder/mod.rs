@@ -7,22 +7,22 @@ pub mod decrypt;
 pub mod encrypt;
 pub mod stream;
 
-/// Initial ChaCha builder - entry point
+/// Initial `ChaCha` builder - entry point
 pub struct ChaChaBuilder;
 
-/// ChaCha builder with key
+/// `ChaCha` builder with key
 pub struct ChaChaWithKey {
     key: Vec<u8>,
 }
 
-/// ChaCha builder with key and result handler
+/// `ChaCha` builder with key and result handler
 pub struct ChaChaWithKeyAndHandler<F, T> {
     key: Vec<u8>,
     result_handler: F,
     _phantom: std::marker::PhantomData<T>,
 }
 
-/// ChaCha builder with key and chunk handler for streaming
+/// `ChaCha` builder with key and chunk handler for streaming
 pub struct ChaChaWithKeyAndChunkHandler<F> {
     key: Vec<u8>,
     chunk_handler: F,
@@ -35,7 +35,8 @@ impl Default for ChaChaBuilder {
 }
 
 impl ChaChaBuilder {
-    /// Create new ChaCha builder
+    /// Create new `ChaCha` builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
@@ -47,12 +48,13 @@ impl ChaChaBuilder {
 }
 
 impl ChaChaWithKey {
-    /// Create ChaCha builder with key
+    /// Create `ChaCha` builder with key
+    #[must_use]
     pub fn new(key: Vec<u8>) -> Self {
         Self { key }
     }
 
-    /// Internal implementation for on_result - called by macro
+    /// Internal implementation for `on_result` - called by macro
     fn on_result_impl<F>(self, handler: F) -> ChaChaWithKeyAndHandler<F, Vec<u8>>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -64,7 +66,7 @@ impl ChaChaWithKey {
         }
     }
 
-    /// Internal implementation for on_chunk - called by macro
+    /// Internal implementation for `on_chunk` - called by macro
     fn on_chunk_impl<F>(self, handler: F) -> ChaChaWithKeyAndChunkHandler<F>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -77,7 +79,7 @@ impl ChaChaWithKey {
 }
 
 impl ChaChaWithKey {
-    /// Add on_result handler - transforms pattern matching internally  
+    /// Add `on_result` handler - transforms pattern matching internally  
     pub fn on_result<F>(self, handler: F) -> ChaChaWithKeyAndHandler<F, Vec<u8>>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -85,7 +87,7 @@ impl ChaChaWithKey {
         self.on_result_impl(handler)
     }
 
-    /// Add on_chunk handler - transforms pattern matching internally
+    /// Add `on_chunk` handler - transforms pattern matching internally
     pub fn on_chunk<F>(self, handler: F) -> ChaChaWithKeyAndChunkHandler<F>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
@@ -151,6 +153,8 @@ where
 
 // Internal encryption function with chunked async processing
 async fn chacha_encrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+    const CHUNK_SIZE: usize = 8192;
+    
     use chacha20poly1305::{
         ChaCha20Poly1305, KeyInit,
         aead::{Aead, generic_array::GenericArray},
@@ -165,7 +169,6 @@ async fn chacha_encrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
     }
 
     // Process data in chunks to avoid blocking
-    const CHUNK_SIZE: usize = 8192;
     if data.len() > CHUNK_SIZE {
         tokio::task::yield_now().await;
     }
@@ -196,6 +199,8 @@ async fn chacha_encrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
 
 // Internal decryption function with chunked async processing
 async fn chacha_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+    const CHUNK_SIZE: usize = 8192;
+    
     use chacha20poly1305::{
         ChaCha20Poly1305, KeyInit,
         aead::{Aead, generic_array::GenericArray},
@@ -215,7 +220,6 @@ async fn chacha_decrypt(key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
     }
 
     // Process data in chunks to avoid blocking
-    const CHUNK_SIZE: usize = 8192;
     if ciphertext.len() > CHUNK_SIZE {
         tokio::task::yield_now().await;
     }
@@ -255,11 +259,11 @@ where
         futures::stream::unfold(
             (data, key, handler, 0),
             move |(data, key, handler, offset)| async move {
+                const CHUNK_SIZE: usize = 1024;
+                
                 if offset >= data.len() {
                     return None;
                 }
-
-                const CHUNK_SIZE: usize = 1024;
                 let end = std::cmp::min(offset + CHUNK_SIZE, data.len());
                 let chunk = data[offset..end].to_vec();
 
@@ -284,11 +288,11 @@ where
         futures::stream::unfold(
             (ciphertext, key, handler, 0),
             move |(ciphertext, key, handler, offset)| async move {
+                const CHUNK_SIZE: usize = 1024;
+                
                 if offset >= ciphertext.len() {
                     return None;
                 }
-
-                const CHUNK_SIZE: usize = 1024;
                 let end = std::cmp::min(offset + CHUNK_SIZE, ciphertext.len());
                 let chunk = ciphertext[offset..end].to_vec();
 

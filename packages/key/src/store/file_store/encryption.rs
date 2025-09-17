@@ -66,7 +66,7 @@ pub(super) fn decrypt_key_material(
 
 /// Generate cryptographically secure key material of the specified size
 #[allow(dead_code)] // Utility function for future use
-pub(super) fn generate_key_material(size_bytes: usize) -> Result<(Vec<u8>, Vec<u8>)> {
+pub(super) fn generate_key_material(size_bytes: usize) -> (Vec<u8>, Vec<u8>) {
     use rand::RngCore;
 
     // Generate random key material
@@ -77,5 +77,5 @@ pub(super) fn generate_key_material(size_bytes: usize) -> Result<(Vec<u8>, Vec<u
     let mut nonce = vec![0u8; 12];
     rand::rng().fill_bytes(&mut nonce);
 
-    Ok((key_material.to_vec(), nonce))
+    (key_material.to_vec(), nonce)
 }

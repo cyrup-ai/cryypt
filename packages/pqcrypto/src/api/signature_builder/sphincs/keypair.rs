@@ -1,7 +1,10 @@
 //! SPHINCS+ key pair generation and management
 
 use super::super::super::super::SignatureAlgorithm;
-use super::super::super::{builder_traits::*, states::*};
+use super::super::super::{
+    builder_traits::SignatureKeyPairBuilder,
+    states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey}
+};
 use super::core::SphincsBuilder;
 use crate::{PqCryptoError, Result};
 use pqcrypto_traits::sign::{PublicKey as PqPublicKey, SecretKey as PqSecretKey};

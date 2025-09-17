@@ -1,6 +1,6 @@
 //! SPHINCS+ type aliases and key access methods
 
-use super::super::super::states::*;
+use super::super::super::states::{HasKeyPair, HasSecretKey, HasPublicKey, HasMessage, HasSignature};
 use super::core::SphincsBuilder;
 use crate::{PqCryptoError, Result};
 
@@ -19,13 +19,21 @@ pub type SphincsWithSignature = SphincsBuilder<HasSignature>;
 // Public key access methods for SPHINCS+ HasKeyPair state
 impl SphincsBuilder<HasKeyPair> {
     /// Get the public key bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key is not available in the current state.
     pub fn public_key(&self) -> Result<&[u8]> {
         self.public_key
             .as_deref()
             .ok_or_else(|| PqCryptoError::internal("Public key not available in HasKeyPair state"))
     }
 
-    /// Get the secret key bytes  
+    /// Get the secret key bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key is not available in the current state.
     pub fn secret_key(&self) -> Result<&[u8]> {
         self.secret_key
             .as_deref()
@@ -33,6 +41,10 @@ impl SphincsBuilder<HasKeyPair> {
     }
 
     /// Get the public key as a vector
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key is not available in the current state.
     pub fn public_key_vec(&self) -> Result<Vec<u8>> {
         self.public_key
             .clone()
@@ -40,6 +52,10 @@ impl SphincsBuilder<HasKeyPair> {
     }
 
     /// Get the secret key as a vector
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key is not available in the current state.
     pub fn secret_key_vec(&self) -> Result<Vec<u8>> {
         self.secret_key
             .clone()

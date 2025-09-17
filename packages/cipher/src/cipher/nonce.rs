@@ -1,9 +1,9 @@
 //! Cryptographically secure nonce generation with replay protection
 //!
-//! Based on production-tested secure_nonce implementation with:
+//! Based on production-tested `secure_nonce` implementation with:
 //! - Timestamp-based uniqueness guarantees
 //! - HMAC authentication to prevent tampering
-//! - Replay attack protection via DashMap cache
+//! - Replay attack protection via `DashMap` cache
 //! - Proper entropy from OS CSPRNG
 //! - Domain-separated key derivation
 
@@ -37,6 +37,7 @@ pub struct NonceSecretKey(Zeroizing<[u8; 64]>);
 
 impl NonceSecretKey {
     /// Generate a fresh 512-bit master secret
+    #[must_use]
     pub fn generate() -> Self {
         let mut bytes = Zeroizing::new([0u8; 64]);
         rng().fill_bytes(&mut bytes[..]);
@@ -44,6 +45,7 @@ impl NonceSecretKey {
     }
 
     /// Build from existing 64-byte material
+    #[must_use]
     pub fn from_bytes(bytes: [u8; 64]) -> Self {
         Self(Zeroizing::new(bytes))
     }
@@ -65,6 +67,7 @@ impl core::fmt::Debug for Nonce {
 
 impl Nonce {
     /// Convert the nonce to a string representation
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -79,7 +82,7 @@ pub struct ParsedNonce {
     pub random: [u8; RANDOM_BYTES],
 }
 
-/// Configuration for NonceManager
+/// Configuration for `NonceManager`
 #[derive(Clone, Copy, Debug)]
 pub struct NonceConfig {
     /// Max age accepted for a nonce (default 5 minutes)
@@ -128,7 +131,12 @@ pub struct NonceManager {
 }
 
 impl NonceManager {
-    /// Construct a manager from a master SecretKey and optional Config
+    /// Construct a manager from a master `SecretKey` and optional Config
+    /// Construct a manager from a master `SecretKey` and optional Config
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the master key is invalid or configuration is malformed.
     pub fn new(master: &NonceSecretKey, cfg: Option<NonceConfig>) -> crate::error::Result<Self> {
         use crate::error::CipherError;
 
@@ -146,7 +154,12 @@ impl NonceManager {
     }
 
     /// Generate a fresh nonce using the supplied CSPRNG
-    pub async fn generate<'a, R>(&'a self, rng: &'a mut R) -> Result<Nonce>
+    /// Generate a new cryptographically secure nonce
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if random number generation fails or nonce construction fails.
+    pub fn generate<'a, R>(&'a self, rng: &'a mut R) -> Result<Nonce>
     where
         R: RngCore + CryptoRng,
     {
@@ -166,12 +179,22 @@ impl NonceManager {
         Ok(Nonce(encoded))
     }
 
-    /// Convenience wrapper using rand::rng()
-    pub async fn generate_os(&self) -> Result<Nonce> {
-        self.generate(&mut rng()).await
+    /// Convenience wrapper using `rand::rng()`
+    /// Convenience wrapper using `rand::rng()`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if OS random number generation fails or nonce construction fails.
+    pub fn generate_os(&self) -> Result<Nonce> {
+        self.generate(&mut rng())
     }
 
     /// Verify nonce authenticity, freshness and replay
+    /// Verify a nonce string and check for replay attacks
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the nonce is invalid, expired, replayed, or has bad MAC.
     pub fn verify(&self, encoded: &str) -> Result<ParsedNonce> {
         // Strict length check before decode
         if encoded.len() != ENCODED_LEN {
@@ -206,20 +229,21 @@ impl NonceManager {
         }
 
         // 3. Replay cache check
-        use dashmap::mapref::entry::Entry;
+        {
+            use dashmap::mapref::entry::Entry;
         match self.seen.entry(tag_arr) {
             Entry::Occupied(mut o) => {
                 // Tag seen before → replay
                 if is_fresh(*o.get(), self.cfg.ttl) {
                     return Err(NonceError::Replay.into());
-                } else {
-                    // Expired entry; replace timestamp
-                    o.insert(ts);
                 }
+                // Expired entry; replace timestamp
+                o.insert(ts);
             }
             Entry::Vacant(v) => {
                 v.insert(ts);
             }
+        }
         }
 
         Ok(ParsedNonce {
@@ -229,6 +253,11 @@ impl NonceManager {
     }
 
     /// Extract raw nonce bytes for cipher operations (12 bytes for AES-GCM/ChaCha20)
+    /// Extract cipher nonce from validated nonce
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the nonce format is invalid or cannot be processed.
     pub fn extract_cipher_nonce(&self, nonce: &Nonce) -> Result<[u8; 12]> {
         // Verify the nonce first
         let parsed = self.verify(nonce.as_str())?;
@@ -261,7 +290,7 @@ impl NonceManager {
     /// Clear expired entries from replay cache
     pub fn cleanup_expired(&self) {
         let now = unix_time_nanos().unwrap_or(0);
-        let ttl_nanos = self.cfg.ttl.as_nanos() as u64;
+        let ttl_nanos = u64::try_from(self.cfg.ttl.as_nanos()).unwrap_or(u64::MAX);
 
         self.seen
             .retain(|_, &mut ts| now.saturating_sub(ts) <= ttl_nanos);
@@ -285,7 +314,7 @@ fn unix_time_nanos() -> crate::error::Result<u64> {
 fn is_fresh(ts: u64, ttl: Duration) -> bool {
     let now = unix_time_nanos().unwrap_or(0);
     let age = now.saturating_sub(ts);
-    age <= (ttl.as_nanos().min(u64::MAX as u128) as u64)
+    age <= u64::try_from(ttl.as_nanos().min(u128::from(u64::MAX))).unwrap_or(u64::MAX)
 }
 
 /// Simple nonce generator for backward compatibility
@@ -294,6 +323,7 @@ pub struct NonceGenerator;
 impl NonceGenerator {
     /// Generate a simple random nonce without authentication
     /// WARNING: This does not provide replay protection!
+    #[must_use]
     pub fn simple(size: usize) -> Zeroizing<Vec<u8>> {
         let mut nonce = Zeroizing::new(vec![0u8; size]);
         rng().fill_bytes(&mut nonce);

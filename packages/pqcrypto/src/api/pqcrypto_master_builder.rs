@@ -14,16 +14,19 @@ impl Default for PqCryptoMasterBuilder {
 
 impl PqCryptoMasterBuilder {
     /// Create a new `PQCrypto` master builder
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Create Kyber KEM builder
+    #[must_use]
     pub fn kyber(self) -> KyberBuilder<super::kyber_builder::NoSecurityLevel> {
         KyberBuilder::new()
     }
 
     /// Create Dilithium signature builder
+    #[must_use]
     pub fn dilithium(self) -> DilithiumBuilder<super::dilithium_builder::NoSecurityLevel> {
         DilithiumBuilder::new()
     }

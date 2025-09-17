@@ -87,6 +87,7 @@ impl KeyStore for FileKeyStore {
 
 impl FileKeyStore {
     /// Import a key with the given material
+    #[must_use]
     pub fn import_key(&self, key_material: &[u8], namespace: &str, version: u32) -> KeyResult {
         let path = self.key_path(namespace, version);
         let master_key = self.master_key.clone();
@@ -121,6 +122,13 @@ impl FileKeyStore {
     }
 
     /// List all available keys in the store
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - The base directory cannot be read (permissions, doesn't exist, etc.)
+    /// - File system I/O operations fail during directory traversal
+    /// - Key file names cannot be parsed to extract namespace and version
     pub fn list_keys(&self) -> Result<Vec<(String, u32)>, KeyError> {
         use std::fs;
 

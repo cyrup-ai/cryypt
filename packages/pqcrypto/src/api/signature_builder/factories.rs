@@ -1,7 +1,7 @@
 //! Algorithm factory methods for creating specific signature builders
 
-use super::super::states::*;
-use super::core::*;
+use super::super::states::NeedKeyPair;
+use super::core::SignatureBuilderWithHandler;
 use super::{FalconBuilder, MlDsaBuilder, SphincsBuilder};
 use crate::{PqCryptoError, Result, SignatureAlgorithm};
 use std::marker::PhantomData;
@@ -19,8 +19,7 @@ where
             87 | 5 => SignatureAlgorithm::MlDsa87,
             _ => {
                 return Err(PqCryptoError::UnsupportedAlgorithm(format!(
-                    "ML-DSA-{} is not supported. Use 44, 65, or 87",
-                    security_level
+                    "ML-DSA-{security_level} is not supported. Use 44, 65, or 87"
                 )));
             }
         };
@@ -78,8 +77,7 @@ where
             1024 | 5 => SignatureAlgorithm::Falcon1024,
             _ => {
                 return Err(PqCryptoError::UnsupportedAlgorithm(format!(
-                    "FALCON-{} is not supported. Use 512 or 1024",
-                    security_level
+                    "FALCON-{security_level} is not supported. Use 512 or 1024"
                 )));
             }
         };
@@ -129,8 +127,7 @@ where
             "sha256-256s-simple" => SignatureAlgorithm::SphincsShaSha256_256sSimple,
             _ => {
                 return Err(PqCryptoError::UnsupportedAlgorithm(format!(
-                    "SPHINCS+-{} is not supported",
-                    variant
+                    "SPHINCS+-{variant} is not supported"
                 )));
             }
         };

@@ -46,7 +46,7 @@ pub struct SignatureBuilderWithPublicKey {
 }
 
 impl SignatureBuilder {
-    /// Add on_result handler - README.md pattern
+    /// Add `on_result` handler - README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> SignatureBuilderWithHandler<F, T>
     where
         F: FnOnce(crate::Result<(Vec<u8>, Vec<u8>)>) -> T + Send + 'static,
@@ -59,11 +59,13 @@ impl SignatureBuilder {
     }
 
     /// Set security level for signature operations
+    #[must_use]
     pub fn with_security_level(self, _level: u16) -> Self {
         self
     }
 
     /// Set secret key for signing operations
+    #[must_use]
     pub fn with_secret_key(self, _key: Vec<u8>) -> SignatureBuilderWithSecretKey {
         SignatureBuilderWithSecretKey {
             _phantom: std::marker::PhantomData,
@@ -71,6 +73,7 @@ impl SignatureBuilder {
     }
 
     /// Set public key for verification operations
+    #[must_use]
     pub fn with_public_key(self, _key: Vec<u8>) -> SignatureBuilderWithPublicKey {
         SignatureBuilderWithPublicKey {
             _phantom: std::marker::PhantomData,
@@ -78,13 +81,15 @@ impl SignatureBuilder {
     }
 
     /// Set signature for verification operations
+    #[must_use]
     pub fn with_signature(self, _signature: Vec<u8>) -> Self {
         self
     }
 }
 
 impl SignatureBuilderWithSecretKey {
-    /// Add on_result handler for signing - README.md pattern
+    /// Add `on_result` handler for signing - README.md pattern
+    #[allow(clippy::unused_self)] // self consumed for builder pattern state transition
     pub fn on_result<F, T>(self, handler: F) -> SignatureBuilderWithSignHandler<F, T>
     where
         F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,
@@ -103,7 +108,8 @@ impl SignatureBuilderWithPublicKey {
         self
     }
 
-    /// Add on_result handler for verification - README.md pattern
+    /// Add `on_result` handler for verification - README.md pattern
+    #[allow(clippy::unused_self)] // self consumed for builder pattern state transition
     pub fn on_result<F, T>(self, handler: F) -> SignatureBuilderWithVerifyHandler<F, T>
     where
         F: FnOnce(crate::Result<bool>) -> T + Send + 'static,

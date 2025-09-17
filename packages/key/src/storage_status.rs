@@ -37,16 +37,19 @@ pub enum StorageOperationStatus {
 
 impl StorageOperationStatus {
     /// Check if the operation was successful
+    #[must_use]
     pub fn is_success(&self) -> bool {
         matches!(self, StorageOperationStatus::Success)
     }
 
     /// Check if the error indicates a missing key
+    #[must_use]
     pub fn is_key_not_found(&self) -> bool {
         matches!(self, StorageOperationStatus::KeyNotFound { .. })
     }
 
     /// Check if the error indicates a backend problem
+    #[must_use]
     pub fn is_backend_error(&self) -> bool {
         matches!(
             self,
@@ -56,7 +59,8 @@ impl StorageOperationStatus {
         )
     }
 
-    /// Convert status to appropriate KeyError
+    /// Convert status to appropriate `KeyError`
+    #[must_use]
     pub fn to_key_error(&self) -> crate::KeyError {
         match self {
             StorageOperationStatus::Success => {

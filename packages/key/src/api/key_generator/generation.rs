@@ -10,19 +10,16 @@ use crate::traits::KeyStorage;
 
 impl<S: KeyStorage> KeyGeneratorReady<S> {
     /// Get the configured key size in bits
-    #[inline(always)]
     pub const fn key_size_bits(&self) -> u32 {
         self.size_bits
     }
 
     /// Get the configured key size in bytes
-    #[inline(always)]
     pub const fn key_size_bytes(&self) -> usize {
         (self.size_bits / 8) as usize
     }
 
     /// Validate that the key size is cryptographically secure
-    #[inline(always)]
     pub const fn is_secure_key_size(&self) -> bool {
         matches!(self.size_bits, 128 | 192 | 256 | 384 | 512)
     }
@@ -53,9 +50,9 @@ impl<S: KeyStorage> KeyGeneratorReady<S> {
         key_bytes
     }
 
-    /// Add on_result handler - README.md pattern with sexy syntax support
-    /// USERS WRITE: Ok => result, Err(e) => Vec::new() - CRATE PRIVATE macros transform it
-    /// This method signature follows EXACT pattern from AesWithKey.on_result
+    /// Add `on_result` handler - README.md pattern with sexy syntax support
+    /// USERS WRITE: Ok => result, Err(e) => `Vec::new()` - CRATE PRIVATE macros transform it
+    /// This method signature follows EXACT pattern from `AesWithKey.on_result`
     pub fn on_result<F, T>(self, handler: F) -> KeyGeneratorWithHandler<S, F, T>
     where
         F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,

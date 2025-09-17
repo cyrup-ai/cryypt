@@ -4,6 +4,8 @@ use cryypt_cipher::cipher::api::Cipher;
 
 #[tokio::test]
 async fn test_aes_encryption_with_on_result() {
+    use base64::Engine;
+    
     let key = vec![0u8; 32]; // 256-bit key
     let data = b"Hello, World!";
 
@@ -13,7 +15,7 @@ async fn test_aes_encryption_with_on_result() {
         .on_result(|result| match result {
             Ok(result) => result,
             Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
+                log::error!("Cipher operation failed: {e}");
                 Vec::new()
             }
         })
@@ -29,13 +31,14 @@ async fn test_aes_encryption_with_on_result() {
     assert!(!hex.is_empty());
 
     // Test base64 encoding using standard library
-    use base64::Engine;
     let base64 = base64::engine::general_purpose::STANDARD.encode(&encrypted);
     assert!(!base64.is_empty());
 }
 
 #[tokio::test]
 async fn test_chacha_encryption_with_on_result() {
+    use base64::Engine;
+    
     let key = vec![0u8; 32]; // 256-bit key
     let data = b"Hello, ChaCha!";
 
@@ -45,7 +48,7 @@ async fn test_chacha_encryption_with_on_result() {
         .on_result(|result| match result {
             Ok(result) => result,
             Err(e) => {
-                log::error!("Cipher operation failed: {}", e);
+                log::error!("Cipher operation failed: {e}");
                 Vec::new()
             }
         })
@@ -61,7 +64,6 @@ async fn test_chacha_encryption_with_on_result() {
     assert!(!hex.is_empty());
 
     // Test base64 encoding using standard library
-    use base64::Engine;
     let base64 = base64::engine::general_purpose::STANDARD.encode(&encrypted);
     assert!(!base64.is_empty());
 }
@@ -79,7 +81,7 @@ async fn test_error_handling_with_on_result() {
                 Ok(data) => data, // Return Vec<u8> directly - NotResult type
                 Err(e) => {
                     // This should be called due to invalid key size
-                    eprintln!("Expected error caught: {}", e);
+                    eprintln!("Expected error caught: {e}");
                     vec![42, 42, 42] // Return specific error marker
                 }
             }

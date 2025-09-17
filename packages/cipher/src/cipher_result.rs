@@ -21,7 +21,7 @@ pub struct CipherResultWithHandler<F> {
 }
 
 impl CipherResult {
-    /// Create a CipherResult from a receiver (for testing)
+    /// Create a `CipherResult` from a receiver (for testing)
     #[must_use]
     pub fn from_receiver(receiver: oneshot::Receiver<Result<Vec<u8>>>) -> Self {
         Self { 
@@ -30,7 +30,7 @@ impl CipherResult {
         }
     }
 
-    /// Create a CipherResult that's already completed
+    /// Create a `CipherResult` that's already completed
     #[must_use]
     pub fn ready(result: Result<Vec<u8>>) -> Self {
         let (tx, rx) = oneshot::channel();
@@ -41,13 +41,19 @@ impl CipherResult {
         }
     }
 
-    /// Create a CipherResult that yields an error
+    /// Create a `CipherResult` that yields an error
     #[must_use]
     pub fn error(error: CipherError) -> Self {
         Self::ready(Err(error))
     }
 
     /// Add a result handler following README.md pattern
+    /// Attach a result handler to process the cipher operation result
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if the internal receiver has already been consumed. This should not happen
+    /// in normal usage as `on_result` is typically called once on a fresh `CipherResult`.
     #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> CipherResultWithHandler<F>
     where
@@ -73,13 +79,10 @@ impl Future for CipherResult {
         }
 
         // If receiver has been taken, this is an invalid state
-        let receiver = match self.receiver.as_mut() {
-            Some(receiver) => receiver,
-            None => {
-                return Poll::Ready(Err(CipherError::Internal(
-                    "CipherResult receiver already consumed".to_string(),
-                )));
-            }
+        let Some(receiver) = self.receiver.as_mut() else {
+            return Poll::Ready(Err(CipherError::Internal(
+                "CipherResult receiver already consumed".to_string(),
+            )));
         };
 
         match Pin::new(receiver).poll(cx) {

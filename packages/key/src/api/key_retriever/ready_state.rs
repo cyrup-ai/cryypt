@@ -4,7 +4,7 @@ use super::builder_states::{KeyRetrieverReady, KeyRetrieverWithHandler};
 use crate::{SimpleKeyId, traits::KeyStorage};
 
 impl<S: KeyStorage> KeyRetrieverReady<S> {
-    /// Generate secure key identifier matching KeyGenerator pattern
+    /// Generate secure key identifier matching `KeyGenerator` pattern
     #[inline]
     pub(crate) fn generate_key_id(&self, unique_suffix: Option<&str>) -> SimpleKeyId {
         match unique_suffix {
@@ -16,13 +16,11 @@ impl<S: KeyStorage> KeyRetrieverReady<S> {
     }
 
     /// Get the configured namespace
-    #[inline(always)]
     pub fn namespace(&self) -> &str {
         &self.namespace
     }
 
     /// Get the configured version
-    #[inline(always)]
     pub const fn version(&self) -> u32 {
         self.version
     }
@@ -46,9 +44,9 @@ impl<S: KeyStorage> KeyRetrieverReady<S> {
             .await
     }
 
-    /// Add on_result handler - README.md pattern with sexy syntax support
-    /// USERS WRITE: Ok => result, Err(e) => Vec::new() - CRATE PRIVATE macros transform it
-    /// This method signature follows EXACT pattern from AesWithKey.on_result
+    /// Add `on_result` handler - README.md pattern with sexy syntax support
+    /// USERS WRITE: Ok => result, Err(e) => `Vec::new()` - CRATE PRIVATE macros transform it
+    /// This method signature follows EXACT pattern from `AesWithKey.on_result`
     pub fn on_result<F, T>(self, handler: F) -> KeyRetrieverWithHandler<S, F, T>
     where
         F: FnOnce(crate::Result<Vec<u8>>) -> T + Send + 'static,

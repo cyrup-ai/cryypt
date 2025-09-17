@@ -64,7 +64,6 @@ where
     F: Fn(crate::Result<Vec<u8>>) -> Vec<u8> + Send + 'static,
 {
     /// Encrypt data in chunks - returns stream of encrypted chunks
-    #[must_use]
     pub fn encrypt<T: Into<Vec<u8>>>(self, data: T) -> impl futures::Stream<Item = Vec<u8>> {
         use tokio::sync::mpsc;
 
@@ -80,7 +79,7 @@ where
 
             for chunk in data.chunks(CHUNK_SIZE) {
                 // Encrypt each chunk with unique nonce
-                let result = aes_encrypt_chunk(&key, chunk, aad.as_deref()).await;
+                let result = aes_encrypt_chunk(&key, chunk, aad.as_deref());
                 let processed_chunk = handler(result);
 
                 if tx.send(processed_chunk).await.is_err() {
@@ -94,7 +93,7 @@ where
 }
 
 // Chunk-specific encryption function for streaming
-async fn aes_encrypt_chunk(key: &[u8], data: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
+fn aes_encrypt_chunk(key: &[u8], data: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
     use aes_gcm::{
         Aes256Gcm, KeyInit,
         aead::{Aead, generic_array::GenericArray},
@@ -128,10 +127,10 @@ async fn aes_encrypt_chunk(key: &[u8], data: &[u8], aad: Option<&[u8]>) -> Resul
     } else {
         4 + 12 + ciphertext.len()
     };
-    result.extend_from_slice(&(chunk_data_len as u32).to_le_bytes());
+    result.extend_from_slice(&u32::try_from(chunk_data_len).unwrap_or(0).to_le_bytes());
 
     if let Some(aad_data) = aad {
-        result.extend_from_slice(&(aad_data.len() as u32).to_le_bytes());
+        result.extend_from_slice(&u32::try_from(aad_data.len()).unwrap_or(0).to_le_bytes());
         result.extend_from_slice(aad_data);
     } else {
         result.extend_from_slice(&0u32.to_le_bytes());
@@ -155,6 +154,8 @@ pub(super) async fn aes_encrypt_with_aad(
     data: &[u8],
     aad: Option<&[u8]>,
 ) -> Result<Vec<u8>> {
+    const CHUNK_SIZE: usize = 8192;
+    
     use aes_gcm::{
         Aes256Gcm, KeyInit,
         aead::{Aead, generic_array::GenericArray},
@@ -169,7 +170,6 @@ pub(super) async fn aes_encrypt_with_aad(
     }
 
     // Yield for large data processing
-    const CHUNK_SIZE: usize = 8192;
     if data.len() > CHUNK_SIZE {
         tokio::task::yield_now().await;
     }
@@ -192,7 +192,7 @@ pub(super) async fn aes_encrypt_with_aad(
 
     if let Some(aad_data) = aad {
         // Store AAD length (4 bytes) + AAD data
-        result.extend_from_slice(&(aad_data.len() as u32).to_le_bytes());
+        result.extend_from_slice(&u32::try_from(aad_data.len()).unwrap_or(0).to_le_bytes());
         result.extend_from_slice(aad_data);
     } else {
         // No AAD - store 0 length

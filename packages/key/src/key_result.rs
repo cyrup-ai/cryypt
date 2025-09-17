@@ -20,19 +20,21 @@ pub struct KeyResultWithHandler<F> {
 }
 
 impl KeyResult {
-    /// Create a new KeyResult from a oneshot receiver
+    /// Create a new `KeyResult` from a oneshot receiver
     pub(crate) fn new(receiver: oneshot::Receiver<Result<Vec<u8>>>) -> Self {
         Self { receiver }
     }
 
-    /// Create a KeyResult that's already completed
+    /// Create a `KeyResult` that's already completed
+    #[must_use]
     pub fn ready(result: Result<Vec<u8>>) -> Self {
         let (tx, rx) = oneshot::channel();
         let _ = tx.send(result);
         Self { receiver: rx }
     }
 
-    /// Create a KeyResult that yields an error
+    /// Create a `KeyResult` that yields an error
+    #[must_use]
     pub fn error(error: KeyError) -> Self {
         Self::ready(Err(error))
     }

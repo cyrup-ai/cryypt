@@ -51,6 +51,7 @@ impl Default for KyberBuilder<NoSecurityLevel> {
 
 impl KyberBuilder<NoSecurityLevel> {
     /// Create a new Kyber builder
+    #[must_use]
     pub fn new() -> Self {
         Self {
             security_level: NoSecurityLevel,
@@ -58,6 +59,7 @@ impl KyberBuilder<NoSecurityLevel> {
     }
 
     /// Set security level - README.md pattern
+    #[must_use]
     pub fn with_security_level(self, level: SecurityLevel) -> KyberBuilder<HasSecurityLevel> {
         KyberBuilder {
             security_level: HasSecurityLevel(level),

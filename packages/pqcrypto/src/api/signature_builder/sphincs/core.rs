@@ -15,6 +15,7 @@ pub struct SphincsBuilder<State> {
 
 impl<State> SphincsBuilder<State> {
     /// Get the algorithm used by this builder
+    #[must_use]
     pub fn algorithm(&self) -> SignatureAlgorithm {
         self.algorithm
     }

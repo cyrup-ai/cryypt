@@ -16,7 +16,7 @@ pub enum CipherAlgorithm {
     #[serde(rename = "aes256gcm")]
     Aes256Gcm,
 
-    /// ChaCha20-Poly1305 (ChaCha20 stream cipher with Poly1305 MAC)
+    /// ChaCha20-Poly1305 (`ChaCha20` stream cipher with Poly1305 MAC)
     ///
     /// - 256-bit key size
     /// - 96-bit nonce
@@ -43,6 +43,7 @@ pub enum CipherAlgorithm {
 
 impl CipherAlgorithm {
     /// Get the human-readable name of the algorithm
+    #[must_use]
     pub fn name(&self) -> String {
         match self {
             Self::Aes256Gcm => "AES-256-GCM".to_string(),
@@ -53,53 +54,53 @@ impl CipherAlgorithm {
     }
 
     /// Get the key size in bytes required for this algorithm
+    #[must_use]
     pub fn key_size(&self) -> usize {
         match self {
-            Self::Aes256Gcm => 32,        // 256 bits
-            Self::ChaCha20Poly1305 => 32, // 256 bits
             Self::Cascade => 64,          // 2x 256 bits
-            Self::Custom(_) => 32,        // Varies, default to 32
+            Self::Aes256Gcm | Self::ChaCha20Poly1305 | Self::Custom(_) => 32, // 256 bits / varies, default to 32
         }
     }
 
     /// Get the nonce size in bytes required for this algorithm
+    #[must_use]
     pub fn nonce_size(&self) -> usize {
         match self {
-            Self::Aes256Gcm => 12,        // 96 bits
-            Self::ChaCha20Poly1305 => 12, // 96 bits
             Self::Cascade => 24,          // 2x 96 bits
-            Self::Custom(_) => 12,        // Varies, default to 12
+            Self::Aes256Gcm | Self::ChaCha20Poly1305 | Self::Custom(_) => 12, // 96 bits / varies, default to 12
         }
     }
 
     /// Get the authentication tag size in bytes
+    #[must_use]
     pub fn tag_size(&self) -> usize {
         match self {
-            Self::Aes256Gcm => 16,        // 128 bits
-            Self::ChaCha20Poly1305 => 16, // 128 bits
-            Self::Cascade => 16,          // 128 bits (from final layer)
-            Self::Custom(_) => 16,        // Default to 16
+            Self::Aes256Gcm | Self::ChaCha20Poly1305 | Self::Cascade | Self::Custom(_) => 16, // 128 bits for all
         }
     }
 
     /// Check if this algorithm is available
+    #[must_use]
     pub fn is_available(&self) -> bool {
         // All algorithms are available now that features are removed
         true
     }
 
     /// Get all available algorithms
+    #[must_use]
     pub fn available_algorithms() -> Vec<Self> {
         vec![Self::Aes256Gcm, Self::ChaCha20Poly1305, Self::Cascade]
     }
 
     /// Get the recommended algorithm
+    #[must_use]
     pub fn recommended() -> Option<Self> {
         // Prefer cascade for defense in depth
         Some(Self::Cascade)
     }
 
     /// Get all standard algorithm variants (excludes Custom)
+    #[must_use]
     pub fn all_standard() -> &'static [Self] {
         &[Self::Aes256Gcm, Self::ChaCha20Poly1305, Self::Cascade]
     }

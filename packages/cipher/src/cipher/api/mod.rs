@@ -56,6 +56,7 @@ impl Default for CryptoStream {
 
 impl CryptoStream {
     /// Create a new crypto stream
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

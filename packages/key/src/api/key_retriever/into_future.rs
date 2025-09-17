@@ -1,4 +1,4 @@
-//! IntoFuture implementation for async trait support
+//! `IntoFuture` implementation for async trait support
 
 use super::builder_states::KeyRetrieverWithHandler;
 use crate::traits::KeyStorage;

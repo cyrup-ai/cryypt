@@ -19,6 +19,12 @@ pub struct KeyRetrieverBatch<S: KeyStorage + KeyRetrieval + Send + Sync + Clone 
 
 impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverReady<S> {
     /// Create batch retriever for multiple keys with same namespace/version
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - The suffixes list is empty (must retrieve at least one key)
+    /// - The batch count exceeds 1000 keys (security limit)
     #[inline]
     pub fn batch_with_suffixes(
         self,
@@ -45,6 +51,7 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverR
 impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverBatch<S> {
     /// Configure the stream for batch retrieval
     #[inline]
+    #[must_use]
     pub fn with_stream_config(mut self, config: StreamConfig) -> Self {
         self.stream_config = config;
         self
@@ -84,6 +91,13 @@ impl<S: KeyStorage + KeyRetrieval + Send + Sync + Clone + 'static> KeyRetrieverB
     }
 
     /// Retrieve all keys and collect into Vec securely
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Any individual key retrieval fails (storage errors, key not found, etc.)
+    /// - The channel communication fails during batch processing
+    /// - Memory allocation fails for the collected keys
     pub fn retrieve_collect(self) -> Result<Vec<SecureRetrievedKey>, KeyError> {
         let count = self.suffixes.len();
         let mut keys = Vec::with_capacity(count);

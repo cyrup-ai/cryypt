@@ -1,8 +1,8 @@
 //! Handler implementations for signature builder operations
 
 use super::super::builder_traits::{MessageBuilder, SignBuilder, SignatureKeyPairBuilder};
-use super::super::states::*;
-use super::core::*;
+use super::super::states::NeedKeyPair;
+use super::core::{SignatureBuilderWithSignHandler, SignatureBuilderWithVerifyHandler, SignatureBuilderWithHandler};
 use super::ml_dsa::MlDsaBuilder;
 use crate::{PqCryptoError, SignatureAlgorithm};
 use pqcrypto_traits::sign::{DetachedSignature, PublicKey};
@@ -48,17 +48,17 @@ where
     T: Send + 'static,
 {
     /// Verify signature using real ML-DSA cryptography
-    pub async fn verify(self, public_key: &[u8], signature: &[u8], message: &[u8]) -> T {
+    pub fn verify(self, public_key: &[u8], signature: &[u8], message: &[u8]) -> T {
         let handler = self.result_handler;
 
         // Perform real ML-DSA signature verification using production cryptography
-        let result = Self::perform_mldsa_verification(public_key, signature, message).await;
+        let result = Self::perform_mldsa_verification(public_key, signature, message);
         handler(result)
     }
 
     /// Internal ML-DSA verification implementation using real cryptography
     #[inline]
-    async fn perform_mldsa_verification(
+    fn perform_mldsa_verification(
         public_key: &[u8],
         signature: &[u8],
         message: &[u8],
@@ -105,8 +105,7 @@ where
             }
             _ => {
                 return Err(PqCryptoError::UnsupportedAlgorithm(format!(
-                    "Algorithm {:?} not supported for ML-DSA verification",
-                    algorithm
+                    "Algorithm {algorithm:?} not supported for ML-DSA verification"
                 )));
             }
         };

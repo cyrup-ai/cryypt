@@ -6,7 +6,7 @@
 use super::core_types::{SecureKeyBuffer, generate_secure_key_id};
 use crate::traits::KeyStorage;
 
-/// KeyGenerator with all parameters and result handler configured
+/// `KeyGenerator` with all parameters and result handler configured
 /// Enables sexy syntax like Ok => result in closures via CRATE PRIVATE macros
 #[derive(Debug)]
 pub struct KeyGeneratorWithHandler<S: KeyStorage, F, T> {
@@ -26,7 +26,7 @@ where
 {
     /// Generate key - action takes no arguments, follows README.md pattern
     /// USERS USE SEXY SYNTAX Ok => result IN CLOSURES - internal macros handle transformation
-    /// This method follows EXACT pattern from AesWithKeyAndHandler::encrypt
+    /// This method follows EXACT pattern from `AesWithKeyAndHandler::encrypt`
     pub async fn generate(self) -> T {
         let size_bits = self.size_bits;
         let _store = self.store;

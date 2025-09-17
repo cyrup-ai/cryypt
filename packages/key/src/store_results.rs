@@ -1,4 +1,4 @@
-//! Result types for store operations that support on_result pattern
+//! Result types for store operations that support `on_result` pattern
 
 use crate::{KeyError, Result};
 use cryypt_common::NotResult;
@@ -38,7 +38,7 @@ pub struct ExistsResultWithHandler<F> {
 }
 
 impl<F> ExistsResultWithHandler<F> {
-    /// Create a new ExistsResultWithHandler for testing purposes
+    /// Create a new `ExistsResultWithHandler` for testing purposes
     pub fn new(receiver: oneshot::Receiver<Result<bool>>, handler: F) -> Self {
         Self {
             receiver,
@@ -122,7 +122,7 @@ pub struct DeleteResultWithHandler<F> {
 }
 
 impl<F> DeleteResultWithHandler<F> {
-    /// Create a new DeleteResultWithHandler for testing purposes
+    /// Create a new `DeleteResultWithHandler` for testing purposes
     pub fn new(receiver: oneshot::Receiver<Result<()>>, handler: F) -> Self {
         Self {
             receiver,
@@ -204,7 +204,7 @@ pub struct StoreResultWithHandler<F> {
 }
 
 impl<F> StoreResultWithHandler<F> {
-    /// Create a new StoreResultWithHandler for testing purposes
+    /// Create a new `StoreResultWithHandler` for testing purposes
     pub fn new(receiver: oneshot::Receiver<Result<()>>, handler: F) -> Self {
         Self {
             receiver,
@@ -286,7 +286,7 @@ pub struct RetrieveResultWithHandler<F> {
 }
 
 impl<F> RetrieveResultWithHandler<F> {
-    /// Create a new RetrieveResultWithHandler for testing purposes
+    /// Create a new `RetrieveResultWithHandler` for testing purposes
     pub fn new(receiver: oneshot::Receiver<Result<Vec<u8>>>, handler: F) -> Self {
         Self {
             receiver,
@@ -368,7 +368,7 @@ pub struct ListResultWithHandler<F> {
 }
 
 impl<F> ListResultWithHandler<F> {
-    /// Create a new ListResultWithHandler for testing purposes
+    /// Create a new `ListResultWithHandler` for testing purposes
     pub fn new(receiver: oneshot::Receiver<Result<Vec<String>>>, handler: F) -> Self {
         Self {
             receiver,

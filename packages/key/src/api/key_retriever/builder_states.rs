@@ -7,14 +7,14 @@ use crate::traits::KeyStorage;
 #[derive(Debug, Clone, Copy)]
 pub struct KeyRetriever;
 
-/// KeyRetriever with store configured
+/// `KeyRetriever` with store configured
 /// Generic over storage to enable monomorphization optimization
 #[derive(Debug, Clone)]
 pub struct KeyRetrieverWithStore<S: KeyStorage> {
     pub(crate) store: S,
 }
 
-/// KeyRetriever with store and namespace configured
+/// `KeyRetriever` with store and namespace configured
 /// Uses secure string handling for namespace
 #[derive(Debug, Clone)]
 pub struct KeyRetrieverWithStoreAndNamespace<S: KeyStorage> {
@@ -22,7 +22,7 @@ pub struct KeyRetrieverWithStoreAndNamespace<S: KeyStorage> {
     pub(crate) namespace: String,
 }
 
-/// KeyRetriever with all parameters configured - ready to retrieve
+/// `KeyRetriever` with all parameters configured - ready to retrieve
 /// Final builder state with all parameters validated
 #[derive(Debug, Clone)]
 pub struct KeyRetrieverReady<S: KeyStorage> {
@@ -31,7 +31,7 @@ pub struct KeyRetrieverReady<S: KeyStorage> {
     pub(crate) version: u32,
 }
 
-/// KeyRetriever with all parameters and result handler configured
+/// `KeyRetriever` with all parameters and result handler configured
 /// Enables sexy syntax like Ok => result in closures via CRATE PRIVATE macros
 #[derive(Debug)]
 pub struct KeyRetrieverWithHandler<S: KeyStorage, F, T> {

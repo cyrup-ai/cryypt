@@ -1,6 +1,9 @@
 //! ML-DSA key generation and management operations
 
-use super::super::super::{builder_traits::*, states::*};
+use super::super::super::{
+    builder_traits::SignatureKeyPairBuilder,
+    states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey}
+};
 use super::super::common::BaseSignatureBuilder;
 use super::types::MlDsaBuilder;
 use crate::algorithm::SignatureAlgorithm;
@@ -109,13 +112,21 @@ impl SignatureKeyPairBuilder for MlDsaBuilder<NeedKeyPair> {
 // Public key access methods for ML-DSA HasKeyPair state
 impl MlDsaBuilder<HasKeyPair> {
     /// Get the public key bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key is not available in the current state.
     pub fn public_key(&self) -> Result<&[u8]> {
         self.public_key
             .as_deref()
             .ok_or_else(|| PqCryptoError::internal("Public key not available in HasKeyPair state"))
     }
 
-    /// Get the secret key bytes  
+    /// Get the secret key bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key is not available in the current state.
     pub fn secret_key(&self) -> Result<&[u8]> {
         self.secret_key
             .as_deref()
@@ -123,6 +134,10 @@ impl MlDsaBuilder<HasKeyPair> {
     }
 
     /// Get the public key as a vector
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the public key is not available in the current state.
     pub fn public_key_vec(&self) -> Result<Vec<u8>> {
         self.public_key
             .clone()
@@ -130,6 +145,10 @@ impl MlDsaBuilder<HasKeyPair> {
     }
 
     /// Get the secret key as a vector
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the secret key is not available in the current state.
     pub fn secret_key_vec(&self) -> Result<Vec<u8>> {
         self.secret_key
             .clone()

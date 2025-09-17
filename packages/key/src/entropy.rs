@@ -20,6 +20,13 @@ pub struct EntropySource {
 
 impl EntropySource {
     /// Create new entropy source and verify quality
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Hardware entropy quality is below the minimum threshold
+    /// - Entropy verification using NIST SP 800-90B methodology fails
+    /// - System randomness sources are not accessible
     pub fn new() -> Result<Self> {
         let mut source = Self {
             entropy_samples: Vec::new(),
@@ -53,6 +60,12 @@ impl EntropySource {
     }
 
     /// Generate cryptographically secure random bytes
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Entropy quality has not been verified during initialization
+    /// - System randomness sources fail to provide sufficient entropy
     pub fn generate_bytes(&mut self, len: usize) -> Result<Zeroizing<Vec<u8>>> {
         if !self.quality_verified {
             return Err(KeyError::InsufficientEntropy(
@@ -67,33 +80,52 @@ impl EntropySource {
     }
 
     /// Generate IV for AES-GCM (16 bytes)
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Entropy quality has not been verified
+    /// - Underlying byte generation fails
     pub fn generate_aes_iv(&mut self) -> Result<Zeroizing<Vec<u8>>> {
         self.generate_bytes(16)
     }
 
     /// Generate nonce for XChaCha20-Poly1305 (24 bytes)
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Entropy quality has not been verified
+    /// - Underlying byte generation fails
     pub fn generate_xchacha20_nonce(&mut self) -> Result<Zeroizing<Vec<u8>>> {
         self.generate_bytes(24)
     }
 
     /// Generate nonce for ChaCha20-Poly1305 (12 bytes)
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Entropy quality has not been verified
+    /// - Underlying byte generation fails
     pub fn generate_chacha20_nonce(&mut self) -> Result<Zeroizing<Vec<u8>>> {
         self.generate_bytes(12)
     }
 
     /// NIST SP 800-90B entropy estimation using multiple methods
+    #[must_use]
     pub fn estimate_entropy(&self, samples: &[u8]) -> f64 {
         if samples.is_empty() {
             return 0.0;
         }
 
         // Implement NIST SP 800-90B Section 6.3 entropy estimation methods
-        let collision_estimate = self.collision_test(samples);
-        let markov_estimate = self.markov_test(samples);
-        let compression_estimate = self.compression_test(samples);
-        let t_tuple_estimate = self.t_tuple_test(samples);
-        let lrs_estimate = self.lrs_test(samples);
-        let mcv_estimate = self.mcv_test(samples);
+        let collision_estimate = Self::collision_test(samples);
+        let markov_estimate = Self::markov_test(samples);
+        let compression_estimate = Self::compression_test(samples);
+        let t_tuple_estimate = Self::t_tuple_test(samples);
+        let lrs_estimate = Self::lrs_test(samples);
+        let mcv_estimate = Self::mcv_test(samples);
 
         // Return minimum of all estimates as per NIST SP 800-90B
         [
@@ -109,7 +141,7 @@ impl EntropySource {
     }
 
     /// Collision Test - NIST SP 800-90B Section 6.3.1
-    fn collision_test(&self, samples: &[u8]) -> f64 {
+    fn collision_test(samples: &[u8]) -> f64 {
         let mut collisions = 0;
         let mut seen = std::collections::HashSet::new();
 
@@ -131,12 +163,12 @@ impl EntropySource {
     }
 
     /// Markov Test - NIST SP 800-90B Section 6.3.3
-    fn markov_test(&self, samples: &[u8]) -> f64 {
+    fn markov_test(samples: &[u8]) -> f64 {
         if samples.len() < 2 {
             return 0.0;
         }
 
-        let mut transition_counts = [[0u32; 256]; 256];
+        let mut transition_counts = vec![[0u32; 256]; 256].into_boxed_slice();
         let mut state_counts = [0u32; 256];
 
         // Build transition matrix
@@ -159,7 +191,7 @@ impl EntropySource {
                     }
                 }
                 #[allow(clippy::cast_precision_loss)]
-                let state_weight = state_counts[i] as f64 / (samples.len() - 1) as f64;
+                let state_weight = f64::from(state_counts[i]) / (samples.len() - 1) as f64;
                 entropy += state_weight * state_entropy;
             }
         }
@@ -168,9 +200,10 @@ impl EntropySource {
     }
 
     /// Compression Test - NIST SP 800-90B Section 6.3.4
-    fn compression_test(&self, samples: &[u8]) -> f64 {
+    fn compression_test(samples: &[u8]) -> f64 {
         // Use zstd compression ratio as entropy estimate
         let compressed = zstd::encode_all(samples, 1).unwrap_or_else(|_| samples.to_vec());
+        #[allow(clippy::cast_precision_loss)]
         let compression_ratio = compressed.len() as f64 / samples.len() as f64;
 
         // Convert compression ratio to entropy estimate
@@ -178,7 +211,7 @@ impl EntropySource {
     }
 
     /// T-Tuple Test - NIST SP 800-90B Section 6.3.6
-    fn t_tuple_test(&self, samples: &[u8]) -> f64 {
+    fn t_tuple_test(samples: &[u8]) -> f64 {
         // Implement for t=2 (bigrams)
         if samples.len() < 2 {
             return 0.0;
@@ -203,7 +236,7 @@ impl EntropySource {
     }
 
     /// Longest Repeated Substring Test - NIST SP 800-90B Section 6.3.7
-    fn lrs_test(&self, samples: &[u8]) -> f64 {
+    fn lrs_test(samples: &[u8]) -> f64 {
         let n = samples.len();
         if n < 2 {
             return 0.0;
@@ -228,12 +261,14 @@ impl EntropySource {
         }
 
         // Calculate entropy based on longest repeated substring
+        #[allow(clippy::cast_precision_loss)] // Acceptable for entropy calculations with large datasets
         let entropy = (n as f64).log2() - (max_length as f64).log2();
+        #[allow(clippy::cast_precision_loss)] // Acceptable for entropy calculations with large datasets
         (entropy / n as f64 * 8.0).clamp(0.0, 8.0)
     }
 
     /// Multi Most Common Value Test - NIST SP 800-90B Section 6.3.8
-    fn mcv_test(&self, samples: &[u8]) -> f64 {
+    fn mcv_test(samples: &[u8]) -> f64 {
         let mut counts = [0u32; 256];
         for &byte in samples {
             counts[byte as usize] += 1;
@@ -246,7 +281,7 @@ impl EntropySource {
         }
 
         #[allow(clippy::cast_precision_loss)]
-        let p_max = max_count as f64 / samples.len() as f64;
+        let p_max = f64::from(max_count) / samples.len() as f64;
         -p_max.log2()
     }
 }

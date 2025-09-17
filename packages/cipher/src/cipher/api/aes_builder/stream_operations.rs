@@ -21,11 +21,11 @@ where
         futures::stream::unfold(
             (data, key, aad, handler, 0),
             move |(data, key, aad, handler, offset)| async move {
+                const CHUNK_SIZE: usize = 1024;
+                
                 if offset >= data.len() {
                     return None;
                 }
-
-                const CHUNK_SIZE: usize = 1024;
                 let end = std::cmp::min(offset + CHUNK_SIZE, data.len());
                 let chunk = data[offset..end].to_vec();
 
@@ -51,11 +51,11 @@ where
         futures::stream::unfold(
             (ciphertext, key, aad, handler, 0),
             move |(ciphertext, key, aad, handler, offset)| async move {
+                const CHUNK_SIZE: usize = 1024;
+                
                 if offset >= ciphertext.len() {
                     return None;
                 }
-
-                const CHUNK_SIZE: usize = 1024;
                 let end = std::cmp::min(offset + CHUNK_SIZE, ciphertext.len());
                 let chunk = ciphertext[offset..end].to_vec();
 

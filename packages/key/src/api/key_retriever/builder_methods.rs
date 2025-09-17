@@ -1,26 +1,25 @@
 //! Basic builder methods for key retrieval configuration
 
-use super::builder_states::*;
+use super::builder_states::{KeyRetriever, KeyRetrieverWithStore, KeyRetrieverWithStoreAndNamespace, KeyRetrieverReady};
 use crate::traits::KeyStorage;
 
 impl KeyRetriever {
     /// Create a new key retriever
     /// Zero-cost constructor for zero-sized type
-    #[inline(always)]
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
 
     /// Set the key storage backend
     /// Generic constraint enables compile-time optimization
-    #[inline(always)]
     pub fn with_store<S: KeyStorage + 'static>(self, store: S) -> KeyRetrieverWithStore<S> {
         KeyRetrieverWithStore { store }
     }
 }
 
 impl Default for KeyRetriever {
-    #[inline(always)]
+
     fn default() -> Self {
         Self::new()
     }
@@ -59,7 +58,6 @@ impl<S: KeyStorage> KeyRetrieverWithStoreAndNamespace<S> {
     }
 
     /// Get the configured namespace
-    #[inline(always)]
     pub fn namespace(&self) -> &str {
         &self.namespace
     }

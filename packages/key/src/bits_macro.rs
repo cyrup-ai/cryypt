@@ -9,6 +9,7 @@ pub struct BitSize {
 
 impl BitSize {
     /// Convert to bytes
+    #[must_use]
     pub fn to_bytes(&self) -> usize {
         (self.bits / 8) as usize
     }
@@ -16,7 +17,7 @@ impl BitSize {
 
 /// Extension trait for bit conversion
 pub trait Bits {
-    /// Convert to BitSize
+    /// Convert to `BitSize`
     fn bits(self) -> BitSize;
 }
 

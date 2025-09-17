@@ -1,4 +1,4 @@
-//! Tests for store_results Future error handling - ensuring no panics occur
+//! Tests for `store_results` Future error handling - ensuring no panics occur
 
 use cryypt_key::store_results::*;
 use std::future::Future;
@@ -49,7 +49,7 @@ async fn test_exists_result_multiple_polls_after_completion() {
 async fn test_delete_result_multiple_polls_after_completion() {
     let (tx, rx) = oneshot::channel();
     let handler = |result: Result<(), cryypt_key::KeyError>| match result {
-        Ok(_) => "deleted: success".to_string(),
+        Ok(()) => "deleted: success".to_string(),
         Err(e) => format!("error: {e}"),
     };
     
@@ -73,7 +73,7 @@ async fn test_delete_result_multiple_polls_after_completion() {
 async fn test_store_result_multiple_polls_after_completion() {
     let (tx, rx) = oneshot::channel();
     let handler = |result: Result<(), cryypt_key::KeyError>| match result {
-        Ok(_) => "stored: success".to_string(),
+        Ok(()) => "stored: success".to_string(),
         Err(e) => format!("error: {e}"),
     };
     

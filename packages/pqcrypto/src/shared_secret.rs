@@ -22,42 +22,53 @@ impl SharedSecret {
     }
 
     /// Get the algorithm used to generate this shared secret
+    #[must_use]
     pub fn algorithm(&self) -> super::KemAlgorithm {
         self.algorithm
     }
 
     /// Get the shared secret as a byte slice
+    #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         &self.secret
     }
 
     /// Convert the shared secret to a vector of bytes
+    #[must_use]
     pub fn to_vec(&self) -> Vec<u8> {
         self.secret.clone()
     }
 
     /// Get the length of the shared secret in bytes
+    #[must_use]
     pub fn len(&self) -> usize {
         self.secret.len()
     }
 
     /// Check if the shared secret is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.secret.is_empty()
     }
 
     /// Convert to a hex string
+    #[must_use]
     pub fn to_hex(&self) -> String {
         hex::encode(&self.secret)
     }
 
     /// Convert to a base64 string
+    #[must_use]
     pub fn to_base64(&self) -> String {
         use base64::Engine;
         base64::engine::general_purpose::STANDARD.encode(&self.secret)
     }
 
     /// Create from hex string
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the hex string is invalid or the decoded size doesn't match the algorithm's expected shared secret size.
     pub fn from_hex(algorithm: super::KemAlgorithm, hex_str: &str) -> crate::Result<Self> {
         let secret = hex::decode(hex_str).map_err(|e| {
             crate::PqCryptoError::InvalidEncryptedData(format!("Invalid hex: {e}"))
@@ -76,6 +87,10 @@ impl SharedSecret {
     }
 
     /// Create from base64 string
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the base64 string is invalid or the decoded size doesn't match the algorithm's expected shared secret size.
     pub fn from_base64(algorithm: super::KemAlgorithm, base64_str: &str) -> crate::Result<Self> {
         use base64::Engine;
         let secret = base64::engine::general_purpose::STANDARD
@@ -115,7 +130,7 @@ impl PartialEq for SharedSecret {
 
 impl Eq for SharedSecret {}
 
-/// Serializable wrapper for SharedSecret
+/// Serializable wrapper for `SharedSecret`
 #[derive(Serialize, Deserialize)]
 struct SharedSecretData {
     algorithm: super::KemAlgorithm,
