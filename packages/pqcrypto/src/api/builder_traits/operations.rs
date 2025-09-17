@@ -81,6 +81,10 @@ pub trait MessageBuilder {
     }
 
     /// Set the message from hex
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the hex string is invalid.
     fn with_message_hex(self, hex: &str) -> Result<Self::Output>
     where
         Self: Sized,
@@ -91,6 +95,10 @@ pub trait MessageBuilder {
     }
 
     /// Set the message from base64
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the base64 string is invalid.
     fn with_message_base64(self, base64: &str) -> Result<Self::Output>
     where
         Self: Sized,
@@ -130,6 +138,10 @@ pub trait SignatureDataBuilder {
     fn with_signature<T: Into<Vec<u8>>>(self, signature: T) -> Self::Output;
 
     /// Set the signature from hex
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the hex string is invalid.
     fn with_signature_hex(self, hex: &str) -> Result<Self::Output>
     where
         Self: Sized,
@@ -141,6 +153,10 @@ pub trait SignatureDataBuilder {
     }
 
     /// Set the signature from base64
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the base64 string is invalid.
     fn with_signature_base64(self, base64: &str) -> Result<Self::Output>
     where
         Self: Sized,

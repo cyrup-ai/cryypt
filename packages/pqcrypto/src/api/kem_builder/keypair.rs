@@ -3,7 +3,7 @@
 //! Contains key generation and key configuration functionality for post-quantum ML-KEM.
 
 use super::super::super::KemAlgorithm;
-use super::super::{builder_traits::*, states::*};
+use super::super::{builder_traits::KemKeyPairBuilder, states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey}};
 use super::MlKemBuilder;
 use crate::Result;
 use pqcrypto_traits::kem::{PublicKey as PqPublicKey, SecretKey as PqSecretKey};

@@ -1,0 +1,3400 @@
+    Checking cryypt_key v0.1.0 (/Volumes/samsung_t9/cryypt/packages/key)
+    Checking cryypt_pqcrypto v0.1.0 (/Volumes/samsung_t9/cryypt/packages/pqcrypto)
+error: variables can be used directly in the `format!` string
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:124:62
+    |
+124 |                       crate::error::KeyError::InvalidKeyFormat(format!(
+    |  ______________________________________________________________^
+125 | |                         "Public key encoding failed: {}",
+126 | |                         e
+127 | |                     ))
+    | |_____________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+    = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::uninlined_format_args)]`
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/pqcrypto/src/api/builder_traits/operations.rs:84:5
+   |
+84 | /     fn with_message_hex(self, hex: &str) -> Result<Self::Output>
+85 | |     where
+86 | |         Self: Sized,
+   | |____________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+   = note: `-D clippy::missing-errors-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_errors_doc)]`
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:181:21
+    |
+181 |                     use rand::rng;
+    |                     ^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+    = note: `-D clippy::items-after-statements` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::items_after_statements)]`
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:182:21
+    |
+182 |                     use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:182:38
+    |
+182 |                     use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
+    |                                      ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:182:59
+    |
+182 |                     use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
+    |                                                           ^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:183:21
+    |
+183 |                     use rsa::{RsaPrivateKey, RsaPublicKey};
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:183:31
+    |
+183 |                     use rsa::{RsaPrivateKey, RsaPublicKey};
+    |                               ^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:183:46
+    |
+183 |                     use rsa::{RsaPrivateKey, RsaPublicKey};
+    |                                              ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/pqcrypto/src/api/builder_traits/operations.rs:94:5
+   |
+94 | /     fn with_message_base64(self, base64: &str) -> Result<Self::Output>
+95 | |     where
+96 | |         Self: Sized,
+   | |____________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: variables can be used directly in the `format!` string
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:188:67
+    |
+188 |   ...                   crate::error::KeyError::KeyGeneration(format!(
+    |  _____________________________________________________________^
+189 | | ...                       "RSA key generation failed: {}",
+190 | | ...                       e
+191 | | ...                   ))
+    | |_______________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: variables can be used directly in the `format!` string
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:200:70
+    |
+200 |   ...                   crate::error::KeyError::InvalidKeyFormat(format!(
+    |  ________________________________________________________________^
+201 | | ...                       "Private key encoding failed: {}",
+202 | | ...                       e
+203 | | ...                   ))
+    | |_______________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: variables can be used directly in the `format!` string
+   --> packages/key/src/api/algorithm_builders/rsa_builder.rs:211:70
+    |
+211 |   ...                   crate::error::KeyError::InvalidKeyFormat(format!(
+    |  ________________________________________________________________^
+212 | | ...                       "Public key encoding failed: {}",
+213 | | ...                       e
+214 | | ...                   ))
+    | |_______________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/builder_traits/operations.rs:133:5
+    |
+133 | /     fn with_signature_hex(self, hex: &str) -> Result<Self::Output>
+134 | |     where
+135 | |         Self: Sized,
+    | |____________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/builder_traits/operations.rs:144:5
+    |
+144 | /     fn with_signature_base64(self, base64: &str) -> Result<Self::Output>
+145 | |     where
+146 | |         Self: Sized,
+    | |____________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_builder.rs:64:12
+   |
+64 |     pub fn new(size_bits: u32) -> Self {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+   = note: `-D clippy::must-use-candidate` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::must_use_candidate)]`
+help: add the attribute
+   |
+64 ~     #[must_use] 
+65 ~     pub fn new(size_bits: u32) -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/dilithium_builder.rs:53:12
+   |
+53 |     pub fn new() -> Self {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+   = note: `-D clippy::must-use-candidate` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::must_use_candidate)]`
+help: add the attribute
+   |
+53 ~     #[must_use] 
+54 ~     pub fn new() -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_builder.rs:90:12
+   |
+90 |     pub fn version(self, version: u32) -> KeyBuilderReady {
+   |            ^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+90 ~     #[must_use] 
+91 ~     pub fn version(self, version: u32) -> KeyBuilderReady {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/dilithium_builder.rs:60:12
+   |
+60 |     pub fn with_security_level(self, level: SecurityLevel) -> DilithiumBuilder<HasSecurityLevel> {
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+60 ~     #[must_use] 
+61 ~     pub fn with_security_level(self, level: SecurityLevel) -> DilithiumBuilder<HasSecurityLevel> {
+   |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/key/src/api/key_builder.rs:133:12
+    |
+133 |     pub fn generate(self) -> KeyResult {
+    |            ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+133 ~     #[must_use] 
+134 ~     pub fn generate(self) -> KeyResult {
+    |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/key/src/api/key_builder.rs:146:12
+    |
+146 |     pub fn retrieve(self) -> KeyResult {
+    |            ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+146 ~     #[must_use] 
+147 ~     pub fn retrieve(self) -> KeyResult {
+    |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/config.rs:49:12
+   |
+49 |     pub fn high_security() -> Self {
+   |            ^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+49 ~     #[must_use] 
+50 ~     pub fn high_security() -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/config.rs:62:12
+   |
+62 |     pub fn standard() -> Self {
+   |            ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+62 ~     #[must_use] 
+63 ~     pub fn standard() -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/config.rs:75:12
+   |
+75 |     pub fn fast() -> Self {
+   |            ^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+75 ~     #[must_use] 
+76 ~     pub fn fast() -> Self {
+   |
+
+error: item in documentation is missing backticks
+ --> packages/key/src/api/key_generator/derive/core.rs:3:35
+  |
+3 | //! This module provides the main KeyDerivation struct with secure key derivation
+  |                                   ^^^^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+  = note: `-D clippy::doc-markdown` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
+help: try
+  |
+3 - //! This module provides the main KeyDerivation struct with secure key derivation
+3 + //! This module provides the main `KeyDerivation` struct with secure key derivation
+  |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/core.rs:24:12
+   |
+24 |     pub fn new(config: KdfConfig) -> Self {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+24 ~     #[must_use] 
+25 ~     pub fn new(config: KdfConfig) -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/core.rs:29:12
+   |
+29 |     pub fn new_default() -> Self {
+   |            ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+29 ~     #[must_use] 
+30 ~     pub fn new_default() -> Self {
+   |
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/kem_builder/mod.rs:6:5
+  |
+6 | use super::states::*;
+  |     ^^^^^^^^^^^^^^^^ help: try: `super::states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey, HasCiphertext}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+  = note: `-D clippy::wildcard-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/core.rs:35:12
+   |
+35 |     pub fn with_salt(mut self, salt: Vec<u8>) -> Self {
+   |            ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+35 ~     #[must_use] 
+36 ~     pub fn with_salt(mut self, salt: Vec<u8>) -> Self {
+   |
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/kem_builder/decapsulation.rs:6:20
+  |
+6 | use super::super::{builder_traits::*, states::*};
+  |                    ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::{CiphertextBuilder, DecapsulateBuilder, AsyncDecapsulationResult}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/kem_builder/decapsulation.rs:6:39
+  |
+6 | use super::super::{builder_traits::*, states::*};
+  |                                       ^^^^^^^^^ help: try: `states::{HasSecretKey, HasCiphertext, HasKeyPair}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> packages/key/src/api/key_generator/derive/core.rs:35:5
+   |
+35 | /     pub fn with_salt(mut self, salt: Vec<u8>) -> Self {
+36 | |         self.salt = Some(Zeroizing::new(salt));
+37 | |         self
+38 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+   = note: `-D clippy::return-self-not-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::return_self_not_must_use)]`
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/core.rs:42:12
+   |
+42 |     pub fn with_random_salt(mut self) -> Self {
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+42 ~     #[must_use] 
+43 ~     pub fn with_random_salt(mut self) -> Self {
+   |
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> packages/key/src/api/key_generator/derive/core.rs:42:5
+   |
+42 | /     pub fn with_random_salt(mut self) -> Self {
+43 | |         use super::super::entropy::generate_secure_bytes;
+44 | |         let salt = generate_secure_bytes(self.config.salt_size);
+45 | |         self.salt = Some(Zeroizing::new(salt));
+46 | |         self
+47 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_generator/derive/core.rs:50:5
+   |
+50 |     pub fn derive_key(&self, input: &[u8]) -> Result<Vec<u8>, KeyError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+   = note: `-D clippy::missing-errors-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_errors_doc)]`
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/kem_builder/encapsulation.rs:6:20
+  |
+6 | use super::super::{builder_traits::*, states::*};
+  |                    ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::{EncapsulateBuilder, AsyncEncapsulationResult}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/kem_builder/encapsulation.rs:6:39
+  |
+6 | use super::super::{builder_traits::*, states::*};
+  |                                       ^^^^^^^^^ help: try: `states::{HasPublicKey, HasKeyPair}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/key/src/api/key_generator/derive/core.rs:132:12
+    |
+132 |     pub fn salt(&self) -> Option<&[u8]> {
+    |            ^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+132 ~     #[must_use] 
+133 ~     pub fn salt(&self) -> Option<&[u8]> {
+    |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/key/src/api/key_generator/derive/core.rs:137:12
+    |
+137 |     pub fn config(&self) -> &KdfConfig {
+    |            ^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+137 ~     #[must_use] 
+138 ~     pub fn config(&self) -> &KdfConfig {
+    |
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/kem_builder/keypair.rs:6:20
+  |
+6 | use super::super::{builder_traits::*, states::*};
+  |                    ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::KemKeyPairBuilder`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/kem_builder/keypair.rs:6:39
+  |
+6 | use super::super::{builder_traits::*, states::*};
+  |                                       ^^^^^^^^^ help: try: `states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/specialized.rs:24:12
+   |
+24 |     pub fn new(algorithm: KdfAlgorithm) -> Self {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+24 ~     #[must_use] 
+25 ~     pub fn new(algorithm: KdfAlgorithm) -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/specialized.rs:29:12
+   |
+29 |     pub fn interactive() -> Self {
+   |            ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+29 ~     #[must_use] 
+30 ~     pub fn interactive() -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/specialized.rs:34:12
+   |
+34 |     pub fn server() -> Self {
+   |            ^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+34 ~     #[must_use] 
+35 ~     pub fn server() -> Self {
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_generator/derive/specialized.rs:38:5
+   |
+38 | /     pub fn stretch_password(
+39 | |         &self,
+40 | |         password: &[u8],
+41 | |         salt: &[u8],
+42 | |         output_length: usize,
+43 | |     ) -> Result<Zeroizing<Vec<u8>>, KeyError> {
+   | |_____________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/specialized.rs:92:12
+   |
+92 |     pub fn new(algorithm: KdfAlgorithm, max_output_size: usize, max_salt_size: usize) -> Self {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+92 ~     #[must_use] 
+93 ~     pub fn new(algorithm: KdfAlgorithm, max_output_size: usize, max_salt_size: usize) -> Self {
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/key/src/api/key_generator/derive/specialized.rs:100:5
+    |
+100 | /     pub fn derive_fast(
+101 | |         &mut self,
+102 | |         input: &[u8],
+103 | |         salt: &[u8],
+104 | |         output_size: usize,
+105 | |         iterations: u32,
+106 | |     ) -> Result<&[u8], KeyError> {
+    | |________________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/kem_builder/mod.rs:49:12
+   |
+49 |     pub fn with_secret_key(self, _key: Vec<u8>) -> KemBuilderWithSecretKey {
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+49 ~     #[must_use] 
+50 ~     pub fn with_secret_key(self, _key: Vec<u8>) -> KemBuilderWithSecretKey {
+   |
+
+error: unused `self` argument
+  --> packages/pqcrypto/src/api/kem_builder/mod.rs:58:28
+   |
+58 |     pub fn on_result<F, T>(self, handler: F) -> KemBuilderWithDecapHandler<F, T>
+   |                            ^^^^
+   |
+   = help: consider refactoring to an associated function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+   = note: `-D clippy::unused-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_self)]`
+
+error: this function could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/derive/utils.rs:14:8
+   |
+14 | pub fn constant_time_compare(a: &[u8], b: &[u8]) -> bool {
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+14 + #[must_use] 
+15 | pub fn constant_time_compare(a: &[u8], b: &[u8]) -> bool {
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_generator/derive/utils.rs:21:1
+   |
+21 | / pub async fn derive_key_auto(
+22 | |     input: &[u8],
+23 | |     salt: &[u8],
+24 | |     output_size: usize,
+25 | | ) -> Result<Zeroizing<Vec<u8>>, KeyError> {
+   | |_________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: these match arms have identical bodies
+  --> packages/key/src/api/key_generator/derive/utils.rs:42:9
+   |
+42 | /         KdfAlgorithm::Pbkdf2Sha256 => KdfConfig {
+43 | |             algorithm,
+44 | |             iterations: 600_000,
+45 | |             memory_cost: 0,
+...  |
+48 | |             output_size,
+49 | |         },
+   | |_________^
+50 | /         KdfAlgorithm::Pbkdf2Sha512 => KdfConfig {
+51 | |             algorithm,
+52 | |             iterations: 600_000,
+53 | |             memory_cost: 0,
+...  |
+56 | |             output_size,
+57 | |         },
+   | |_________^
+   |
+   = help: if this is unintentional make the arms return different values
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
+help: otherwise merge the patterns into a single arm
+   |
+42 ~         KdfAlgorithm::Pbkdf2Sha256 | KdfAlgorithm::Pbkdf2Sha512 => KdfConfig {
+43 |             algorithm,
+...
+49 |         },
+50 ~         KdfAlgorithm::HkdfSha256 => KdfConfig {
+   |
+
+error: these match arms have identical bodies
+  --> packages/key/src/api/key_generator/derive/utils.rs:58:9
+   |
+58 | /         KdfAlgorithm::HkdfSha256 => KdfConfig {
+59 | |             algorithm,
+60 | |             iterations: 1,  // HKDF doesn't use iterations
+61 | |             memory_cost: 0, // HKDF doesn't use memory cost
+...  |
+64 | |             output_size,
+65 | |         },
+   | |_________^
+66 | /         KdfAlgorithm::HkdfSha512 => KdfConfig {
+67 | |             algorithm,
+68 | |             iterations: 1,  // HKDF doesn't use iterations
+69 | |             memory_cost: 0, // HKDF doesn't use memory cost
+...  |
+72 | |             output_size,
+73 | |         },
+   | |_________^
+   |
+   = help: if this is unintentional make the arms return different values
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+help: otherwise merge the patterns into a single arm
+   |
+58 ~         KdfAlgorithm::HkdfSha256 | KdfAlgorithm::HkdfSha512 => KdfConfig {
+59 |             algorithm,
+...
+65 |         },
+66 ~         };
+   |
+
+error: variables can be used directly in the `format!` string
+   --> packages/pqcrypto/src/api/kem_builder/mod.rs:194:64
+    |
+194 |                   return Err(PqCryptoError::UnsupportedAlgorithm(format!(
+    |  ________________________________________________________________^
+195 | |                     "ML-KEM-{} is not supported. Use 512, 768, or 1024",
+196 | |                     security_level
+197 | |                 )));
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+    = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::uninlined_format_args)]`
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/entropy.rs:23:18
+   |
+23 |     pub const fn high_security() -> Self {
+   |                  ^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+23 ~     #[must_use] 
+24 ~     pub const fn high_security() -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/entropy.rs:33:18
+   |
+33 |     pub const fn standard() -> Self {
+   |                  ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+33 ~     #[must_use] 
+34 ~     pub const fn standard() -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/entropy.rs:43:18
+   |
+43 |     pub const fn performance() -> Self {
+   |                  ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+43 ~     #[must_use] 
+44 ~     pub const fn performance() -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/entropy.rs:72:12
+   |
+72 |     pub fn new(config: EntropyConfig) -> Self {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+72 ~     #[must_use] 
+73 ~     pub fn new(config: EntropyConfig) -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/api/kem_builder/mod.rs:280:12
+    |
+280 |     pub fn algorithm(&self) -> KemAlgorithm {
+    |            ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+280 ~     #[must_use] 
+281 ~     pub fn algorithm(&self) -> KemAlgorithm {
+    |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/entropy.rs:77:12
+   |
+77 |     pub fn with_default_config() -> Self {
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+77 ~     #[must_use] 
+78 ~     pub fn with_default_config() -> Self {
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/kem_builder/mod.rs:298:5
+    |
+298 |     pub fn public_key(&self) -> Result<&[u8]> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/entropy.rs:97:12
+   |
+97 |     pub fn next_u64(&self) -> u64 {
+   |            ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+97 ~     #[must_use] 
+98 ~     pub fn next_u64(&self) -> u64 {
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/kem_builder/mod.rs:305:5
+    |
+305 |     pub fn secret_key(&self) -> Result<&[u8]> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/key/src/api/key_generator/entropy.rs:103:12
+    |
+103 |     pub fn next_u32(&self) -> u32 {
+    |            ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+103 ~     #[must_use] 
+104 ~     pub fn next_u32(&self) -> u32 {
+    |
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/kem_builder/mod.rs:312:5
+    |
+312 |     pub fn public_key_vec(&self) -> Result<Vec<u8>> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: unused `self` argument
+   --> packages/key/src/api/key_generator/entropy.rs:109:31
+    |
+109 |     fn verify_entropy_quality(&self, bytes: &[u8]) {
+    |                               ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+    = note: `-D clippy::unused-self` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unused_self)]`
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/kem_builder/mod.rs:319:5
+    |
+319 |     pub fn secret_key_vec(&self) -> Result<Vec<u8>> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/kyber_builder.rs:54:12
+   |
+54 |     pub fn new() -> Self {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+54 ~     #[must_use] 
+55 ~     pub fn new() -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/kyber_builder.rs:61:12
+   |
+61 |     pub fn with_security_level(self, level: SecurityLevel) -> KyberBuilder<HasSecurityLevel> {
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+61 ~     #[must_use] 
+62 ~     pub fn with_security_level(self, level: SecurityLevel) -> KyberBuilder<HasSecurityLevel> {
+   |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/key/src/api/key_generator/entropy.rs:125:12
+    |
+125 |     pub fn config(&self) -> &EntropyConfig {
+    |            ^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+125 ~     #[must_use] 
+126 ~     pub fn config(&self) -> &EntropyConfig {
+    |
+
+error: this function could have a `#[must_use]` attribute
+   --> packages/key/src/api/key_generator/entropy.rs:153:8
+    |
+153 | pub fn generate_secure_bytes(size: usize) -> Vec<u8> {
+    |        ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+153 + #[must_use] 
+154 | pub fn generate_secure_bytes(size: usize) -> Vec<u8> {
+    |
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_generator/symmetric.rs:17:5
+   |
+17 |     pub async fn generate_key(self) -> Result<crate::api::ActualKey, KeyError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: variables can be used directly in the `format!` string
+  --> packages/key/src/api/key_generator/symmetric.rs:51:21
+   |
+51 |                     log::error!("Failed to store generated key: {}", e);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+51 -                     log::error!("Failed to store generated key: {}", e);
+51 +                     log::error!("Failed to store generated key: {e}");
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_generator/symmetric.rs:71:5
+   |
+71 |     pub fn batch(self, count: usize) -> Result<KeyGeneratorBatch<S>, KeyError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> packages/key/src/api/key_generator/symmetric.rs:95:5
+   |
+95 | /     pub fn with_stream_config(mut self, config: StreamConfig) -> Self {
+96 | |         self.stream_config = config;
+97 | |         self
+98 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/pqcrypto_master_builder.rs:17:12
+   |
+17 |     pub fn new() -> Self {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+17 ~     #[must_use] 
+18 ~     pub fn new() -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/pqcrypto_master_builder.rs:22:12
+   |
+22 |     pub fn kyber(self) -> KyberBuilder<super::kyber_builder::NoSecurityLevel> {
+   |            ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+22 ~     #[must_use] 
+23 ~     pub fn kyber(self) -> KyberBuilder<super::kyber_builder::NoSecurityLevel> {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/pqcrypto_master_builder.rs:27:12
+   |
+27 |     pub fn dilithium(self) -> DilithiumBuilder<super::dilithium_builder::NoSecurityLevel> {
+   |            ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+27 ~     #[must_use] 
+28 ~     pub fn dilithium(self) -> DilithiumBuilder<super::dilithium_builder::NoSecurityLevel> {
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/key/src/api/key_generator/symmetric.rs:138:5
+    |
+138 |     pub fn generate_collect(self) -> Result<Vec<Vec<u8>>, KeyError> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: item in documentation is missing backticks
+  --> packages/pqcrypto/src/api/signature_builder/core.rs:49:13
+   |
+49 |     /// Add on_result handler - README.md pattern
+   |             ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
+help: try
+   |
+49 -     /// Add on_result handler - README.md pattern
+49 +     /// Add `on_result` handler - README.md pattern
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/signature_builder/core.rs:62:12
+   |
+62 |     pub fn with_security_level(self, _level: u16) -> Self {
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+62 ~     #[must_use] 
+63 ~     pub fn with_security_level(self, _level: u16) -> Self {
+   |
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> packages/pqcrypto/src/api/signature_builder/core.rs:62:5
+   |
+62 | /     pub fn with_security_level(self, _level: u16) -> Self {
+63 | |         self
+64 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+   = note: `-D clippy::return-self-not-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::return_self_not_must_use)]`
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/signature_builder/core.rs:67:12
+   |
+67 |     pub fn with_secret_key(self, _key: Vec<u8>) -> SignatureBuilderWithSecretKey {
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+67 ~     #[must_use] 
+68 ~     pub fn with_secret_key(self, _key: Vec<u8>) -> SignatureBuilderWithSecretKey {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/signature_builder/core.rs:74:12
+   |
+74 |     pub fn with_public_key(self, _key: Vec<u8>) -> SignatureBuilderWithPublicKey {
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+74 ~     #[must_use] 
+75 ~     pub fn with_public_key(self, _key: Vec<u8>) -> SignatureBuilderWithPublicKey {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/signature_builder/core.rs:81:12
+   |
+81 |     pub fn with_signature(self, _signature: Vec<u8>) -> Self {
+   |            ^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+81 ~     #[must_use] 
+82 ~     pub fn with_signature(self, _signature: Vec<u8>) -> Self {
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_generator/builder_types.rs:13:5
+   |
+13 | /// KeyGenerator with size configured
+   |     ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+13 - /// KeyGenerator with size configured
+13 + /// `KeyGenerator` with size configured
+   |
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> packages/pqcrypto/src/api/signature_builder/core.rs:81:5
+   |
+81 | /     pub fn with_signature(self, _signature: Vec<u8>) -> Self {
+82 | |         self
+83 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: item in documentation is missing backticks
+  --> packages/pqcrypto/src/api/signature_builder/core.rs:87:13
+   |
+87 |     /// Add on_result handler for signing - README.md pattern
+   |             ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+87 -     /// Add on_result handler for signing - README.md pattern
+87 +     /// Add `on_result` handler for signing - README.md pattern
+   |
+
+error: unused `self` argument
+  --> packages/pqcrypto/src/api/signature_builder/core.rs:88:28
+   |
+88 |     pub fn on_result<F, T>(self, handler: F) -> SignatureBuilderWithSignHandler<F, T>
+   |                            ^^^^
+   |
+   = help: consider refactoring to an associated function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_generator/builder_types.rs:20:5
+   |
+20 | /// KeyGenerator with size and store configured
+   |     ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+20 - /// KeyGenerator with size and store configured
+20 + /// `KeyGenerator` with size and store configured
+   |
+
+error: item in documentation is missing backticks
+   --> packages/pqcrypto/src/api/signature_builder/core.rs:106:13
+    |
+106 |     /// Add on_result handler for verification - README.md pattern
+    |             ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+106 -     /// Add on_result handler for verification - README.md pattern
+106 +     /// Add `on_result` handler for verification - README.md pattern
+    |
+
+error: unused `self` argument
+   --> packages/pqcrypto/src/api/signature_builder/core.rs:107:28
+    |
+107 |     pub fn on_result<F, T>(self, handler: F) -> SignatureBuilderWithVerifyHandler<F, T>
+    |                            ^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/factories.rs:3:5
+  |
+3 | use super::super::states::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::states::NeedKeyPair`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/factories.rs:4:5
+  |
+4 | use super::core::*;
+  |     ^^^^^^^^^^^^^^ help: try: `super::core::SignatureBuilderWithHandler`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_generator/builder_types.rs:28:5
+   |
+28 | /// KeyGenerator with size, store, and namespace configured
+   |     ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+28 - /// KeyGenerator with size, store, and namespace configured
+28 + /// `KeyGenerator` with size, store, and namespace configured
+   |
+
+error: variables can be used directly in the `format!` string
+  --> packages/pqcrypto/src/api/signature_builder/factories.rs:21:64
+   |
+21 |                   return Err(PqCryptoError::UnsupportedAlgorithm(format!(
+   |  ________________________________________________________________^
+22 | |                     "ML-DSA-{} is not supported. Use 44, 65, or 87",
+23 | |                     security_level
+24 | |                 )));
+   | |_________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_generator/builder_types.rs:37:5
+   |
+37 | /// KeyGenerator with all parameters configured - ready to generate
+   |     ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+37 - /// KeyGenerator with all parameters configured - ready to generate
+37 + /// `KeyGenerator` with all parameters configured - ready to generate
+   |
+
+error: variables can be used directly in the `format!` string
+  --> packages/pqcrypto/src/api/signature_builder/factories.rs:80:64
+   |
+80 |                   return Err(PqCryptoError::UnsupportedAlgorithm(format!(
+   |  ________________________________________________________________^
+81 | |                     "FALCON-{} is not supported. Use 512 or 1024",
+82 | |                     security_level
+83 | |                 )));
+   | |_________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: you have declared `#[inline(always)]` on `new`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/builder_types.rs:50:5
+   |
+50 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+   = note: `-D clippy::inline-always` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inline_always)]`
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/builder_types.rs:51:18
+   |
+51 |     pub const fn new() -> Self {
+   |                  ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+51 ~     #[must_use] 
+52 ~     pub const fn new() -> Self {
+   |
+
+error: you have declared `#[inline(always)]` on `size`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/builder_types.rs:57:5
+   |
+57 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/builder_types.rs:58:18
+   |
+58 |     pub const fn size(self, bits: crate::bits_macro::BitSize) -> KeyGeneratorWithSize {
+   |                  ^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+58 ~     #[must_use] 
+59 ~     pub const fn size(self, bits: crate::bits_macro::BitSize) -> KeyGeneratorWithSize {
+   |
+
+error: you have declared `#[inline(always)]` on `default`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/builder_types.rs:66:5
+   |
+66 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `with_store`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/builder_types.rs:75:5
+   |
+75 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `key_size_bits`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/builder_types.rs:84:5
+   |
+84 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: variables can be used directly in the `format!` string
+   --> packages/pqcrypto/src/api/signature_builder/factories.rs:131:64
+    |
+131 |                   return Err(PqCryptoError::UnsupportedAlgorithm(format!(
+    |  ________________________________________________________________^
+132 | |                     "SPHINCS+-{} is not supported",
+133 | |                     variant
+134 | |                 )));
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/builder_types.rs:85:18
+   |
+85 |     pub const fn key_size_bits(&self) -> u32 {
+   |                  ^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+85 ~     #[must_use] 
+86 ~     pub const fn key_size_bits(&self) -> u32 {
+   |
+
+error: you have declared `#[inline(always)]` on `key_size_bytes`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/builder_types.rs:90:5
+   |
+90 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/builder_types.rs:91:18
+   |
+91 |     pub const fn key_size_bytes(&self) -> usize {
+   |                  ^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+91 ~     #[must_use] 
+92 ~     pub const fn key_size_bytes(&self) -> usize {
+   |
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/falcon.rs:4:20
+  |
+4 | use super::super::{builder_traits::*, states::*};
+  |                    ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::{SignatureKeyPairBuilder, MessageBuilder, SignatureDataBuilder, SignBuilder, AsyncSignatureResult, VerifyBuilder, AsyncVerificationResult}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: you have declared `#[inline(always)]` on `is_secure_key_size`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/builder_types.rs:96:5
+   |
+96 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/falcon.rs:4:39
+  |
+4 | use super::super::{builder_traits::*, states::*};
+  |                                       ^^^^^^^^^ help: try: `states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey, HasMessage, HasSignature}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/builder_types.rs:97:18
+   |
+97 |     pub const fn is_secure_key_size(&self) -> bool {
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+97 ~     #[must_use] 
+98 ~     pub const fn is_secure_key_size(&self) -> bool {
+   |
+
+error: you have declared `#[inline(always)]` on `key_size_bits`. This is usually a bad idea
+   --> packages/key/src/api/key_generator/builder_types.rs:120:5
+    |
+120 |     #[inline(always)]
+    |     ^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `key_size_bytes`. This is usually a bad idea
+   --> packages/key/src/api/key_generator/builder_types.rs:126:5
+    |
+126 |     #[inline(always)]
+    |     ^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `is_secure_key_size`. This is usually a bad idea
+   --> packages/key/src/api/key_generator/builder_types.rs:132:5
+    |
+132 |     #[inline(always)]
+    |     ^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `key_size_bits`. This is usually a bad idea
+   --> packages/key/src/api/key_generator/builder_types.rs:152:5
+    |
+152 |     #[inline(always)]
+    |     ^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `key_size_bytes`. This is usually a bad idea
+   --> packages/key/src/api/key_generator/builder_types.rs:158:5
+    |
+158 |     #[inline(always)]
+    |     ^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `is_secure_key_size`. This is usually a bad idea
+   --> packages/key/src/api/key_generator/builder_types.rs:164:5
+    |
+164 |     #[inline(always)]
+    |     ^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/signature_builder/falcon.rs:135:5
+    |
+135 |     pub fn public_key(&self) -> Result<&[u8]> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/signature_builder/falcon.rs:142:5
+    |
+142 |     pub fn secret_key(&self) -> Result<&[u8]> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/signature_builder/falcon.rs:149:5
+    |
+149 |     pub fn public_key_vec(&self) -> Result<Vec<u8>> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: variables can be used directly in the `format!` string
+  --> packages/key/src/api/key_generator/core_types.rs:52:18
+   |
+52 |     let id_str = format!("{}:v{}:{}", namespace, version, unique_id);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+52 -     let id_str = format!("{}:v{}:{}", namespace, version, unique_id);
+52 +     let id_str = format!("{namespace}:v{version}:{unique_id}");
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/signature_builder/falcon.rs:156:5
+    |
+156 |     pub fn secret_key_vec(&self) -> Result<Vec<u8>> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: you have declared `#[inline(always)]` on `bounded`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/core_types.rs:67:5
+   |
+67 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/core_types.rs:68:18
+   |
+68 |     pub const fn bounded(capacity: usize) -> Self {
+   |                  ^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+68 ~     #[must_use] 
+69 ~     pub const fn bounded(capacity: usize) -> Self {
+   |
+
+error: you have declared `#[inline(always)]` on `unbounded`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/core_types.rs:77:5
+   |
+77 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/core_types.rs:78:18
+   |
+78 |     pub const fn unbounded() -> Self {
+   |                  ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+78 ~     #[must_use] 
+79 ~     pub const fn unbounded() -> Self {
+   |
+
+error: you have declared `#[inline(always)]` on `default_bounded`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/core_types.rs:86:5
+   |
+86 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_generator/core_types.rs:87:18
+   |
+87 |     pub const fn default_bounded() -> Self {
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+87 ~     #[must_use] 
+88 ~     pub const fn default_bounded() -> Self {
+   |
+
+error: you have declared `#[inline(always)]` on `default`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/core_types.rs:93:5
+   |
+93 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `key_size_bits`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/generation.rs:13:5
+   |
+13 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `key_size_bytes`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/generation.rs:19:5
+   |
+19 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `is_secure_key_size`. This is usually a bad idea
+  --> packages/key/src/api/key_generator/generation.rs:25:5
+   |
+25 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_generator/generation.rs:56:13
+   |
+56 |     /// Add on_result handler - README.md pattern with sexy syntax support
+   |             ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+56 -     /// Add on_result handler - README.md pattern with sexy syntax support
+56 +     /// Add `on_result` handler - README.md pattern with sexy syntax support
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_generator/generation.rs:57:46
+   |
+57 |     /// USERS WRITE: Ok => result, Err(e) => Vec::new() - CRATE PRIVATE macros transform it
+   |                                              ^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+57 -     /// USERS WRITE: Ok => result, Err(e) => Vec::new() - CRATE PRIVATE macros transform it
+57 +     /// USERS WRITE: Ok => result, Err(e) => `Vec::new()` - CRATE PRIVATE macros transform it
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_generator/generation.rs:58:58
+   |
+58 |     /// This method signature follows EXACT pattern from AesWithKey.on_result
+   |                                                          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+58 -     /// This method signature follows EXACT pattern from AesWithKey.on_result
+58 +     /// This method signature follows EXACT pattern from `AesWithKey.on_result`
+   |
+
+error: item in documentation is missing backticks
+ --> packages/key/src/api/key_generator/handler.rs:9:5
+  |
+9 | /// KeyGenerator with all parameters and result handler configured
+  |     ^^^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+  |
+9 - /// KeyGenerator with all parameters and result handler configured
+9 + /// `KeyGenerator` with all parameters and result handler configured
+  |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_generator/handler.rs:29:48
+   |
+29 |     /// This method follows EXACT pattern from AesWithKeyAndHandler::encrypt
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+29 -     /// This method follows EXACT pattern from AesWithKeyAndHandler::encrypt
+29 +     /// This method follows EXACT pattern from `AesWithKeyAndHandler::encrypt`
+   |
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/handlers.rs:4:5
+  |
+4 | use super::super::states::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::states::NeedKeyPair`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/handlers.rs:5:5
+  |
+5 | use super::core::*;
+  |     ^^^^^^^^^^^^^^ help: try: `super::core::{SignatureBuilderWithSignHandler, SignatureBuilderWithVerifyHandler, SignatureBuilderWithHandler}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_retriever/batch.rs:23:5
+   |
+23 | /     pub fn batch_with_suffixes(
+24 | |         self,
+25 | |         suffixes: Vec<String>,
+26 | |     ) -> Result<KeyRetrieverBatch<S>, KeyError> {
+   | |_______________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> packages/key/src/api/key_retriever/batch.rs:48:5
+   |
+48 | /     pub fn with_stream_config(mut self, config: StreamConfig) -> Self {
+49 | |         self.stream_config = config;
+50 | |         self
+51 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_retriever/batch.rs:87:5
+   |
+87 |     pub fn retrieve_collect(self) -> Result<Vec<SecureRetrievedKey>, KeyError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: variables can be used directly in the `format!` string
+   --> packages/pqcrypto/src/api/signature_builder/handlers.rs:107:64
+    |
+107 |                   return Err(PqCryptoError::UnsupportedAlgorithm(format!(
+    |  ________________________________________________________________^
+108 | |                     "Algorithm {:?} not supported for ML-DSA verification",
+109 | |                     algorithm
+110 | |                 )));
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/ml_dsa/builder_methods.rs:3:27
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                           ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::{MessageBuilder, SignatureDataBuilder}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/ml_dsa/builder_methods.rs:3:46
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                                              ^^^^^^^^^ help: try: `states::{HasMessage, HasSignature}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: variables can be used directly in the `format!` string
+  --> packages/key/src/api/key_retriever/store.rs:53:21
+   |
+53 |                     log::error!("Key retrieval failed: {}", e);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+53 -                     log::error!("Key retrieval failed: {}", e);
+53 +                     log::error!("Key retrieval failed: {e}");
+   |
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/ml_dsa/key_management.rs:3:27
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                           ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::SignatureKeyPairBuilder`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/ml_dsa/key_management.rs:3:46
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                                              ^^^^^^^^^ help: try: `states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/store.rs:81:45
+   |
+81 |     /// Retrieve an existing key and return ActualKey for use with on_result! macro
+   |                                             ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+81 -     /// Retrieve an existing key and return ActualKey for use with on_result! macro
+81 +     /// Retrieve an existing key and return `ActualKey` for use with on_result! macro
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/store.rs:81:68
+   |
+81 |     /// Retrieve an existing key and return ActualKey for use with on_result! macro
+   |                                                                    ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+81 -     /// Retrieve an existing key and return ActualKey for use with on_result! macro
+81 +     /// Retrieve an existing key and return ActualKey for use with `on_result`! macro
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_retriever/store.rs:84:5
+   |
+84 |     pub async fn retrieve_key(self) -> Result<crate::api::ActualKey, KeyError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/signature_builder/ml_dsa/key_management.rs:112:5
+    |
+112 |     pub fn public_key(&self) -> Result<&[u8]> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/signature_builder/ml_dsa/key_management.rs:119:5
+    |
+119 |     pub fn secret_key(&self) -> Result<&[u8]> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/signature_builder/ml_dsa/key_management.rs:126:5
+    |
+126 |     pub fn public_key_vec(&self) -> Result<Vec<u8>> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/api/signature_builder/ml_dsa/key_management.rs:133:5
+    |
+133 |     pub fn secret_key_vec(&self) -> Result<Vec<u8>> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/ml_dsa/signing.rs:3:27
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                           ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::{SignBuilder, AsyncSignatureResult}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/ml_dsa/signing.rs:3:46
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                                              ^^^^^^^^^ help: try: `states::HasMessage`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_retriever/version.rs:24:5
+   |
+24 | /     pub fn retrieve_versions(
+25 | |         self,
+26 | |         start_version: u32,
+27 | |         end_version: u32,
+28 | |     ) -> Result<KeyRetrieverVersionRange<S>, KeyError> {
+   | |______________________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/ml_dsa/types.rs:3:5
+  |
+3 | use super::super::super::states::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::super::states::{HasKeyPair, HasSecretKey, HasPublicKey, HasMessage, HasSignature}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/ml_dsa/verification.rs:3:27
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                           ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::{VerifyBuilder, AsyncVerificationResult}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/ml_dsa/verification.rs:3:46
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                                              ^^^^^^^^^ help: try: `states::HasSignature`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> packages/key/src/api/key_retriever/version.rs:53:5
+   |
+53 | /     pub fn with_stream_config(mut self, config: StreamConfig) -> Self {
+54 | |         self.stream_config = config;
+55 | |         self
+56 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/api/key_retriever/version.rs:93:5
+   |
+93 |     pub fn retrieve_collect(self) -> Result<Vec<SecureRetrievedKey>, KeyError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/sphincs/builders.rs:3:27
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                           ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::{MessageBuilder, SignatureDataBuilder}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/key/src/api/key_retriever/builder_methods.rs:3:5
+  |
+3 | use super::builder_states::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::builder_states::{KeyRetriever, KeyRetrieverWithStore, KeyRetrieverWithStoreAndNamespace, KeyRetrieverReady}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+  = note: `-D clippy::wildcard-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/sphincs/builders.rs:3:46
+  |
+3 | use super::super::super::{builder_traits::*, states::*};
+  |                                              ^^^^^^^^^ help: try: `states::{HasMessage, HasSignature}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: you have declared `#[inline(always)]` on `new`. This is usually a bad idea
+ --> packages/key/src/api/key_retriever/builder_methods.rs:9:5
+  |
+9 |     #[inline(always)]
+  |     ^^^^^^^^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_retriever/builder_methods.rs:10:18
+   |
+10 |     pub const fn new() -> Self {
+   |                  ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+10 ~     #[must_use] 
+11 ~     pub const fn new() -> Self {
+   |
+
+error: you have declared `#[inline(always)]` on `with_store`. This is usually a bad idea
+  --> packages/key/src/api/key_retriever/builder_methods.rs:16:5
+   |
+16 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `default`. This is usually a bad idea
+  --> packages/key/src/api/key_retriever/builder_methods.rs:23:5
+   |
+23 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/api/signature_builder/sphincs/core.rs:18:12
+   |
+18 |     pub fn algorithm(&self) -> SignatureAlgorithm {
+   |            ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+18 ~     #[must_use] 
+19 ~     pub fn algorithm(&self) -> SignatureAlgorithm {
+   |
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/sphincs/keypair.rs:4:27
+  |
+4 | use super::super::super::{builder_traits::*, states::*};
+  |                           ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::SignatureKeyPairBuilder`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/sphincs/keypair.rs:4:46
+  |
+4 | use super::super::super::{builder_traits::*, states::*};
+  |                                              ^^^^^^^^^ help: try: `states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: you have declared `#[inline(always)]` on `namespace`. This is usually a bad idea
+  --> packages/key/src/api/key_retriever/builder_methods.rs:62:5
+   |
+62 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/builder_states.rs:10:5
+   |
+10 | /// KeyRetriever with store configured
+   |     ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+10 - /// KeyRetriever with store configured
+10 + /// `KeyRetriever` with store configured
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/builder_states.rs:17:5
+   |
+17 | /// KeyRetriever with store and namespace configured
+   |     ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+17 - /// KeyRetriever with store and namespace configured
+17 + /// `KeyRetriever` with store and namespace configured
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/builder_states.rs:25:5
+   |
+25 | /// KeyRetriever with all parameters configured - ready to retrieve
+   |     ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+25 - /// KeyRetriever with all parameters configured - ready to retrieve
+25 + /// `KeyRetriever` with all parameters configured - ready to retrieve
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/builder_states.rs:34:5
+   |
+34 | /// KeyRetriever with all parameters and result handler configured
+   |     ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+34 - /// KeyRetriever with all parameters and result handler configured
+34 + /// `KeyRetriever` with all parameters and result handler configured
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/handler_execution.rs:16:48
+   |
+16 |     /// This method follows EXACT pattern from AesWithKeyAndHandler::encrypt
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+16 -     /// This method follows EXACT pattern from AesWithKeyAndHandler::encrypt
+16 +     /// This method follows EXACT pattern from `AesWithKeyAndHandler::encrypt`
+   |
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/sphincs/signing.rs:4:27
+  |
+4 | use super::super::super::{builder_traits::*, states::*};
+  |                           ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::{SignBuilder, AsyncSignatureResult}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/sphincs/signing.rs:4:46
+  |
+4 | use super::super::super::{builder_traits::*, states::*};
+  |                                              ^^^^^^^^^ help: try: `states::HasMessage`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/sphincs/types.rs:3:5
+  |
+3 | use super::super::super::states::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::super::states::{HasKeyPair, HasSecretKey, HasPublicKey, HasMessage, HasSignature}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/pqcrypto/src/api/signature_builder/sphincs/types.rs:22:5
+   |
+22 |     pub fn public_key(&self) -> Result<&[u8]> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/pqcrypto/src/api/signature_builder/sphincs/types.rs:29:5
+   |
+29 |     pub fn secret_key(&self) -> Result<&[u8]> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/pqcrypto/src/api/signature_builder/sphincs/types.rs:36:5
+   |
+36 |     pub fn public_key_vec(&self) -> Result<Vec<u8>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/pqcrypto/src/api/signature_builder/sphincs/types.rs:43:5
+   |
+43 |     pub fn secret_key_vec(&self) -> Result<Vec<u8>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/sphincs/verification.rs:4:27
+  |
+4 | use super::super::super::{builder_traits::*, states::*};
+  |                           ^^^^^^^^^^^^^^^^^ help: try: `builder_traits::{VerifyBuilder, AsyncVerificationResult}`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: matching over `()` is more explicit
+  --> packages/key/src/api/key_retriever/handler_execution.rs:90:62
+   |
+90 |                 Self::validate_key_material(&key_bytes).map(|_| key_bytes)
+   |                                                              ^ help: use `()` instead of `_`: `()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ignored_unit_patterns
+   = note: `-D clippy::ignored-unit-patterns` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ignored_unit_patterns)]`
+
+error: usage of wildcard import
+ --> packages/pqcrypto/src/api/signature_builder/sphincs/verification.rs:4:46
+  |
+4 | use super::super::super::{builder_traits::*, states::*};
+  |                                              ^^^^^^^^^ help: try: `states::HasSignature`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
+
+error: variables can be used directly in the `format!` string
+   --> packages/key/src/api/key_retriever/handler_execution.rs:139:47
+    |
+139 |               crate::KeyError::InvalidKeyFormat(format!(
+    |  _______________________________________________^
+140 | |                 "Failed to initialize entropy validation: {}",
+141 | |                 e
+142 | |             ))
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: manual `RangeInclusive::contains` implementation
+   --> packages/key/src/api/key_retriever/handler_execution.rs:166:20
+    |
+166 |             len if len >= 16 && len <= 4096 => {
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `(16..=4096).contains(&len)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_range_contains
+    = note: `-D clippy::manual-range-contains` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::manual_range_contains)]`
+
+error: variables can be used directly in the `format!` string
+   --> packages/key/src/api/key_retriever/handler_execution.rs:170:58
+    |
+170 |               len => Err(crate::KeyError::InvalidKeyFormat(format!(
+    |  __________________________________________________________^
+171 | |                 "Unusual key size: {} bytes (may indicate corrupted key)",
+172 | |                 len
+173 | |             ))),
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: item in documentation is missing backticks
+   --> packages/key/src/api/key_retriever/handler_execution.rs:179:48
+    |
+179 |     /// This method follows EXACT pattern from AesWithKeyAndHandler::encrypt
+    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+179 -     /// This method follows EXACT pattern from AesWithKeyAndHandler::encrypt
+179 +     /// This method follows EXACT pattern from `AesWithKeyAndHandler::encrypt`
+    |
+
+error: item in documentation is missing backticks
+ --> packages/key/src/api/key_retriever/into_future.rs:1:5
+  |
+1 | //! IntoFuture implementation for async trait support
+  |     ^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+  |
+1 - //! IntoFuture implementation for async trait support
+1 + //! `IntoFuture` implementation for async trait support
+  |
+
+error: item in documentation is missing backticks
+ --> packages/key/src/api/key_retriever/ready_state.rs:7:49
+  |
+7 |     /// Generate secure key identifier matching KeyGenerator pattern
+  |                                                 ^^^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+  |
+7 -     /// Generate secure key identifier matching KeyGenerator pattern
+7 +     /// Generate secure key identifier matching `KeyGenerator` pattern
+  |
+
+error: you have declared `#[inline(always)]` on `namespace`. This is usually a bad idea
+  --> packages/key/src/api/key_retriever/ready_state.rs:19:5
+   |
+19 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: you have declared `#[inline(always)]` on `version`. This is usually a bad idea
+  --> packages/key/src/api/key_retriever/ready_state.rs:25:5
+   |
+25 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/ready_state.rs:49:13
+   |
+49 |     /// Add on_result handler - README.md pattern with sexy syntax support
+   |             ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+49 -     /// Add on_result handler - README.md pattern with sexy syntax support
+49 +     /// Add `on_result` handler - README.md pattern with sexy syntax support
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/ready_state.rs:50:46
+   |
+50 |     /// USERS WRITE: Ok => result, Err(e) => Vec::new() - CRATE PRIVATE macros transform it
+   |                                              ^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+50 -     /// USERS WRITE: Ok => result, Err(e) => Vec::new() - CRATE PRIVATE macros transform it
+50 +     /// USERS WRITE: Ok => result, Err(e) => `Vec::new()` - CRATE PRIVATE macros transform it
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/api/key_retriever/ready_state.rs:51:58
+   |
+51 |     /// This method signature follows EXACT pattern from AesWithKey.on_result
+   |                                                          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+51 -     /// This method signature follows EXACT pattern from AesWithKey.on_result
+51 +     /// This method signature follows EXACT pattern from `AesWithKey.on_result`
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_retriever/types.rs:25:12
+   |
+25 |     pub fn id(&self) -> &SimpleKeyId {
+   |            ^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+25 ~     #[must_use] 
+26 ~     pub fn id(&self) -> &SimpleKeyId {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_retriever/types.rs:31:12
+   |
+31 |     pub fn into_key_bytes(self) -> Vec<u8> {
+   |            ^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+31 ~     #[must_use] 
+32 ~     pub fn into_key_bytes(self) -> Vec<u8> {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_retriever/types.rs:37:12
+   |
+37 |     pub fn key_bytes(&self) -> &[u8] {
+   |            ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+37 ~     #[must_use] 
+38 ~     pub fn key_bytes(&self) -> &[u8] {
+   |
+
+error: you have declared `#[inline(always)]` on `bounded`. This is usually a bad idea
+  --> packages/key/src/api/key_retriever/types.rs:51:5
+   |
+51 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_retriever/types.rs:52:18
+   |
+52 |     pub const fn bounded(capacity: usize) -> Self {
+   |                  ^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+52 ~     #[must_use] 
+53 ~     pub const fn bounded(capacity: usize) -> Self {
+   |
+
+error: you have declared `#[inline(always)]` on `unbounded`. This is usually a bad idea
+  --> packages/key/src/api/key_retriever/types.rs:60:5
+   |
+60 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_retriever/types.rs:61:18
+   |
+61 |     pub const fn unbounded() -> Self {
+   |                  ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+61 ~     #[must_use] 
+62 ~     pub const fn unbounded() -> Self {
+   |
+
+error: you have declared `#[inline(always)]` on `default_bounded`. This is usually a bad idea
+  --> packages/key/src/api/key_retriever/types.rs:69:5
+   |
+69 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/api/key_retriever/types.rs:70:18
+   |
+70 |     pub const fn default_bounded() -> Self {
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+70 ~     #[must_use] 
+71 ~     pub const fn default_bounded() -> Self {
+   |
+
+error: you have declared `#[inline(always)]` on `default`. This is usually a bad idea
+  --> packages/key/src/api/key_retriever/types.rs:76:5
+   |
+76 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#inline_always
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/bits_macro.rs:12:12
+   |
+12 |     pub fn to_bytes(&self) -> usize {
+   |            ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+12 ~     #[must_use] 
+13 ~     pub fn to_bytes(&self) -> usize {
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/bits_macro.rs:19:20
+   |
+19 |     /// Convert to BitSize
+   |                    ^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+19 -     /// Convert to BitSize
+19 +     /// Convert to `BitSize`
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/entropy.rs:23:5
+   |
+23 |     pub fn new() -> Result<Self> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/entropy.rs:56:5
+   |
+56 |     pub fn generate_bytes(&mut self, len: usize) -> Result<Zeroizing<Vec<u8>>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/entropy.rs:70:5
+   |
+70 |     pub fn generate_aes_iv(&mut self) -> Result<Zeroizing<Vec<u8>>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/entropy.rs:75:5
+   |
+75 |     pub fn generate_xchacha20_nonce(&mut self) -> Result<Zeroizing<Vec<u8>>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/key/src/entropy.rs:80:5
+   |
+80 |     pub fn generate_chacha20_nonce(&mut self) -> Result<Zeroizing<Vec<u8>>> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/entropy.rs:85:12
+   |
+85 |     pub fn estimate_entropy(&self, samples: &[u8]) -> f64 {
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+85 ~     #[must_use] 
+86 ~     pub fn estimate_entropy(&self, samples: &[u8]) -> f64 {
+   |
+
+error: unused `self` argument
+   --> packages/key/src/entropy.rs:112:23
+    |
+112 |     fn collision_test(&self, samples: &[u8]) -> f64 {
+    |                       ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: unused `self` argument
+   --> packages/key/src/entropy.rs:134:20
+    |
+134 |     fn markov_test(&self, samples: &[u8]) -> f64 {
+    |                    ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: allocating a local array larger than 16384 bytes
+   --> packages/key/src/entropy.rs:139:37
+    |
+139 |         let mut transition_counts = [[0u32; 256]; 256];
+    |                                     ^^^^^^^^^^^^^^^^^^
+    |
+    = help: consider allocating on the heap with `vec![[0u32; 256]; 256].into_boxed_slice()`
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_arrays
+    = note: `-D clippy::large-stack-arrays` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::large_stack_arrays)]`
+
+error: casts from `u32` to `f64` can be expressed infallibly using `From`
+   --> packages/key/src/entropy.rs:162:36
+    |
+162 |                 let state_weight = state_counts[i] as f64 / (samples.len() - 1) as f64;
+    |                                    ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: an `as` cast can become silently lossy if the types change in the future
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_lossless
+    = note: `-D clippy::cast-lossless` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
+help: use `f64::from` instead
+    |
+162 -                 let state_weight = state_counts[i] as f64 / (samples.len() - 1) as f64;
+162 +                 let state_weight = f64::from(state_counts[i]) / (samples.len() - 1) as f64;
+    |
+
+error: unused `self` argument
+   --> packages/key/src/entropy.rs:171:25
+    |
+171 |     fn compression_test(&self, samples: &[u8]) -> f64 {
+    |                         ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+   --> packages/key/src/entropy.rs:174:33
+    |
+174 |         let compression_ratio = compressed.len() as f64 / samples.len() as f64;
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_precision_loss
+    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::cast_precision_loss)]`
+
+error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+   --> packages/key/src/entropy.rs:174:59
+    |
+174 |         let compression_ratio = compressed.len() as f64 / samples.len() as f64;
+    |                                                           ^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_precision_loss
+
+error: unused `self` argument
+   --> packages/key/src/entropy.rs:181:21
+    |
+181 |     fn t_tuple_test(&self, samples: &[u8]) -> f64 {
+    |                     ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: unused `self` argument
+   --> packages/key/src/entropy.rs:206:17
+    |
+206 |     fn lrs_test(&self, samples: &[u8]) -> f64 {
+    |                 ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+   --> packages/key/src/entropy.rs:231:23
+    |
+231 |         let entropy = (n as f64).log2() - (max_length as f64).log2();
+    |                       ^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_precision_loss
+
+error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+   --> packages/key/src/entropy.rs:231:43
+    |
+231 |         let entropy = (n as f64).log2() - (max_length as f64).log2();
+    |                                           ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_precision_loss
+
+error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
+   --> packages/key/src/entropy.rs:232:20
+    |
+232 |         (entropy / n as f64 * 8.0).clamp(0.0, 8.0)
+    |                    ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_precision_loss
+
+error: unused `self` argument
+   --> packages/key/src/entropy.rs:236:17
+    |
+236 |     fn mcv_test(&self, samples: &[u8]) -> f64 {
+    |                 ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: casts from `u32` to `f64` can be expressed infallibly using `From`
+   --> packages/key/src/entropy.rs:249:21
+    |
+249 |         let p_max = max_count as f64 / samples.len() as f64;
+    |                     ^^^^^^^^^^^^^^^^
+    |
+    = help: an `as` cast can become silently lossy if the types change in the future
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_lossless
+help: use `f64::from` instead
+    |
+249 -         let p_max = max_count as f64 / samples.len() as f64;
+249 +         let p_max = f64::from(max_count) / samples.len() as f64;
+    |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:34:12
+   |
+34 |     pub fn algorithm(&self) -> super::KemAlgorithm {
+   |            ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+34 ~     #[must_use] 
+35 ~     pub fn algorithm(&self) -> super::KemAlgorithm {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:39:12
+   |
+39 |     pub fn ciphertext(&self) -> &[u8] {
+   |            ^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+39 ~     #[must_use] 
+40 ~     pub fn ciphertext(&self) -> &[u8] {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:44:12
+   |
+44 |     pub fn ciphertext_vec(&self) -> Vec<u8> {
+   |            ^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+44 ~     #[must_use] 
+45 ~     pub fn ciphertext_vec(&self) -> Vec<u8> {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:49:12
+   |
+49 |     pub fn shared_secret(&self) -> &super::SharedSecret {
+   |            ^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+49 ~     #[must_use] 
+50 ~     pub fn shared_secret(&self) -> &super::SharedSecret {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:54:12
+   |
+54 |     pub fn ciphertext_hex(&self) -> String {
+   |            ^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+54 ~     #[must_use] 
+55 ~     pub fn ciphertext_hex(&self) -> String {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:59:12
+   |
+59 |     pub fn ciphertext_base64(&self) -> String {
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+59 ~     #[must_use] 
+60 ~     pub fn ciphertext_base64(&self) -> String {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:65:12
+   |
+65 |     pub fn ciphertext_size(&self) -> usize {
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+65 ~     #[must_use] 
+66 ~     pub fn ciphertext_size(&self) -> usize {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:89:12
+   |
+89 |     pub fn algorithm(&self) -> super::KemAlgorithm {
+   |            ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+89 ~     #[must_use] 
+90 ~     pub fn algorithm(&self) -> super::KemAlgorithm {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:94:12
+   |
+94 |     pub fn shared_secret(&self) -> &super::SharedSecret {
+   |            ^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+94 ~     #[must_use] 
+95 ~     pub fn shared_secret(&self) -> &super::SharedSecret {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/result.rs:99:12
+   |
+99 |     pub fn into_shared_secret(self) -> super::SharedSecret {
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+99 ~     #[must_use] 
+100~     pub fn into_shared_secret(self) -> super::SharedSecret {
+   |
+
+error: item in documentation is missing backticks
+   --> packages/key/src/error.rs:105:19
+    |
+105 |     /// Create an invalid_key error (legacy compatibility)
+    |                   ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+105 -     /// Create an invalid_key error (legacy compatibility)
+105 +     /// Create an `invalid_key` error (legacy compatibility)
+    |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/key_id.rs:34:22
+   |
+34 |     /// Create a new SimpleKeyId from a string identifier
+   |                      ^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+34 -     /// Create a new SimpleKeyId from a string identifier
+34 +     /// Create a new `SimpleKeyId` from a string identifier
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/key_result.rs:23:22
+   |
+23 |     /// Create a new KeyResult from a oneshot receiver
+   |                      ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+23 -     /// Create a new KeyResult from a oneshot receiver
+23 +     /// Create a new `KeyResult` from a oneshot receiver
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/key_result.rs:28:18
+   |
+28 |     /// Create a KeyResult that's already completed
+   |                  ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+28 -     /// Create a KeyResult that's already completed
+28 +     /// Create a `KeyResult` that's already completed
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/key_result.rs:29:12
+   |
+29 |     pub fn ready(result: Result<Vec<u8>>) -> Self {
+   |            ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+29 ~     #[must_use] 
+30 ~     pub fn ready(result: Result<Vec<u8>>) -> Self {
+   |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/key_result.rs:35:18
+   |
+35 |     /// Create a KeyResult that yields an error
+   |                  ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+35 -     /// Create a KeyResult that yields an error
+35 +     /// Create a `KeyResult` that yields an error
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/key_result.rs:36:12
+   |
+36 |     pub fn error(error: KeyError) -> Self {
+   |            ^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+36 ~     #[must_use] 
+37 ~     pub fn error(error: KeyError) -> Self {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/storage_status.rs:40:12
+   |
+40 |     pub fn is_success(&self) -> bool {
+   |            ^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+40 ~     #[must_use] 
+41 ~     pub fn is_success(&self) -> bool {
+   |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:132:12
+    |
+132 |     pub fn algorithm(&self) -> super::SignatureAlgorithm {
+    |            ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+132 ~     #[must_use] 
+133 ~     pub fn algorithm(&self) -> super::SignatureAlgorithm {
+    |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/storage_status.rs:45:12
+   |
+45 |     pub fn is_key_not_found(&self) -> bool {
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+45 ~     #[must_use] 
+46 ~     pub fn is_key_not_found(&self) -> bool {
+   |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:137:12
+    |
+137 |     pub fn signature(&self) -> &[u8] {
+    |            ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+137 ~     #[must_use] 
+138 ~     pub fn signature(&self) -> &[u8] {
+    |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/storage_status.rs:50:12
+   |
+50 |     pub fn is_backend_error(&self) -> bool {
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+50 ~     #[must_use] 
+51 ~     pub fn is_backend_error(&self) -> bool {
+   |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:142:12
+    |
+142 |     pub fn signature_vec(&self) -> Vec<u8> {
+    |            ^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+142 ~     #[must_use] 
+143 ~     pub fn signature_vec(&self) -> Vec<u8> {
+    |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/storage_status.rs:59:39
+   |
+59 |     /// Convert status to appropriate KeyError
+   |                                       ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+59 -     /// Convert status to appropriate KeyError
+59 +     /// Convert status to appropriate `KeyError`
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/storage_status.rs:60:12
+   |
+60 |     pub fn to_key_error(&self) -> crate::KeyError {
+   |            ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+60 ~     #[must_use] 
+61 ~     pub fn to_key_error(&self) -> crate::KeyError {
+   |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:147:12
+    |
+147 |     pub fn message(&self) -> Option<&[u8]> {
+    |            ^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+147 ~     #[must_use] 
+148 ~     pub fn message(&self) -> Option<&[u8]> {
+    |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:152:12
+    |
+152 |     pub fn signature_hex(&self) -> String {
+    |            ^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+152 ~     #[must_use] 
+153 ~     pub fn signature_hex(&self) -> String {
+    |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:157:12
+    |
+157 |     pub fn signature_base64(&self) -> String {
+    |            ^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+157 ~     #[must_use] 
+158 ~     pub fn signature_base64(&self) -> String {
+    |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:163:12
+    |
+163 |     pub fn signature_size(&self) -> usize {
+    |            ^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+163 ~     #[must_use] 
+164 ~     pub fn signature_size(&self) -> usize {
+    |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:168:12
+    |
+168 |     pub fn is_detached(&self) -> bool {
+    |            ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+168 ~     #[must_use] 
+169 ~     pub fn is_detached(&self) -> bool {
+    |
+
+error: variables can be used directly in the `format!` string
+  --> packages/key/src/store/file_store/core.rs:40:29
+   |
+40 |         self.base_path.join(format!("{}.key", safe_id))
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+40 -         self.base_path.join(format!("{}.key", safe_id))
+40 +         self.base_path.join(format!("{safe_id}.key"))
+   |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:199:12
+    |
+199 |     pub fn algorithm(&self) -> super::SignatureAlgorithm {
+    |            ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+199 ~     #[must_use] 
+200 ~     pub fn algorithm(&self) -> super::SignatureAlgorithm {
+    |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/store/file_store/core.rs:46:12
+   |
+46 |     pub fn with_master_key(self, master_key: [u8; 32]) -> FileKeyStore {
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+46 ~     #[must_use] 
+47 ~     pub fn with_master_key(self, master_key: [u8; 32]) -> FileKeyStore {
+   |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:204:12
+    |
+204 |     pub fn is_valid(&self) -> bool {
+    |            ^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+204 ~     #[must_use] 
+205 ~     pub fn is_valid(&self) -> bool {
+    |
+
+error: this method could have a `#[must_use]` attribute
+   --> packages/pqcrypto/src/result.rs:209:12
+    |
+209 |     pub fn message(&self) -> Option<&[u8]> {
+    |            ^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+    |
+209 ~     #[must_use] 
+210 ~     pub fn message(&self) -> Option<&[u8]> {
+    |
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/pqcrypto/src/result.rs:214:5
+    |
+214 |     pub fn to_result(self) -> Result<Option<Vec<u8>>> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
+   --> packages/pqcrypto/src/result.rs:254:5
+    |
+254 | /     pub fn serialize<S>(
+255 | |         value: &Option<Vec<u8>>,
+    | |                ---------------- help: change this to: `Option<&Vec<u8>>`
+256 | |         serializer: S,
+257 | |     ) -> std::result::Result<S::Ok, S::Error>
+...   |
+268 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ref_option
+    = note: `-D clippy::ref-option` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::ref_option)]`
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/shared_secret.rs:25:12
+   |
+25 |     pub fn algorithm(&self) -> super::KemAlgorithm {
+   |            ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+25 ~     #[must_use] 
+26 ~     pub fn algorithm(&self) -> super::KemAlgorithm {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/shared_secret.rs:30:12
+   |
+30 |     pub fn as_bytes(&self) -> &[u8] {
+   |            ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+30 ~     #[must_use] 
+31 ~     pub fn as_bytes(&self) -> &[u8] {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/shared_secret.rs:35:12
+   |
+35 |     pub fn to_vec(&self) -> Vec<u8> {
+   |            ^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+35 ~     #[must_use] 
+36 ~     pub fn to_vec(&self) -> Vec<u8> {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/shared_secret.rs:40:12
+   |
+40 |     pub fn len(&self) -> usize {
+   |            ^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+40 ~     #[must_use] 
+41 ~     pub fn len(&self) -> usize {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/shared_secret.rs:45:12
+   |
+45 |     pub fn is_empty(&self) -> bool {
+   |            ^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+45 ~     #[must_use] 
+46 ~     pub fn is_empty(&self) -> bool {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/shared_secret.rs:50:12
+   |
+50 |     pub fn to_hex(&self) -> String {
+   |            ^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+50 ~     #[must_use] 
+51 ~     pub fn to_hex(&self) -> String {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/pqcrypto/src/shared_secret.rs:55:12
+   |
+55 |     pub fn to_base64(&self) -> String {
+   |            ^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+55 ~     #[must_use] 
+56 ~     pub fn to_base64(&self) -> String {
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/pqcrypto/src/shared_secret.rs:61:5
+   |
+61 |     pub fn from_hex(algorithm: super::KemAlgorithm, hex_str: &str) -> crate::Result<Self> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> packages/pqcrypto/src/shared_secret.rs:79:5
+   |
+79 |     pub fn from_base64(algorithm: super::KemAlgorithm, base64_str: &str) -> crate::Result<Self> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: item in documentation is missing backticks
+   --> packages/pqcrypto/src/shared_secret.rs:118:30
+    |
+118 | /// Serializable wrapper for SharedSecret
+    |                              ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+118 - /// Serializable wrapper for SharedSecret
+118 + /// Serializable wrapper for `SharedSecret`
+    |
+
+error: unused `async` for function with no await statements
+   --> packages/pqcrypto/src/api/kem_builder/mod.rs:86:5
+    |
+ 86 | /     async fn perform_mlkem_decapsulation(
+ 87 | |         secret_key: &[u8],
+ 88 | |         ciphertext: &[u8],
+ 89 | |     ) -> crate::Result<Vec<u8>> {
+...   |
+122 | |         Ok(shared_secret.as_bytes().to_vec())
+123 | |     }
+    | |_____^
+    |
+    = help: consider removing the `async` from this function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+    = note: `-D clippy::unused-async` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unused_async)]`
+
+error: unused `async` for function with no await statements
+   --> packages/pqcrypto/src/api/signature_builder/handlers.rs:61:5
+    |
+ 61 | /     async fn perform_mldsa_verification(
+ 62 | |         public_key: &[u8],
+ 63 | |         signature: &[u8],
+ 64 | |         message: &[u8],
+...   |
+114 | |         Ok(is_valid)
+115 | |     }
+    | |_____^
+    |
+    = help: consider removing the `async` from this function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+
+error: this function's return value is unnecessarily wrapped by `Result`
+  --> packages/key/src/store/file_store/encryption.rs:69:1
+   |
+69 | pub(super) fn generate_key_material(size_bytes: usize) -> Result<(Vec<u8>, Vec<u8>)> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_wraps
+   = note: `-D clippy::unnecessary-wraps` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_wraps)]`
+help: remove `Result` from the return type...
+   |
+69 - pub(super) fn generate_key_material(size_bytes: usize) -> Result<(Vec<u8>, Vec<u8>)> {
+69 + pub(super) fn generate_key_material(size_bytes: usize) -> (std::vec::Vec<u8>, std::vec::Vec<u8>) {
+   |
+help: ...and then remove the surrounding `Ok()` from returning expressions
+   |
+80 -     Ok((key_material.to_vec(), nonce))
+80 +     (key_material.to_vec(), nonce)
+   |
+
+error: item in documentation is missing backticks
+ --> packages/key/src/store/file_store/legacy_api.rs:1:12
+  |
+1 | //! Legacy KeyStore API Implementation
+  |            ^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+  |
+1 - //! Legacy KeyStore API Implementation
+1 + //! Legacy `KeyStore` API Implementation
+  |
+
+error: item in documentation is missing backticks
+ --> packages/key/src/store/file_store/legacy_api.rs:4:36
+  |
+4 | //! that were part of the original file_store implementation.
+  |                                    ^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+  |
+4 - //! that were part of the original file_store implementation.
+4 + //! that were part of the original `file_store` implementation.
+  |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/store/file_store/legacy_api.rs:16:12
+   |
+16 |     pub fn generate_key_legacy(
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+16 ~     #[must_use] 
+17 ~     pub fn generate_key_legacy(
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/store/file_store/legacy_api.rs:26:12
+   |
+26 |     pub fn retrieve_key_legacy(&self, namespace: &str, version: u32) -> crate::KeyResult {
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+26 ~     #[must_use] 
+27 ~     pub fn retrieve_key_legacy(&self, namespace: &str, version: u32) -> crate::KeyResult {
+   |
+
+error: this method could have a `#[must_use]` attribute
+  --> packages/key/src/store/file_store/storage_traits.rs:90:12
+   |
+90 |     pub fn import_key(&self, key_material: &[u8], namespace: &str, version: u32) -> KeyResult {
+   |            ^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#must_use_candidate
+help: add the attribute
+   |
+90 ~     #[must_use] 
+91 ~     pub fn import_key(&self, key_material: &[u8], namespace: &str, version: u32) -> KeyResult {
+   |
+
+error: docs for function returning `Result` missing `# Errors` section
+   --> packages/key/src/store/file_store/storage_traits.rs:124:5
+    |
+124 |     pub fn list_keys(&self) -> Result<Vec<(String, u32)>, KeyError> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc
+
+error: item in documentation is missing backticks
+ --> packages/key/src/store/keychain_service.rs:1:42
+  |
+1 | //! Channel-based keychain service using async_task patterns
+  |                                          ^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+  |
+1 - //! Channel-based keychain service using async_task patterns
+1 + //! Channel-based keychain service using `async_task` patterns
+  |
+
+error: item in documentation is missing backticks
+ --> packages/key/src/store/keychain_service.rs:3:61
+  |
+3 | //! Replaces problematic Parker-based static singleton with RequestResponsePattern
+  |                                                             ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+  |
+3 - //! Replaces problematic Parker-based static singleton with RequestResponsePattern
+3 + //! Replaces problematic Parker-based static singleton with `RequestResponsePattern`
+  |
+
+error: matching over `()` is more explicit
+  --> packages/key/src/store/keychain_service.rs:59:35
+   |
+59 | ...                   .map(|_| KeychainResponse::Stored)
+   |                             ^ help: use `()` instead of `_`: `()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ignored_unit_patterns
+
+error: matching over `()` is more explicit
+  --> packages/key/src/store/keychain_service.rs:70:31
+   |
+70 |                         .map(|_| KeychainResponse::Deleted),
+   |                               ^ help: use `()` instead of `_`: `()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#ignored_unit_patterns
+
+error: unused `self` argument
+   --> packages/key/src/store/keychain_service.rs:162:17
+    |
+162 |     pub fn list(&self, _service_name: String, _pattern: String) -> Result<Vec<String>, KeyError> {
+    |                 ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: item in documentation is missing backticks
+ --> packages/key/src/store_results.rs:1:52
+  |
+1 | //! Result types for store operations that support on_result pattern
+  |                                                    ^^^^^^^^^
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+  |
+1 - //! Result types for store operations that support on_result pattern
+1 + //! Result types for store operations that support `on_result` pattern
+  |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/store_results.rs:41:22
+   |
+41 |     /// Create a new ExistsResultWithHandler for testing purposes
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+41 -     /// Create a new ExistsResultWithHandler for testing purposes
+41 +     /// Create a new `ExistsResultWithHandler` for testing purposes
+   |
+
+error: item in documentation is missing backticks
+   --> packages/key/src/store_results.rs:125:22
+    |
+125 |     /// Create a new DeleteResultWithHandler for testing purposes
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+125 -     /// Create a new DeleteResultWithHandler for testing purposes
+125 +     /// Create a new `DeleteResultWithHandler` for testing purposes
+    |
+
+error: item in documentation is missing backticks
+   --> packages/key/src/store_results.rs:207:22
+    |
+207 |     /// Create a new StoreResultWithHandler for testing purposes
+    |                      ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+207 -     /// Create a new StoreResultWithHandler for testing purposes
+207 +     /// Create a new `StoreResultWithHandler` for testing purposes
+    |
+
+error: item in documentation is missing backticks
+   --> packages/key/src/store_results.rs:289:22
+    |
+289 |     /// Create a new RetrieveResultWithHandler for testing purposes
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+289 -     /// Create a new RetrieveResultWithHandler for testing purposes
+289 +     /// Create a new `RetrieveResultWithHandler` for testing purposes
+    |
+
+error: item in documentation is missing backticks
+   --> packages/key/src/store_results.rs:371:22
+    |
+371 |     /// Create a new ListResultWithHandler for testing purposes
+    |                      ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+    |
+371 -     /// Create a new ListResultWithHandler for testing purposes
+371 +     /// Create a new `ListResultWithHandler` for testing purposes
+    |
+
+error: item in documentation is missing backticks
+  --> packages/key/src/traits.rs:48:29
+   |
+48 | /// Automatically implement FullKeyStore for types that implement all components
+   |                             ^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+help: try
+   |
+48 - /// Automatically implement FullKeyStore for types that implement all components
+48 + /// Automatically implement `FullKeyStore` for types that implement all components
+   |
+
+error: could not compile `cryypt_pqcrypto` (lib) due to 113 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `cryypt_pqcrypto` (lib test) due to 82 previous errors
+error: could not compile `cryypt_key` (lib) due to 189 previous errors
+error: could not compile `cryypt_key` (lib test) due to 188 previous errors

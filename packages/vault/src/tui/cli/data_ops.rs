@@ -51,7 +51,7 @@ pub async fn handle_put(
         Err(e) => {
             log_security_event(
                 "CLI_PUT",
-                &format!("Failed to store value for key {}: {key, e}"),
+                &format!("Failed to store value for key {key}: {e}"),
                 false,
             );
 
@@ -148,7 +148,7 @@ pub async fn handle_get(
             Err(e) => {
                 log_security_event(
                     "CLI_GET",
-                    &format!("Failed to retrieve value for key {}: {key, e}"),
+                    &format!("Failed to retrieve value for key {key}: {e}"),
                     false,
                 );
 
@@ -171,7 +171,7 @@ pub async fn handle_get(
         Err(e) => {
             log_security_event(
                 "CLI_GET",
-                &format!("Failed to retrieve value for key {}: {key, e}"),
+                &format!("Failed to retrieve value for key {key}: {e}"),
                 false,
             );
 
@@ -239,7 +239,7 @@ pub async fn handle_delete(
         Err(e) => {
             log_security_event(
                 "CLI_DELETE",
-                &format!("Failed to delete key {}: {key, e}"),
+                &format!("Failed to delete key {key}: {e}"),
                 false,
             );
 

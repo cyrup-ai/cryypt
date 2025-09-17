@@ -48,7 +48,7 @@ pub async fn handle_batch_generate_keys(
                     log::error!("Batch key generation failed for index {}: {}", i, e);
                     log_security_event(
                         "BATCH_KEY_GENERATION_FAILED",
-                        &format!("Index {}: {i, e}"),
+                        &format!("Index {i}: {e}"),
                         false,
                     );
                     Vec::new()
@@ -79,7 +79,7 @@ pub async fn handle_batch_generate_keys(
                     log::error!("Batch key generation failed for index {}: {}", i, e);
                     log_security_event(
                         "BATCH_KEY_GENERATION_FAILED",
-                        &format!("Index {}: {i, e}"),
+                        &format!("Index {i}: {e}"),
                         false,
                     );
                     Vec::new()

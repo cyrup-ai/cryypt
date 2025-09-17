@@ -3,7 +3,7 @@
 //! Contains the main ML-KEM builder patterns and core types for post-quantum key encapsulation.
 
 use super::super::KemAlgorithm;
-use super::states::*;
+use super::states::{NeedKeyPair, HasKeyPair, HasPublicKey, HasSecretKey, HasCiphertext};
 use crate::{PqCryptoError, Result};
 use std::marker::PhantomData;
 

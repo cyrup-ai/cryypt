@@ -3,7 +3,7 @@
 //! Contains key encapsulation functionality to generate shared secrets from public keys.
 
 use super::super::super::{EncapsulationResult, KemAlgorithm, SharedSecret};
-use super::super::{builder_traits::*, states::*};
+use super::super::{builder_traits::{EncapsulateBuilder, AsyncEncapsulationResult}, states::{HasPublicKey, HasKeyPair}};
 use super::MlKemBuilder;
 use crate::PqCryptoError;
 use pqcrypto_traits::kem::{

@@ -61,6 +61,7 @@ pub trait KeyStore: Send + Sync {
 
 impl KeyBuilder {
     /// Create new key builder with specified size
+    #[must_use]
     pub fn new(size_bits: u32) -> Self {
         Self { size_bits }
     }
@@ -87,6 +88,7 @@ impl KeyBuilderWithStore {
 
 impl KeyBuilderWithStoreAndNamespace {
     /// Set the version - README.md pattern
+    #[must_use]
     pub fn version(self, version: u32) -> KeyBuilderReady {
         KeyBuilderReady {
             size_bits: self.size_bits,
@@ -130,6 +132,7 @@ impl KeyBuilderReady {
     }
 
     /// Generate a new key - action method per README.md
+    #[must_use]
     pub fn generate(self) -> KeyResult {
         let result = self
             .store
@@ -143,6 +146,7 @@ impl KeyBuilderReady {
     }
 
     /// Retrieve an existing key - action method per README.md
+    #[must_use]
     pub fn retrieve(self) -> KeyResult {
         let result = self.store.retrieve_key(&self.namespace, self.version);
 

@@ -46,7 +46,7 @@ pub async fn handle_delete(
     match delete_result {
         Ok(_) => {
             let log_msg = if let Some(ns) = namespace {
-                format!("Deleted key: {} from namespace: {key, ns}")
+                format!("Deleted key: {key} from namespace: {ns}")
             } else {
                 format!("Deleted key: {key}")
             };
@@ -68,9 +68,9 @@ pub async fn handle_delete(
         }
         Err(e) => {
             let log_msg = if let Some(ns) = namespace {
-                format!("Failed to delete key {} from namespace {}: {key, ns, e}")
+                format!("Failed to delete key {key} from namespace {ns}: {e}")
             } else {
-                format!("Failed to delete key {}: {key, e}")
+                format!("Failed to delete key {key}: {e}")
             };
             log_security_event("CLI_DELETE", &log_msg, false);
 

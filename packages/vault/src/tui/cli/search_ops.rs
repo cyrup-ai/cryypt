@@ -126,7 +126,7 @@ pub async fn handle_find(
         Err(e) => {
             log_security_event(
                 "CLI_FIND",
-                &format!("Failed to find keys matching pattern {}: {pattern, e}"),
+                &format!("Failed to find keys matching pattern {pattern}: {e}"),
                 false,
             );
             if use_json {
@@ -153,7 +153,7 @@ pub async fn handle_find(
             Err(e) => {
                 log_security_event(
                     "CLI_FIND",
-                    &format!("Failed to find keys matching pattern {}: {pattern, e}"),
+                    &format!("Failed to find keys matching pattern {pattern}: {e}"),
                     false,
                 );
                 if use_json {

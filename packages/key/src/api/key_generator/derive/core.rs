@@ -21,17 +21,20 @@ pub struct KeyDerivation {
 
 impl KeyDerivation {
     /// Create a new key derivation context
+    #[must_use]
     pub fn new(config: KdfConfig) -> Self {
         Self { config, salt: None }
     }
 
     /// Create with default configuration
+    #[must_use]
     pub fn new_default() -> Self {
         Self::new(KdfConfig::default())
     }
 
     /// Set a custom salt for key derivation
     /// Salt will be zeroized automatically
+    #[must_use]
     pub fn with_salt(mut self, salt: Vec<u8>) -> Self {
         self.salt = Some(Zeroizing::new(salt));
         self
@@ -39,6 +42,7 @@ impl KeyDerivation {
 
     /// Generate a random salt
     /// Uses cryptographically secure random bytes
+    #[must_use]
     pub fn with_random_salt(mut self) -> Self {
         use super::super::entropy::generate_secure_bytes;
         let salt = generate_secure_bytes(self.config.salt_size);
@@ -129,6 +133,7 @@ impl KeyDerivation {
     }
 
     /// Get the current salt (if set)
+    #[must_use]
     pub fn salt(&self) -> Option<&[u8]> {
         self.salt.as_ref().map(|s| s.as_slice())
     }

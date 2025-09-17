@@ -3,7 +3,7 @@
 //! Contains key decapsulation functionality to recover shared secrets from ciphertext.
 
 use super::super::super::{DecapsulationResult, KemAlgorithm, SharedSecret};
-use super::super::{builder_traits::*, states::*};
+use super::super::{builder_traits::{CiphertextBuilder, DecapsulateBuilder, AsyncDecapsulationResult}, states::{HasSecretKey, HasCiphertext, HasKeyPair}};
 use super::MlKemBuilder;
 use crate::PqCryptoError;
 use pqcrypto_traits::kem::{

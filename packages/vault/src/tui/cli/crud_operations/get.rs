@@ -50,7 +50,7 @@ pub async fn handle_get(
         Ok(request) => match request.await {
             Ok(value) => {
                 let log_msg = if let Some(ns) = namespace {
-                    format!("Retrieved value for key: {} from namespace: {key, ns}")
+                    format!("Retrieved value for key: {key} from namespace: {ns}")
                 } else {
                     format!("Retrieved value for key: {key}")
                 };
@@ -76,7 +76,7 @@ pub async fn handle_get(
                     }
                     None => {
                         let log_msg = if let Some(ns) = namespace {
-                            format!("Key not found: {} in namespace: {key, ns}")
+                            format!("Key not found: {key} in namespace: {ns}")
                         } else {
                             format!("Key not found: {key}")
                         };
@@ -114,7 +114,7 @@ pub async fn handle_get(
                         key, ns, e
                     )
                 } else {
-                    format!("Failed to retrieve value for key {}: {key, e}")
+                    format!("Failed to retrieve value for key {key}: {e}")
                 };
                 log_security_event("CLI_GET", &log_msg, false);
 
@@ -142,7 +142,7 @@ pub async fn handle_get(
                     key, ns, e
                 )
             } else {
-                format!("Failed to retrieve value for key {}: {key, e}")
+                format!("Failed to retrieve value for key {key}: {e}")
             };
             log_security_event("CLI_GET", &log_msg, false);
 

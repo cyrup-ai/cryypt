@@ -40,7 +40,7 @@ where
             let id = Uuid::new_v4().to_string();
 
             // Use raw SQL query to avoid content() method's lifetime issues
-            let query = format!("CREATE {}:{} CONTENT {table, id, content_string}");
+            let query = format!("CREATE {table}:{id} CONTENT {content_string}");
 
             match db.query(query).await {
                 Ok(_) => {
@@ -141,7 +141,7 @@ where
 
         tokio::spawn(async move {
             // Use raw SQL query to avoid content() method's lifetime issues
-            let query = format!("UPDATE {}:{} CONTENT {table, id, content_string}");
+            let query = format!("UPDATE {table}:{id} CONTENT {content_string}");
 
             match db.query(query).await {
                 Ok(mut response) => {

@@ -47,7 +47,7 @@ pub async fn handle_put(
     match put_result {
         Ok(_) => {
             let log_msg = if let Some(ns) = namespace {
-                format!("Stored value for key: {} in namespace: {key, ns}")
+                format!("Stored value for key: {key} in namespace: {ns}")
             } else {
                 format!("Stored value for key: {key}")
             };
@@ -69,12 +69,9 @@ pub async fn handle_put(
         }
         Err(e) => {
             let log_msg = if let Some(ns) = namespace {
-                format!(
-                    "Failed to store value for key {} in namespace {}: {}",
-                    key, ns, e
-                )
+                format!("Failed to store value for key {key} in namespace {ns}: {e}")
             } else {
-                format!("Failed to store value for key {}: {key, e}")
+                format!("Failed to store value for key {key}: {e}")
             };
             log_security_event("CLI_PUT", &log_msg, false);
 

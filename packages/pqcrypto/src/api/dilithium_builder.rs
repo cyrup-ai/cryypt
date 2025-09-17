@@ -50,6 +50,7 @@ impl Default for DilithiumBuilder<NoSecurityLevel> {
 
 impl DilithiumBuilder<NoSecurityLevel> {
     /// Create a new Dilithium builder
+    #[must_use]
     pub fn new() -> Self {
         Self {
             security_level: NoSecurityLevel,
@@ -57,6 +58,7 @@ impl DilithiumBuilder<NoSecurityLevel> {
     }
 
     /// Set security level - README.md pattern
+    #[must_use]
     pub fn with_security_level(self, level: SecurityLevel) -> DilithiumBuilder<HasSecurityLevel> {
         DilithiumBuilder {
             security_level: HasSecurityLevel(level),

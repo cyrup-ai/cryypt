@@ -46,6 +46,7 @@ pub struct KdfConfig {
 impl KdfConfig {
     /// Create high-security KDF configuration
     /// Suitable for password-based key derivation
+    #[must_use]
     pub fn high_security() -> Self {
         Self {
             algorithm: KdfAlgorithm::Argon2id,
@@ -59,6 +60,7 @@ impl KdfConfig {
 
     /// Create standard KDF configuration
     /// Balanced security and performance
+    #[must_use]
     pub fn standard() -> Self {
         Self {
             algorithm: KdfAlgorithm::Argon2id,
@@ -72,6 +74,7 @@ impl KdfConfig {
 
     /// Create fast KDF configuration
     /// Optimized for performance
+    #[must_use]
     pub fn fast() -> Self {
         Self {
             algorithm: KdfAlgorithm::HkdfSha256,
