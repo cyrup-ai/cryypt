@@ -44,28 +44,24 @@ pub fn extract_key_info_from_cert(cert: &X509CertCert) -> (String, Option<u32>) 
     };
 
     // Extract actual key size from certificate using production cryptographic parsing
-    let key_size = match cert
+    let key_size = if let Some(public_key_bits) = cert
         .tbs_certificate
         .subject_public_key_info
         .subject_public_key
-        .as_bytes()
-    {
-        Some(public_key_bits) => {
-            // Create a proper BitStringRef from the raw bytes
-            match der::asn1::BitStringRef::new(0, public_key_bits) {
-                Ok(public_key_ref) => {
-                    extract_key_size_from_algorithm_and_key(algorithm, &public_key_ref)
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to create BitStringRef: {}", e);
-                    None
-                }
+        .as_bytes() {
+        // Create a proper BitStringRef from the raw bytes
+        match der::asn1::BitStringRef::new(0, public_key_bits) {
+            Ok(public_key_ref) => {
+                extract_key_size_from_algorithm_and_key(algorithm, &public_key_ref)
+            }
+            Err(e) => {
+                tracing::warn!("Failed to create BitStringRef: {}", e);
+                None
             }
         }
-        None => {
-            tracing::warn!("Failed to get public key bytes from certificate");
-            None
-        }
+    } else {
+        tracing::warn!("Failed to get public key bytes from certificate");
+        None
     };
 
     (algorithm_name, key_size)
@@ -84,12 +80,10 @@ pub(super) fn extract_key_size_from_algorithm_and_key(
     let oid_str = algorithm.oid.to_string();
     if oid_str == RSA_ENCRYPTION_OID {
         extract_rsa_key_size(public_key)
-    } else if oid_str == DSA_OID {
-        extract_dh_like_key_size(algorithm.parameters.as_ref().map(|p| AnyRef::from(p)))
-    } else if oid_str == DH_OID {
-        extract_dh_like_key_size(algorithm.parameters.as_ref().map(|p| AnyRef::from(p)))
+    } else if oid_str == DSA_OID || oid_str == DH_OID {
+        extract_dh_like_key_size(algorithm.parameters.as_ref().map(AnyRef::from))
     } else if algorithm.oid == ID_EC_PUBLIC_KEY {
-        extract_ec_key_size(algorithm.parameters.as_ref().map(|p| AnyRef::from(p)))
+        extract_ec_key_size(algorithm.parameters.as_ref().map(AnyRef::from))
     } else if algorithm.oid == ID_X_25519 {
         Some(256)
     } else if algorithm.oid == ID_X_448 {
@@ -112,11 +106,12 @@ fn compute_bit_length(bytes: &[u8]) -> Option<u32> {
     }
     let high_byte = effective[0];
     let high_bits = 8u32 - high_byte.leading_zeros();
+    #[allow(clippy::cast_possible_truncation)]
     let rest_bits = ((effective.len() - 1) * 8) as u32;
     Some(high_bits + rest_bits)
 }
 
-/// Skip a single ASN.1 element using a SliceReader
+/// Skip a single ASN.1 element using a `SliceReader`
 fn skip_element(reader: &mut der::SliceReader) -> Option<()> {
     let header = reader.peek_header().ok()?;
     let header_len: usize = header.encoded_len().ok()?.try_into().ok()?;
@@ -200,8 +195,8 @@ fn extract_ec_key_size(parameters_opt: Option<AnyRef>) -> Option<u32> {
                     // Handle other curves by OID string matching
                     let oid_str = curve_oid.to_string();
                     match oid_str.as_str() {
-                        "1.2.840.10045.3.1.1" => Some(192), // SECP192R1
-                        "1.3.132.0.31" => Some(192),        // SECP192K1
+                        // SECP192R1 and SECP192K1 both have 192-bit keys
+                        "1.2.840.10045.3.1.1" | "1.3.132.0.31" => Some(192),
                         "1.3.132.0.32" => Some(224),        // SECP224K1
                         "1.3.132.0.10" => Some(256),        // SECP256K1
                         _ => None,
@@ -209,7 +204,6 @@ fn extract_ec_key_size(parameters_opt: Option<AnyRef>) -> Option<u32> {
                 }
             }
         }
-        Tag::Null => None, // implicitCurve
         Tag::Sequence => {
             // specifiedCurve: ECParameters
             let header_len = header.encoded_len().ok()?;

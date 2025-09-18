@@ -37,42 +37,49 @@ impl Default for FileTransferServerBuilder {
 
 impl FileTransferServerBuilder {
     /// Set the directory where uploaded files will be stored
+    #[must_use]
     pub fn with_storage_dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.storage_dir = dir.into();
         self
     }
 
     /// Set maximum file size in bytes
+    #[must_use]
     pub fn with_max_file_size(mut self, size: u64) -> Self {
         self.max_file_size = size;
         self
     }
 
     /// Set maximum concurrent transfers
+    #[must_use]
     pub fn with_max_concurrent_transfers(mut self, count: usize) -> Self {
         self.max_concurrent = count;
         self
     }
 
     /// Enable/disable automatic compression
+    #[must_use]
     pub fn with_compression(mut self, enabled: bool) -> Self {
         self.compression_enabled = enabled;
         self
     }
 
     /// Require client authentication
+    #[must_use]
     pub fn with_authentication(mut self, required: bool) -> Self {
         self.require_auth = required;
         self
     }
 
     /// Set bandwidth rate limit in Mbps
+    #[must_use]
     pub fn with_rate_limit_mbps(mut self, mbps: u64) -> Self {
         self.rate_limit_mbps = Some(mbps);
         self
     }
 
     /// Set TLS certificate and key paths
+    #[must_use]
     pub fn with_tls_cert(mut self, cert_path: &str, key_path: &str) -> Self {
         self.cert_path = Some(cert_path.to_string());
         self.key_path = Some(key_path.to_string());
@@ -80,6 +87,14 @@ impl FileTransferServerBuilder {
     }
 
     /// Start the server listening on the specified address
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Storage directory creation fails
+    /// - TLS certificate generation fails  
+    /// - Server binding to address fails
+    /// - QUIC server startup fails
     pub fn listen(
         self,
         addr: &str,

@@ -83,12 +83,18 @@ pub type VaultListRequest = VaultStreamRequest<String>;
 pub type VaultFindRequest = VaultStreamRequest<(String, VaultValue)>;
 
 /// Defines the core vault operations using awaitable return types
-pub trait VaultOperation: Send + Sync + 'static {
+pub trait VaultOperation: Send + Sync + std::any::Any + 'static {
     /// Get the operation name
     fn name(&self) -> &str;
 
-    /// Check if the vault is locked
+    /// Check if user is authenticated (JWT-based)
+    fn is_authenticated(&self) -> bool;
+    
+    /// Check if vault file is PQCrypto armored
     fn is_locked(&self) -> bool; // Remains synchronous
+    
+    /// Check if master key is available for encryption
+    fn has_master_key(&self) -> bool;
 
     /// Unlock the vault with a passphrase. Returns a request that resolves when unlocked.
     fn unlock(&self, passphrase: &Passphrase) -> VaultUnitRequest;

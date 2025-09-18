@@ -22,6 +22,7 @@ pub struct QuicheCertificateProvider {
 
 impl QuicheCertificateProvider {
     /// Create provider from certificate authority
+    #[must_use]
     pub fn new(authority: CertificateAuthority) -> Self {
         Self {
             authority,
@@ -30,6 +31,14 @@ impl QuicheCertificateProvider {
     }
 
     /// Create provider by generating self-signed certificates using TLS builder API
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Certificate authority creation fails
+    /// - Directory creation or access fails
+    /// - Certificate generation fails
+    /// - File writing operations fail
     pub async fn create_self_signed(name: &str, cert_dir: PathBuf) -> Result<Self, TlsError> {
         tracing::info!("Creating self-signed certificates using TLS builder API for QUIC");
 
@@ -52,6 +61,14 @@ impl QuicheCertificateProvider {
     }
 
     /// Create provider by loading existing certificates using TLS builder API
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Certificate files cannot be found or read
+    /// - Certificate format is invalid or corrupted
+    /// - Directory access fails
+    /// - Certificate authority loading fails
     pub async fn load_from_path(name: &str, cert_dir: PathBuf) -> Result<Self, TlsError> {
         tracing::info!("Loading existing certificates using TLS builder API for QUIC");
 
@@ -74,10 +91,19 @@ impl QuicheCertificateProvider {
     }
 
     /// Create provider by loading from keychain using TLS builder API
-    pub async fn load_from_keychain(name: &str) -> Result<Self, TlsError> {
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Keychain access is denied or unavailable
+    /// - Certificate not found in keychain
+    /// - Keychain certificate format is invalid
+    /// - System keychain operations fail
+    #[must_use]
+    pub fn load_from_keychain(name: &str) -> Result<Self, TlsError> {
         tracing::info!("Loading certificates from keychain using TLS builder API for QUIC");
 
-        let response = Tls::authority(name).keychain().load().await;
+        let response = Tls::authority(name).keychain().load();
 
         if !response.success {
             return Err(TlsError::Internal(format!(
@@ -97,6 +123,14 @@ impl QuicheCertificateProvider {
     }
 
     /// Create provider by loading from remote URL using TLS builder API
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Network request to remote URL fails
+    /// - Remote certificate format is invalid
+    /// - Certificate authority loading fails
+    /// - Network timeout or connectivity issues
     pub async fn load_from_remote(name: &str, url: &str) -> Result<Self, TlsError> {
         tracing::info!("Loading certificates from remote URL using TLS builder API for QUIC");
 
@@ -120,15 +154,25 @@ impl QuicheCertificateProvider {
     }
 
     /// Get certificate PEM data directly (no decryption needed)
+    #[must_use]
     pub fn get_certificate_pem(&self) -> &str {
         &self.authority.certificate_pem
     }
 
     /// Get decrypted private key PEM data for quiche
     ///
-    /// Note: This decrypts the encrypted private key using the CRYYPT_KEY_ENCRYPTION_PASSPHRASE
+    /// Note: This decrypts the encrypted private key using the `CRYYPT_KEY_ENCRYPTION_PASSPHRASE`
     /// environment variable. The result is temporarily stored in memory for quiche loading.
-    pub async fn get_decrypted_private_key_pem(&self) -> Result<SecureKeyMaterial, TlsError> {
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Private key is not available (validation-only CA)
+    /// - Key decryption fails or passphrase is incorrect
+    /// - Environment variable for passphrase is missing
+    /// - Key format is invalid or corrupted
+    #[must_use]
+    pub fn get_decrypted_private_key_pem(&self) -> Result<SecureKeyMaterial, TlsError> {
         tracing::debug!("Decrypting private key for quiche consumption");
 
         let private_key_pem = self.authority.private_key_pem.as_ref().ok_or_else(|| {
@@ -165,6 +209,14 @@ impl QuicheCertificateProvider {
     ///
     /// This method creates temporary unencrypted PEM files that quiche can load.
     /// The files are cleaned up when the provider is dropped.
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Temporary directory creation fails
+    /// - File writing operations fail
+    /// - Private key decryption fails
+    /// - File system permissions are insufficient
     pub async fn create_temp_pem_files(&mut self) -> Result<(PathBuf, PathBuf), TlsError> {
         tracing::debug!("Creating temporary PEM files for quiche loading");
 
@@ -191,7 +243,7 @@ impl QuicheCertificateProvider {
             })?;
 
         // Decrypt and write private key file
-        let decrypted_key = self.get_decrypted_private_key_pem().await?;
+        let decrypted_key = self.get_decrypted_private_key_pem()?;
         let key_path = temp_dir.join("server.key");
         fs::write(&key_path, decrypted_key.as_bytes())
             .await
@@ -222,11 +274,13 @@ impl QuicheCertificateProvider {
     }
 
     /// Get certificate authority metadata
+    #[must_use]
     pub fn get_authority(&self) -> &CertificateAuthority {
         &self.authority
     }
 
     /// Check if the certificate authority is valid
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         self.authority.is_valid()
     }
@@ -235,8 +289,8 @@ impl QuicheCertificateProvider {
 impl Drop for QuicheCertificateProvider {
     fn drop(&mut self) {
         // Clean up temporary files
-        if let Some(temp_dir) = &self.temp_dir {
-            if temp_dir.exists() {
+        if let Some(temp_dir) = &self.temp_dir
+            && temp_dir.exists() {
                 tracing::debug!(
                     "Cleaning up temporary certificate directory: {:?}",
                     temp_dir
@@ -245,7 +299,6 @@ impl Drop for QuicheCertificateProvider {
                     tracing::warn!("Failed to clean up temporary certificate directory: {}", e);
                 }
             }
-        }
     }
 }
 
@@ -253,6 +306,15 @@ impl Drop for QuicheCertificateProvider {
 ///
 /// This function integrates the enterprise-grade TLS module with quiche's configuration
 /// by creating temporary PEM files and loading them into quiche.
+/// 
+/// # Errors
+/// 
+/// Returns an error if:
+/// - Certificate authority is expired or invalid
+/// - Temporary PEM file creation fails
+/// - Quiche certificate chain loading fails
+/// - Quiche private key loading fails
+/// - File operations fail
 pub async fn configure_quiche_with_tls(
     config: &mut quiche::Config,
     provider: &mut QuicheCertificateProvider,
@@ -274,8 +336,7 @@ pub async fn configure_quiche_with_tls(
         .load_cert_chain_from_pem_file(&cert_path.to_string_lossy())
         .map_err(|e| {
             TlsError::Internal(format!(
-                "Failed to load certificate chain into quiche: {}",
-                e
+                "Failed to load certificate chain into quiche: {e}"
             ))
         })?;
 

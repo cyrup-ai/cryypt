@@ -45,6 +45,7 @@ impl MessageBuilder {
     }
 
     /// Ensure reliable delivery
+    #[must_use]
     pub fn reliable(mut self) -> Self {
         self.reliable = true;
         self

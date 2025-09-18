@@ -21,15 +21,15 @@ impl AuthorityKeychainBuilder {
     }
 
     /// Load certificate authority from system keychain
-    pub async fn load(self) -> super::super::responses::CertificateAuthorityResponse {
+    pub fn load(self) -> super::super::responses::CertificateAuthorityResponse {
         #[cfg(target_os = "macos")]
         {
-            macos::load_from_keychain(self.name).await
+            macos::load_from_keychain(self.name)
         }
 
         #[cfg(not(target_os = "macos"))]
         {
-            cross_platform::load_from_system_store(self.name).await
+            cross_platform::load_from_system_store(self.name)
         }
     }
 }

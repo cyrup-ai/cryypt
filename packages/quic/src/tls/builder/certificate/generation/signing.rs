@@ -46,7 +46,7 @@ pub async fn perform_certificate_generation(
     };
 
     // Create certificate based on signing method
-    let cert = match create_signed_certificate(&params, &key_pair, &generator).await {
+    let cert = match create_signed_certificate(&params, &key_pair, &generator) {
         Ok(cert) => cert,
         Err(response) => return response,
     };
@@ -139,7 +139,7 @@ fn setup_san_entries(
 }
 
 /// Create signed certificate based on configuration
-async fn create_signed_certificate(
+fn create_signed_certificate(
     params: &CertificateParams,
     key_pair: &KeyPair,
     generator: &CertificateGeneratorWithDomain,

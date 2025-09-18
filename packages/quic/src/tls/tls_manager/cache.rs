@@ -14,6 +14,7 @@ pub struct ValidationCache {
 }
 
 impl ValidationCache {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             ocsp_results: Arc::new(RwLock::new(HashMap::new())),
@@ -21,6 +22,7 @@ impl ValidationCache {
         }
     }
 
+    #[must_use]
     pub fn get_ocsp_status(&self, cert_key: &str) -> Option<crate::tls::ocsp::OcspStatus> {
         self.ocsp_results.read().ok()?.get(cert_key).copied()
     }
@@ -31,6 +33,7 @@ impl ValidationCache {
         }
     }
 
+    #[must_use]
     pub fn get_crl_status(&self, cert_key: &str) -> Option<crate::tls::crl_cache::CrlStatus> {
         self.crl_results.read().ok()?.get(cert_key).copied()
     }

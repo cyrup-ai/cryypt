@@ -30,6 +30,7 @@ pub struct JsonRpcServerBuilder {
 
 impl JsonRpcServerBuilder {
     /// Create a new JSON-RPC server builder with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: ProcessorConfig::default(),
@@ -39,38 +40,50 @@ impl JsonRpcServerBuilder {
     }
 
     /// Set maximum concurrent requests
+    #[must_use]
     pub fn max_concurrent_requests(mut self, max: usize) -> Self {
         self.config.max_concurrent_requests = max;
         self
     }
 
     /// Set maximum batch size
+    #[must_use]
     pub fn max_batch_size(mut self, max: usize) -> Self {
         self.config.max_batch_size = max;
         self
     }
 
     /// Set request timeout in milliseconds
+    #[must_use]
     pub fn request_timeout_ms(mut self, timeout: u64) -> Self {
         self.config.request_timeout_ms = timeout;
         self
     }
 
     /// Enable or disable request validation
+    #[must_use]
     pub fn validate_requests(mut self, validate: bool) -> Self {
         self.config.validate_requests = validate;
         self
     }
 
     /// Configure buffer pool settings
+    #[must_use]
     pub fn buffer_pool(mut self, default_capacity: usize, max_pool_size: usize) -> Self {
         self.buffer_pool_config = (default_capacity, max_pool_size);
         self
     }
 
     /// Register an RPC method using a closure
-    pub async fn register_method<F, Fut>(
-        mut self,
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Method name is already registered
+    /// - Method name is invalid or reserved
+    /// - Handler registration fails
+    pub fn register_method<F, Fut>(
+        self,
         name: &str,
         handler: F,
     ) -> Result<Self>
@@ -78,13 +91,14 @@ impl JsonRpcServerBuilder {
         F: Fn(RpcContext, Option<Params>) -> Fut + Send + Sync + 'static,
         Fut: std::future::Future<Output = Result<simd_json::OwnedValue>> + Send + 'static,
     {
-        self.registry.register(name.to_string(), handler);
+        self.registry.register(name, handler);
         Ok(self)
     }
 
     /// Build the JSON-RPC server components
+    #[must_use]
     pub fn build(self) -> JsonRpcServer {
-        let mut registry = self.registry;
+        let registry = self.registry;
         registry.register_default_introspection_methods();
         let registry = std::sync::Arc::new(registry);
         let buffer_pool = std::sync::Arc::new(BufferPool::new(
@@ -119,16 +133,26 @@ pub struct JsonRpcServer {
 
 impl JsonRpcServer {
     /// Create a new JSON-RPC server with default configuration
+    #[must_use]
     pub fn new() -> Self {
         JsonRpcServerBuilder::new().build()
     }
 
     /// Create a builder for customizing server configuration
+    #[must_use]
     pub fn builder() -> JsonRpcServerBuilder {
         JsonRpcServerBuilder::new()
     }
 
     /// Process raw JSON-RPC request data
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - JSON parsing fails
+    /// - Method not found in registry
+    /// - Method execution fails
+    /// - Response serialization fails
     pub async fn process_request(
         &self,
         data: Vec<u8>,
@@ -138,6 +162,7 @@ impl JsonRpcServer {
     }
 
     /// Get the method registry for dynamic method registration
+    #[must_use]
     pub fn registry(&self) -> &std::sync::Arc<RpcMethodRegistry> {
         &self.registry
     }
@@ -148,11 +173,13 @@ impl JsonRpcServer {
     }
 
     /// Get buffer pool statistics
+    #[must_use]
     pub fn buffer_stats(&self) -> (u64, u64, usize) {
         self.buffer_pool.pool_stats()
     }
 
     /// Get processor configuration
+    #[must_use]
     pub fn config(&self) -> &ProcessorConfig {
         self.processor.get_config()
     }
@@ -183,7 +210,6 @@ mod tests {
                     None => Ok(OwnedValue::from("test_result")),
                 }
             })
-            .await
             .unwrap()
             .build();
 
@@ -203,7 +229,6 @@ mod tests {
                     None => Ok(OwnedValue::from("echo")),
                 }
             })
-            .await
             .unwrap()
             .build();
 

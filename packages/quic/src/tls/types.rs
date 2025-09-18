@@ -12,7 +12,7 @@ pub const PBKDF2_ITERATIONS: std::num::NonZeroU32 = match std::num::NonZeroU32::
     None => unreachable!(), // 600_000 is never zero
 };
 
-/// Certificate usage types for KeyUsage validation
+/// Certificate usage types for `KeyUsage` validation
 #[derive(Debug, Clone, Copy)]
 pub enum CertificateUsage {
     /// CA certificate usage

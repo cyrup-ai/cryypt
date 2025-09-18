@@ -23,6 +23,7 @@ pub struct EnterpriseServerCertVerifier {
 }
 
 impl EnterpriseServerCertVerifier {
+    #[must_use]
     pub fn new(
         ocsp_cache: Arc<OcspCache>,
         crl_cache: Arc<CrlCache>,
@@ -93,12 +94,12 @@ impl EnterpriseServerCertVerifier {
                 {
                     Ok(status) => {
                         self.validation_cache
-                            .set_crl_status(format!("{}-{}", cert_key, crl_url), status);
+                            .set_crl_status(format!("{cert_key}-{crl_url}"), status);
                     }
                     Err(_) => {
-                        tracing::warn!("CRL pre-validation timed out for {}", crl_url);
+                        tracing::warn!("CRL pre-validation timed out for {crl_url}");
                         self.validation_cache.set_crl_status(
-                            format!("{}-{}", cert_key, crl_url),
+                            format!("{cert_key}-{crl_url}"),
                             crate::tls::crl_cache::CrlStatus::Unknown,
                         );
                     }
@@ -183,7 +184,7 @@ impl rustls::client::danger::ServerCertVerifier for EnterpriseServerCertVerifier
 
             // Check certificate against each CRL URL
             for crl_url in &parsed_cert.crl_urls {
-                let crl_cache_key = format!("{}-{}", cert_key, crl_url);
+                let crl_cache_key = format!("{cert_key}-{crl_url}");
                 match self.validation_cache.get_crl_status(&crl_cache_key) {
                     Some(crate::tls::crl_cache::CrlStatus::Valid) => {
                         tracing::debug!(
@@ -199,8 +200,7 @@ impl rustls::client::danger::ServerCertVerifier for EnterpriseServerCertVerifier
                             crl_url
                         );
                         return Err(rustls::Error::General(format!(
-                            "Certificate revoked via CRL: {}",
-                            crl_url
+                            "Certificate revoked via CRL: {crl_url}"
                         )));
                     }
                     Some(crate::tls::crl_cache::CrlStatus::Unknown) => {

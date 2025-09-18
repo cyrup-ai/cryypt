@@ -4,7 +4,7 @@
 
 use super::{MasterKeyBuilder, MasterKeyBuilderWithStore, MasterKeyBuilderWithStoreAndNamespace, MasterKeyBuilderWithStoreNamespaceAndVersion};
 use super::{PassphraseMasterKey, RawMasterKey, EnvMasterKey};
-use crate::{KeyImport, KeyRetrieval, KeyStorage, SimpleKeyId};
+use crate::{SimpleKeyId, traits::{KeyImport, KeyRetrieval, KeyStorage}};
 use async_task::AsyncTask;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use hex;

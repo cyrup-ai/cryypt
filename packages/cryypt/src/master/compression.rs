@@ -28,6 +28,7 @@ impl CompressMasterBuilder {
 
     /// Use Bzip2 compression - README.md pattern
     #[cfg(feature = "bzip2")]
+    #[must_use]
     pub fn bzip2(
         self,
     ) -> cryypt_compression::Bzip2Builder<cryypt_compression::api::bzip2_builder::NoLevel> {
@@ -36,6 +37,7 @@ impl CompressMasterBuilder {
 
     /// Use ZIP compression for multi-file archives - README.md pattern
     #[cfg(feature = "zip")]
+    #[must_use]
     pub fn zip(
         self,
     ) -> cryypt_compression::ZipBuilder<cryypt_compression::api::zip_builder::NoFiles> {

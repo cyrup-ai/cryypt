@@ -27,12 +27,20 @@ pub struct QuicClientWithConfigAndHandler<F, T> {
     _phantom: std::marker::PhantomData<T>,
 }
 
+impl Default for QuicClientBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuicClientBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self { server_name: None }
     }
 
     /// Set server name for TLS
+    #[must_use]
     pub fn with_server_name(self, name: impl Into<String>) -> QuicClientWithConfig {
         QuicClientWithConfig {
             server_name: name.into(),
@@ -41,7 +49,7 @@ impl QuicClientBuilder {
 }
 
 impl QuicClientWithConfig {
-    /// Add on_result handler - README.md pattern
+    /// Add `on_result` handler - README.md pattern
     pub fn on_result<F, T>(self, handler: F) -> QuicClientWithConfigAndHandler<F, T>
     where
         F: FnOnce(crate::Result<QuicClient>) -> T + Send + 'static,
@@ -104,6 +112,7 @@ impl QuicClient {
     }
 
     /// Open bidirectional stream without handler - returns future
+    #[must_use]
     pub fn open_bi(self) -> crate::QuicStreamResult {
         let handle = self.handle.clone();
 
@@ -124,7 +133,7 @@ async fn connect_quic_client_internal(_server_name: &str, addr: &str) -> crate::
 
     // Parse address
     let socket_addr = addr.parse::<SocketAddr>().map_err(|e| {
-        crate::error::CryptoTransportError::Internal(format!("Invalid address {}: {}", addr, e))
+        crate::error::CryptoTransportError::Internal(format!("Invalid address {addr}: {e}"))
     })?;
 
     // Create client config

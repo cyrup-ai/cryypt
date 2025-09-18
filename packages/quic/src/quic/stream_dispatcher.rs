@@ -19,16 +19,19 @@ impl QuicStreamDispatcher {
     }
 
     /// Access file transfer protocol
+    #[must_use]
     pub fn file_transfer(&self) -> FileTransferProtocol {
         FileTransferProtocol::new(self.addr)
     }
 
     /// Access messaging protocol
+    #[must_use]
     pub fn messaging(&self) -> MessagingProtocol {
         MessagingProtocol::new(self.addr, self.handle.clone())
     }
 
     /// Access RPC protocol
+    #[must_use]
     pub fn rpc(&self) -> RpcProtocol {
         RpcProtocol::new(self.addr, self.handle.clone())
     }
@@ -42,6 +45,7 @@ pub struct QuicStream {
 
 impl QuicStream {
     /// Create new QUIC stream
+    #[must_use]
     pub fn new(protocol: Protocol, stream_id: u64) -> Self {
         Self {
             protocol,
@@ -50,11 +54,13 @@ impl QuicStream {
     }
 
     /// Get the protocol type for this stream
+    #[must_use]
     pub fn protocol(&self) -> Protocol {
         self.protocol
     }
 
     /// Get the stream ID
+    #[must_use]
     pub fn stream_id(&self) -> u64 {
         self.stream_id
     }

@@ -20,6 +20,7 @@ pub struct QuicConnection {
 
 impl QuicConnection {
     #[allow(dead_code)]
+    #[must_use]
     pub(super) fn new(addr: SocketAddr, auth: Option<Auth>) -> Self {
         Self {
             addr,
@@ -29,6 +30,10 @@ impl QuicConnection {
     }
 
     /// Dispatch multiple protocols over the same connection
+    /// 
+    /// # Errors
+    /// 
+    /// Returns any error produced by the provided handler function.
     pub async fn stream<F, Fut>(&self, handler: F) -> Result<()>
     where
         F: FnOnce(QuicStreamDispatcher) -> Fut + Send,
@@ -39,16 +44,24 @@ impl QuicConnection {
     }
 
     /// Convenience method: Upload a file
+    #[must_use]
     pub fn upload_file(&self, path: impl Into<String>) -> super::file_transfer::UploadConfig {
         super::file_transfer::FileTransferConfig::upload(path.into(), self.addr)
     }
 
     /// Convenience method: Download a file
+    #[must_use]
     pub fn download_file(&self, path: impl Into<String>) -> super::file_transfer::DownloadConfig {
         super::file_transfer::FileTransferConfig::download(path.into(), self.addr)
     }
 
     /// Convenience method: Send a message
+    /// 
+    /// # Errors
+    /// 
+    /// Returns `CryptoTransportError::Internal` if there is no active connection,
+    /// or forwards errors from the underlying QUIC connection operations including
+    /// handshake completion and stream data transmission.
     pub async fn send_message(&self, message: impl Into<String>) -> Result<()> {
         let msg = message.into();
         let auth_type = match &self.auth {
@@ -81,6 +94,18 @@ impl QuicConnection {
     }
 
     /// Convenience method: Call RPC
+    /// 
+    /// # Errors
+    /// 
+    /// Returns `CryptoTransportError::Internal` for various failure conditions including:
+    /// - JSON serialization failures when creating the RPC request
+    /// - No active connection available
+    /// - Invalid UTF-8 in the RPC response
+    /// - Connection closed before receiving a response
+    /// - RPC request timeout (30 seconds)
+    /// 
+    /// Additionally forwards errors from underlying QUIC operations such as
+    /// handshake completion and stream data transmission.
     pub async fn call_rpc(
         &self,
         method: impl Into<String>,
@@ -122,8 +147,7 @@ impl QuicConnection {
                     {
                         return String::from_utf8(data).map_err(|e| {
                             crate::CryptoTransportError::Internal(format!(
-                                "Invalid UTF-8 in response: {}",
-                                e
+                                "Invalid UTF-8 in response: {e}"
                             ))
                         });
                     }

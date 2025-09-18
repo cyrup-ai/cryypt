@@ -28,11 +28,13 @@ pub struct Tls;
 
 impl Tls {
     /// Create or load a certificate authority
+    #[must_use]
     pub fn authority(name: &str) -> AuthorityBuilder {
         AuthorityBuilder::new(name)
     }
 
     /// Work with certificates (validate or generate)
+    #[must_use]
     pub fn certificate() -> CertificateBuilder {
         CertificateBuilder::new()
     }

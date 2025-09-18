@@ -26,19 +26,20 @@ pub type QuicServerResult = QuicResult<crate::api::QuicServer>;
 pub type QuicClientResult = QuicResult<crate::api::QuicClient>;
 
 impl<T> QuicResult<T> {
-    /// Create a new QuicResult from a oneshot receiver
+    /// Create a new `QuicResult` from a oneshot receiver
     pub(crate) fn new(receiver: oneshot::Receiver<Result<T>>) -> Self {
         Self { receiver }
     }
 
-    /// Create a QuicResult that's already completed
+    /// Create a `QuicResult` that's already completed
     pub fn ready(result: Result<T>) -> Self {
         let (tx, rx) = oneshot::channel();
         let _ = tx.send(result);
         Self { receiver: rx }
     }
 
-    /// Create a QuicResult that yields an error
+    /// Create a `QuicResult` that yields an error
+    #[must_use]
     pub fn error(error: CryptoTransportError) -> Self {
         Self::ready(Err(error))
     }
@@ -58,13 +59,13 @@ impl<T> Future for QuicResult<T> {
     }
 }
 
-/// Concrete QUIC stream result (for open_bi)
+/// Concrete QUIC stream result (for `open_bi`)
 pub struct QuicStreamResult {
     receiver: oneshot::Receiver<Result<(crate::api::QuicSend, crate::api::QuicRecv)>>,
 }
 
 impl QuicStreamResult {
-    /// Create a new QuicStreamResult from a oneshot receiver
+    /// Create a new `QuicStreamResult` from a oneshot receiver
     pub(crate) fn new(
         receiver: oneshot::Receiver<Result<(crate::api::QuicSend, crate::api::QuicRecv)>>,
     ) -> Self {
@@ -86,13 +87,13 @@ impl Future for QuicStreamResult {
     }
 }
 
-/// Concrete QUIC write result (for write_all)
+/// Concrete QUIC write result (for `write_all`)
 pub struct QuicWriteResult {
     receiver: oneshot::Receiver<Result<()>>,
 }
 
 impl QuicWriteResult {
-    /// Create a new QuicWriteResult from a oneshot receiver
+    /// Create a new `QuicWriteResult` from a oneshot receiver
     pub(crate) fn new(receiver: oneshot::Receiver<Result<()>>) -> Self {
         Self { receiver }
     }

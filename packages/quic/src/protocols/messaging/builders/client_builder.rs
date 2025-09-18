@@ -29,24 +29,35 @@ impl MessagingClientBuilder {
     }
 
     /// Set client identifier for connection tracking
+    #[must_use]
     pub fn with_client_id(mut self, id: &str) -> Self {
         self.client_id = Some(id.to_string());
         self
     }
 
     /// Enable or disable automatic reconnection on connection failure
+    #[must_use]
     pub fn with_auto_reconnect(mut self, enabled: bool) -> Self {
         self.auto_reconnect = enabled;
         self
     }
 
     /// Set client secret for secure key derivation
+    #[must_use]
     pub fn with_client_secret(mut self, secret: Vec<u8>) -> Self {
         self.client_secret = Some(secret);
         self
     }
 
     /// Send a message and wait for delivery confirmation
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Message serialization fails
+    /// - Network connection fails
+    /// - Message delivery fails
+    /// - Timeout occurs during send
     pub async fn send_message<T: Serialize + Send + Sync + 'static>(
         self,
         message: T,
@@ -79,6 +90,49 @@ impl MessagingClientBuilder {
         let message_id = Uuid::new_v4().to_string();
         let payload_data = serialized.as_bytes().to_vec();
 
+        // Setup encryption and process payload
+        let (processed_payload, compression_metadata, encryption_metadata) = 
+            self.setup_and_process_payload(&payload_data, &message_id).await?;
+
+        // Create message envelope
+        let envelope = self.create_message_envelope(
+            message_id.clone(),
+            processed_payload,
+            compression_metadata,
+            encryption_metadata,
+        ).await?;
+
+        // Serialize the envelope
+        let envelope_data = serde_json::to_vec(&envelope).map_err(|e| {
+            CryptoTransportError::Internal(format!("Failed to serialize message envelope: {e}"))
+        })?;
+
+        // Establish QUIC connection with retries
+        let quic_client = self.establish_quic_connection().await?;
+        let (quic_send, quic_recv) = quic_client.open_bi().await.map_err(|e| {
+            tracing::error!("Failed to open bidirectional stream: {}", e);
+            CryptoTransportError::Internal(format!("Failed to open QUIC stream: {e}"))
+        })?;
+
+        // Send message and wait for acknowledgment
+        self.send_and_await_ack(quic_send, quic_recv, &envelope_data, &message_id).await?;
+
+        let delivery_time = start_time.elapsed();
+
+        // Return successful delivery confirmation
+        Ok(MessageDelivery {
+            message_id,
+            delivered_at: std::time::Instant::now(),
+            delivery_time,
+        })
+    }
+
+    /// Setup encryption parameters and process payload through compression/encryption pipeline
+    async fn setup_and_process_payload(
+        &self,
+        payload_data: &[u8],
+        message_id: &str,
+    ) -> crate::Result<(Vec<u8>, Option<super::super::types::CompressionMetadata>, Option<super::super::types::EncryptionMetadata>)> {
         // Apply compression and encryption to client messages
         let compression_alg = CompressionAlgorithm::Zstd; // Default compression for clients
         let compression_level = 3; // Balanced compression level
@@ -100,46 +154,51 @@ impl MessagingClientBuilder {
             client_secret,
         )
         .await?;
-        let key_id = message_id.clone();
+        let key_id = message_id.to_string();
 
         // Process payload through compression and encryption pipeline
-        let (processed_payload, compression_metadata, encryption_metadata) =
-            super::super::message_processing::process_payload_forward(
-                payload_data,
-                compression_alg,
-                compression_level,
-                encryption_alg,
-                encryption_key,
-                key_id,
-            )
-            .await?;
+        super::super::message_processing::process_payload_forward(
+            payload_data.to_vec(),
+            compression_alg,
+            compression_level,
+            encryption_alg,
+            encryption_key,
+            key_id,
+        )
+        .await
+    }
 
-        // Create message envelope with processed payload and metadata
-        let envelope = MessageEnvelope {
-            id: message_id.clone(),
+    /// Create message envelope with processed payload and metadata
+    async fn create_message_envelope(
+        &self,
+        message_id: String,
+        processed_payload: Vec<u8>,
+        compression_metadata: Option<super::super::types::CompressionMetadata>,
+        encryption_metadata: Option<super::super::types::EncryptionMetadata>,
+    ) -> crate::Result<MessageEnvelope> {
+        let checksum = super::super::message_processing::calculate_checksum(&processed_payload).await?;
+        
+        Ok(MessageEnvelope {
+            id: message_id,
             timestamp: std::time::SystemTime::now(),
-            payload: processed_payload.clone(),
-            topic: self.client_id.as_ref().map(|id| format!("client:{}", id)), // Use client_id for topic routing
+            payload: processed_payload,
+            topic: self.client_id.as_ref().map(|id| format!("client:{id}")), // Use client_id for topic routing
             distribution: DistributionStrategy::Broadcast,
             priority: MessagePriority::Normal, // Default priority for client messages
-            checksum: super::super::message_processing::calculate_checksum(&processed_payload)
-                .await?,
+            checksum,
             requires_ack: true,
             retry_count: 0,
             compression_metadata,
             encryption_metadata,
-        };
+        })
+    }
 
-        // Serialize the envelope
-        let envelope_data = serde_json::to_vec(&envelope).map_err(|e| {
-            CryptoTransportError::Internal(format!("Failed to serialize message envelope: {e}"))
-        })?;
-
-        // Use main QUIC API with auto-reconnect if enabled
+    /// Establish QUIC connection with retry logic
+    async fn establish_quic_connection(&self) -> crate::Result<crate::quic::QuicClient> {
         let mut connection_attempts = 0;
         let max_attempts = if self.auto_reconnect { 3 } else { 1 };
 
-        let quic_client = loop {
+        loop {
             connection_attempts += 1;
 
             match crate::api::Quic::client()
@@ -147,7 +206,7 @@ impl MessagingClientBuilder {
                 .connect(&self.server_addr)
                 .await
             {
-                Ok(client) => break client,
+                Ok(client) => return Ok(client),
                 Err(e) => {
                     tracing::warn!(
                         "QUIC connection attempt {} failed: {}",
@@ -161,8 +220,7 @@ impl MessagingClientBuilder {
                             max_attempts
                         );
                         return Err(CryptoTransportError::Internal(format!(
-                            "QUIC connection failed after {} attempts: {}",
-                            max_attempts, e
+                            "QUIC connection failed after {max_attempts} attempts: {e}"
                         )));
                     }
 
@@ -173,20 +231,25 @@ impl MessagingClientBuilder {
                             max_attempts
                         );
                         // Brief delay before retry
-                        tokio::time::sleep(Duration::from_millis(500 * connection_attempts as u64))
+                        #[allow(clippy::cast_sign_loss)]
+                        tokio::time::sleep(Duration::from_millis(500 * (connection_attempts.min(10) as u64)))
                             .await;
                     }
                 }
             }
-        };
+        }
+    }
 
-        let (quic_send, quic_recv) = quic_client.open_bi().await.map_err(|e| {
-            tracing::error!("Failed to open bidirectional stream: {}", e);
-            CryptoTransportError::Internal(format!("Failed to open QUIC stream: {e}"))
-        })?;
-
+    /// Send message over QUIC stream and wait for acknowledgment
+    async fn send_and_await_ack(
+        &self,
+        quic_send: crate::api::QuicSend,
+        quic_recv: crate::api::QuicRecv,
+        envelope_data: &[u8],
+        message_id: &str,
+    ) -> crate::Result<()> {
         // Send the message envelope over the QUIC stream
-        quic_send.write_all(&envelope_data).await.map_err(|e| {
+        quic_send.write_all(envelope_data).await.map_err(|e| {
             tracing::error!("Failed to send message over QUIC stream: {}", e);
             CryptoTransportError::Internal(format!("Failed to send message: {e}"))
         })?;
@@ -222,18 +285,16 @@ impl MessagingClientBuilder {
                 ack_data.extend_from_slice(&chunk);
 
                 // Try to parse as JSON acknowledgment
-                if let Ok(ack_text) = String::from_utf8(ack_data.clone()) {
-                    if let Ok(ack_json) = serde_json::from_str::<serde_json::Value>(&ack_text) {
-                        if let Some(ack_message_id) = ack_json.get("ack").and_then(|v| v.as_str()) {
-                            if ack_message_id == message_id {
-                                tracing::debug!(
-                                    "Received acknowledgment for message: {}",
-                                    message_id
-                                );
-                                return Ok(());
-                            }
-                        }
-                    }
+                if let Ok(ack_text) = String::from_utf8(ack_data.clone())
+                    && let Ok(ack_json) = serde_json::from_str::<serde_json::Value>(&ack_text)
+                    && let Some(ack_message_id) = ack_json.get("ack").and_then(|v| v.as_str())
+                    && ack_message_id == message_id
+                {
+                    tracing::debug!(
+                        "Received acknowledgment for message: {}",
+                        message_id
+                    );
+                    return Ok(());
                 }
 
                 // Break if we've received enough data to determine it's not an ACK
@@ -247,8 +308,6 @@ impl MessagingClientBuilder {
             ))
         })
         .await;
-
-        let delivery_time = start_time.elapsed();
 
         match ack_result {
             Ok(Ok(())) => {
@@ -268,11 +327,6 @@ impl MessagingClientBuilder {
             }
         }
 
-        // Return successful delivery confirmation
-        Ok(MessageDelivery {
-            message_id,
-            delivered_at: std::time::Instant::now(),
-            delivery_time,
-        })
+        Ok(())
     }
 }

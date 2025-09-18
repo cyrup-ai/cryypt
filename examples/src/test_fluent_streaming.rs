@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_chunk(|result| match result {
             Ok(compressed_chunk) => {
                 println!("Compressed chunk: {} bytes", compressed_chunk.len());
-                compressed_chunk.into()
+                compressed_chunk
             }
             Err(e) => {
                 eprintln!("Compression chunk failed: {}", e);
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "Decompression successful: {} bytes",
                     decompressed_data.len()
                 );
-                decompressed_data.into()
+                decompressed_data
             }
             Err(e) => {
                 eprintln!("Decompression failed: {}", e);

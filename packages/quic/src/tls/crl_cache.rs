@@ -44,6 +44,7 @@ impl CrlCache {
     }
 
     /// Get cache statistics (hits, misses)
+    #[must_use]
     pub fn get_stats(&self) -> (usize, usize) {
         (
             self.cache_hits.load(Ordering::Relaxed),
@@ -95,7 +96,6 @@ impl CrlCache {
                 }
                 Err(e) => {
                     tracing::warn!("CRL validation failed for URL {}: {}", crl_url, e);
-                    continue;
                 }
             }
         }
@@ -112,12 +112,11 @@ impl CrlCache {
         let cache_key = crl_url.to_string();
 
         // Check cache first
-        if let Some(cached_crl) = self.get_cached_crl(&cache_key) {
-            if !Self::is_crl_cache_expired(&cached_crl) {
-                self.cache_hits.fetch_add(1, Ordering::Relaxed);
-                tracing::debug!("CRL cache hit for URL: {}", crl_url);
-                return Ok(cached_crl.revoked_serials.contains(serial_number));
-            }
+        if let Some(cached_crl) = self.get_cached_crl(&cache_key)
+            && !Self::is_crl_cache_expired(&cached_crl) {
+            self.cache_hits.fetch_add(1, Ordering::Relaxed);
+            tracing::debug!("CRL cache hit for URL: {}", crl_url);
+            return Ok(cached_crl.revoked_serials.contains(serial_number));
         }
 
         // Cache miss - increment counter
@@ -134,6 +133,7 @@ impl CrlCache {
     }
 
     #[inline]
+    #[must_use]
     fn get_cached_crl(&self, cache_key: &str) -> Option<CrlCacheEntry> {
         match self.cache.read() {
             Ok(cache) => cache.get(cache_key).cloned(),
@@ -144,6 +144,7 @@ impl CrlCache {
         }
     }
 
+    #[must_use]
     fn is_crl_cache_expired(entry: &CrlCacheEntry) -> bool {
         let now = SystemTime::now();
 
@@ -177,10 +178,10 @@ impl CrlCache {
         let crl_bytes = self.http_client.get_crl(crl_url).await?;
 
         // Parse CRL
-        self.parse_crl_data(&crl_bytes)
+        Self::parse_crl_data(&crl_bytes)
     }
 
-    fn parse_crl_data(&self, crl_bytes: &[u8]) -> Result<CrlCacheEntry, TlsError> {
+    fn parse_crl_data(crl_bytes: &[u8]) -> Result<CrlCacheEntry, TlsError> {
         // Parse PEM if it starts with "-----BEGIN"
         let der_bytes = if crl_bytes.starts_with(b"-----BEGIN") {
             let crl_pem = std::str::from_utf8(crl_bytes)
@@ -192,15 +193,11 @@ impl CrlCache {
             for line in crl_pem.lines() {
                 if line.contains("-----BEGIN") && line.contains("CRL") {
                     in_crl = true;
-                    continue;
-                }
-                if line.contains("-----END") && line.contains("CRL") {
+                } else if line.contains("-----END") && line.contains("CRL") {
                     break;
-                }
-                if in_crl {
-                    if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(line) {
-                        der_data.extend(decoded);
-                    }
+                } else if in_crl
+                    && let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(line) {
+                    der_data.extend(decoded);
                 }
             }
 
@@ -228,7 +225,8 @@ impl CrlCache {
 
         // Extract next update time
         let next_update = crl.next_update().map(|time| {
-            std::time::UNIX_EPOCH + std::time::Duration::from_secs(time.timestamp() as u64)
+            #[allow(clippy::cast_sign_loss)]
+            { std::time::UNIX_EPOCH + std::time::Duration::from_secs(time.timestamp() as u64) }
         });
 
         tracing::info!(

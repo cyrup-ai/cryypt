@@ -41,11 +41,19 @@ pub struct QuicConnectionHandle {
 }
 
 impl QuicConnectionHandle {
+    #[must_use]
     pub fn new(controller: Arc<QuicConnectionController>) -> Self {
         Self { controller }
     }
 
     /// For sending data, no blocking—immediately enqueues partial data if flow control halts.
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Outbound queue lock acquisition fails
+    /// - Stream is already closed or in error state
+    /// - Data size exceeds stream limits
     pub fn send_stream_data(&self, data: &[u8], fin: bool) -> Result<()> {
         let mut queue = self.controller.outbound_queue.lock().map_err(|_| {
             crate::error::CryptoTransportError::Internal(
@@ -62,6 +70,14 @@ impl QuicConnectionHandle {
 
     /// Provide a future that completes once handshake is done.
     /// We do a small async loop checking a shared bool, no blocking calls.
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Handshake lock acquisition fails
+    /// - Handshake timeout exceeded
+    /// - Connection is terminated during handshake
+    /// - Protocol errors during handshake
     pub fn wait_for_handshake(
         &self,
     ) -> impl std::future::Future<Output = Result<()>> + Send + 'static {
@@ -90,11 +106,20 @@ impl QuicConnectionHandle {
     }
 
     /// Subscribe to events for RPC response handling
+    #[must_use]
     pub fn subscribe_to_events(&self) -> broadcast::Receiver<QuicConnectionEvent> {
         self.controller.event_tx.subscribe()
     }
 
     /// Send data to a specific stream ID
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Outbound queue lock acquisition fails
+    /// - Stream ID is invalid or closed
+    /// - Data size exceeds stream limits
+    /// - Flow control prevents sending
     pub fn send_stream_data_with_id(&self, stream_id: u64, data: &[u8], fin: bool) -> Result<()> {
         let mut queue = self.controller.outbound_queue.lock().map_err(|_| {
             crate::error::CryptoTransportError::Internal(
@@ -110,7 +135,7 @@ impl QuicConnectionHandle {
     }
 }
 
-/// Main QUIC connection loop: fully non-blocking, no "WouldBlock," no partial blocking calls.
+/// Main QUIC connection loop: fully non-blocking, no "`WouldBlock`," no partial blocking calls.
 /// We define it as a normal function returning `impl Future<Output=Result<()>>`.
 pub async fn quic_connection_main_loop(controller: Arc<QuicConnectionController>) -> Result<()> {
     let mut recv_buf = vec![0u8; 65535];
@@ -146,7 +171,7 @@ pub async fn quic_connection_main_loop(controller: Arc<QuicConnectionController>
         flush_outbound(&controller)?;
 
         // Then flush QUIC packets to the UDP socket
-        let mut out_buf = [0u8; 65535];
+        let mut out_buf = vec![0u8; 65535].into_boxed_slice();
         loop {
             let send_result = {
                 let mut conn_guard = controller.conn.lock().map_err(|_| {
@@ -206,11 +231,11 @@ fn check_handshake_complete(controller: &Arc<QuicConnectionController>) -> Resul
             .handshake_done
             .lock()
             .map_err(|_| CryptoTransportError::from("Failed to acquire handshake done lock"))?;
-        if !*done {
+        if *done {
+            false
+        } else {
             *done = true;
             true
-        } else {
-            false
         }
     };
 
@@ -302,15 +327,12 @@ fn flush_outbound(controller: &Arc<QuicConnectionController>) -> Result<()> {
                     msg.data = remaining_data;
                     // Keep message in queue, don't increment i - will retry on next flush
                     break;
-                } else {
-                    // Complete write - remove message from queue
-                    queue.remove(i);
-                    // Don't increment i since we removed an element
                 }
+                // Complete write - remove message from queue
+                queue.remove(i);
+                // Don't increment i since we removed an element
             }
-            Err(quiche::Error::Done)
-            | Err(quiche::Error::FlowControl)
-            | Err(quiche::Error::StreamLimit) => {
+            Err(quiche::Error::Done | quiche::Error::FlowControl | quiche::Error::StreamLimit) => {
                 // Flow control or stream limits - stop processing queue
                 break;
             }

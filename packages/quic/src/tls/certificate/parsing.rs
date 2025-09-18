@@ -15,7 +15,7 @@ pub fn validate_certificate_time(parsed_cert: &ParsedCertificate) -> Result<(), 
     validate_certificate_time_internal(parsed_cert)
 }
 
-/// Validate BasicConstraints extension
+/// Validate `BasicConstraints` extension
 pub fn validate_basic_constraints(
     parsed_cert: &ParsedCertificate,
     expected_ca: bool,
@@ -23,7 +23,7 @@ pub fn validate_basic_constraints(
     validate_basic_constraints_internal(parsed_cert, expected_ca)
 }
 
-/// Validate KeyUsage extension
+/// Validate `KeyUsage` extension
 pub fn validate_key_usage(
     parsed_cert: &ParsedCertificate,
     usage: CertificateUsage,
@@ -40,8 +40,7 @@ pub fn verify_hostname(parsed_cert: &ParsedCertificate, hostname: &str) -> Resul
             return Ok(());
         }
         return Err(TlsError::PeerVerification(format!(
-            "IP address {} not found in certificate SANs",
-            hostname
+            "IP address {hostname} not found in certificate SANs"
         )));
     }
 
@@ -53,18 +52,16 @@ pub fn verify_hostname(parsed_cert: &ParsedCertificate, hostname: &str) -> Resul
     }
 
     // Also check against Common Name as fallback (though SANs should be preferred)
-    if let Some(cn) = parsed_cert.subject.get("CN") {
-        if match_hostname(hostname, cn) {
-            tracing::warn!(
-                "Using Common Name for hostname verification - SANs should be preferred"
-            );
-            return Ok(());
-        }
+    if let Some(cn) = parsed_cert.subject.get("CN")
+        && match_hostname(hostname, cn) {
+        tracing::warn!(
+            "Using Common Name for hostname verification - SANs should be preferred"
+        );
+        return Ok(());
     }
 
     Err(TlsError::PeerVerification(format!(
-        "Hostname {} does not match any certificate SANs or Common Name",
-        hostname
+        "Hostname {hostname} does not match any certificate SANs or Common Name"
     )))
 }
 
@@ -105,8 +102,8 @@ fn match_hostname(hostname: &str, pattern: &str) -> bool {
     }
 
     // Wildcard matching - only support single level wildcard at the beginning
-    if pattern.starts_with("*.") {
-        let pattern_suffix = &pattern[2..]; // Remove "*."
+    if let Some(pattern_suffix) = pattern.strip_prefix("*.") {
+        // Remove "*."
 
         // The hostname must have exactly one more label than the pattern
         if hostname.ends_with(pattern_suffix) {
@@ -146,21 +143,20 @@ fn validate_certificate_time_internal(parsed_cert: &ParsedCertificate) -> Result
     }
 
     // Check for expiration warning (within 30 days)
-    if let Ok(duration_until_expiry) = parsed_cert.not_after.duration_since(now) {
-        if duration_until_expiry.as_secs() < 30 * 24 * 3600 {
-            // 30 days
-            tracing::warn!(
-                "Certificate expires soon: {} days remaining (expires: {:?})",
-                duration_until_expiry.as_secs() / (24 * 3600),
-                parsed_cert.not_after
-            );
-        }
+    if let Ok(duration_until_expiry) = parsed_cert.not_after.duration_since(now)
+        && duration_until_expiry.as_secs() < 30 * 24 * 3600 {
+        // 30 days
+        tracing::warn!(
+            "Certificate expires soon: {} days remaining (expires: {:?})",
+            duration_until_expiry.as_secs() / (24 * 3600),
+            parsed_cert.not_after
+        );
     }
 
     Ok(())
 }
 
-/// Validate certificate BasicConstraints for CA usage
+/// Validate certificate `BasicConstraints` for CA usage
 fn validate_basic_constraints_internal(
     parsed_cert: &ParsedCertificate,
     expected_ca: bool,
@@ -170,12 +166,11 @@ fn validate_basic_constraints_internal(
             return Err(TlsError::CertificateValidation(
                 "Certificate is not a valid CA certificate (BasicConstraints CA=false)".to_string(),
             ));
-        } else {
-            return Err(TlsError::CertificateValidation(
-                "End-entity certificate incorrectly marked as CA (BasicConstraints CA=true)"
-                    .to_string(),
-            ));
         }
+        return Err(TlsError::CertificateValidation(
+            "End-entity certificate incorrectly marked as CA (BasicConstraints CA=true)"
+                .to_string(),
+        ));
     }
 
     // For CA certificates, ensure they have the keyCertSign usage
@@ -188,7 +183,7 @@ fn validate_basic_constraints_internal(
     Ok(())
 }
 
-/// Validate certificate KeyUsage extension for intended purpose
+/// Validate certificate `KeyUsage` extension for intended purpose
 fn validate_key_usage_internal(
     parsed_cert: &ParsedCertificate,
     usage: CertificateUsage,

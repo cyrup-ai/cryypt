@@ -10,6 +10,16 @@ use super::quic_conn::{
 };
 use quiche::{ConnectionId, connect};
 
+/// Connect a QUIC client to a remote server
+/// 
+/// # Errors
+/// 
+/// Returns an error if:
+/// - Socket binding to local address fails
+/// - Connection to remote address fails
+/// - QUIC handshake fails
+/// - Configuration is invalid
+/// - Network I/O errors occur
 pub fn connect_quic_client(
     local_addr: &str,
     remote_addr: &str,
@@ -48,7 +58,7 @@ pub fn connect_quic_client(
 
         let conn_loop = quic_connection_main_loop(controller.clone());
         tokio::spawn(async move {
-            let _ = conn_loop.await;
+            let _ = Box::pin(conn_loop).await;
         });
 
         let handle = QuicConnectionHandle::new(controller);
@@ -94,8 +104,4 @@ fn random_16_bytes() -> [u8; 16] {
 #[derive(Default)]
 pub struct Client;
 
-impl Client {
-    pub fn default() -> Self {
-        Client
-    }
-}
+

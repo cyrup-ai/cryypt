@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_result(|result| match result {
             Ok(bytes) => {
                 println!("Compression successful: {} bytes", bytes.len());
-                bytes.into()
+                bytes
             }
             Err(e) => {
                 eprintln!("Compression failed: {}", e);
@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .on_result(|result| match result {
             Ok(bytes) => {
                 println!("Decompression successful: {} bytes", bytes.len());
-                bytes.into()
+                bytes
             }
             Err(e) => {
                 eprintln!("Decompression failed: {}", e);

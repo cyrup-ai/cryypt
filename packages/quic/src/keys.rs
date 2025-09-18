@@ -55,9 +55,7 @@ impl EphemeralKeyMaterial {
 /// Generate ephemeral key material using quantum-resistant KDF
 /// NOTE: Library code - intended for external use
 #[allow(dead_code)]
-pub fn generate_ephemeral_keys(
-    session_id: &str,
-) -> Result<EphemeralKeyMaterial, CryptoTransportError> {
+pub fn generate_ephemeral_keys(session_id: &str) -> EphemeralKeyMaterial {
     // Generate 512-bit PSK for post-quantum resistance using cryptographically secure RNG
     use rand::RngCore;
     let mut psk = vec![0u8; 64];
@@ -66,7 +64,7 @@ pub fn generate_ephemeral_keys(
     // 15-minute TTL for ephemeral keys
     let ttl = Duration::from_secs(15 * 60);
 
-    Ok(EphemeralKeyMaterial::new(psk, session_id.to_string(), ttl))
+    EphemeralKeyMaterial::new(psk, session_id.to_string(), ttl)
 }
 
 /// Key manager for handling ephemeral key lifecycle
@@ -84,10 +82,9 @@ impl KeyManager {
     }
 
     /// Initialize with new ephemeral keys
-    pub fn initialize(&mut self, session_id: &str) -> Result<(), CryptoTransportError> {
-        let keys = generate_ephemeral_keys(session_id)?;
+    pub fn initialize(&mut self, session_id: &str) {
+        let keys = generate_ephemeral_keys(session_id);
         self.current_keys = Some(keys);
-        Ok(())
     }
 
     /// Get current keys if not expired
@@ -99,17 +96,16 @@ impl KeyManager {
     pub fn needs_rotation(&self) -> bool {
         self.current_keys
             .as_ref()
-            .map(|k| k.is_expired() || k.remaining_ttl() < Duration::from_secs(5 * 60))
-            .unwrap_or(true)
+            .is_none_or(|k| k.is_expired() || k.remaining_ttl() < Duration::from_secs(5 * 60))
     }
 
     /// Rotate keys if needed
-    pub fn maybe_rotate(&mut self, session_id: &str) -> Result<bool, CryptoTransportError> {
+    pub fn maybe_rotate(&mut self, session_id: &str) -> bool {
         if self.needs_rotation() {
-            self.initialize(session_id)?;
-            Ok(true)
+            self.initialize(session_id);
+            true
         } else {
-            Ok(false)
+            false
         }
     }
 }

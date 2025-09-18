@@ -9,6 +9,12 @@ use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tokio_stream::{Stream, StreamExt};
 
+/// Type alias for file transfer result handlers
+type ResultHandler = Box<dyn Fn(Result<FileTransferResult>) -> Result<FileTransferResult> + Send + Sync>;
+
+/// Type alias for file transfer progress chunk handlers  
+type ChunkHandler = Box<dyn Fn(Result<FileProgress>) -> Result<FileProgress> + Send + Sync>;
+
 /// Immutable builder for file transfer operations following README patterns
 pub struct FileTransferConfig {
     operation: FileOperation,
@@ -16,9 +22,8 @@ pub struct FileTransferConfig {
     addr: SocketAddr,
     compression: bool,
     resume: bool,
-    result_handler:
-        Option<Box<dyn Fn(Result<FileTransferResult>) -> Result<FileTransferResult> + Send + Sync>>,
-    chunk_handler: Option<Box<dyn Fn(Result<FileProgress>) -> Result<FileProgress> + Send + Sync>>,
+    result_handler: Option<ResultHandler>,
+    chunk_handler: Option<ChunkHandler>,
 }
 
 /// Builder for upload operations
@@ -33,6 +38,7 @@ pub struct DownloadConfig {
 
 impl FileTransferConfig {
     /// Create a new upload configuration
+    #[must_use]
     pub fn upload(path: String, addr: SocketAddr) -> UploadConfig {
         UploadConfig {
             config: FileTransferConfig {
@@ -48,6 +54,7 @@ impl FileTransferConfig {
     }
 
     /// Create a new download configuration
+    #[must_use]
     pub fn download(path: String, addr: SocketAddr) -> DownloadConfig {
         DownloadConfig {
             config: FileTransferConfig {
@@ -65,18 +72,21 @@ impl FileTransferConfig {
 
 impl UploadConfig {
     /// Enable compression for upload
+    #[must_use]
     pub fn with_compression(mut self, enabled: bool) -> Self {
         self.config.compression = enabled;
         self
     }
 
     /// Enable resume capability for upload
+    #[must_use]
     pub fn with_resume(mut self, enabled: bool) -> Self {
         self.config.resume = enabled;
         self
     }
 
-    /// Set result handler following README on_result pattern
+    /// Set result handler following README `on_result` pattern
+    #[must_use]
     pub fn on_result<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<FileTransferResult>) -> Result<FileTransferResult> + Send + Sync + 'static,
@@ -85,7 +95,8 @@ impl UploadConfig {
         self
     }
 
-    /// Set chunk handler for streaming following README on_chunk pattern
+    /// Set chunk handler for streaming following `README` `on_chunk` pattern
+    #[must_use]
     pub fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<FileProgress>) -> Result<FileProgress> + Send + Sync + 'static,
@@ -112,18 +123,21 @@ impl UploadConfig {
 
 impl DownloadConfig {
     /// Enable compression for download
+    #[must_use]
     pub fn with_compression(mut self, enabled: bool) -> Self {
         self.config.compression = enabled;
         self
     }
 
-    /// Enable resume capability for download  
+    /// Enable resume capability for download
+    #[must_use]
     pub fn with_resume(mut self, enabled: bool) -> Self {
         self.config.resume = enabled;
         self
     }
 
-    /// Set result handler following README on_result pattern
+    /// Set result handler following `README` `on_result` pattern
+    #[must_use]
     pub fn on_result<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<FileTransferResult>) -> Result<FileTransferResult> + Send + Sync + 'static,
@@ -132,7 +146,8 @@ impl DownloadConfig {
         self
     }
 
-    /// Set chunk handler for streaming following README on_chunk pattern
+    /// Set chunk handler for streaming following `README` `on_chunk` pattern
+    #[must_use]
     pub fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<FileProgress>) -> Result<FileProgress> + Send + Sync + 'static,

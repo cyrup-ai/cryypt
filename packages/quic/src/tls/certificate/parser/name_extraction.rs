@@ -17,7 +17,7 @@ pub fn extract_name_attributes(name: &x509_cert::name::Name, attrs: &mut HashMap
     const OID_L: &str = "2.5.4.7"; // localityName
 
     // Iterate through RDNs (Relative Distinguished Names)
-    for rdn in name.0.iter() {
+    for rdn in &name.0 {
         // Each RDN contains one or more AttributeTypeAndValue
         for atv in rdn.0.iter() {
             let oid_string = atv.oid.to_string();

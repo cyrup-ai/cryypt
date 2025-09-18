@@ -20,7 +20,14 @@ pub struct ConnectionHealth {
     last_health_check: AtomicU64,
 }
 
+impl Default for ConnectionHealth {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConnectionHealth {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             success_rate: AtomicU64::new(10000), // Start with 100% success rate
@@ -133,7 +140,14 @@ pub struct ConnectionReputation {
     pub reputation_score: AtomicU64,
 }
 
+impl Default for ConnectionReputation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConnectionReputation {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             checksum_failures: AtomicU64::new(0),

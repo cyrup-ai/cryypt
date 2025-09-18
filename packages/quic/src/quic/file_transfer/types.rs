@@ -9,16 +9,19 @@ pub struct FileTransferProtocol {
 }
 
 impl FileTransferProtocol {
+    #[must_use]
     pub(crate) fn new(addr: SocketAddr) -> Self {
         Self { addr }
     }
 
     /// Upload a file
+    #[must_use]
     pub fn upload(&self, path: impl Into<String>) -> crate::quic::file_transfer::UploadConfig {
         crate::quic::file_transfer::FileTransferConfig::upload(path.into(), self.addr)
     }
 
     /// Download a file
+    #[must_use]
     pub fn download(&self, path: impl Into<String>) -> crate::quic::file_transfer::DownloadConfig {
         crate::quic::file_transfer::FileTransferConfig::download(path.into(), self.addr)
     }

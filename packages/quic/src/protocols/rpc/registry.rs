@@ -37,6 +37,7 @@ pub struct RpcContext {
 
 impl RpcContext {
     /// Create a new RPC context
+    #[must_use]
     pub fn new(request_id: Id, method: String, timeout: Duration) -> Self {
         let start_time = Instant::now();
         Self {
@@ -49,22 +50,26 @@ impl RpcContext {
     }
 
     /// Set the connection ID
+    #[must_use]
     pub fn with_connection_id(mut self, connection_id: String) -> Self {
         self.connection_id = Some(connection_id);
         self
     }
 
     /// Get elapsed time since request start
+    #[must_use]
     pub fn elapsed(&self) -> Duration {
         self.start_time.elapsed()
     }
 
     /// Check if the request has timed out
+    #[must_use]
     pub fn is_timed_out(&self) -> bool {
         Instant::now() > self.deadline
     }
 
     /// Get remaining time until deadline
+    #[must_use]
     pub fn time_remaining(&self) -> Duration {
         self.deadline.saturating_duration_since(Instant::now())
     }
@@ -126,7 +131,7 @@ struct RequestHandle {
     deadline_key: tokio_util::time::delay_queue::Key,
 }
 
-/// In-flight request tracking (based on tarpc's InFlightRequests)
+/// In-flight request tracking (based on tarpc's `InFlightRequests`)
 #[derive(Debug)]
 pub struct InFlightRequests {
     /// Map of request ID to request data
@@ -137,6 +142,7 @@ pub struct InFlightRequests {
 
 impl InFlightRequests {
     /// Create a new in-flight requests tracker
+    #[must_use]
     pub fn new() -> Self {
         Self {
             requests: FnvHashMap::default(),
@@ -145,6 +151,13 @@ impl InFlightRequests {
     }
 
     /// Start tracking a request
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Request ID already exists and is in flight
+    /// - Maximum concurrent requests limit reached
+    /// - Request context validation fails
     pub fn start_request(
         &mut self,
         ctx: RpcContext,
@@ -154,8 +167,7 @@ impl InFlightRequests {
         // Check if request ID already exists
         if self.requests.contains_key(&request_id) {
             return Err(RpcError::invalid_request(format!(
-                "Request ID {:?} already in flight",
-                request_id
+                "Request ID {request_id:?} already in flight"
             )));
         }
 
@@ -195,11 +207,13 @@ impl InFlightRequests {
     }
 
     /// Get the number of in-flight requests
+    #[must_use]
     pub fn len(&self) -> usize {
         self.requests.len()
     }
 
     /// Check if there are any in-flight requests
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.requests.is_empty()
     }
@@ -245,6 +259,7 @@ pub struct JsonRpcRegistry {
 
 impl JsonRpcRegistry {
     /// Create a new registry
+    #[must_use]
     pub fn new() -> Self {
         Self {
             methods: DashMap::new(),
@@ -255,6 +270,7 @@ impl JsonRpcRegistry {
     }
 
     /// Create a registry with custom configuration
+    #[must_use]
     pub fn with_config(default_timeout: Duration, max_concurrent: usize) -> Self {
         Self {
             methods: DashMap::new(),
@@ -265,23 +281,31 @@ impl JsonRpcRegistry {
     }
 
     /// Register a method with a closure handler
-    pub fn register<F, Fut>(&self, name: String, handler: F)
+    pub fn register<F, Fut>(&self, name: &str, handler: F)
     where
         F: Fn(RpcContext, Option<Params>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<OwnedValue>> + Send + 'static,
     {
         let method = Arc::new(ClosureMethod::new(handler));
-        self.methods.insert(name.clone(), method);
+        self.methods.insert(name.to_string(), method);
         debug!("Registered RPC method: {}", name);
     }
 
     /// Register a method with a trait object
-    pub fn register_method(&self, name: String, method: Arc<dyn RpcMethod>) {
-        self.methods.insert(name.clone(), method);
+    pub fn register_method(&self, name: &str, method: Arc<dyn RpcMethod>) {
+        self.methods.insert(name.to_string(), method);
         debug!("Registered RPC method: {}", name);
     }
 
     /// Call a method by name
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Method name is not found in the registry
+    /// - Method execution fails or panics
+    /// - Parameter validation fails
+    /// - Method returns an error result
     pub async fn call_method(
         &self,
         method_name: &str,
@@ -327,10 +351,10 @@ impl JsonRpcRegistry {
             result = method.call(ctx.clone(), params) => {
                 result
             }
-            _ = cancellation_token.cancelled() => {
+            () = cancellation_token.cancelled() => {
                 Err(RpcError::internal_error("Request was cancelled".to_string()))
             }
-            _ = tokio::time::sleep(ctx.time_remaining()) => {
+            () = tokio::time::sleep(ctx.time_remaining()) => {
                 Err(RpcError::internal_error("Request timed out".to_string()))
             }
         };
@@ -366,26 +390,31 @@ impl JsonRpcRegistry {
     }
 
     /// Get list of registered method names
+    #[must_use]
     pub fn list_methods(&self) -> Vec<String> {
         self.methods.iter().map(|entry| entry.key().clone()).collect()
     }
 
     /// Check if a method is registered
+    #[must_use]
     pub fn has_method(&self, name: &str) -> bool {
         self.methods.contains_key(name)
     }
 
     /// Get the number of registered methods
+    #[must_use]
     pub fn method_count(&self) -> usize {
         self.methods.len()
     }
 
     /// Get the number of in-flight requests
+    #[must_use]
     pub fn in_flight_count(&self) -> usize {
         self.in_flight.lock().map(|guard| guard.len()).unwrap_or(0)
     }
 
     /// Cancel a specific request
+    #[must_use]
     pub fn cancel_request(&self, request_id: &Id) -> bool {
         self.in_flight
             .lock()
@@ -396,7 +425,7 @@ impl JsonRpcRegistry {
     /// Register default introspection methods
     pub fn register_introspection_methods(&self) {
         // List available methods
-        self.register("rpc.discover".to_string(), {
+        self.register("rpc.discover", {
             let registry = Arc::downgrade(&Arc::new(self.methods.clone()));
             move |_ctx, _params| {
                 let registry = registry.clone();
@@ -415,12 +444,12 @@ impl JsonRpcRegistry {
         });
 
         // Ping method for health checks
-        self.register("ping".to_string(), |_ctx, _params| async {
+        self.register("ping", |_ctx, _params| async {
             Ok(OwnedValue::from("pong"))
         });
 
         // Echo method for testing
-        self.register("echo".to_string(), |_ctx, params| async {
+        self.register("echo", |_ctx, params| async {
             match params {
                 Some(Params::Array(mut arr)) if !arr.is_empty() => {
                     Ok(arr.remove(0))
@@ -441,7 +470,7 @@ impl JsonRpcRegistry {
 
         // List available methods (only register if not already present)
         if !self.has_method("rpc.discover") {
-            self.register("rpc.discover".to_string(), {
+            self.register("rpc.discover", {
                 let registry = Arc::downgrade(&Arc::new(self.methods.clone()));
                 move |_ctx, _params| {
                     let registry = registry.clone();
@@ -463,7 +492,7 @@ impl JsonRpcRegistry {
 
         // Ping method for health checks (only register if not already present)
         if !self.has_method("ping") {
-            self.register("ping".to_string(), |_ctx, _params| async {
+            self.register("ping", |_ctx, _params| async {
                 Ok(OwnedValue::from("pong"))
             });
             registered_methods.push("ping");
@@ -471,7 +500,7 @@ impl JsonRpcRegistry {
 
         // Echo method for testing (only register if not already present)
         if !self.has_method("echo") {
-            self.register("echo".to_string(), |_ctx, params| async {
+            self.register("echo", |_ctx, params| async {
                 match params {
                     Some(Params::Array(mut arr)) if !arr.is_empty() => {
                         Ok(arr.remove(0))
@@ -507,7 +536,7 @@ mod tests {
         let registry = JsonRpcRegistry::new();
         
         // Register a simple method
-        registry.register("add".to_string(), |_ctx, params| async move {
+        registry.register("add", |_ctx, params| async move {
             match params {
                 Some(Params::Array(arr)) if arr.len() == 2 => {
                     if let (Some(a), Some(b)) = (arr[0].as_i64(), arr[1].as_i64()) {
@@ -556,7 +585,7 @@ mod tests {
         let registry = JsonRpcRegistry::new();
         
         // Register a slow method
-        registry.register("slow".to_string(), |_ctx, _params| async {
+        registry.register("slow", |_ctx, _params| async {
             sleep(Duration::from_millis(100)).await;
             Ok(OwnedValue::from("done"))
         });
@@ -590,7 +619,7 @@ mod tests {
         let registry = JsonRpcRegistry::with_config(Duration::from_secs(1), 1);
         
         // Register a slow method
-        registry.register("slow".to_string(), |_ctx, _params| async {
+        registry.register("slow", |_ctx, _params| async {
             sleep(Duration::from_millis(200)).await;
             Ok(OwnedValue::from("done"))
         });

@@ -28,9 +28,8 @@ impl PqcryptoMasterBuilder {
     ) -> cryypt_pqcrypto::api::KyberBuilder<cryypt_pqcrypto::api::KyberHasSecurityLevel> {
         let security_level = match level {
             512 => cryypt_pqcrypto::api::KyberSecurityLevel::Level1,
-            768 => cryypt_pqcrypto::api::KyberSecurityLevel::Level3,
             1024 => cryypt_pqcrypto::api::KyberSecurityLevel::Level5,
-            _ => cryypt_pqcrypto::api::KyberSecurityLevel::Level3, // Default to Level 3
+            _ => cryypt_pqcrypto::api::KyberSecurityLevel::Level3, // Default to Level 3 (includes 768)
         };
         cryypt_pqcrypto::api::KyberBuilder::new().with_security_level(security_level)
     }

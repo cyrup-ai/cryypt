@@ -10,7 +10,7 @@ use crate::tls::builder::authority::core::{
     CaMetadata, CaSource, CertificateAuthority, dn_hashmap_to_string, serial_to_string,
 };
 
-pub(super) async fn load_from_system_store(
+pub(super) fn load_from_system_store(
     name: String,
 ) -> super::super::super::responses::CertificateAuthorityResponse {
     // Common certificate store locations

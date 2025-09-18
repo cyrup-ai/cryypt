@@ -32,18 +32,21 @@ impl FileUploadBuilder {
     }
 
     /// Enable compression for this upload
+    #[must_use]
     pub fn with_compression(mut self, enabled: bool) -> Self {
         self.compress = enabled;
         self
     }
 
     /// Enable resume capability
+    #[must_use]
     pub fn with_resume(mut self, enabled: bool) -> Self {
         self.resume = enabled;
         self
     }
 
     /// Set progress callback
+    #[must_use]
     pub fn with_progress<F>(mut self, callback: F) -> Self
     where
         F: Fn(FileTransferProgress) + Send + Sync + 'static,
@@ -53,10 +56,19 @@ impl FileUploadBuilder {
     }
 
     /// Execute the upload
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - The specified file does not exist
+    /// - File read operations fail
+    /// - Network connection fails
+    /// - Upload protocol execution fails
+    /// - Progress reporting fails
     pub async fn execute(self) -> Result<TransferResult> {
         // Validate file exists
         if !self.file_path.exists() {
-            return Err(format!("File not found: {:?}", self.file_path).into());
+            return Err(format!("File not found: {}", self.file_path.display()).into());
         }
 
         let metadata = metadata(&self.file_path).await?;
@@ -75,17 +87,17 @@ impl FileUploadBuilder {
         let connection = self.client.establish_connection().await?;
 
         // Execute the upload protocol (this hides ALL the complexity)
-        let result = super::helpers::execute_upload_protocol(
-            connection,
-            &self.file_path,
-            &filename,
+        let config = super::helpers::UploadConfig {
+            file_path: &self.file_path,
+            filename: &filename,
             file_size,
-            &checksum,
-            self.compress,
-            self.resume,
-            self.progress_callback,
-        )
-        .await?;
+            checksum: &checksum,
+            compress: self.compress,
+            resume: self.resume,
+            progress_callback: self.progress_callback,
+        };
+        
+        let result = super::helpers::execute_upload_protocol(connection, config).await?;
 
         Ok(result)
     }

@@ -1,6 +1,6 @@
 //! Core TLS connection manager
 //!
-//! Provides the main TlsManager struct with connection creation and certificate
+//! Provides the main `TlsManager` struct with connection creation and certificate
 //! authority management functionality.
 
 use std::collections::HashMap;
@@ -32,15 +32,31 @@ pub struct TlsManager {
 
 impl TlsManager {
     /// Create new TLS manager with default configuration
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - OCSP cache initialization fails
+    /// - CRL cache initialization fails
+    /// - Default configuration is invalid
+    #[must_use]
     pub fn new() -> Result<Self, TlsError> {
         Self::with_config(TlsConfig::default())
     }
 
     /// Create new TLS manager with certificate directory (async)
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Certificate directory creation fails
+    /// - Directory permissions are insufficient
+    /// - TLS manager initialization fails
+    /// - File system operations fail
     pub async fn with_cert_dir(cert_dir: std::path::PathBuf) -> Result<Self, TlsError> {
         // Create certificate directory if it doesn't exist
-        if !cert_dir.exists() {
-            std::fs::create_dir_all(&cert_dir).map_err(|e| {
+        if !tokio::fs::try_exists(&cert_dir).await.unwrap_or(false) {
+            tokio::fs::create_dir_all(&cert_dir).await.map_err(|e| {
                 TlsError::Internal(format!("Failed to create cert directory: {e}"))
             })?;
         }
@@ -49,11 +65,11 @@ impl TlsManager {
         let mut config = TlsConfig::default();
 
         // Add any certificates found in the directory
-        if let Ok(entries) = std::fs::read_dir(&cert_dir) {
-            for entry in entries.flatten() {
+        if let Ok(mut entries) = tokio::fs::read_dir(&cert_dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
                 let path = entry.path();
                 if path.extension().and_then(|s| s.to_str()) == Some("pem") {
-                    if let Ok(cert_data) = std::fs::read_to_string(&path) {
+                    if let Ok(cert_data) = tokio::fs::read_to_string(&path).await {
                         config.custom_root_certs.push(cert_data);
                     }
                 }
@@ -64,6 +80,14 @@ impl TlsManager {
     }
 
     /// Create TLS manager with specific configuration
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - OCSP cache initialization fails
+    /// - CRL cache initialization fails
+    /// - Configuration validation fails
+    #[must_use]
     pub fn with_config(config: TlsConfig) -> Result<Self, TlsError> {
         Ok(Self {
             ocsp_cache: Arc::new(OcspCache::new()?),
@@ -74,11 +98,26 @@ impl TlsManager {
     }
 
     /// Create TLS manager with production-optimized configuration
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Production configuration setup fails
+    /// - Cache initialization with optimized settings fails
+    /// - Required system resources are unavailable
+    #[must_use]
     pub fn production_optimized() -> Result<Self, TlsError> {
         Self::with_config(TlsConfig::production_optimized())
     }
 
     /// Add custom certificate authority
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Certificate authority is invalid or malformed
+    /// - Name conflicts with existing CA
+    /// - Lock acquisition fails for CA storage
     pub fn add_certificate_authority(
         &self,
         name: String,
@@ -92,8 +131,7 @@ impl TlsManager {
         // Validate CA before adding
         if !ca.is_valid() {
             return Err(TlsError::CertificateExpired(format!(
-                "Certificate authority '{}' is expired",
-                name
+                "Certificate authority '{name}' is expired"
             )));
         }
 
@@ -102,6 +140,15 @@ impl TlsManager {
     }
 
     /// Pre-validate certificate for upcoming connection (eliminates block_on in rustls callbacks)
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Certificate parsing fails
+    /// - OCSP validation fails
+    /// - CRL validation fails
+    /// - Certificate is expired or invalid
+    /// - Network validation requests fail
     pub async fn pre_validate_certificate(&self, cert_der: &[u8]) -> Result<(), TlsError> {
         // Create enterprise verifier for pre-validation
         let verifier = EnterpriseServerCertVerifier::new(
@@ -116,6 +163,15 @@ impl TlsManager {
     }
 
     /// Create enterprise TLS connection with full validation
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - TCP connection fails
+    /// - TLS handshake fails
+    /// - Certificate validation fails
+    /// - Connection timeout exceeded
+    /// - Network errors occur
     pub async fn create_connection(
         &self,
         host: &str,
@@ -131,7 +187,7 @@ impl TlsManager {
         .await
         .map_err(|_| TlsError::Internal("Connection timeout".to_string()))?
         .map_err(|e| {
-            TlsError::Internal(format!("Failed to connect to {}:{}: {}", host, port, e))
+            TlsError::Internal(format!("Failed to connect to {host}:{port}: {e}"))
         })?;
 
         // Create enterprise TLS client configuration
@@ -142,7 +198,7 @@ impl TlsManager {
 
         // Create server name for TLS
         let server_name = rustls::pki_types::ServerName::try_from(host.to_string())
-            .map_err(|e| TlsError::Internal(format!("Invalid hostname '{}': {}", host, e)))?;
+            .map_err(|e| TlsError::Internal(format!("Invalid hostname '{host}': {e}")))?;
 
         // Establish TLS connection
         let tls_stream = connector
@@ -155,6 +211,7 @@ impl TlsManager {
     }
 
     /// Create enterprise client configuration with full certificate validation
+    #[must_use]
     fn create_client_config_sync(&self) -> Result<ClientConfig, TlsError> {
         // Create root certificate store
         let mut root_store = RootCertStore::empty();

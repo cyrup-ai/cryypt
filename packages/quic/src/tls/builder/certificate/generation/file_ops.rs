@@ -12,6 +12,15 @@ use super::super::super::responses::{
 };
 
 /// Save certificate files to specified path
+/// 
+/// # Errors
+/// 
+/// Returns an error if:
+/// - Directory creation fails
+/// - File write permissions are insufficient
+/// - Certificate or key content is invalid
+/// - File system operations fail
+/// - Disk space is insufficient
 pub async fn save_certificate_files(
     save_path: &Option<PathBuf>,
     cert_pem: &str,

@@ -220,7 +220,7 @@ async fn test_passphrase_operations(vault_path: &str) -> Result<(), Box<dyn std:
         }
         Err(_) => {
             // Expected error case - old passphrase should not work
-            assert!(true);
+            // Test passes - this is the expected behavior
         }
     }
 
@@ -408,7 +408,7 @@ async fn test_error_conditions(vault_path: &str) -> Result<(), Box<dyn std::erro
         }
         Err(_) => {
             // Expected error case - wrong passphrase should fail
-            assert!(true);
+            // Test passes - this is the expected behavior
         }
     }
 

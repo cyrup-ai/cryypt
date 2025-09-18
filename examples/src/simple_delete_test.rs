@@ -1,4 +1,4 @@
-use tokio;
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // PUT a key
     println!("1. PUT key2 = 'test value 2'");
     let output = std::process::Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "cryypt_vault",
@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // GET the key to verify it exists
     println!("\n2. GET key2 to verify it exists");
     let output = std::process::Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "cryypt_vault",
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // DELETE the key
     println!("\n3. DELETE key2");
     let output = std::process::Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "cryypt_vault",
@@ -93,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // GET the key again to see if it was deleted
     println!("\n4. GET key2 to verify it was deleted");
     let output = std::process::Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--package",
             "cryypt_vault",

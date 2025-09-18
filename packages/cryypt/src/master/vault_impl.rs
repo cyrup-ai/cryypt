@@ -37,7 +37,7 @@ impl VaultWithPath {
     }
 
     /// Convert to future for .await syntax
-    pub async fn create_and_unlock(self) -> cryypt_vault::core::Vault {
+    pub fn create_and_unlock(self) -> cryypt_vault::core::Vault {
         // Create vault with configuration if provided
         let result = if let Some(config) = self.config {
             cryypt_vault::core::Vault::with_fortress_encryption(config)
@@ -96,9 +96,10 @@ where
             config
         } else if !self.path.is_empty() {
             // Create new config with specified path
-            let mut config = cryypt_vault::config::VaultConfig::default();
-            config.vault_path = std::path::PathBuf::from(&self.path);
-            config
+            cryypt_vault::config::VaultConfig {
+                vault_path: std::path::PathBuf::from(&self.path),
+                ..Default::default()
+            }
         } else {
             // Use default config
             cryypt_vault::config::VaultConfig::default()

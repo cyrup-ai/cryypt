@@ -39,6 +39,7 @@ impl Default for TlsConfig {
 
 impl TlsConfig {
     /// Create production-optimized TLS configuration
+    #[must_use]
     pub fn production_optimized() -> Self {
         Self {
             enable_ocsp: true,
@@ -52,6 +53,7 @@ impl TlsConfig {
     }
 
     /// Create AI-optimized TLS configuration
+    #[must_use]
     pub fn ai_optimized() -> Self {
         Self {
             enable_ocsp: true,

@@ -1,6 +1,7 @@
 //! CLI module for command-line interface functionality
 
 pub mod auth;
+pub mod auth_operations;
 pub mod commands;
 pub mod crud_operations;
 pub mod data_ops;
@@ -98,6 +99,19 @@ pub async fn process_command(
                 .await
         }
 
+        Commands::Login {
+            passphrase,
+            expires_in,
+        } => {
+            auth_operations::handle_login(
+                vault,
+                passphrase.as_deref(),
+                expires_in,
+                use_json,
+            )
+            .await
+        }
+
         Commands::Run { command } => {
             run_command::handle_run(vault, command, passphrase_option, use_json).await
         }
@@ -151,6 +165,42 @@ pub async fn process_command(
                 count,
                 &store,
                 passphrase_option,
+                use_json,
+            )
+            .await
+        }
+
+        Commands::Lock {
+            pq_public_key,
+            keychain_namespace,
+            key_version,
+        } => {
+            // For now, use a placeholder vault path. In a real implementation,
+            // this would come from CLI args or vault configuration
+            let vault_path = std::path::Path::new("vault");
+            commands::handle_lock_command(
+                vault_path,
+                pq_public_key.as_deref(),
+                &keychain_namespace,
+                key_version,
+                use_json,
+            )
+            .await
+        }
+
+        Commands::Unlock {
+            pq_private_key,
+            keychain_namespace,
+            key_version,
+        } => {
+            // For now, use a placeholder vault path. In a real implementation,
+            // this would come from CLI args or vault configuration
+            let vault_path = std::path::Path::new("vault");
+            commands::handle_unlock_command(
+                vault_path,
+                pq_private_key.as_deref(),
+                &keychain_namespace,
+                key_version,
                 use_json,
             )
             .await

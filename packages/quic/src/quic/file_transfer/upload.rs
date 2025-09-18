@@ -86,6 +86,7 @@ pub(crate) async fn execute_upload_streaming(
         Box::new(
             move |progress: crate::protocols::file_transfer::FileTransferProgress| {
                 callback(FileProgress {
+                    #[allow(clippy::cast_precision_loss)]
                     percent: (progress.bytes_transferred as f64 / progress.total_bytes as f64)
                         * 100.0,
                     bytes_transferred: progress.bytes_transferred,
@@ -98,16 +99,20 @@ pub(crate) async fn execute_upload_streaming(
     });
 
     // Use production upload protocol implementation
+    let config = crate::protocols::file_transfer::sender::helpers::UploadConfig {
+        file_path: &path,
+        filename: &filename,
+        file_size,
+        checksum: &checksum,
+        compress: compression,
+        resume,
+        progress_callback: production_callback,
+    };
+    
     let transfer_result =
         crate::protocols::file_transfer::sender::helpers::execute_upload_protocol(
             connection,
-            &path,
-            &filename,
-            file_size,
-            &checksum,
-            compression,
-            resume,
-            production_callback,
+            config,
         )
         .await?;
 

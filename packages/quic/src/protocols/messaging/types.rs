@@ -10,6 +10,7 @@ use std::time::{Duration, SystemTime};
 /// Get current time in milliseconds since epoch
 pub fn now_millis() -> u64 {
     match SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        #[allow(clippy::cast_possible_truncation)]
         Ok(duration) => duration.as_millis() as u64,
         Err(_) => 0, // Fallback for clock issues
     }
@@ -176,6 +177,7 @@ pub struct ConnectionState {
 }
 
 impl ConnectionState {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             active_streams: AtomicU64::new(0),
@@ -186,7 +188,15 @@ impl ConnectionState {
             message_count: AtomicU64::new(0),
         }
     }
+}
 
+impl Default for ConnectionState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ConnectionState {
     pub fn increment_streams(&self) {
         self.active_streams.fetch_add(1, Ordering::Relaxed);
     }
@@ -230,6 +240,7 @@ pub struct PriorityMessageQueue {
 }
 
 impl PriorityMessageQueue {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             critical: SegQueue::new(),
@@ -298,6 +309,12 @@ impl PriorityMessageQueue {
     }
 }
 
+impl Default for PriorityMessageQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Load balancer for connection-aware distribution
 #[derive(Debug)]
 pub struct LoadBalancer {
@@ -305,6 +322,7 @@ pub struct LoadBalancer {
 }
 
 impl LoadBalancer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             round_robin_counters: DashMap::new(),
@@ -312,6 +330,7 @@ impl LoadBalancer {
     }
 
     /// Select single connection using round-robin for topic
+    #[must_use]
     pub fn select_round_robin(&self, topic: &str, connections: &[Vec<u8>]) -> Option<Vec<u8>> {
         if connections.is_empty() {
             return None;
@@ -322,11 +341,13 @@ impl LoadBalancer {
             .entry(topic.to_string())
             .or_insert_with(|| AtomicU64::new(0));
 
+        #[allow(clippy::cast_possible_truncation)]
         let index = counter.fetch_add(1, Ordering::Relaxed) as usize % connections.len();
         connections.get(index).cloned()
     }
 
     /// Select connection with least active streams
+    #[must_use]
     pub fn select_least_connections(
         &self,
         connections: &[Vec<u8>],
@@ -353,6 +374,7 @@ impl LoadBalancer {
     }
 
     /// Select healthiest connection
+    #[must_use]
     pub fn select_healthiest(
         &self,
         connections: &[Vec<u8>],
@@ -379,17 +401,20 @@ impl LoadBalancer {
     }
 
     /// Select random connection
+    #[must_use]
     pub fn select_random(&self, connections: &[Vec<u8>]) -> Option<Vec<u8>> {
+        use rand::Rng;
+        
         if connections.is_empty() {
             return None;
         }
 
-        use rand::Rng;
         let index = rand::rng().random_range(0..connections.len());
         connections.get(index).cloned()
     }
 
     /// Select random healthy connection (health > 50)
+    #[must_use]
     pub fn select_random_healthy(
         &self,
         connections: &[Vec<u8>],
@@ -400,8 +425,7 @@ impl LoadBalancer {
             .filter(|conn_id| {
                 conn_states
                     .get(*conn_id)
-                    .map(|state| state.get_health_score() > 50)
-                    .unwrap_or(false)
+                    .is_some_and(|state| state.get_health_score() > 50)
             })
             .collect();
 
@@ -413,6 +437,7 @@ impl LoadBalancer {
     }
 
     /// Filter connections to only healthy ones (health score > 50%)
+    #[must_use]
     pub fn filter_healthy_connections(
         &self,
         connections: &[Vec<u8>],
@@ -430,5 +455,11 @@ impl LoadBalancer {
                 })
             })
             .collect()
+    }
+}
+
+impl Default for LoadBalancer {
+    fn default() -> Self {
+        Self::new()
     }
 }

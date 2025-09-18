@@ -1,5 +1,7 @@
 //! Integration test for rcgen certificate generation in QUIC module
 
+#![allow(clippy::uninlined_format_args)]
+
 #[tokio::test]
 async fn test_rcgen_basic_certificate_generation() {
     use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair};

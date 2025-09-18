@@ -34,7 +34,14 @@ pub struct PerformanceMonitor {
     error_count: AtomicU64,
 }
 
+impl Default for PerformanceMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerformanceMonitor {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             message_count: AtomicU64::new(0),
@@ -75,6 +82,7 @@ impl PerformanceMonitor {
 }
 
 /// Connection ID utilities
+#[must_use]
 pub fn generate_connection_id() -> Vec<u8> {
     use rand::RngCore;
     let mut conn_id_bytes = [0u8; quiche::MAX_CONN_ID_LEN];
@@ -83,6 +91,13 @@ pub fn generate_connection_id() -> Vec<u8> {
 }
 
 /// Connection configuration utilities
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - QUIC configuration creation fails
+/// - Invalid protocol parameters
+/// - System resource limitations
 pub fn create_quic_config() -> Result<quiche::Config, quiche::Error> {
     let mut config = quiche::Config::new(QUIC_PROTOCOL_VERSION)?;
 
@@ -99,6 +114,12 @@ pub fn create_quic_config() -> Result<quiche::Config, quiche::Error> {
 }
 
 /// Configure QUIC for client connections
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Base QUIC configuration creation fails
+/// - Client-specific configuration parameters are invalid
 pub fn create_client_quic_config() -> Result<quiche::Config, quiche::Error> {
     let mut config = create_quic_config()?;
     config.verify_peer(true); // Enable proper client certificate validation
@@ -111,6 +132,7 @@ pub struct ConnectionHealthChecker {
 }
 
 impl ConnectionHealthChecker {
+    #[must_use]
     pub fn new(interval: Duration) -> Self {
         Self {
             health_check_interval: interval,
@@ -129,7 +151,7 @@ impl ConnectionHealthChecker {
         // Wait for the configured health check interval before proceeding
         tokio::time::sleep(self.health_check_interval).await;
 
-        for entry in connections.iter() {
+        for entry in connections {
             let conn_id = entry.key().clone();
             let state = entry.value();
 
@@ -147,6 +169,7 @@ impl ConnectionHealthChecker {
     }
 
     /// Get the configured health check interval
+    #[must_use]
     pub fn get_interval(&self) -> Duration {
         self.health_check_interval
     }
@@ -159,6 +182,7 @@ pub struct FlowController {
 }
 
 impl FlowController {
+    #[must_use]
     pub fn new(max_outstanding: usize) -> Self {
         Self {
             max_outstanding_messages: max_outstanding,
@@ -201,6 +225,7 @@ pub struct RetryManager {
 }
 
 impl RetryManager {
+    #[must_use]
     pub fn new(max_retries: u32, base_delay: Duration, max_delay: Duration) -> Self {
         Self {
             max_retries,
@@ -210,18 +235,27 @@ impl RetryManager {
     }
 
     /// Calculate exponential backoff delay
+    #[must_use]
     pub fn calculate_delay(&self, attempt: u32) -> Duration {
         let delay_ms = self.base_delay.as_millis() * (2u128.pow(attempt.min(10)));
-        let delay = Duration::from_millis(delay_ms.min(self.max_delay.as_millis()) as u64);
-        delay
+        let clamped_delay_ms = delay_ms.min(self.max_delay.as_millis());
+        Duration::from_millis(u64::try_from(clamped_delay_ms).unwrap_or(u64::MAX))
     }
 
     /// Check if we should retry
+    #[must_use]
     pub fn should_retry(&self, attempt: u32) -> bool {
         attempt < self.max_retries
     }
 
     /// Execute with retry logic
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - All retry attempts fail
+    /// - Operation times out
+    /// - Operation returns an unrecoverable error
     pub async fn retry_with_backoff<F, T, E>(&self, mut operation: F) -> Result<T, E>
     where
         F: FnMut() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>> + Send>>,
@@ -297,6 +331,7 @@ pub struct MessageValidator {
 }
 
 impl MessageValidator {
+    #[must_use]
     pub fn new(max_message_size: usize, max_topic_length: usize) -> Self {
         Self {
             max_message_size,
@@ -305,6 +340,11 @@ impl MessageValidator {
     }
 
     /// Validate message size
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Message payload exceeds maximum allowed size
     pub fn validate_message_size(&self, payload: &[u8]) -> Result<(), String> {
         if payload.len() > self.max_message_size {
             Err(format!(
@@ -318,6 +358,13 @@ impl MessageValidator {
     }
 
     /// Validate topic name
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Topic name is empty
+    /// - Topic name is too long
+    /// - Topic name contains invalid characters
     pub fn validate_topic(&self, topic: &str) -> Result<(), String> {
         if topic.is_empty() {
             return Err("Topic cannot be empty".to_string());
@@ -355,11 +402,13 @@ impl MetricsCollector {
     }
 
     /// Get uptime in seconds
+    #[must_use]
     pub fn uptime_seconds(&self) -> u64 {
         self.start_time.elapsed().as_secs()
     }
 
     /// Get formatted metrics report
+    #[must_use]
     pub fn get_metrics_report(&self) -> String {
         let (messages, bytes, connections, errors) = self.performance_monitor.get_stats();
         let uptime = self.uptime_seconds();
@@ -379,12 +428,20 @@ impl MetricsCollector {
             connections,
             errors,
             if uptime > 0 {
-                messages as f64 / uptime as f64
+                #[allow(clippy::cast_possible_truncation)]
+                let messages_clamped = messages.min(u64::from(u32::MAX)) as u32;
+                #[allow(clippy::cast_possible_truncation)]
+                let uptime_clamped = uptime.min(u64::from(u32::MAX)) as u32;
+                f64::from(messages_clamped) / f64::from(uptime_clamped)
             } else {
                 0.0
             },
             if uptime > 0 {
-                bytes as f64 / uptime as f64
+                #[allow(clippy::cast_possible_truncation)]
+                let bytes_clamped = bytes.min(u64::from(u32::MAX)) as u32;
+                #[allow(clippy::cast_possible_truncation)]
+                let uptime_clamped = uptime.min(u64::from(u32::MAX)) as u32;
+                f64::from(bytes_clamped) / f64::from(uptime_clamped)
             } else {
                 0.0
             }

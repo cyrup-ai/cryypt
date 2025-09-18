@@ -11,7 +11,14 @@ pub struct TopicSubscriptionManager {
     connection_to_topics: DashMap<Vec<u8>, DashSet<String>>,
 }
 
+impl Default for TopicSubscriptionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TopicSubscriptionManager {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             topic_to_connections: DashMap::new(),
@@ -25,14 +32,14 @@ impl TopicSubscriptionManager {
         let subscribers = self
             .topic_to_connections
             .entry(topic.clone())
-            .or_insert_with(DashSet::new);
+            .or_default();
         subscribers.insert(conn_id.clone());
 
         // Add topic to connection's subscriptions
         let topics = self
             .connection_to_topics
             .entry(conn_id)
-            .or_insert_with(DashSet::new);
+            .or_default();
         topics.insert(topic);
     }
 
@@ -47,6 +54,7 @@ impl TopicSubscriptionManager {
     }
 
     /// Get all connections subscribed to a topic
+    #[must_use]
     pub fn get_subscribers(&self, topic: &str) -> Vec<Vec<u8>> {
         self.topic_to_connections
             .get(topic)

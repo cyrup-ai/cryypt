@@ -34,6 +34,7 @@ impl Default for MessagingServerBuilder {
 impl MessagingServerBuilder {
     /// Create a testing-oriented builder with minimal security for development and testing
     #[cfg(not(test))]
+    #[must_use]
     pub fn testing() -> Self {
         Self {
             max_message_size: 1_048_576, // 1MB
@@ -47,6 +48,7 @@ impl MessagingServerBuilder {
     }
 
     /// Create a development-oriented builder with sensible defaults
+    #[must_use]
     pub fn development() -> Self {
         Self {
             max_message_size: 1_048_576, // 1MB
@@ -60,6 +62,7 @@ impl MessagingServerBuilder {
     }
 
     /// Create a production-oriented builder with robust defaults
+    #[must_use]
     pub fn production() -> Self {
         Self {
             max_message_size: 10_485_760, // 10MB
@@ -73,6 +76,7 @@ impl MessagingServerBuilder {
     }
 
     /// Create a low-latency builder optimized for speed
+    #[must_use]
     pub fn low_latency() -> Self {
         Self {
             max_message_size: 65536, // 64KB
@@ -86,6 +90,7 @@ impl MessagingServerBuilder {
     }
 
     /// Create a high-throughput builder optimized for large payloads
+    #[must_use]
     pub fn high_throughput() -> Self {
         Self {
             max_message_size: 50_331_648, // 48MB
@@ -99,6 +104,7 @@ impl MessagingServerBuilder {
     }
 
     /// Create a secure production builder with minimal configuration
+    #[must_use]
     pub fn production_minimal() -> Self {
         // Generate cryptographically secure random shared secret
         use rand::RngCore;
@@ -126,6 +132,7 @@ impl MessagingServerBuilder {
     /// Fixed keys are used intentionally for test repeatability and are never
     /// compiled into production builds.
     #[cfg(test)]
+    #[must_use]
     pub fn testing() -> Self {
         Self {
             max_message_size: 65536, // 64KB
@@ -139,24 +146,28 @@ impl MessagingServerBuilder {
     }
 
     /// Set maximum message size in bytes
+    #[must_use]
     pub fn with_max_message_size(mut self, size: usize) -> Self {
         self.max_message_size = size;
         self
     }
 
     /// Enable or disable message retention on server
+    #[must_use]
     pub fn with_message_retention(mut self, retain: bool) -> Self {
         self.retain_messages = retain;
         self
     }
 
     /// Set delivery timeout for message acknowledgments
+    #[must_use]
     pub fn with_delivery_timeout(mut self, timeout: Duration) -> Self {
         self.delivery_timeout = timeout;
         self
     }
 
     /// Configure compression algorithm and level
+    #[must_use]
     pub fn with_compression(mut self, algorithm: CompressionAlgorithm, level: u8) -> Self {
         self.default_compression = algorithm;
         self.compression_level = level;
@@ -164,30 +175,42 @@ impl MessagingServerBuilder {
     }
 
     /// Configure encryption algorithm
+    #[must_use]
     pub fn with_encryption(mut self, algorithm: EncryptionAlgorithm) -> Self {
         self.default_encryption = algorithm;
         self
     }
 
     /// Set shared secret for connection key derivation
+    #[must_use]
     pub fn with_shared_secret(mut self, secret: Vec<u8>) -> Self {
         self.shared_secret = Some(secret);
         self
     }
 
-    /// Disable compression (use CompressionAlgorithm::None)
+    /// Disable compression (use `CompressionAlgorithm::None`)
+    #[must_use]
     pub fn disable_compression(mut self) -> Self {
         self.default_compression = CompressionAlgorithm::None;
         self
     }
 
-    /// Disable encryption (use EncryptionAlgorithm::None)
+    /// Disable encryption (use `EncryptionAlgorithm::None`)
+    #[must_use]
     pub fn disable_encryption(mut self) -> Self {
         self.default_encryption = EncryptionAlgorithm::None;
         self
     }
 
     /// Start listening on the specified address using working implementation
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Address parsing fails
+    /// - TLS certificate generation fails
+    /// - QUIC server startup fails
+    /// - Socket binding fails
     pub fn listen(self, addr: &str) -> impl Future<Output = crate::Result<MessagingServer>> + Send {
         // Generate secure random shared secret if not provided
         let shared_secret = self.shared_secret.unwrap_or_else(|| {
@@ -229,15 +252,14 @@ impl MessagingServerBuilder {
             // Parse the address
             let socket_addr = addr_string.parse().map_err(|e| {
                 crate::error::CryptoTransportError::Internal(format!(
-                    "Invalid address {}: {}",
-                    addr_string, e
+                    "Invalid address {addr_string}: {e}"
                 ))
             })?;
 
             // Create messaging server with working implementation
-            let messaging_server = MessagingServer::new(socket_addr, config).await?;
+            let messaging_server = MessagingServer::new(socket_addr, config)?;
 
-            println!("🚀 QUIC messaging server created on {}", addr_string);
+            println!("🚀 QUIC messaging server created on {addr_string}");
 
             // Return the server - user can call .run().await to start it
             Ok(messaging_server)

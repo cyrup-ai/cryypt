@@ -18,6 +18,11 @@ pub struct FileTransferServer {
 
 impl FileTransferServer {
     /// Get current transfer statistics
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Failed to acquire read lock on active transfers
     pub async fn get_transfer_stats(&self) -> Result<Vec<FileTransferProgress>> {
         // Use the active transfers to return stats
         let transfers = self.active_transfers.read().await;
@@ -25,16 +30,19 @@ impl FileTransferServer {
     }
 
     /// Get storage directory
+    #[must_use]
     pub fn storage_dir(&self) -> &Path {
         &self.storage_dir
     }
 
     /// Get server configuration
+    #[must_use]
     pub fn config(&self) -> &FileTransferServerBuilder {
         &self.config
     }
 
     /// Check if server can accept more transfers
+    #[must_use]
     pub fn can_accept_transfer(&self) -> bool {
         self.semaphore.available_permits() > 0
     }

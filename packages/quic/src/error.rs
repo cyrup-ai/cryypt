@@ -66,7 +66,7 @@ impl QuicError {
         Self::Internal(msg.into())
     }
 
-    /// Create a CertificateInvalid error (legacy compatibility)
+    /// Create a `CertificateInvalid` error (legacy compatibility)
     pub fn certificate_invalid(msg: impl Into<String>) -> Self {
         Self::CertificateInvalid(msg.into())
     }
@@ -76,17 +76,17 @@ impl QuicError {
         Self::Crypto(msg.into())
     }
 
-    /// Create a HashFailure error
+    /// Create a `HashFailure` error
     pub fn hash_failure(msg: impl Into<String>) -> Self {
         Self::HashFailure(msg.into())
     }
 
-    /// Create a KeyDerivation error
+    /// Create a `KeyDerivation` error
     pub fn key_derivation(msg: impl Into<String>) -> Self {
         Self::KeyDerivation(msg.into())
     }
 
-    /// Create an InsufficientCryptoData error
+    /// Create an `InsufficientCryptoData` error
     pub fn insufficient_crypto_data(msg: impl Into<String>) -> Self {
         Self::InsufficientCryptoData(msg.into())
     }
@@ -94,7 +94,7 @@ impl QuicError {
 
 impl From<quiche::Error> for QuicError {
     fn from(err: quiche::Error) -> Self {
-        QuicError::Quiche(format!("{:?}", err))
+        QuicError::Quiche(format!("{err:?}"))
     }
 }
 

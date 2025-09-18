@@ -8,6 +8,13 @@ use crate::error::CryptoTransportError;
 use cryypt_cipher::Cipher;
 
 /// Streaming encryption pipeline using cryypt cipher API  
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Encryption operation fails
+/// - Invalid encryption key
+/// - Unsupported encryption algorithm
 pub async fn encrypt_payload_stream(
     data: Vec<u8>,
     algorithm: EncryptionAlgorithm,
@@ -98,6 +105,14 @@ pub async fn encrypt_payload_stream(
 }
 
 /// Streaming decryption pipeline using cryypt cipher API
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Decryption operation fails  
+/// - Invalid decryption key
+/// - Corrupted or invalid encrypted data
+/// - Unsupported encryption algorithm
 pub async fn decrypt_payload_stream(
     data: Vec<u8>,
     metadata: &EncryptionMetadata,

@@ -1,4 +1,6 @@
-//! Tests for crypto_utils error handling - ensuring no panics occur
+//! Tests for `crypto_utils` error handling - ensuring no panics occur
+
+#![allow(clippy::unnested_or_patterns)]
 
 use cryypt_quic::error::QuicError;
 use cryypt_quic::protocols::messaging::*;

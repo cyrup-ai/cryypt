@@ -10,6 +10,15 @@ pub async fn ensure_unlocked(
     vault: &Vault,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Layer 1: Check authentication first (JWT-based)
+    if !vault.is_authenticated().await {
+        if !use_json {
+            eprintln!("Authentication required. Set VAULT_JWT environment variable with valid JWT token.");
+        }
+        return Err("Authentication failed: No valid JWT token provided".into());
+    }
+
+    // Layer 2: Check if vault is PQCrypto armored  
     if vault.is_locked().await {
         // First check for env var passphrase - allows non-interactive use
         let passphrase = if let Ok(pass) = std::env::var("CYSEC_PASSPHRASE") {

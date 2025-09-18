@@ -3,7 +3,7 @@
 //! Contains the StoredMasterKey type for keys managed in storage backends.
 
 use super::MasterKeyProvider;
-use crate::{KeyImport, KeyRetrieval, KeyStorage, SimpleKeyId};
+use crate::{SimpleKeyId, traits::{KeyImport, KeyRetrieval, KeyStorage}};
 use async_task::AsyncTask;
 use rand::RngCore;
 use tokio::sync::oneshot;

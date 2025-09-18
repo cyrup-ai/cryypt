@@ -20,16 +20,19 @@ pub use validation::{CertificateValidator, CertificateValidatorWithInput};
 pub struct CertificateBuilder;
 
 impl CertificateBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }
 
     /// Create a certificate validator
+    #[must_use]
     pub fn validator(self) -> CertificateValidator {
         CertificateValidator::new()
     }
 
     /// Create a certificate generator
+    #[must_use]
     pub fn generator(self) -> CertificateGenerator {
         CertificateGenerator::new()
     }

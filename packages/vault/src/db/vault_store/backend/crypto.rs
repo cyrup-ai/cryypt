@@ -6,58 +6,25 @@ use super::super::LocalVaultProvider;
 use crate::error::{VaultError, VaultResult};
 use crate::operation::Passphrase;
 use cryypt_cipher::Cryypt;
+use cryypt_key::api::{MasterKeyBuilder, MasterKeyProvider};
 use secrecy::ExposeSecret;
 
 impl LocalVaultProvider {
-    /// Derive encryption key from passphrase using Argon2
+    /// Derive encryption key from passphrase using cryypt_key
     pub(crate) async fn derive_encryption_key(
         &self,
         passphrase: &Passphrase,
     ) -> VaultResult<Vec<u8>> {
-        // Read or generate salt from file
-        log::trace!("Getting salt for key derivation...");
-        let salt = self.get_or_create_salt().await?;
-        log::trace!("Using {} byte salt for key derivation", salt.len());
+        log::trace!("Starting passphrase-based key derivation...");
 
-        // Use Argon2 for secure key derivation with the vault's configured parameters
-        use argon2::Argon2;
+        // Use cryypt_key PassphraseMasterKey for secure key derivation
+        let master_key = MasterKeyBuilder::from_passphrase(passphrase.expose_secret());
+        let key_bytes = master_key.resolve()
+            .map_err(|e| VaultError::KeyDerivation(format!("Key derivation failed: {e}")))?;
 
-        log::trace!(
-            "Configuring Argon2 with memory_cost={}, time_cost={}, parallelism={}",
-            self.config.argon2_memory_cost,
-            self.config.argon2_time_cost,
-            self.config.argon2_parallelism
-        );
-
-        let argon2 = Argon2::new(
-            argon2::Algorithm::Argon2id,
-            argon2::Version::V0x13,
-            argon2::Params::new(
-                self.config.argon2_memory_cost,
-                self.config.argon2_time_cost,
-                self.config.argon2_parallelism,
-                Some(32), // 32 bytes for AES-256
-            )
-            .map_err(|e| VaultError::KeyDerivation(format!("Invalid Argon2 params: {e}")))?,
-        );
-
-        // Use raw salt bytes directly with Argon2
-        log::trace!("Using {} byte raw salt for Argon2 derivation", salt.len());
-
-        // Derive key using Argon2
-        let mut output_key = vec![0u8; 32];
-        log::trace!("Running Argon2 key derivation...");
-        argon2
-            .hash_password_into(
-                passphrase.expose_secret().as_bytes(),
-                &salt,
-                &mut output_key,
-            )
-            .map_err(|e| {
-                VaultError::KeyDerivation(format!("Argon2 key derivation failed: {e}"))
-            })?;
-
-        log::trace!("Successfully derived {} byte key", output_key.len());
+        log::trace!("Successfully derived {} byte key", key_bytes.len());
+        
+        let output_key = key_bytes.to_vec();
 
         // Store derived key in memory for session
         let mut key_guard = self.encryption_key.lock().await;
@@ -66,61 +33,25 @@ impl LocalVaultProvider {
         Ok(output_key)
     }
 
-    /// Derive JWT signing key from passphrase using Argon2 with different context
+    /// Derive JWT signing key from passphrase using cryypt_key with different context
     pub(crate) async fn derive_jwt_key(&self, passphrase: &Passphrase) -> VaultResult<Vec<u8>> {
-        // Read or generate salt from file (same salt as encryption key for simplicity)
-        log::trace!("Getting salt for JWT key derivation...");
-        let base_salt = self.get_or_create_salt().await?;
+        log::trace!("Starting JWT key derivation with passphrase context...");
 
-        // Create JWT-specific salt by appending context bytes to avoid key reuse
-        let mut jwt_salt = base_salt;
-        jwt_salt.extend_from_slice(b"JWT_SIGNING_CONTEXT");
-        log::trace!(
-            "Using {} byte JWT-specific salt for key derivation",
-            jwt_salt.len()
-        );
-
-        // Use Argon2 for secure key derivation with the same parameters as encryption key
-        use argon2::Argon2;
-
-        log::trace!(
-            "Configuring Argon2 for JWT key with memory_cost={}, time_cost={}, parallelism={}",
-            self.config.argon2_memory_cost,
-            self.config.argon2_time_cost,
-            self.config.argon2_parallelism
-        );
-
-        let argon2 = Argon2::new(
-            argon2::Algorithm::Argon2id,
-            argon2::Version::V0x13,
-            argon2::Params::new(
-                self.config.argon2_memory_cost,
-                self.config.argon2_time_cost,
-                self.config.argon2_parallelism,
-                Some(32), // 32 bytes for HS256 compliance
-            )
-            .map_err(|e| {
-                VaultError::KeyDerivation(format!("Invalid Argon2 params for JWT key: {e}"))
-            })?,
-        );
-
-        // Derive JWT signing key using Argon2
-        let mut jwt_output_key = vec![0u8; 32];
-        log::trace!("Running Argon2 JWT key derivation...");
-        argon2
-            .hash_password_into(
-                passphrase.expose_secret().as_bytes(),
-                &jwt_salt,
-                &mut jwt_output_key,
-            )
-            .map_err(|e| {
-                VaultError::KeyDerivation(format!("Argon2 JWT key derivation failed: {e}"))
-            })?;
+        // Create JWT-specific input by combining passphrase with context
+        let jwt_context = "JWT_SIGNING_CONTEXT";
+        let combined_input = format!("{}:{}", passphrase.expose_secret(), jwt_context);
+        
+        // Use cryypt_key PassphraseMasterKey for secure JWT key derivation
+        let master_key = MasterKeyBuilder::from_passphrase(&combined_input);
+        let key_bytes = master_key.resolve()
+            .map_err(|e| VaultError::KeyDerivation(format!("JWT key derivation failed: {e}")))?;
 
         log::trace!(
             "Successfully derived {} byte JWT signing key",
-            jwt_output_key.len()
+            key_bytes.len()
         );
+        
+        let jwt_output_key = key_bytes.to_vec();
 
         // Store derived JWT key in memory for session
         let mut jwt_key_guard = self.jwt_key.lock().await;

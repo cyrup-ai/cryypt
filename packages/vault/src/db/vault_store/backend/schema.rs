@@ -8,8 +8,9 @@ use crate::db::dao::Error as DaoError;
 impl LocalVaultProvider {
     /// Initialize the vault schema (specific to this provider)
     pub async fn initialize_schema(&self) -> Result<(), DaoError> {
-        // Define vault entries table
         let db = self.dao.db();
+        
+        // Define vault entries table
         db.query(
             "
             DEFINE TABLE IF NOT EXISTS vault_entries SCHEMAFULL;
@@ -19,7 +20,26 @@ impl LocalVaultProvider {
             DEFINE FIELD updated_at ON TABLE vault_entries TYPE datetime;
             DEFINE FIELD expires_at ON TABLE vault_entries TYPE option<datetime>;
             DEFINE FIELD namespace ON TABLE vault_entries TYPE option<string>;
-        ",
+            ",
+        )
+        .await
+        .map_err(|e| DaoError::Database(e.to_string()))?;
+
+        // Define JWT sessions table for secure session persistence
+        db.query(
+            "
+            DEFINE TABLE IF NOT EXISTS jwt_sessions SCHEMAFULL;
+            DEFINE FIELD vault_path_hash ON TABLE jwt_sessions TYPE string;
+            DEFINE FIELD session_token_encrypted ON TABLE jwt_sessions TYPE string;
+            DEFINE FIELD jwt_key_encrypted ON TABLE jwt_sessions TYPE string;
+            DEFINE FIELD encryption_salt ON TABLE jwt_sessions TYPE string;
+            DEFINE FIELD created_at ON TABLE jwt_sessions TYPE datetime;
+            DEFINE FIELD expires_at ON TABLE jwt_sessions TYPE datetime;
+            DEFINE FIELD last_accessed ON TABLE jwt_sessions TYPE datetime;
+            
+            DEFINE INDEX jwt_sessions_vault_hash ON TABLE jwt_sessions COLUMNS vault_path_hash UNIQUE;
+            DEFINE INDEX jwt_sessions_expires ON TABLE jwt_sessions COLUMNS expires_at;
+            ",
         )
         .await
         .map_err(|e| DaoError::Database(e.to_string()))?;

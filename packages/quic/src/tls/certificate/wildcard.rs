@@ -1,4 +1,4 @@
-//! Wildcard certificate generation with multiple SAN entries for SweetMCP auto-integration
+//! Wildcard certificate generation with multiple `SAN` entries for `SweetMCP` auto-integration
 
 use std::path::Path;
 use std::time::{Duration, SystemTime};
@@ -10,7 +10,7 @@ use tracing::info;
 use super::parsing::{parse_certificate_from_pem, validate_certificate_time};
 use crate::tls::errors::TlsError;
 
-/// Generate wildcard certificate with multiple SAN entries for SweetMCP auto-integration
+/// Generate wildcard certificate with multiple `SAN` entries for `SweetMCP` auto-integration
 /// Creates a non-expiring certificate for *.cyrup.dev with SAN entries for *.cyrup.ai, *.cyrup.cloud, *.cyrup.pro
 #[allow(dead_code)] // SweetMCP integration infrastructure - used for automatic certificate generation
 pub async fn generate_wildcard_certificate(xdg_config_home: &Path) -> Result<(), TlsError> {
@@ -25,7 +25,7 @@ pub async fn generate_wildcard_certificate(xdg_config_home: &Path) -> Result<(),
 
     // Check if certificate already exists and is valid
     if wildcard_cert_path.exists() {
-        if let Ok(_) = validate_existing_wildcard_cert(&wildcard_cert_path).await {
+        if (validate_existing_wildcard_cert(&wildcard_cert_path).await).is_ok() {
             info!(
                 "Valid wildcard certificate already exists at {}",
                 wildcard_cert_path.display()
@@ -90,7 +90,7 @@ pub async fn generate_wildcard_certificate(xdg_config_home: &Path) -> Result<(),
     // Create combined PEM file with certificate and private key
     let cert_pem = cert.pem();
     let key_pem = key_pair.serialize_pem();
-    let combined_pem = format!("{}\n{}", cert_pem, key_pem);
+    let combined_pem = format!("{cert_pem}\n{key_pem}");
 
     // Write combined PEM file
     fs::write(&wildcard_cert_path, &combined_pem)
@@ -143,11 +143,10 @@ async fn validate_existing_wildcard_cert(cert_path: &Path) -> Result<(), TlsErro
     for required_san in &required_sans {
         if !parsed_cert
             .san_dns_names
-            .contains(&required_san.to_string())
+            .contains(&(*required_san).to_string())
         {
             return Err(TlsError::CertificateValidation(format!(
-                "Missing required SAN entry: {}",
-                required_san
+                "Missing required SAN entry: {required_san}"
             )));
         }
     }

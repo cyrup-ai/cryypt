@@ -83,22 +83,28 @@ impl LocalVaultProvider {
                     },
                     Ok(Err(e)) => {
                         log::error!("CHECK_UNLOCKED: JWT validation failed: {}", e);
-                        // Token invalid, lock the vault
-                        self.lock_impl().await?;
+                        // Authentication failed - trigger emergency lockdown
+                        if let Err(lockdown_error) = self.emergency_lockdown().await {
+                            log::error!("Emergency lockdown failed: {:?}", lockdown_error);
+                        }
                         Err(VaultError::VaultLocked)
                     },
                     Err(_) => {
                         log::error!("CHECK_UNLOCKED: JWT validation timed out");
-                        // Timed out, lock the vault
-                        self.lock_impl().await?;
+                        // Timed out - trigger emergency lockdown
+                        if let Err(lockdown_error) = self.emergency_lockdown().await {
+                            log::error!("Emergency lockdown failed: {:?}", lockdown_error);
+                        }
                         Err(VaultError::VaultLocked)
                     }
                 }
             }
             _ => {
                 println!("❌ CHECK_UNLOCKED: Missing token or JWT key");
-                // No token or key present, lock the vault
-                self.lock_impl().await?;
+                // No token or key present - trigger emergency lockdown
+                if let Err(lockdown_error) = self.emergency_lockdown().await {
+                    log::error!("Emergency lockdown failed: {:?}", lockdown_error);
+                }
                 Err(VaultError::VaultLocked)
             }
         }

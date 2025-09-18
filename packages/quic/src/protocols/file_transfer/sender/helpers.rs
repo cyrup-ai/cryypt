@@ -23,44 +23,76 @@ pub(crate) async fn calculate_file_checksum(path: &Path) -> Result<String> {
     Ok(hex::encode(hash_result))
 }
 
+/// Configuration for upload protocol execution
+pub(crate) struct UploadConfig<'a> {
+    pub file_path: &'a Path,
+    pub filename: &'a str,
+    pub file_size: u64,
+    pub checksum: &'a str,
+    pub compress: bool,
+    pub resume: bool,
+    pub progress_callback: Option<Box<dyn Fn(FileTransferProgress) + Send + Sync>>,
+}
+
 /// Execute the complete upload protocol
+/// 
+/// # Errors
+/// 
+/// Returns an error if:
+/// - Network communication fails
+/// - File I/O operations fail  
+/// - Serialization/deserialization fails
+/// - Protocol handshake fails
+/// - Progress reporting fails
 pub(crate) async fn execute_upload_protocol(
-    _connection: QuicConnectionHandle,
-    _file_path: &Path,
-    _filename: &str,
-    _file_size: u64,
-    _checksum: &str,
-    _compress: bool,
-    _resume: bool,
-    _progress_callback: Option<Box<dyn Fn(FileTransferProgress) + Send + Sync>>,
+    connection: QuicConnectionHandle,
+    config: UploadConfig<'_>,
 ) -> Result<TransferResult> {
     let start_time = std::time::Instant::now();
     let file_id = Uuid::new_v4();
-    let connection = _connection;
-    let file_path = _file_path;
-    let filename = _filename;
-    let file_size = _file_size;
-    let checksum = _checksum;
-    let compress = _compress;
-    let resume = _resume;
-    let progress_callback = _progress_callback;
 
-    // 1. Send upload request
+    // 1. Send upload request and wait for server response
+    send_upload_request(&connection, file_id, &config)?;
+    wait_for_server_response(&connection).await?;
+
+    // 2. Stream file data and get completion confirmation
+    let bytes_transferred = stream_file_data(&connection, &config, file_id, start_time).await?;
+    let completion_confirmed = wait_for_upload_completion(&connection, file_id).await?;
+
+    Ok(TransferResult {
+        file_id,
+        filename: config.filename.to_string(),
+        bytes_transferred,
+        duration: start_time.elapsed(),
+        checksum: config.checksum.to_string(),
+        success: completion_confirmed,
+    })
+}
+
+/// Send upload request message to the connection
+fn send_upload_request(
+    connection: &QuicConnectionHandle,
+    file_id: Uuid,
+    config: &UploadConfig<'_>,
+) -> Result<()> {
     let upload_request = FileTransferMessage::UploadRequest {
         file_id,
-        filename: filename.to_string(),
-        size: file_size,
-        checksum: checksum.to_string(),
-        compressed: compress,
-        resume_offset: if resume { Some(0) } else { None },
+        filename: config.filename.to_string(),
+        size: config.file_size,
+        checksum: config.checksum.to_string(),
+        compressed: config.compress,
+        resume_offset: if config.resume { Some(0) } else { None },
     };
 
     let request_data = serde_json::to_vec(&upload_request)
         .map_err(|e| std::io::Error::other(format!("Serialization error: {e}")))?;
 
     connection.send_stream_data(&request_data, false)?;
+    Ok(())
+}
 
-    // 2. Handle server response
+/// Wait for server response to upload request
+async fn wait_for_server_response(connection: &QuicConnectionHandle) -> Result<()> {
     let mut event_rx = connection.subscribe_to_events();
     let _server_response = tokio::time::timeout(Duration::from_secs(30), async {
         while let Ok(event) = event_rx.recv().await {
@@ -76,9 +108,18 @@ pub(crate) async fn execute_upload_protocol(
     })
     .await
     .map_err(|_| std::io::Error::new(std::io::ErrorKind::TimedOut, "Server response timeout"))??;
+    
+    Ok(())
+}
 
-    // 3. Stream file data in chunks
-    let mut file = File::open(file_path).await?;
+/// Stream file data to the connection with progress updates
+async fn stream_file_data(
+    connection: &QuicConnectionHandle,
+    config: &UploadConfig<'_>,
+    file_id: Uuid,
+    start_time: std::time::Instant,
+) -> Result<u64> {
+    let mut file = File::open(config.file_path).await?;
     let mut buffer = vec![0u8; 64 * 1024]; // 64KB chunks
     let mut bytes_transferred = 0u64;
 
@@ -90,8 +131,8 @@ pub(crate) async fn execute_upload_protocol(
 
         let chunk = &buffer[..bytes_read];
 
-        // 4. Apply compression if enabled
-        let final_chunk = if compress {
+        // Apply compression if enabled
+        let final_chunk = if config.compress {
             use cryypt_compression::Compress;
             let compression_result = Compress::zstd()
                 .with_level(3)
@@ -106,19 +147,22 @@ pub(crate) async fn execute_upload_protocol(
         connection.send_stream_data(&final_chunk, false)?;
         bytes_transferred += bytes_read as u64;
 
-        // 5. Send progress updates
-        if let Some(ref callback) = progress_callback {
+        // Send progress updates
+        if let Some(ref callback) = config.progress_callback {
             let progress = FileTransferProgress {
                 file_id,
-                filename: filename.to_string(),
+                filename: config.filename.to_string(),
                 bytes_transferred,
-                total_bytes: file_size,
+                total_bytes: config.file_size,
+                #[allow(clippy::cast_precision_loss)]
                 throughput_mbps: bytes_transferred as f64
                     / start_time.elapsed().as_secs_f64()
                     / 1_048_576.0,
                 eta_seconds: if bytes_transferred > 0 {
-                    let remaining = file_size - bytes_transferred;
+                    let remaining = config.file_size - bytes_transferred;
+                    #[allow(clippy::cast_precision_loss)]
                     let rate = bytes_transferred as f64 / start_time.elapsed().as_secs_f64();
+                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_precision_loss)]
                     Some((remaining as f64 / rate) as u64)
                 } else {
                     None
@@ -130,8 +174,15 @@ pub(crate) async fn execute_upload_protocol(
 
     // Send completion signal
     connection.send_stream_data(&[], true)?;
+    Ok(bytes_transferred)
+}
 
-    // 7. Verify completion - wait for server confirmation using proper protocol
+/// Wait for upload completion confirmation from server
+async fn wait_for_upload_completion(
+    connection: &QuicConnectionHandle,
+    file_id: Uuid,
+) -> Result<bool> {
+    let mut event_rx = connection.subscribe_to_events();
     let completion_confirmed = tokio::time::timeout(Duration::from_secs(30), async {
         while let Ok(event) = event_rx.recv().await {
             if let crate::quic_conn::QuicConnectionEvent::InboundStreamData(_, data) = event {
@@ -156,14 +207,7 @@ pub(crate) async fn execute_upload_protocol(
     .await
     .unwrap_or(false);
 
-    Ok(TransferResult {
-        file_id,
-        filename: filename.to_string(),
-        bytes_transferred,
-        duration: start_time.elapsed(),
-        checksum: checksum.to_string(),
-        success: completion_confirmed,
-    })
+    Ok(completion_confirmed)
 }
 
 /// Generate temporary self-signed certificates using TLS builder API  
@@ -179,16 +223,14 @@ pub(crate) async fn generate_temp_certificates() -> Result<(String, String)> {
             .await
             .map_err(|e| {
                 std::io::Error::other(format!(
-                    "Failed to create certificates via TLS builder: {}",
-                    e
+                    "Failed to create certificates via TLS builder: {e}"
                 ))
             })?;
 
     // Create temporary PEM files that can be used by QUIC
     let (cert_path, key_path) = provider.create_temp_pem_files().await.map_err(|e| {
         std::io::Error::other(format!(
-            "Failed to create temporary certificate files: {}",
-            e
+            "Failed to create temporary certificate files: {e}"
         ))
     })?;
 

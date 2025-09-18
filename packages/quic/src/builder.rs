@@ -8,7 +8,7 @@ pub struct QuicCryptoConfig {
     // Store builder params instead of built config
     pub alpn_protocols: Vec<Vec<u8>>,
     pub auth_config: Option<Auth>,
-    pub verify_peer: bool,
+    pub security: SecurityConfig,
     pub max_idle_timeout: u64,
     pub max_udp_payload_size: u64,
     pub initial_max_data: u64,
@@ -18,17 +18,17 @@ pub struct QuicCryptoConfig {
     pub initial_max_streams_uni: u64,
     pub ack_delay_exponent: u64,
     pub max_ack_delay: u64,
-    pub disable_active_migration: bool,
     pub cc_algorithm: quiche::CongestionControlAlgorithm,
 }
 
 impl QuicCryptoConfig {
     /// Create a new crypto config with defaults
+    #[must_use]
     pub fn new() -> Self {
         Self {
             alpn_protocols: vec![b"cryypt/1".to_vec()],
             auth_config: None,
-            verify_peer: true,
+            security: SecurityConfig::default(),
             max_idle_timeout: 30_000,
             max_udp_payload_size: 1350,
             initial_max_data: 10_000_000,
@@ -38,7 +38,6 @@ impl QuicCryptoConfig {
             initial_max_streams_uni: 100,
             ack_delay_exponent: 3,
             max_ack_delay: 25,
-            disable_active_migration: true,
             cc_algorithm: quiche::CongestionControlAlgorithm::BBR,
         }
     }
@@ -78,12 +77,21 @@ impl QuicCryptoConfig {
             key,
         });
     }
-    /// Create a new quiche::Config
+    /// Create a new `quiche::Config`
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - QUIC protocol version is unsupported
+    /// - Configuration parameters are invalid
+    /// - ALPN protocol setup fails
+    /// - Certificate or key loading fails
     pub fn build_config(&self) -> Result<quiche::Config> {
         let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)?;
 
         // Apply settings
         config.set_max_idle_timeout(self.max_idle_timeout);
+        #[allow(clippy::cast_possible_truncation)]
         config.set_max_recv_udp_payload_size(self.max_udp_payload_size as usize);
         config.set_initial_max_data(self.initial_max_data);
         config.set_initial_max_stream_data_bidi_local(self.initial_max_stream_data_bidi_local);
@@ -92,9 +100,9 @@ impl QuicCryptoConfig {
         config.set_initial_max_streams_uni(self.initial_max_streams_uni);
         config.set_ack_delay_exponent(self.ack_delay_exponent);
         config.set_max_ack_delay(self.max_ack_delay);
-        config.set_disable_active_migration(self.disable_active_migration);
+        config.set_disable_active_migration(self.security.connection.disable_active_migration);
         config.set_cc_algorithm(self.cc_algorithm);
-        let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
+        let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(std::vec::Vec::as_slice).collect();
         config.set_application_protos(&alpn_refs)?;
 
         // Server-specific
@@ -107,14 +115,12 @@ impl QuicCryptoConfig {
 
             let mut cert_file = NamedTempFile::new().map_err(|e| {
                 CryptoTransportError::CertificateInvalid(format!(
-                    "Failed to create temp cert file: {}",
-                    e
+                    "Failed to create temp cert file: {e}"
                 ))
             })?;
             let mut key_file = NamedTempFile::new().map_err(|e| {
                 CryptoTransportError::CertificateInvalid(format!(
-                    "Failed to create temp key file: {}",
-                    e
+                    "Failed to create temp key file: {e}"
                 ))
             })?;
 
@@ -122,16 +128,14 @@ impl QuicCryptoConfig {
             fs::set_permissions(cert_file.path(), fs::Permissions::from_mode(0o600)).map_err(
                 |e| {
                     CryptoTransportError::CertificateInvalid(format!(
-                        "Failed to set cert permissions: {}",
-                        e
+                        "Failed to set cert permissions: {e}"
                     ))
                 },
             )?;
             fs::set_permissions(key_file.path(), fs::Permissions::from_mode(0o600)).map_err(
                 |e| {
                     CryptoTransportError::CertificateInvalid(format!(
-                        "Failed to set key permissions: {}",
-                        e
+                        "Failed to set key permissions: {e}"
                     ))
                 },
             )?;
@@ -173,7 +177,7 @@ impl QuicCryptoConfig {
         }
 
         // Client-specific
-        if !self.verify_peer {
+        if !self.security.tls.verify_peer {
             config.verify_peer(false);
         }
 
@@ -181,13 +185,48 @@ impl QuicCryptoConfig {
     }
 }
 
+impl Default for QuicCryptoConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// TLS verification configuration for QUIC connections
+#[derive(Debug, Clone)]
+pub struct TlsVerificationConfig {
+    pub verify_peer: bool,
+    pub certificate_verification: bool,
+    pub hostname_verification: bool,
+}
+
+impl Default for TlsVerificationConfig {
+    fn default() -> Self {
+        Self {
+            verify_peer: true,
+            certificate_verification: true,
+            hostname_verification: true,
+        }
+    }
+}
+
+/// Connection behavior configuration for QUIC
+#[derive(Debug, Clone, Default)]
+pub struct ConnectionConfig {
+    pub disable_active_migration: bool,
+}
+
+/// Security and verification configuration for QUIC connections
+#[derive(Debug, Clone, Default)]
+pub struct SecurityConfig {
+    pub tls: TlsVerificationConfig,
+    pub connection: ConnectionConfig,
+}
+
 /// Builder for QUIC crypto configuration
 pub struct QuicCryptoBuilder {
     alpn_protocols: Vec<Vec<u8>>,
-    verify_peer: bool,
+    security: SecurityConfig,
     server_name: Option<String>,
-    certificate_verification: bool,
-    hostname_verification: bool,
     root_certificates: Vec<rustls::pki_types::CertificateDer<'static>>,
     client_cert_path: Option<String>,
     client_key_path: Option<String>,
@@ -200,7 +239,6 @@ pub struct QuicCryptoBuilder {
     initial_max_streams_uni: u64,
     ack_delay_exponent: u64,
     max_ack_delay: u64,
-    disable_active_migration: bool,
     cc_algorithm: quiche::CongestionControlAlgorithm,
 }
 
@@ -208,10 +246,8 @@ impl Default for QuicCryptoBuilder {
     fn default() -> Self {
         Self {
             alpn_protocols: vec![b"cryypt/1".to_vec()],
-            verify_peer: true,
+            security: SecurityConfig::default(),
             server_name: None,
-            certificate_verification: true,
-            hostname_verification: true,
             root_certificates: Vec::new(),
             client_cert_path: None,
             client_key_path: None,
@@ -224,7 +260,6 @@ impl Default for QuicCryptoBuilder {
             initial_max_streams_uni: 100,
             ack_delay_exponent: 3,
             max_ack_delay: 25,
-            disable_active_migration: true,
             cc_algorithm: quiche::CongestionControlAlgorithm::BBR,
         }
     }
@@ -232,65 +267,76 @@ impl Default for QuicCryptoBuilder {
 
 impl QuicCryptoBuilder {
     /// Create a new builder with default values
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set ALPN protocols
+    #[must_use]
     pub fn with_alpn_protocols(mut self, protocols: Vec<Vec<u8>>) -> Self {
         self.alpn_protocols = protocols;
         self
     }
 
     /// Set whether to verify peer certificates
+    #[must_use]
     pub fn with_verify_peer(mut self, verify: bool) -> Self {
-        self.verify_peer = verify;
+        self.security.tls.verify_peer = verify;
         self
     }
 
     /// Set maximum idle timeout in milliseconds
+    #[must_use]
     pub fn with_max_idle_timeout(mut self, timeout_ms: u64) -> Self {
         self.max_idle_timeout = timeout_ms;
         self
     }
 
     /// Set maximum UDP payload size
+    #[must_use]
     pub fn with_max_udp_payload_size(mut self, size: u64) -> Self {
         self.max_udp_payload_size = size;
         self
     }
 
     /// Set initial maximum data
+    #[must_use]
     pub fn with_initial_max_data(mut self, max_data: u64) -> Self {
         self.initial_max_data = max_data;
         self
     }
 
     /// Set congestion control algorithm
+    #[must_use]
     pub fn with_congestion_control(mut self, cc: quiche::CongestionControlAlgorithm) -> Self {
         self.cc_algorithm = cc;
         self
     }
 
     /// Set server name for SNI (Server Name Indication)
+    #[must_use]
     pub fn with_server_name(mut self, server_name: &str) -> Self {
         self.server_name = Some(server_name.to_string());
         self
     }
 
     /// Enable or disable certificate verification
+    #[must_use]
     pub fn with_certificate_verification(mut self, verify: bool) -> Self {
-        self.certificate_verification = verify;
+        self.security.tls.certificate_verification = verify;
         self
     }
 
     /// Enable or disable hostname verification
+    #[must_use]
     pub fn with_hostname_verification(mut self, verify: bool) -> Self {
-        self.hostname_verification = verify;
+        self.security.tls.hostname_verification = verify;
         self
     }
 
     /// Add a root certificate to the trust store
+    #[must_use]
     pub fn add_root_certificate(
         mut self,
         cert: rustls::pki_types::CertificateDer<'static>,
@@ -300,18 +346,29 @@ impl QuicCryptoBuilder {
     }
 
     /// Set client certificate file path for mutual TLS
+    #[must_use]
     pub fn with_client_certificate_file(mut self, cert_path: &str) -> Self {
         self.client_cert_path = Some(cert_path.to_string());
         self
     }
 
     /// Set client private key file path for mutual TLS
+    #[must_use]
     pub fn with_client_private_key_file(mut self, key_path: &str) -> Self {
         self.client_key_path = Some(key_path.to_string());
         self
     }
 
     /// Build server configuration
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Certificate file cannot be read or is invalid
+    /// - Private key file cannot be read or is invalid
+    /// - QUIC protocol version is unsupported
+    /// - Configuration parameter validation fails
+    /// - Certificate chain loading fails
     pub fn build_server(self, cert_path: &str, key_path: &str) -> Result<Arc<QuicCryptoConfig>> {
         let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)?;
 
@@ -325,7 +382,7 @@ impl QuicCryptoBuilder {
 
         // Apply all settings
         self.apply_settings(&mut config);
-        let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
+        let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(std::vec::Vec::as_slice).collect();
         config.set_application_protos(&alpn_refs)?;
 
         // Create auth config from cert/key files
@@ -338,7 +395,7 @@ impl QuicCryptoBuilder {
         Ok(Arc::new(QuicCryptoConfig {
             alpn_protocols: self.alpn_protocols,
             auth_config,
-            verify_peer: self.verify_peer,
+            security: self.security.clone(),
             max_idle_timeout: self.max_idle_timeout,
             max_udp_payload_size: self.max_udp_payload_size,
             initial_max_data: self.initial_max_data,
@@ -348,22 +405,29 @@ impl QuicCryptoBuilder {
             initial_max_streams_uni: self.initial_max_streams_uni,
             ack_delay_exponent: self.ack_delay_exponent,
             max_ack_delay: self.max_ack_delay,
-            disable_active_migration: self.disable_active_migration,
             cc_algorithm: self.cc_algorithm,
         }))
     }
 
     /// Build client configuration
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - QUIC protocol version is unsupported
+    /// - ALPN protocol configuration fails
+    /// - Certificate verification setup fails
+    /// - Configuration parameter validation fails
     pub fn build_client(self) -> Result<Arc<QuicCryptoConfig>> {
         let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)?;
 
         // Apply all settings
         self.apply_settings(&mut config);
-        let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(|v| v.as_slice()).collect();
+        let alpn_refs: Vec<&[u8]> = self.alpn_protocols.iter().map(std::vec::Vec::as_slice).collect();
         config.set_application_protos(&alpn_refs)?;
 
         // Client-specific settings
-        if !self.verify_peer || !self.certificate_verification {
+        if !self.security.tls.verify_peer || !self.security.tls.certificate_verification {
             config.verify_peer(false);
         }
 
@@ -383,7 +447,7 @@ impl QuicCryptoBuilder {
         Ok(Arc::new(QuicCryptoConfig {
             alpn_protocols: self.alpn_protocols,
             auth_config,
-            verify_peer: self.verify_peer && self.certificate_verification,
+            security: self.security.clone(),
             max_idle_timeout: self.max_idle_timeout,
             max_udp_payload_size: self.max_udp_payload_size,
             initial_max_data: self.initial_max_data,
@@ -393,7 +457,6 @@ impl QuicCryptoBuilder {
             initial_max_streams_uni: self.initial_max_streams_uni,
             ack_delay_exponent: self.ack_delay_exponent,
             max_ack_delay: self.max_ack_delay,
-            disable_active_migration: self.disable_active_migration,
             cc_algorithm: self.cc_algorithm,
         }))
     }
@@ -401,6 +464,7 @@ impl QuicCryptoBuilder {
     /// Apply common settings to configuration
     fn apply_settings(&self, config: &mut quiche::Config) {
         config.set_max_idle_timeout(self.max_idle_timeout);
+        #[allow(clippy::cast_possible_truncation)]
         config.set_max_recv_udp_payload_size(self.max_udp_payload_size as usize);
         config.set_initial_max_data(self.initial_max_data);
         config.set_initial_max_stream_data_bidi_local(self.initial_max_stream_data_bidi_local);
@@ -409,7 +473,7 @@ impl QuicCryptoBuilder {
         config.set_initial_max_streams_uni(self.initial_max_streams_uni);
         config.set_ack_delay_exponent(self.ack_delay_exponent);
         config.set_max_ack_delay(self.max_ack_delay);
-        config.set_disable_active_migration(self.disable_active_migration);
+        config.set_disable_active_migration(self.security.connection.disable_active_migration);
         config.set_cc_algorithm(self.cc_algorithm);
     }
 }

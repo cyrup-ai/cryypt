@@ -1,5 +1,5 @@
 //! Comprehensive test suite proving that ALL builders actually use their error handler closures
-//! This test verifies that on_result, on_chunk, and on_error handlers are captured and invoked
+//! This test verifies that `on_result`, `on_chunk`, and `on_error` handlers are captured and invoked
 
 use cryypt::Cryypt;
 use std::sync::{Arc, Mutex};

@@ -8,7 +8,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_size(256)
         .on_result(|result| match result {
-            Ok(key_bytes) => key_bytes.into(),
+            Ok(key_bytes) => key_bytes,
             Err(e) => {
                 log::error!("Key generation failed: {}", e);
                 panic!("Critical key generation failure")
@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(keypair_chunk) => {
                 // Store each generated keypair
                 println!("Storing keypair securely: {} bytes", keypair_chunk.len());
-                keypair_chunk.into()
+                keypair_chunk
             }
             Err(e) => {
                 log::error!("Keypair generation failed: {}", e);

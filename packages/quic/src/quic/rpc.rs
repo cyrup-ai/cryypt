@@ -50,6 +50,7 @@ impl RpcBuilder {
     }
 
     /// Set RPC timeout
+    #[must_use]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
@@ -113,8 +114,7 @@ impl std::future::Future for RpcBuilder {
                                     // Parse JSON-RPC response
                                     let response_str = String::from_utf8(data).map_err(|e| {
                                         crate::CryptoTransportError::Internal(format!(
-                                            "Invalid UTF-8 in response: {}",
-                                            e
+                                            "Invalid UTF-8 in response: {e}"
                                         ))
                                     })?;
 
@@ -122,8 +122,7 @@ impl std::future::Future for RpcBuilder {
                                     let response_json: Value = serde_json::from_str(&response_str)
                                         .map_err(|e| {
                                             crate::CryptoTransportError::Internal(format!(
-                                                "Invalid JSON in response: {}",
-                                                e
+                                                "Invalid JSON in response: {e}"
                                             ))
                                         })?;
 
@@ -151,7 +150,7 @@ impl std::future::Future for RpcBuilder {
                                     ));
                                 }
                             }
-                            _ => continue, // Ignore other events
+                            _ => {} // Ignore other events
                         }
                     }
                     Err(crate::CryptoTransportError::Internal(

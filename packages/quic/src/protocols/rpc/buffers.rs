@@ -28,6 +28,7 @@ pub struct BufferStats {
 
 impl BufferStats {
     /// Calculate memory efficiency score (0.0 to 1.0)
+    #[must_use]
     pub fn efficiency_score(&self) -> f64 {
         if self.parse_count == 0 {
             return 0.0;
@@ -36,7 +37,9 @@ impl BufferStats {
         // Higher reuse efficiency and lower reallocation rate = better score
         let reuse_factor = (self.reuse_efficiency / 1024.0).min(1.0); // Normalize to KB
         let realloc_penalty = if self.parse_count > 0 {
-            1.0 - (self.reallocation_count as f64 / self.parse_count as f64).min(0.5)
+            #[allow(clippy::cast_precision_loss)]
+            let ratio = (self.reallocation_count as f64 / self.parse_count as f64).min(0.5);
+            1.0 - ratio
         } else {
             1.0
         };
@@ -63,6 +66,7 @@ pub struct ConnectionBuffers {
 
 impl ConnectionBuffers {
     /// Create new connection buffers with specified initial capacity
+    #[must_use]
     pub fn new(initial_capacity: usize) -> Self {
         Self {
             buffers: Buffers::default(),
@@ -75,6 +79,7 @@ impl ConnectionBuffers {
     }
 
     /// Create buffers with default capacity (4KB)
+    #[must_use]
     pub fn with_default_capacity() -> Self {
         Self::new(4096)
     }
@@ -84,6 +89,14 @@ impl ConnectionBuffers {
     /// This is the core method that implements zero-allocation JSON parsing
     /// using simd-json's buffer reuse patterns. The buffer and tape are reused
     /// across multiple parse operations to avoid allocations.
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Input data is empty
+    /// - JSON data exceeds maximum size limit (16MB)
+    /// - JSON parsing fails due to invalid syntax
+    /// - Buffer allocation fails during parsing
     pub fn process_request(&mut self, data: &mut [u8]) -> Result<OwnedValue> {
         let data_len = data.len();
         
@@ -121,6 +134,13 @@ impl ConnectionBuffers {
     }
 
     /// Process batch JSON requests with optimized buffer reuse
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Any individual chunk fails JSON parsing
+    /// - Input data validation fails for any chunk
+    /// - Buffer allocation fails during batch processing
     pub fn process_batch_requests(&mut self, data_chunks: &mut [&mut [u8]]) -> Result<Vec<OwnedValue>> {
         let mut results = Vec::with_capacity(data_chunks.len());
         
@@ -160,11 +180,14 @@ impl ConnectionBuffers {
     pub fn utilization_stats(&self) -> BufferStats {
         let parse_count = self.parse_count.load(Ordering::Relaxed);
         let total_bytes = self.total_bytes_processed.load(Ordering::Relaxed);
+        #[allow(clippy::cast_possible_truncation)]
         let peak_size = self.peak_buffer_size.load(Ordering::Relaxed) as usize;
         let realloc_count = self.reallocation_count.load(Ordering::Relaxed);
         
         let reuse_efficiency = if parse_count > 0 {
-            total_bytes as f64 / parse_count as f64
+            #[allow(clippy::cast_precision_loss)]
+            let efficiency = total_bytes as f64 / parse_count as f64;
+            efficiency
         } else {
             0.0
         };
@@ -181,7 +204,9 @@ impl ConnectionBuffers {
 
     /// Get estimated buffer capacity
     pub fn capacity(&self) -> usize {
-        self.peak_buffer_size.load(Ordering::Relaxed) as usize
+        #[allow(clippy::cast_possible_truncation)]
+        let capacity = self.peak_buffer_size.load(Ordering::Relaxed) as usize;
+        capacity
     }
 
     /// Get estimated buffer length (used space)
@@ -201,6 +226,7 @@ impl ConnectionBuffers {
         
         // If we've had many reallocations, consider growing the buffer
         if stats.reallocation_count > 5 && stats.parse_count > 10 {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let avg_size = stats.reuse_efficiency as usize;
             let target_capacity = (avg_size * 2).max(self.initial_capacity);
             
@@ -234,6 +260,7 @@ pub struct BufferPool {
 
 impl BufferPool {
     /// Create a new buffer pool
+    #[must_use]
     pub fn new(default_capacity: usize, max_pool_size: usize) -> Self {
         Self {
             available: std::sync::Mutex::new(Vec::new()),
@@ -246,13 +273,12 @@ impl BufferPool {
 
     /// Get a buffer from the pool or create a new one
     pub fn acquire(&self) -> ConnectionBuffers {
-        if let Ok(mut pool) = self.available.lock() {
-            if let Some(mut buffer) = pool.pop() {
-                buffer.clear(); // Clear but preserve capacity
-                self.reused_count.fetch_add(1, Ordering::Relaxed);
-                trace!("Reused buffer from pool");
-                return buffer;
-            }
+        if let Ok(mut pool) = self.available.lock() 
+            && let Some(mut buffer) = pool.pop() {
+            buffer.clear(); // Clear but preserve capacity
+            self.reused_count.fetch_add(1, Ordering::Relaxed);
+            trace!("Reused buffer from pool");
+            return buffer;
         }
 
         // Create new buffer if pool is empty
@@ -319,7 +345,7 @@ mod tests {
         
         // Parse multiple JSON documents
         for i in 0..5 {
-            let mut json_data = format!(r#"{{"id": {}, "method": "test"}}"#, i).into_bytes();
+            let mut json_data = format!(r#"{{"id": {i}, "method": "test"}}"#).into_bytes();
             let result = buffers.process_request(&mut json_data);
             assert!(result.is_ok());
         }

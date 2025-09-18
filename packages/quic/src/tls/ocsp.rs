@@ -12,7 +12,8 @@ use der::{Decode, Encode};
 use ring::digest::{Context as DigestContext, SHA256};
 
 use x509_cert::serial_number::SerialNumber;
-use x509_ocsp::{CertId, OcspRequest, OcspResponse};
+use x509_cert::spki::AlgorithmIdentifierOwned;
+use x509_ocsp::{CertId, OcspRequest, OcspResponse, Request, TbsRequest};
 
 use super::errors::TlsError;
 use super::http_client::TlsHttpClient;
@@ -79,6 +80,7 @@ impl OcspCache {
     }
 
     /// Get cache statistics (hits, misses)
+    #[must_use]
     pub fn get_stats(&self) -> (usize, usize) {
         (
             self.cache_hits.load(Ordering::Relaxed),
@@ -95,15 +97,14 @@ impl OcspCache {
         let cache_key = Self::make_cache_key(&cert.serial_number);
 
         // Check cache first
-        if let Some(cached) = self.get_cached_status(&cache_key) {
-            if !Self::is_cache_expired(&cached) {
+        if let Some(cached) = self.get_cached_status(&cache_key)
+            && !Self::is_cache_expired(&cached) {
                 self.cache_hits.fetch_add(1, Ordering::Relaxed);
                 tracing::debug!(
                     "OCSP cache hit for certificate serial: {:?}",
                     hex::encode(&cert.serial_number)
                 );
                 return Ok(cached.status);
-            }
         }
 
         // Cache miss - increment counter
@@ -123,11 +124,13 @@ impl OcspCache {
         }
     }
 
+    #[must_use]
     fn make_cache_key(serial_number: &[u8]) -> String {
         hex::encode(serial_number)
     }
 
     #[inline]
+    #[must_use]
     fn get_cached_status(&self, cache_key: &str) -> Option<OcspCacheEntry> {
         match self.cache.read() {
             Ok(cache) => cache.get(cache_key).cloned(),
@@ -138,6 +141,7 @@ impl OcspCache {
         }
     }
 
+    #[must_use]
     fn is_cache_expired(entry: &OcspCacheEntry) -> bool {
         let now = SystemTime::now();
 
@@ -148,13 +152,12 @@ impl OcspCache {
 
         // Default cache expiry: 1 hour - handle time calculation safely
         let cache_duration = Duration::from_secs(3600);
-        match now.duration_since(entry.cached_at) {
-            Ok(elapsed) => elapsed > cache_duration,
-            Err(_) => {
-                // If time calculation fails (clock went backwards), assume expired for safety
-                tracing::warn!("Time calculation failed in OCSP cache, assuming expired");
-                true
-            }
+        if let Ok(elapsed) = now.duration_since(entry.cached_at) { 
+            elapsed > cache_duration 
+        } else {
+            // If time calculation fails (clock went backwards), assume expired for safety
+            tracing::warn!("Time calculation failed in OCSP cache, assuming expired");
+            true
         }
     }
 
@@ -205,7 +208,6 @@ impl OcspCache {
                 }
                 Err(e) => {
                     tracing::warn!("OCSP query failed for URL {}: {}", ocsp_url, e);
-                    continue;
                 }
             }
         }
@@ -231,7 +233,7 @@ impl OcspCache {
         let response_bytes = self.http_client.post_ocsp(ocsp_url, ocsp_request).await?;
 
         // Parse OCSP response
-        self.parse_ocsp_response(&response_bytes, &nonce, &cert.serial_number)
+        Self::parse_ocsp_response(&response_bytes, &nonce, &cert.serial_number)
     }
 
     fn create_ocsp_request(
@@ -255,7 +257,7 @@ impl OcspCache {
         let serial = SerialNumber::new(&cert.serial_number)
             .map_err(|e| TlsError::OcspValidation(format!("Invalid serial number: {e}")))?;
 
-        use x509_cert::spki::AlgorithmIdentifierOwned;
+
 
         let cert_id = CertId {
             hash_algorithm: AlgorithmIdentifierOwned {
@@ -271,7 +273,7 @@ impl OcspCache {
             serial_number: serial,
         };
 
-        use x509_ocsp::{Request, TbsRequest};
+
 
         let tbs_request = TbsRequest {
             version: x509_ocsp::Version::V1,
@@ -296,7 +298,6 @@ impl OcspCache {
     }
 
     fn parse_ocsp_response(
-        &self,
         response_bytes: &[u8],
         expected_nonce: &[u8],
         cert_serial: &[u8],

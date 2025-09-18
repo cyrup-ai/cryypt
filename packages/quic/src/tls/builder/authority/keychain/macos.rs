@@ -12,73 +12,20 @@ use crate::tls::builder::authority::core::{
     CaMetadata, CaSource, CertificateAuthority, dn_hashmap_to_string, serial_to_string,
 };
 
-pub(super) async fn load_from_keychain(
+pub(super) fn load_from_keychain(
     name: String,
 ) -> super::super::super::responses::CertificateAuthorityResponse {
-    // Access system keychain
-    let keychain = match SecKeychain::default() {
+    let keychain = match get_system_keychain() {
         Ok(k) => k,
-        Err(e) => {
-            return super::super::super::responses::CertificateAuthorityResponse {
-                success: false,
-                authority: None,
-                operation: super::super::super::responses::CaOperation::LoadFailed,
-                issues: vec![format!("Failed to access system keychain: {e}")],
-                files_created: vec![],
-            };
-        }
+        Err(e) => return create_keychain_error_response(&e),
     };
 
     // Clone keychain for reuse in private key search
     let keychain_for_key_search = keychain.clone();
 
-    // Search for CA certificate by name using ItemSearchOptions
-    let cert_items = match ItemSearchOptions::new()
-        .keychains(&[keychain])
-        .class(ItemClass::certificate())
-        .label(&name)
-        .load_refs(true)
-        .search()
-    {
-        Ok(items) => items,
-        Err(e) => {
-            return super::super::super::responses::CertificateAuthorityResponse {
-                success: false,
-                authority: None,
-                operation: super::super::super::responses::CaOperation::LoadFailed,
-                issues: vec![format!(
-                    "Certificate '{}' not found in keychain: {}",
-                    name, e
-                )],
-                files_created: vec![],
-            };
-        }
-    };
-
-    if cert_items.is_empty() {
-        return super::super::super::responses::CertificateAuthorityResponse {
-            success: false,
-            authority: None,
-            operation: super::super::super::responses::CaOperation::LoadFailed,
-            issues: vec![format!("No certificate found with name: {name}")],
-            files_created: vec![],
-        };
-    }
-
-    let cert_item = match &cert_items[0] {
-        SearchResult::Ref(Reference::Certificate(cert)) => cert,
-        _ => {
-            return super::super::super::responses::CertificateAuthorityResponse {
-                success: false,
-                authority: None,
-                operation: super::super::super::responses::CaOperation::LoadFailed,
-                issues: vec![format!(
-                    "Expected certificate, found different type for: {}",
-                    name
-                )],
-                files_created: vec![],
-            };
-        }
+    let cert_item = match find_certificate_in_keychain(&keychain, &name) {
+        Ok(cert) => cert,
+        Err(response) => return response,
     };
 
     // Export certificate to DER format then convert to PEM
@@ -260,5 +207,70 @@ pub(super) async fn load_from_keychain(
             issues: vec![format!("Failed to parse keychain certificate: {e}")],
             files_created: vec![],
         },
+    }
+}
+
+/// Get the system keychain
+fn get_system_keychain() -> Result<SecKeychain, security_framework::base::Error> {
+    SecKeychain::default()
+}
+
+/// Create an error response for keychain access failures
+fn create_keychain_error_response(error: &security_framework::base::Error) -> super::super::super::responses::CertificateAuthorityResponse {
+    super::super::super::responses::CertificateAuthorityResponse {
+        success: false,
+        authority: None,
+        operation: super::super::super::responses::CaOperation::LoadFailed,
+        issues: vec![format!("Failed to access system keychain: {error}")],
+        files_created: vec![],
+    }
+}
+
+/// Find a certificate in the keychain by name
+fn find_certificate_in_keychain(
+    keychain: &SecKeychain,
+    name: &str,
+) -> Result<security_framework::certificate::SecCertificate, super::super::super::responses::CertificateAuthorityResponse> {
+    let cert_items = match ItemSearchOptions::new()
+        .keychains(&[keychain.clone()])
+        .class(ItemClass::certificate())
+        .label(name)
+        .load_refs(true)
+        .search()
+    {
+        Ok(items) => items,
+        Err(e) => {
+            return Err(super::super::super::responses::CertificateAuthorityResponse {
+                success: false,
+                authority: None,
+                operation: super::super::super::responses::CaOperation::LoadFailed,
+                issues: vec![format!(
+                    "Certificate '{}' not found in keychain: {}",
+                    name, e
+                )],
+                files_created: vec![],
+            });
+        }
+    };
+
+    if cert_items.is_empty() {
+        return Err(super::super::super::responses::CertificateAuthorityResponse {
+            success: false,
+            authority: None,
+            operation: super::super::super::responses::CaOperation::LoadFailed,
+            issues: vec![format!("No certificate found with name: {name}")],
+            files_created: vec![],
+        });
+    }
+
+    match &cert_items[0] {
+        SearchResult::Ref(Reference::Certificate(cert)) => Ok(cert.clone()),
+        _ => Err(super::super::super::responses::CertificateAuthorityResponse {
+            success: false,
+            authority: None,
+            operation: super::super::super::responses::CaOperation::LoadFailed,
+            issues: vec![format!("Invalid certificate reference for: {name}")],
+            files_created: vec![],
+        }),
     }
 }

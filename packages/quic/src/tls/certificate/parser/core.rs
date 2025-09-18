@@ -14,7 +14,7 @@ use super::details_extraction::extract_certificate_details;
 use super::key_extraction::extract_key_info_from_cert;
 use super::name_extraction::extract_name_attributes;
 
-/// Parse certificate from X509Certificate struct to extract actual certificate information
+/// Parse certificate from `X509Certificate` struct to extract actual certificate information
 pub fn parse_x509_certificate_from_der_internal(
     cert: &X509CertCert,
 ) -> Result<ParsedCertificate, TlsError> {
@@ -28,7 +28,7 @@ pub fn parse_x509_certificate_from_der_internal(
 
     // Extract basic certificate info using x509-cert
     let (san_dns_names, san_ip_addresses, is_ca, key_usage, not_before, not_after) =
-        extract_certificate_details(cert)?;
+        extract_certificate_details(cert);
 
     // Extract OCSP and CRL URLs from certificate extensions
     let mut ocsp_urls = Vec::new();
@@ -36,7 +36,7 @@ pub fn parse_x509_certificate_from_der_internal(
 
     // Iterate through all extensions to find Authority Information Access and CRL Distribution Points
     if let Some(extensions) = &cert.tbs_certificate.extensions {
-        for ext in extensions.iter() {
+        for ext in extensions {
             let oid_str = ext.extn_id.to_string();
 
             // Authority Information Access extension (1.3.6.1.5.5.7.1.1)
@@ -51,18 +51,17 @@ pub fn parse_x509_certificate_from_der_internal(
                         // Found potential URL start
                         let mut url_bytes = Vec::new();
                         for &byte in &ext_bytes[i..] {
-                            if byte >= 0x20 && byte <= 0x7E {
+                            if (0x20..=0x7E).contains(&byte) {
                                 // Printable ASCII
                                 url_bytes.push(byte);
                             } else {
                                 break;
                             }
                         }
-                        if let Ok(url) = String::from_utf8(url_bytes) {
-                            if url.starts_with("http") && !ocsp_urls.contains(&url) {
+                        if let Ok(url) = String::from_utf8(url_bytes)
+                            && url.starts_with("http") && !ocsp_urls.contains(&url) {
                                 ocsp_urls.push(url);
                             }
-                        }
                     }
                 }
             }
@@ -78,18 +77,17 @@ pub fn parse_x509_certificate_from_der_internal(
                         // Found potential URL start
                         let mut url_bytes = Vec::new();
                         for &byte in &ext_bytes[i..] {
-                            if byte >= 0x20 && byte <= 0x7E {
+                            if (0x20..=0x7E).contains(&byte) {
                                 // Printable ASCII
                                 url_bytes.push(byte);
                             } else {
                                 break;
                             }
                         }
-                        if let Ok(url) = String::from_utf8(url_bytes) {
-                            if url.starts_with("http") && !crl_urls.contains(&url) {
+                        if let Ok(url) = String::from_utf8(url_bytes)
+                            && url.starts_with("http") && !crl_urls.contains(&url) {
                                 crl_urls.push(url);
                             }
-                        }
                     }
                 }
             }

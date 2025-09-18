@@ -11,16 +11,19 @@ pub struct Quic;
 
 impl Quic {
     /// Create a QUIC server builder
+    #[must_use]
     pub fn server() -> super::server::QuicServerBuilder {
         super::server::QuicServerBuilder::new()
     }
 
     /// Create a QUIC client builder
+    #[must_use]
     pub fn client() -> super::client::QuicClientBuilder {
         super::client::QuicClientBuilder::new()
     }
 
     /// Create a file transfer protocol instance
+    #[must_use]
     pub fn file_transfer(
         addr: SocketAddr,
     ) -> crate::quic::file_transfer::types::FileTransferProtocol {
@@ -29,6 +32,7 @@ impl Quic {
 }
 
 /// Direct entry point for QUIC functionality
+#[must_use]
 pub fn quic() -> Quic {
     Quic
 }
@@ -38,16 +42,19 @@ pub struct QuicMasterBuilder;
 
 impl QuicMasterBuilder {
     /// Create a QUIC server builder
+    #[must_use]
     pub fn server(self) -> super::server::QuicServerBuilder {
         super::server::QuicServerBuilder::new()
     }
 
     /// Create a QUIC client builder
+    #[must_use]
     pub fn client(self) -> super::client::QuicClientBuilder {
         super::client::QuicClientBuilder::new()
     }
 
     /// Create a file transfer protocol instance
+    #[must_use]
     pub fn file_transfer(
         self,
         addr: SocketAddr,
@@ -64,13 +71,20 @@ pub struct QuicServer {
         Option<tokio::task::JoinHandle<Result<(), crate::error::CryptoTransportError>>>,
 }
 
+impl Default for QuicServer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuicServer {
     /// Create unbound server (for error cases)
+    #[must_use]
     pub fn new() -> Self {
         Self {
             addr: "0.0.0.0:0".parse().unwrap_or_else(|_| {
                 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0)
+                SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0)
             }),
             bound: false,
             _handle: None,
@@ -78,11 +92,13 @@ impl QuicServer {
     }
 
     /// Get the server's bound address
+    #[must_use]
     pub fn addr(&self) -> &SocketAddr {
         &self.addr
     }
 
     /// Check if the server is bound
+    #[must_use]
     pub fn is_bound(&self) -> bool {
         self.bound
     }
@@ -95,13 +111,20 @@ pub struct QuicClient {
     pub(crate) handle: Option<QuicConnectionHandle>,
 }
 
+impl Default for QuicClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuicClient {
     /// Create unconnected client (for error cases)
+    #[must_use]
     pub fn new() -> Self {
         Self {
             addr: "0.0.0.0:0".parse().unwrap_or_else(|_| {
                 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0)
+                SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0)
             }),
             connected: false,
             handle: None,
@@ -109,11 +132,13 @@ impl QuicClient {
     }
 
     /// Get the client's remote address
+    #[must_use]
     pub fn addr(&self) -> &SocketAddr {
         &self.addr
     }
 
     /// Check if the client is connected
+    #[must_use]
     pub fn is_connected(&self) -> bool {
         self.connected
     }

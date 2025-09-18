@@ -97,13 +97,13 @@ async fn generate_ca(
         tokio::fs::set_permissions(cert_dir.join("ca.key"), perms).await?;
     }
 
-    let cert_der = cert.der();
+    let cert_der_bytes = cert.der();
     let key_der = key_pair.serialize_der();
 
     // Create issuer for signing other certificates
     let issuer = Issuer::new(params, key_pair);
 
-    Ok((cert_der.clone(), PrivatePkcs8KeyDer::from(key_der), issuer))
+    Ok((cert_der_bytes.clone(), key_der.into(), issuer))
 }
 
 /// Load existing CA certificate
@@ -123,7 +123,7 @@ async fn load_ca(
         .map_err(|e| TlsError::KeyProtection(format!("Invalid UTF-8 in decrypted key: {e}")))?;
 
     // Parse certificate
-    let cert_der = rustls_pemfile::certs(&mut cert_pem.as_bytes())
+    let cert_der_data = rustls_pemfile::certs(&mut cert_pem.as_bytes())
         .next()
         .ok_or_else(|| anyhow::anyhow!("No certificate in CA file"))??;
 
@@ -155,8 +155,8 @@ async fn load_ca(
     let ca_issuer = Issuer::from_ca_cert_pem(&cert_pem, key_pair)?;
 
     Ok((
-        CertificateDer::from(cert_der.to_vec()),
-        PrivatePkcs8KeyDer::from(key_der),
+        CertificateDer::from(cert_der_data.to_vec()),
+        key_der,
         ca_issuer,
     ))
 }
@@ -176,13 +176,12 @@ async fn generate_server_cert(
     ];
 
     // Add hostname if available
-    if let Ok(hostname) = hostname::get() {
-        if let Some(hostname_str) = hostname.to_str() {
+    if let Ok(hostname) = hostname::get()
+        && let Some(hostname_str) = hostname.to_str() {
             params
                 .subject_alt_names
                 .push(SanType::DnsName(hostname_str.try_into()?));
         }
-    }
 
     let mut dn = DistinguishedName::new();
     dn.push(DnType::OrganizationName, "CRYYPT");
@@ -215,8 +214,8 @@ async fn generate_server_cert(
         tokio::fs::set_permissions(cert_dir.join("server.key"), perms).await?;
     }
 
-    let cert_der = cert.der();
+    let cert_der_encoded = cert.der();
     let key_der = key_pair.serialize_der();
 
-    Ok((cert_der.clone(), key_der.clone().into()))
+    Ok((cert_der_encoded.clone(), key_der.clone().into()))
 }

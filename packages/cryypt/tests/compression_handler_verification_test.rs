@@ -70,7 +70,7 @@ async fn test_compression_zstd_handler_usage() {
                 Ok(compression_result) => {
                     tracker_clone.mark_called(None);
                     // Return modified data to prove handler was used
-                    let mut modified = compression_result.to_vec();
+                    let mut modified = compression_result.clone();
                     modified.extend_from_slice(b"_ZSTD_HANDLER_CALLED");
                     modified
                 }
@@ -115,7 +115,7 @@ async fn test_compression_gzip_handler_usage() {
                 Ok(compression_result) => {
                     tracker_clone.mark_called(None);
                     // Return modified data to prove handler was used
-                    let mut modified = compression_result.to_vec();
+                    let mut modified = compression_result.clone();
                     modified.extend_from_slice(b"_GZIP_HANDLER_CALLED");
                     modified
                 }

@@ -80,7 +80,7 @@ impl QuicServerWithConfig {
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = bind_quic_server(&cert, &key, &addr_str).await;
+            let result = bind_quic_server(&cert, &key, &addr_str);
             let _ = tx.send(result);
         });
 
@@ -101,7 +101,7 @@ where
         let handler = self.result_handler;
 
         // Perform QUIC server binding
-        let result = bind_quic_server(&cert, &key, &addr_str).await;
+        let result = bind_quic_server(&cert, &key, &addr_str);
 
         // Apply result handler
         handler(result)
@@ -140,7 +140,7 @@ impl QuicServer {
 }
 
 // Internal helper function for server binding
-async fn bind_quic_server(cert: &[u8], key: &[u8], addr: &str) -> crate::Result<QuicServer> {
+fn bind_quic_server(cert: &[u8], key: &[u8], addr: &str) -> crate::Result<QuicServer> {
     // Parse address
     let socket_addr = addr.parse::<SocketAddr>().map_err(|e| {
         crate::error::CryptoTransportError::Internal(format!("Invalid address {}: {addr, e}"))

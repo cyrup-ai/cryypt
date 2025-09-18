@@ -17,6 +17,15 @@ pub struct QuicServerConfig {
 }
 
 /// Return an `impl Future` that never blocks the thread. We do `.await` on `bind` and `.await` on `recv_from`.
+/// 
+/// # Errors
+/// 
+/// Returns an error if:
+/// - Socket binding to listen address fails
+/// - UDP packet reception fails
+/// - QUIC connection processing fails
+/// - Protocol parsing errors occur
+/// - Network I/O errors occur during operation
 pub fn run_quic_server(
     config: QuicServerConfig,
 ) -> impl Future<Output = Result<()>> + Send + 'static {
@@ -28,30 +37,21 @@ pub fn run_quic_server(
         let mut buf = vec![0u8; 65535];
         loop {
             let (len, from_addr) = socket.recv_from(&mut buf).await?;
-            let hdr = match Header::from_slice(&mut buf[..len], quiche::MAX_CONN_ID_LEN) {
-                Ok(h) => h,
-                Err(_) => {
+            let Ok(hdr) = Header::from_slice(&mut buf[..len], quiche::MAX_CONN_ID_LEN) else {
                     continue;
-                }
-            };
+                };
 
             let scid = ConnectionId::from_ref(&hdr.scid);
-            let mut quic_config = match crypto.build_config() {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
-            let mut quic_conn = match accept(
+            let Ok(mut quic_config) = crypto.build_config() else { continue };
+            let Ok(mut quic_conn) = accept(
                 &scid,
                 None,
                 socket.local_addr()?,
                 from_addr,
                 &mut quic_config,
-            ) {
-                Ok(c) => c,
-                Err(_) => {
+            ) else {
                     continue;
-                }
-            };
+                };
 
             let recv_info = quiche::RecvInfo {
                 from: from_addr,
@@ -72,7 +72,7 @@ pub fn run_quic_server(
 
             let conn_loop = quic_connection_main_loop(controller.clone());
             tokio::spawn(async move {
-                let _ = conn_loop.await;
+                let _ = Box::pin(conn_loop).await;
             });
 
             let _handle = QuicConnectionHandle::new(controller);
@@ -112,7 +112,8 @@ fn server_event_reporter() -> broadcast::Sender<QuicConnectionEvent> {
 pub struct Server;
 
 impl Server {
-    pub fn default() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Server
     }
 }

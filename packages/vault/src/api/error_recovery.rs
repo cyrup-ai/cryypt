@@ -117,6 +117,7 @@ impl ErrorRecovery {
             VaultError::InvalidPassphrase => false,
             VaultError::WeakPassphrase => false,
             VaultError::VaultLocked => false,
+            VaultError::AuthenticationFailed(_) => false,
 
             // Validation Errors (Permanent)
             VaultError::InvalidInput(_) => false,
@@ -150,6 +151,7 @@ impl ErrorRecovery {
             VaultError::Serialization(_) => false,
 
             // Generic Errors (Conservative - not retryable)
+            VaultError::Internal(_) => false,
             VaultError::Other(_) => false,
         }
     }

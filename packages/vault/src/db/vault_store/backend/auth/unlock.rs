@@ -8,7 +8,22 @@ use cryypt_jwt::JwtMasterBuilder;
 impl LocalVaultProvider {
     /// Unlock vault with passphrase verification and session creation
     pub(crate) async fn unlock_impl(&self, passphrase: Passphrase) -> VaultResult<()> {
-        // Ensure vault is currently locked before proceeding
+        // Check if we already have a valid JWT session that just needs the encryption key
+        if self.has_valid_jwt_session().await {
+            log::debug!("Found existing JWT session, attempting to derive encryption key");
+            // Try to derive encryption key and unlock
+            if let Ok(_) = self.derive_encryption_key(&passphrase).await {
+                if let Ok(mut locked_guard) = self.locked.lock() {
+                    *locked_guard = false;
+                    log::info!("Vault unlocked using existing JWT session + passphrase");
+                    return Ok(());
+                }
+            } else {
+                log::warn!("Failed to derive encryption key from passphrase, proceeding with full unlock");
+            }
+        }
+
+        // Ensure vault is currently locked before proceeding with full unlock
         {
             match self.locked.lock() {
                 Ok(guard) => {
@@ -97,7 +112,7 @@ impl LocalVaultProvider {
         let session_claims = serde_json::json!({
             "session": "vault_unlocked",
             "vault_path": self.config.vault_path.to_string_lossy(),
-            "issued_at": chrono::Utc::now().timestamp(),
+            "iat": chrono::Utc::now().timestamp(),
             "exp": chrono::Utc::now().timestamp() + 3600,
             "nbf": chrono::Utc::now().timestamp()
         });
@@ -122,7 +137,15 @@ impl LocalVaultProvider {
         // Step 8: Store passphrase hash for future verification (after successful validation)
         self.store_passphrase_hash(&passphrase).await?;
 
-        // Step 9: Atomically update all session state
+        // Step 9: Persist JWT session to secure storage for cross-process access
+        if let Err(e) = self.persist_jwt_session(session_token.clone(), jwt_key.clone()).await {
+            // Log error but don't fail unlock - session persistence is not critical
+            log::warn!("Failed to persist JWT session to storage: {}", e);
+        } else {
+            log::debug!("JWT session persisted to secure storage successfully");
+        }
+
+        // Step 10: Atomically update all session state
         {
             // Store the passphrase securely in memory (using SecretString from secrecy crate)
             let mut passphrase_guard = self.passphrase.lock().await;
@@ -134,13 +157,43 @@ impl LocalVaultProvider {
             *token_guard = Some(session_token);
             drop(token_guard);
 
+            // Store the encryption key for crypto operations
+            let mut key_guard = self.encryption_key.lock().await;
+            *key_guard = Some(encryption_key);
+            drop(key_guard);
+
+            // Store the JWT signing key for session validation
+            let mut jwt_key_guard = self.jwt_key.lock().await;
+            *jwt_key_guard = Some(jwt_key);
+            drop(jwt_key_guard);
+
             // Finally, unlock the vault
             if let Ok(mut locked_guard) = self.locked.lock() {
+                log::debug!("UNLOCK: Setting locked state to false");
                 *locked_guard = false;
+                log::debug!("UNLOCK: Vault unlocked, locked state = {}", *locked_guard);
+            } else {
+                log::error!("UNLOCK: Failed to acquire lock mutex");
             }
         }
 
         log::info!("Vault successfully unlocked with full crypto integration");
+        
+        // Verify the unlock state before returning
+        match self.locked.lock() {
+            Ok(guard) => {
+                log::debug!("UNLOCK: Final verification - locked state = {}", *guard);
+                if *guard {
+                    log::error!("UNLOCK: ERROR - Vault still shows as locked after unlock!");
+                    return Err(VaultError::Other("Unlock verification failed".to_string()));
+                }
+            }
+            Err(_) => {
+                log::error!("UNLOCK: ERROR - Cannot verify unlock state, mutex poisoned");
+                return Err(VaultError::Other("Unlock verification failed - mutex poisoned".to_string()));
+            }
+        }
+        
         Ok(())
     }
 }

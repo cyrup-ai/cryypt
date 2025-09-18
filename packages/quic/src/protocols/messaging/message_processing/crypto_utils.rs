@@ -22,7 +22,10 @@ pub async fn calculate_checksum(data: &[u8]) -> Result<u32> {
         ));
     }
     
-    Ok(calculate_checksum_64(data).await? as u32) // Backward compatibility: return lower 32 bits
+    // Backward compatibility: return lower 32 bits
+    let checksum_64 = calculate_checksum_64(data).await?;
+    #[allow(clippy::cast_possible_truncation)]
+    Ok(u32::try_from(checksum_64 & 0xFFFF_FFFF).unwrap_or(checksum_64 as u32))
 }
 
 /// Calculate 64-bit checksum for enhanced integrity verification
@@ -159,6 +162,12 @@ pub async fn verify_authenticated_checksum(
 }
 
 /// Generate encryption key from QUIC connection ID and shared secret using HMAC-SHA256
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - HMAC computation fails
+/// - Key derivation operation fails
 pub async fn derive_connection_key(conn_id: &[u8], shared_secret: &[u8]) -> Result<Vec<u8>> {
     use cryypt_hashing::Hash;
 

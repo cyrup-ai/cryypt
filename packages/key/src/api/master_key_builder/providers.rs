@@ -1,9 +1,9 @@
 //! Master key provider implementations
 //!
-//! Contains the MasterKeyProvider trait and all provider types for different key sources.
+//! Contains the `MasterKeyProvider` trait and all provider types for different key sources.
 
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{engine::general_purpose::{STANDARD, STANDARD_NO_PAD}, Engine};
 use hex;
 use sha2::{Sha256, Digest};
 use zeroize::Zeroizing;
@@ -11,6 +11,13 @@ use zeroize::Zeroizing;
 /// Trait for types that can provide a master key
 pub trait MasterKeyProvider: Send + Sync {
     /// Resolve to the actual master key
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Key derivation fails
+    /// - Invalid key material is provided
+    /// - Cryptographic operations fail
     fn resolve(&self) -> crate::Result<[u8; 32]>;
 }
 
@@ -26,15 +33,13 @@ impl MasterKeyProvider for PassphraseMasterKey {
 
         // Generate deterministic salt from passphrase hash for security
         // This ensures same passphrase = same key, but different passphrases = different salts
-        use sha2::{Sha256, Digest};
         let mut hasher = Sha256::new();
-        hasher.update("passphrase_salt_v1:".as_bytes()); // Version prefix for future compatibility
+        hasher.update("passphrasesaltv1:".as_bytes()); // Version prefix for future compatibility (no underscores)
         hasher.update(self.passphrase.as_bytes());
         let salt_bytes = hasher.finalize();
         
-        // Use first 22 bytes for salt (Argon2 requirement) - encode as base64
-        use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_SALT};
-        let salt_b64 = BASE64_SALT.encode(&salt_bytes[..22]);
+        // Use first 22 bytes for salt (Argon2 requirement) - encode as base64 without padding
+        let salt_b64 = STANDARD_NO_PAD.encode(&salt_bytes[..22]);
         let salt = SaltString::from_b64(&salt_b64)
             .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {e}")))?;
 
@@ -79,21 +84,19 @@ impl MasterKeyProvider for EnvMasterKey {
             .map_err(|_| crate::KeyError::InvalidKey("Master key env var not found".into()))?;
 
         // Try to decode from hex first
-        if let Ok(decoded) = hex::decode(&value) {
-            if decoded.len() == 32 {
+        if let Ok(decoded) = hex::decode(&value)
+            && decoded.len() == 32 {
                 let mut key = [0u8; 32];
                 key.copy_from_slice(&decoded);
                 return Ok(key);
-            }
         }
 
         // Try to decode from base64
-        if let Ok(decoded) = STANDARD.decode(&value) {
-            if decoded.len() == 32 {
+        if let Ok(decoded) = STANDARD.decode(&value)
+            && decoded.len() == 32 {
                 let mut key = [0u8; 32];
                 key.copy_from_slice(&decoded);
                 return Ok(key);
-            }
         }
 
         // If neither hex nor base64 worked, derive from the string using Argon2
@@ -101,14 +104,13 @@ impl MasterKeyProvider for EnvMasterKey {
         
         // Generate deterministic salt from environment variable content hash for security
         // This ensures same env var = same key, but different env vars = different salts
-        use sha2::{Sha256, Digest};
         let mut hasher = Sha256::new();
-        hasher.update("env_var_salt_v1:".as_bytes()); // Version prefix for future compatibility
+        hasher.update("envvarsaltv1:".as_bytes()); // Version prefix for future compatibility (no underscores)
         hasher.update(value.as_bytes());
         let salt_bytes = hasher.finalize();
         
-        // Use first 22 bytes for salt (Argon2 requirement) - encode as base64
-        let salt_b64 = BASE64_SALT.encode(&salt_bytes[..22]);
+        // Use first 22 bytes for salt (Argon2 requirement) - encode as base64 without padding
+        let salt_b64 = STANDARD_NO_PAD.encode(&salt_bytes[..22]);
         let salt = SaltString::from_b64(&salt_b64)
             .map_err(|e| crate::KeyError::InvalidKey(format!("Invalid salt: {e}")))?;
 

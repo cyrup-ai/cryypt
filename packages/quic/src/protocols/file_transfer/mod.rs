@@ -88,11 +88,13 @@ pub struct QuicFileTransfer;
 
 impl QuicFileTransfer {
     /// Start building a file transfer server
+    #[must_use]
     pub fn server() -> sender::FileTransferServerBuilder {
         sender::FileTransferServerBuilder::default()
     }
 
     /// Start building a file transfer client connection
+    #[must_use]
     pub fn connect(server_addr: &str) -> receiver::FileTransferClientBuilder {
         receiver::FileTransferClientBuilder::new(server_addr.to_string())
     }

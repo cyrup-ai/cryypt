@@ -5,9 +5,10 @@
 
 use super::{FileMetadata, FileTransferMessage, TransferResult};
 use crate::{QuicConnectionHandle, QuicCryptoBuilder, connect_quic_client, error::Result};
+use cryypt_hashing::Hash;
 use std::path::{Path, PathBuf};
 use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::time::Duration;
 use uuid::Uuid;
 
@@ -35,24 +36,28 @@ impl FileTransferClientBuilder {
     }
 
     /// Set connection timeout
+    #[must_use]
     pub fn with_timeout(mut self, seconds: u64) -> Self {
         self.timeout_secs = seconds;
         self
     }
 
     /// Set retry attempts on connection failure
+    #[must_use]
     pub fn with_retry_attempts(mut self, attempts: u32) -> Self {
         self.retry_attempts = attempts;
         self
     }
 
     /// Enable server certificate verification
+    #[must_use]
     pub fn with_server_verification(mut self, verify: bool) -> Self {
         self.verify_server = verify;
         self
     }
 
     /// Set client certificate for authentication
+    #[must_use]
     pub fn with_client_cert(mut self, cert_path: &str, key_path: &str) -> Self {
         self.client_cert = Some(cert_path.to_string());
         self.client_key = Some(key_path.to_string());
@@ -60,16 +65,27 @@ impl FileTransferClientBuilder {
     }
 
     /// Upload a file to the server
+    #[must_use]
     pub fn upload(self, file_path: impl AsRef<Path>) -> super::sender::FileUploadBuilder {
         super::sender::FileUploadBuilder::new(self, file_path.as_ref().to_path_buf())
     }
 
     /// Download a file from the server
+    #[must_use]
     pub fn download(self, remote_filename: &str) -> FileDownloadBuilder {
         FileDownloadBuilder::new(self, remote_filename.to_string())
     }
 
     /// List files available on the server
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Connection establishment fails
+    /// - Serialization of the list request fails
+    /// - Network communication fails
+    /// - Response timeout occurs
+    /// - Response deserialization fails
     pub async fn list_files(self) -> Result<Vec<FileMetadata>> {
         let connection = self.establish_connection().await?;
 
@@ -181,24 +197,36 @@ impl FileDownloadBuilder {
     }
 
     /// Set output path for downloaded file
+    #[must_use]
     pub fn to_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.output_path = Some(path.into());
         self
     }
 
     /// Enable checksum verification
+    #[must_use]
     pub fn with_checksum_verification(mut self, verify: bool) -> Self {
         self.verify_checksum = verify;
         self
     }
 
     /// Enable resume capability
+    #[must_use]
     pub fn with_resume(mut self, enabled: bool) -> Self {
         self.resume = enabled;
         self
     }
 
     /// Execute the download
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Connection establishment fails
+    /// - Download protocol execution fails
+    /// - File I/O operations fail
+    /// - Network communication fails
+    /// - Checksum verification fails (if enabled)
     pub async fn execute(self) -> Result<TransferResult> {
         let output_path = self
             .output_path
@@ -233,6 +261,42 @@ pub(crate) async fn execute_download_protocol(
     let file_id = Uuid::new_v4();
 
     // 1. Send download request
+    send_download_request(&connection, file_id, remote_filename, resume)?;
+
+    // 2. Create output file and receive data
+    let mut file = File::create(output_path)
+        .await
+        .map_err(|e| std::io::Error::other(format!("Failed to create output file: {e}")))?;
+
+    let (bytes_transferred, received_checksum, transfer_success) = 
+        receive_file_data(&connection, &mut file, file_id).await?;
+
+    // 3. Verify checksum if requested
+    let checksum_verified = verify_file_checksum(
+        output_path, 
+        &received_checksum, 
+        verify_checksum
+    ).await?;
+
+    let final_success = transfer_success && checksum_verified && bytes_transferred > 0;
+
+    Ok(TransferResult {
+        file_id,
+        filename: remote_filename.to_string(),
+        bytes_transferred,
+        duration: start_time.elapsed(),
+        checksum: received_checksum,
+        success: final_success,
+    })
+}
+
+/// Send download request message to the connection
+fn send_download_request(
+    connection: &QuicConnectionHandle,
+    file_id: Uuid,
+    remote_filename: &str,
+    resume: bool,
+) -> Result<()> {
     let download_request = FileTransferMessage::DownloadRequest {
         file_id,
         filename: remote_filename.to_string(),
@@ -243,17 +307,18 @@ pub(crate) async fn execute_download_protocol(
         .map_err(|e| std::io::Error::other(format!("Serialization error: {e}")))?;
 
     connection.send_stream_data(&request_data, false)?;
+    Ok(())
+}
 
-    // 2. Create output file
-    let mut file = File::create(output_path)
-        .await
-        .map_err(|e| std::io::Error::other(format!("Failed to create output file: {e}")))?;
-
+/// Receive file data from QUIC connection and write to file
+async fn receive_file_data(
+    connection: &QuicConnectionHandle,
+    file: &mut File,
+    file_id: Uuid,
+) -> Result<(u64, String, bool)> {
     let mut bytes_transferred = 0u64;
     let mut received_checksum = String::new();
     let mut transfer_success = false;
-
-    // 3. Receive file data chunks from QUIC connection
     let mut event_rx = connection.subscribe_to_events();
 
     // Timeout for the entire download operation
@@ -261,7 +326,6 @@ pub(crate) async fn execute_download_protocol(
         while let Ok(event) = event_rx.recv().await {
             if let crate::quic_conn::QuicConnectionEvent::InboundStreamData(_, data) = event {
                 if data.is_empty() {
-                    // End of stream
                     break;
                 }
 
@@ -274,7 +338,6 @@ pub(crate) async fn execute_download_protocol(
                             is_final,
                             ..
                         } => {
-                            // Verify file_id matches our request
                             if chunk_file_id != file_id {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
@@ -296,7 +359,6 @@ pub(crate) async fn execute_download_protocol(
                             checksum,
                             success,
                         } => {
-                            // Verify file_id matches our request
                             if complete_file_id != file_id {
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::InvalidData,
@@ -310,7 +372,6 @@ pub(crate) async fn execute_download_protocol(
                         }
                         _ => {
                             // Ignore other message types
-                            continue;
                         }
                     }
                 } else {
@@ -335,39 +396,33 @@ pub(crate) async fn execute_download_protocol(
         .await
         .map_err(|e| std::io::Error::other(format!("File flush error: {e}")))?;
 
-    // 4. Verify checksum if requested and available
-    let checksum_verified = if verify_checksum && !received_checksum.is_empty() {
-        use cryypt_hashing::Hash;
-        use tokio::io::AsyncReadExt;
+    Ok((bytes_transferred, received_checksum, transfer_success))
+}
 
-        let mut file_for_hash = File::open(output_path).await.map_err(|e| {
-            std::io::Error::other(format!("Failed to reopen file for checksum: {e}"))
-        })?;
+/// Verify file checksum if requested
+async fn verify_file_checksum(
+    output_path: &Path,
+    received_checksum: &str,
+    verify_checksum: bool,
+) -> Result<bool> {
+    if !verify_checksum || received_checksum.is_empty() {
+        return Ok(true); // Skip verification if not requested or no checksum provided
+    }
 
-        let mut buffer = Vec::new();
-        file_for_hash.read_to_end(&mut buffer).await.map_err(|e| {
-            std::io::Error::other(format!("Failed to read file for checksum: {e}"))
-        })?;
+    let mut file_for_hash = File::open(output_path).await.map_err(|e| {
+        std::io::Error::other(format!("Failed to reopen file for checksum: {e}"))
+    })?;
 
-        let computed_hash = Hash::sha3_256()
-            .compute(buffer)
-            .await
-            .map_err(|e| std::io::Error::other(format!("Hash computation error: {e}")))?;
+    let mut buffer = Vec::new();
+    file_for_hash.read_to_end(&mut buffer).await.map_err(|e| {
+        std::io::Error::other(format!("Failed to read file for checksum: {e}"))
+    })?;
 
-        let computed_checksum = hex::encode(computed_hash);
-        computed_checksum == received_checksum
-    } else {
-        true // Skip verification if not requested or no checksum provided
-    };
+    let computed_hash = Hash::sha3_256()
+        .compute(buffer)
+        .await
+        .map_err(|e| std::io::Error::other(format!("Hash computation error: {e}")))?;
 
-    let final_success = transfer_success && checksum_verified && bytes_transferred > 0;
-
-    Ok(TransferResult {
-        file_id,
-        filename: remote_filename.to_string(),
-        bytes_transferred,
-        duration: start_time.elapsed(),
-        checksum: received_checksum,
-        success: final_success,
-    })
+    let computed_checksum = hex::encode(computed_hash);
+    Ok(computed_checksum == received_checksum)
 }

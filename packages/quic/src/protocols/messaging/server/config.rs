@@ -31,7 +31,14 @@ pub struct CertificateConfig {
 }
 
 impl MessagingServerConfig {
-    /// Create a new MessagingServerConfig with secure certificate generation
+    /// Create a new `MessagingServerConfig` with secure certificate generation
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Certificate generation fails
+    /// - File operations fail during certificate creation
+    /// - Configuration validation fails
     pub async fn new() -> Result<Self, CryptoTransportError> {
         // Generate development certificate using the TLS module
         use crate::tls::builder::certificate::CertificateBuilder;
@@ -47,10 +54,10 @@ impl MessagingServerConfig {
         let development_authority = if cert_result.success {
             let cert_pem = cert_result
                 .certificate_pem
-                .unwrap_or_else(|| "".to_string());
+                .unwrap_or_else(String::new);
             let key_pem = cert_result
                 .private_key_pem
-                .unwrap_or_else(|| "".to_string());
+                .unwrap_or_else(String::new);
 
             CertificateAuthority {
                 name: "development-generated".to_string(),
@@ -117,6 +124,13 @@ impl MessagingServerConfig {
     }
 
     /// Create development configuration with known settings
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Certificate generation fails
+    /// - Certificate directory creation fails
+    /// - TLS configuration is invalid
     pub async fn development(cert_dir: std::path::PathBuf) -> Result<Self, CryptoTransportError> {
         // Use TLS module for proper certificate generation
         let provider =
@@ -124,8 +138,7 @@ impl MessagingServerConfig {
                 .await
                 .map_err(|e| {
                     CryptoTransportError::Internal(format!(
-                        "Failed to create development certificates: {}",
-                        e
+                        "Failed to create development certificates: {e}"
                     ))
                 })?;
 
@@ -136,11 +149,9 @@ impl MessagingServerConfig {
                 String::from_utf8(
                     provider
                         .get_decrypted_private_key_pem()
-                        .await
                         .map_err(|e| {
                             CryptoTransportError::Internal(format!(
-                                "Failed to get private key: {}",
-                                e
+                                "Failed to get private key: {e}"
                             ))
                         })?
                         .as_bytes()

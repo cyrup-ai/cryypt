@@ -15,6 +15,26 @@ pub struct VaultConfig {
     /// TTL cleanup interval in seconds (0 disables cleanup)
     #[serde(default = "default_ttl_cleanup_interval")]
     pub ttl_cleanup_interval_seconds: u64,
+    /// Keychain configuration for PQCrypto keys
+    #[serde(default)]
+    pub keychain_config: KeychainConfig,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct KeychainConfig {
+    pub app_name: String,        // "vault"
+    pub pq_namespace: String,    // "pq_armor"  
+    pub auto_generate: bool,     // true - generate PQ keys on first use
+}
+
+impl Default for KeychainConfig {
+    fn default() -> Self {
+        Self {
+            app_name: "vault".to_string(),
+            pq_namespace: "pq_armor".to_string(),
+            auto_generate: true,
+        }
+    }
 }
 
 fn default_memory_cost() -> u32 {
@@ -77,6 +97,7 @@ impl Default for VaultConfig {
             argon2_time_cost: default_time_cost(),
             argon2_parallelism: default_parallelism(),
             ttl_cleanup_interval_seconds: default_ttl_cleanup_interval(),
+            keychain_config: KeychainConfig::default(),
         }
     }
 }

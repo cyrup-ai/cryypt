@@ -20,4 +20,5 @@ pub mod cleanup;
 pub mod namespace;
 pub mod reencryption;
 pub mod search;
+pub mod session;
 pub mod ttl;

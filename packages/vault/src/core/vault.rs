@@ -78,11 +78,25 @@ impl Vault {
         }
     }
 
+    pub async fn is_authenticated(&self) -> bool {
+        let providers = self.providers.lock().await;
+        providers
+            .first()
+            .map_or(false, |provider| provider.is_authenticated())
+    }
+    
     pub async fn is_locked(&self) -> bool {
         let providers = self.providers.lock().await;
         providers
             .first()
             .is_none_or(|provider| provider.is_locked())
+    }
+    
+    pub async fn has_master_key(&self) -> bool {
+        let providers = self.providers.lock().await;
+        providers
+            .first()
+            .map_or(false, |provider| provider.has_master_key())
     }
 
     /// Determines if this vault is using fortress-grade (defense-in-depth) encryption
@@ -340,6 +354,35 @@ impl Vault {
         let providers = self.providers.lock().await;
         if let Some(provider) = providers.first() {
             Ok(provider.list_namespaces())
+        } else {
+            Err(VaultError::Configuration(
+                "No provider configured".to_string(),
+            ))
+        }
+    }
+
+    /// Get access to JWT operations if the provider supports them
+    /// This is used internally for authentication operations like login
+    pub async fn get_jwt_operations(&self) -> VaultResult<(Arc<crate::auth::JwtHandler>, Vec<u8>)> {
+        let providers = self.providers.lock().await;
+        if let Some(provider) = providers.first() {
+            // Try to downcast to LocalVaultProvider to access JWT functionality
+            let provider_any = provider.as_ref() as &dyn std::any::Any;
+            if let Some(local_provider) = provider_any.downcast_ref::<crate::db::vault_store::LocalVaultProvider>() {
+                // Get the encryption key
+                let encryption_key_guard = local_provider.encryption_key.lock().await;
+                if let Some(encryption_key) = encryption_key_guard.as_ref() {
+                    Ok((local_provider.jwt_handler.clone(), encryption_key.clone()))
+                } else {
+                    Err(VaultError::AuthenticationFailed(
+                        "Vault is locked - no encryption key available for JWT operations".to_string()
+                    ))
+                }
+            } else {
+                Err(VaultError::UnsupportedOperation(
+                    "Current provider does not support JWT operations".to_string()
+                ))
+            }
         } else {
             Err(VaultError::Configuration(
                 "No provider configured".to_string(),

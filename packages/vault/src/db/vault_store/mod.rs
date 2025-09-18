@@ -2,6 +2,7 @@
 //!
 //! Contains the main store traits, types, and error handling for vault storage operations.
 
+use crate::auth::JwtHandler;
 use crate::config::VaultConfig;
 use crate::db::dao::{Error as DaoError, SurrealDbDao, TableType};
 use crate::error::{VaultError, VaultResult};
@@ -109,6 +110,7 @@ pub struct LocalVaultProvider {
     pub(crate) session_token: Arc<Mutex<Option<String>>>,
     pub(crate) encryption_key: Arc<Mutex<Option<Vec<u8>>>>,
     pub(crate) jwt_key: Arc<Mutex<Option<Vec<u8>>>>,
+    pub(crate) jwt_handler: Arc<JwtHandler>,
 }
 
 impl LocalVaultProvider {
@@ -142,6 +144,16 @@ impl LocalVaultProvider {
 
         let db = Arc::new(db);
 
+        // Create unique vault ID based on database path for JWT authentication
+        let vault_id = {
+            use sha2::{Sha256, Digest};
+            let mut hasher = Sha256::new();
+            hasher.update(db_path.as_bytes());
+            let hash = hasher.finalize();
+            use base64::Engine;
+            base64::engine::general_purpose::STANDARD.encode(&hash[..16]) // Use first 16 bytes as vault ID
+        };
+
         // Initialize the vault provider
         let provider = Self {
             dao: SurrealDbDao::new(db, "vault_entries", TableType::Document),
@@ -151,12 +163,30 @@ impl LocalVaultProvider {
             session_token: Arc::new(Mutex::new(None)),
             encryption_key: Arc::new(Mutex::new(None)),
             jwt_key: Arc::new(Mutex::new(None)),
+            jwt_handler: Arc::new(JwtHandler::new(vault_id)),
         };
 
         // Initialize the database schema
         provider.initialize_schema().await.map_err(|e| {
             VaultError::Provider(format!("Failed to initialize database schema: {e}"))
         })?;
+
+        // Clean up expired JWT sessions
+        provider.cleanup_expired_sessions().await.map_err(|e| {
+            log::warn!("Failed to cleanup expired JWT sessions: {}", e);
+            e
+        })?;
+
+        // Try to restore JWT session state (but keep vault locked until passphrase provided)
+        if let Ok(Some((jwt_token, jwt_key))) = provider.restore_jwt_session().await {
+            provider.populate_session_state(jwt_token, jwt_key).await.map_err(|e| {
+                log::warn!("Failed to populate session state from restored JWT: {}", e);
+                e
+            })?;
+            log::info!("Successfully restored JWT session state from secure storage (vault remains locked)");
+        } else {
+            log::debug!("No valid JWT session found to restore");
+        }
 
         Ok(provider)
     }

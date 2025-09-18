@@ -60,7 +60,7 @@ impl AuthorityFilesystemBuilder {
     /// Create a new certificate authority
     pub async fn create(self) -> super::super::responses::CertificateAuthorityResponse {
         // Create directory if it doesn't exist
-        if let Err(e) = std::fs::create_dir_all(&self.path) {
+        if let Err(e) = tokio::fs::create_dir_all(&self.path).await {
             return super::super::responses::CertificateAuthorityResponse {
                 success: false,
                 authority: None,
@@ -138,7 +138,7 @@ impl AuthorityFilesystemBuilder {
         let key_path = self.path.join("ca.key");
         let mut files_created = vec![];
 
-        if let Err(e) = std::fs::write(&cert_path, &cert_pem) {
+        if let Err(e) = tokio::fs::write(&cert_path, &cert_pem).await {
             return super::super::responses::CertificateAuthorityResponse {
                 success: false,
                 authority: None,
@@ -149,7 +149,7 @@ impl AuthorityFilesystemBuilder {
         }
         files_created.push(cert_path);
 
-        if let Err(e) = std::fs::write(&key_path, &key_pem) {
+        if let Err(e) = tokio::fs::write(&key_path, &key_pem).await {
             return super::super::responses::CertificateAuthorityResponse {
                 success: false,
                 authority: None,
@@ -196,7 +196,7 @@ impl AuthorityFilesystemBuilder {
         let key_path = self.path.join("ca.key");
 
         // Check if both files exist
-        if !cert_path.exists() || !key_path.exists() {
+        if !tokio::fs::try_exists(&cert_path).await.unwrap_or(false) || !tokio::fs::try_exists(&key_path).await.unwrap_or(false) {
             return super::super::responses::CertificateAuthorityResponse {
                 success: false,
                 authority: None,
@@ -207,7 +207,7 @@ impl AuthorityFilesystemBuilder {
         }
 
         // Read certificate and key files
-        let cert_pem = match std::fs::read_to_string(&cert_path) {
+        let cert_pem = match tokio::fs::read_to_string(&cert_path).await {
             Ok(content) => content,
             Err(e) => {
                 return super::super::responses::CertificateAuthorityResponse {
@@ -220,7 +220,7 @@ impl AuthorityFilesystemBuilder {
             }
         };
 
-        let key_pem = match std::fs::read_to_string(&key_path) {
+        let key_pem = match tokio::fs::read_to_string(&key_path).await {
             Ok(content) => content,
             Err(e) => {
                 return super::super::responses::CertificateAuthorityResponse {

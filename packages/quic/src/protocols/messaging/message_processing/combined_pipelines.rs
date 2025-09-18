@@ -10,6 +10,13 @@ use super::compression_pipeline::{compress_payload_stream, decompress_payload_st
 use super::encryption_pipeline::{decrypt_payload_stream, encrypt_payload_stream};
 
 /// Combined compression and encryption pipeline (compress then encrypt)
+/// 
+/// # Errors
+/// 
+/// Returns an error if:
+/// - Compression operations fail
+/// - Encryption operations fail
+/// - Key derivation fails
 pub async fn process_payload_forward(
     data: Vec<u8>,
     compression_alg: CompressionAlgorithm,
@@ -45,6 +52,13 @@ pub async fn process_payload_forward(
 }
 
 /// Combined decryption and decompression pipeline (decrypt then decompress)
+/// 
+/// # Errors
+/// 
+/// Returns an error if:
+/// - Decryption operations fail
+/// - Decompression operations fail  
+/// - Metadata validation fails
 pub async fn process_payload_reverse(
     data: Vec<u8>,
     compression_metadata: Option<&CompressionMetadata>,

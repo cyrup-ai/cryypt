@@ -27,15 +27,16 @@ pub mod error_codes {
 
 /// JSON-RPC 2.0 Request ID
 /// Can be a String, Number, or Null according to specification
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(untagged)]
 pub enum Id {
+    /// Null identifier
+    #[default]
+    Null,
     /// String identifier
     String(String),
     /// Numeric identifier (u64 for simplicity)
     Number(u64),
-    /// Null identifier
-    Null,
 }
 
 impl Id {
@@ -47,16 +48,13 @@ impl Id {
     }
 
     /// Check if this is a null ID
+    #[must_use]
     pub fn is_null(&self) -> bool {
         matches!(self, Id::Null)
     }
 }
 
-impl Default for Id {
-    fn default() -> Self {
-        Id::Null
-    }
-}
+
 
 /// Method parameters - can be positional (array) or named (object)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -70,16 +68,19 @@ pub enum Params {
 
 impl Params {
     /// Create empty positional parameters
+    #[must_use]
     pub fn array() -> Self {
         Params::Array(Vec::new())
     }
 
     /// Create empty named parameters
+    #[must_use]
     pub fn object() -> Self {
         Params::Object(HashMap::new())
     }
 
     /// Check if parameters are empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         match self {
             Params::Array(arr) => arr.is_empty(),
@@ -88,7 +89,7 @@ impl Params {
     }
 }
 
-/// Convert Params to OwnedValue for JSON-RPC processing
+/// Convert `Params` to `OwnedValue` for JSON-RPC processing
 impl TryFrom<Params> for simd_json::OwnedValue {
     type Error = RpcError;
     
@@ -129,6 +130,7 @@ pub struct Request {
 
 impl Request {
     /// Create a new method call request
+    #[must_use]
     pub fn method_call(method: String, params: Option<Params>, id: Id) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -139,6 +141,7 @@ impl Request {
     }
 
     /// Create a new notification request (no response expected)
+    #[must_use]
     pub fn notification(method: String, params: Option<Params>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -149,11 +152,20 @@ impl Request {
     }
 
     /// Check if this is a notification (no ID)
+    #[must_use]
     pub fn is_notification(&self) -> bool {
         self.id.is_none()
     }
 
     /// Validate the request according to JSON-RPC 2.0 specification
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - JSON-RPC version is not exactly "2.0"
+    /// - Method name is empty or invalid
+    /// - Request ID format is invalid
+    /// - Parameters format is malformed
     pub fn validate(&self) -> Result<()> {
         // Check JSON-RPC version
         if self.jsonrpc != "2.0" {
@@ -198,6 +210,7 @@ pub struct Response {
 
 impl Response {
     /// Create a success response
+    #[must_use]
     pub fn success(result: simd_json::OwnedValue, id: Id) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -208,6 +221,7 @@ impl Response {
     }
 
     /// Create an error response
+    #[must_use]
     pub fn error(error: ErrorObject, id: Id) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -218,11 +232,13 @@ impl Response {
     }
 
     /// Check if this is a success response
+    #[must_use]
     pub fn is_success(&self) -> bool {
         self.result.is_some() && self.error.is_none()
     }
 
     /// Check if this is an error response
+    #[must_use]
     pub fn is_error(&self) -> bool {
         self.error.is_some() && self.result.is_none()
     }
@@ -242,6 +258,7 @@ pub struct ErrorObject {
 
 impl ErrorObject {
     /// Create a new error object
+    #[must_use]
     pub fn new(code: i32, message: String, data: Option<simd_json::OwnedValue>) -> Self {
         Self {
             code,
@@ -251,30 +268,35 @@ impl ErrorObject {
     }
 
     /// Create a parse error (-32700)
+    #[must_use]
     pub fn parse_error(message: String) -> Self {
         Self::new(error_codes::PARSE_ERROR, message, None)
     }
 
     /// Create an invalid request error (-32600)
+    #[must_use]
     pub fn invalid_request(message: String) -> Self {
         Self::new(error_codes::INVALID_REQUEST, message, None)
     }
 
     /// Create a method not found error (-32601)
-    pub fn method_not_found(method: String) -> Self {
+    #[must_use]
+    pub fn method_not_found(method: &str) -> Self {
         Self::new(
             error_codes::METHOD_NOT_FOUND,
-            format!("Method '{}' not found", method),
+            format!("Method '{method}' not found"),
             None,
         )
     }
 
     /// Create an invalid params error (-32602)
+    #[must_use]
     pub fn invalid_params(message: String) -> Self {
         Self::new(error_codes::INVALID_PARAMS, message, None)
     }
 
     /// Create an internal error (-32603)
+    #[must_use]
     pub fn internal_error(message: String) -> Self {
         Self::new(error_codes::INTERNAL_ERROR, message, None)
     }
@@ -286,21 +308,31 @@ pub struct BatchRequest(pub Vec<Request>);
 
 impl BatchRequest {
     /// Create a new batch request
+    #[must_use]
     pub fn new(requests: Vec<Request>) -> Self {
         Self(requests)
     }
 
     /// Check if batch is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
     /// Get the number of requests in the batch
+    #[must_use]
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
     /// Validate all requests in the batch
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Batch is empty (not allowed in JSON-RPC 2.0)
+    /// - Any individual request validation fails
+    /// - Batch size exceeds implementation limits
     pub fn validate(&self) -> Result<()> {
         if self.is_empty() {
             return Err(RpcError::invalid_request(
@@ -322,16 +354,19 @@ pub struct BatchResponse(pub Vec<Response>);
 
 impl BatchResponse {
     /// Create a new batch response
+    #[must_use]
     pub fn new(responses: Vec<Response>) -> Self {
         Self(responses)
     }
 
     /// Check if batch is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
     /// Get the number of responses in the batch
+    #[must_use]
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -349,6 +384,13 @@ pub enum RpcRequest {
 
 impl RpcRequest {
     /// Validate the request
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Single request validation fails
+    /// - Batch request validation fails
+    /// - Request format is invalid
     pub fn validate(&self) -> Result<()> {
         match self {
             RpcRequest::Single(req) => req.validate(),
@@ -357,6 +399,7 @@ impl RpcRequest {
     }
 
     /// Check if this is a batch request
+    #[must_use]
     pub fn is_batch(&self) -> bool {
         matches!(self, RpcRequest::Batch(_))
     }
@@ -374,6 +417,7 @@ pub enum RpcResponse {
 
 impl RpcResponse {
     /// Check if this is a batch response
+    #[must_use]
     pub fn is_batch(&self) -> bool {
         matches!(self, RpcResponse::Batch(_))
     }
@@ -409,41 +453,48 @@ pub enum RpcError {
 
 impl RpcError {
     /// Create a parse error
+    #[must_use]
     pub fn parse_error(message: String) -> Self {
         Self::ParseError(message)
     }
 
     /// Create an invalid request error
+    #[must_use]
     pub fn invalid_request(message: String) -> Self {
         Self::InvalidRequest(message)
     }
 
     /// Create a method not found error
+    #[must_use]
     pub fn method_not_found(method: String) -> Self {
         Self::MethodNotFound(method)
     }
 
     /// Create an invalid params error
+    #[must_use]
     pub fn invalid_params(message: String) -> Self {
         Self::InvalidParams(message)
     }
 
     /// Create an internal error
+    #[must_use]
     pub fn internal_error(message: String) -> Self {
         Self::InternalError(message)
     }
 
     /// Create a custom server error
+    #[must_use]
     pub fn server_error(code: i32, message: String) -> Self {
         Self::ServerError { code, message }
     }
 
-    /// Convert to ErrorObject
+    /// Convert to `ErrorObject`
+    #[must_use]
     pub fn to_error_object(&self) -> ErrorObject {
         match self {
             Self::ParseError(msg) => ErrorObject::parse_error(msg.clone()),
             Self::InvalidRequest(msg) => ErrorObject::invalid_request(msg.clone()),
-            Self::MethodNotFound(method) => ErrorObject::method_not_found(method.clone()),
+            Self::MethodNotFound(method) => ErrorObject::method_not_found(method),
             Self::InvalidParams(msg) => ErrorObject::invalid_params(msg.clone()),
             Self::InternalError(msg) => ErrorObject::internal_error(msg.clone()),
             Self::ServerError { code, message } => ErrorObject::new(*code, message.clone(), None),
@@ -482,7 +533,7 @@ mod tests {
 
         // Empty method
         let mut invalid_request = valid_request.clone();
-        invalid_request.method = "".to_string();
+        invalid_request.method = String::new();
         assert!(invalid_request.validate().is_err());
 
         // Reserved method name
@@ -503,7 +554,7 @@ mod tests {
 
     #[test]
     fn test_error_objects() {
-        let error = ErrorObject::method_not_found("test_method".to_string());
+        let error = ErrorObject::method_not_found("test_method");
         assert_eq!(error.code, error_codes::METHOD_NOT_FOUND);
         assert!(error.message.contains("test_method"));
     }

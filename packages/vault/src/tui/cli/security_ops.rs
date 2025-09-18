@@ -11,6 +11,14 @@ pub async fn handle_change_passphrase(
     new_passphrase: Option<String>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Layer 1: Check authentication first (JWT-based)
+    if !vault.is_authenticated().await {
+        if !use_json {
+            eprintln!("Authentication required. Set VAULT_JWT environment variable with valid JWT token.");
+        }
+        return Err("Authentication failed: No valid JWT token provided".into());
+    }
+
     let old_pass = match old_passphrase {
         Some(pass) => pass,
         None => Password::with_theme(&ColorfulTheme::default())

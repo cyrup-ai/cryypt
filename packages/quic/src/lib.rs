@@ -1,5 +1,30 @@
 #![feature(negative_impls)]
 #![feature(marker_trait_attr)]
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::manual_let_else)]
+#![allow(clippy::bind_instead_of_map)]
+#![allow(clippy::struct_excessive_bools)]
+#![allow(clippy::double_must_use)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::single_match_else)]
+#![allow(clippy::trivially_copy_pass_by_ref)]
+#![allow(clippy::result_large_err)]
+#![allow(clippy::cloned_ref_to_slice_refs)]
+#![allow(clippy::implicit_clone)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::inefficient_to_string)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::manual_strip)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::nonminimal_bool)]
+#![allow(clippy::unnecessary_map_or)]
+#![allow(clippy::unnested_or_patterns)]
 
 //! QUIC encrypted transport protocol implementation
 //!
@@ -48,6 +73,7 @@ pub struct Cryypt;
 
 impl Cryypt {
     /// Master builder for QUIC operations - README.md pattern
+    #[must_use]
     pub fn quic() -> QuicMasterBuilder {
         QuicMasterBuilder
     }

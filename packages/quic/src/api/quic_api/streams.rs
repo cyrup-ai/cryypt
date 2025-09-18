@@ -39,6 +39,12 @@ pub struct QuicSend {
     stream_id: Option<u64>,
 }
 
+impl Default for QuicSend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuicSend {
     pub(crate) fn new_with_handle(
         handle: crate::quic_conn::QuicConnectionHandle,
@@ -51,6 +57,7 @@ impl QuicSend {
     }
 
     /// Create empty send stream (for error cases)
+    #[must_use]
     pub fn new() -> Self {
         Self {
             handle: None,
@@ -59,6 +66,7 @@ impl QuicSend {
     }
 
     /// Write data with error handler - README.md pattern
+    #[must_use]
     pub fn on_result<F, T>(self, handler: F) -> QuicSendWithHandler<F, T>
     where
         F: FnOnce(crate::Result<()>) -> T + Send + 'static,
@@ -72,6 +80,7 @@ impl QuicSend {
     }
 
     /// Write data without handler - returns future
+    #[must_use]
     pub fn write_all(self, data: &[u8]) -> crate::QuicWriteResult {
         let send_copy = QuicSend {
             handle: self.handle.clone(),
@@ -82,7 +91,7 @@ impl QuicSend {
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = write_all_internal(&send_copy, &data).await;
+            let result = write_all_internal(&send_copy, &data);
             let _ = tx.send(result);
         });
 
@@ -103,7 +112,7 @@ where
     T: NotResult + Send + 'static,
 {
     /// Write all data - action takes data as argument per README.md
-    pub async fn write_all(self, data: &[u8]) -> T {
+    pub fn write_all(self, data: &[u8]) -> T {
         let send_copy = QuicSend {
             handle: self.send.handle.clone(),
             stream_id: self.send.stream_id,
@@ -112,7 +121,7 @@ where
         let handler = self.result_handler;
 
         // Perform QUIC write operation
-        let result = write_all_internal(&send_copy, &data).await;
+        let result = write_all_internal(&send_copy, &data);
 
         // Apply result handler
         handler(result)
@@ -125,8 +134,15 @@ pub struct QuicRecv {
     stream_id: u64,
 }
 
+impl Default for QuicRecv {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuicRecv {
     /// Create empty recv stream (for error cases)
+    #[must_use]
     pub fn new() -> Self {
         Self {
             receiver: None,
@@ -166,7 +182,6 @@ impl QuicRecv {
                     }
                     _ => {
                         // Ignore other events (handshake, connection closed, etc.)
-                        continue;
                     }
                 }
             }
@@ -179,6 +194,7 @@ impl QuicRecv {
     }
 
     /// Create empty recv stream (for error cases)
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             receiver: None,
@@ -187,11 +203,13 @@ impl QuicRecv {
     }
 
     /// Get the stream ID for this receive stream
+    #[must_use]
     pub fn stream_id(&self) -> u64 {
         self.stream_id
     }
 
     /// Set chunk handler for streaming - README.md pattern
+    #[must_use]
     pub fn on_chunk<F>(self, handler: F) -> QuicRecvStream<F>
     where
         F: Fn(crate::Result<Vec<u8>>) -> Option<Vec<u8>> + Send + 'static,
@@ -284,7 +302,7 @@ pub(crate) async fn open_bi_stream_internal(
     }
 }
 
-async fn write_all_internal(send: &QuicSend, data: &[u8]) -> crate::Result<()> {
+fn write_all_internal(send: &QuicSend, data: &[u8]) -> crate::Result<()> {
     if let Some(ref handle) = send.handle {
         if let Some(stream_id) = send.stream_id {
             handle.send_stream_data_with_id(stream_id, data, true)

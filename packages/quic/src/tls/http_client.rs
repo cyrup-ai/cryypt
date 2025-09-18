@@ -1,6 +1,7 @@
 //! HTTP client for OCSP and CRL requests
 
 use crate::tls::errors::TlsError;
+use base64::engine::Engine;
 use reqwest::Client;
 use std::time::Duration;
 
@@ -11,6 +12,14 @@ pub struct TlsHttpClient {
 }
 
 impl TlsHttpClient {
+    /// Create a new TLS HTTP client
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - HTTP client initialization fails
+    /// - System TLS configuration is invalid
+    /// - Required dependencies are missing
     pub fn new() -> Result<Self, TlsError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
@@ -25,6 +34,14 @@ impl TlsHttpClient {
     }
 
     /// Send OCSP request
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Network request fails
+    /// - OCSP server returns error status
+    /// - Response body reading fails
+    /// - Request timeout exceeded
     pub async fn post_ocsp(&self, url: &str, body: Vec<u8>) -> Result<Vec<u8>, TlsError> {
         let response = self
             .client
@@ -51,6 +68,14 @@ impl TlsHttpClient {
     }
 
     /// Download CRL
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Network request fails
+    /// - CRL server returns error status
+    /// - Response body reading fails
+    /// - Request timeout exceeded
     pub async fn get_crl(&self, url: &str) -> Result<Vec<u8>, TlsError> {
         let response = self
             .client
@@ -74,7 +99,17 @@ impl TlsHttpClient {
     }
 
     /// Download CA certificate and convert to PEM format
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Network request fails
+    /// - CA certificate server returns error status
+    /// - Certificate format conversion fails
+    /// - Response body reading fails
+    /// - Request timeout exceeded
     pub async fn get_ca_certificate(&self, url: &str) -> Result<String, TlsError> {
+        
         let response = self.client.get(url).send().await.map_err(|e| {
             TlsError::NetworkError(format!("CA certificate download failed: {e}"))
         })?;
@@ -101,7 +136,6 @@ impl TlsHttpClient {
         }
 
         // Assume DER format - convert to PEM
-        use base64::engine::Engine;
         let base64_cert = base64::engine::general_purpose::STANDARD.encode(&cert_bytes);
 
         // Format as PEM with proper line breaks (64 characters per line)

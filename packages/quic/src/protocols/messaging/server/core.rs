@@ -75,7 +75,14 @@ pub struct ServerConnectionState {
     pub health: ConnectionHealth,
 }
 
+impl Default for ServerConnectionState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ServerConnectionState {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             inbound: PriorityMessageQueue::new(),
@@ -109,7 +116,7 @@ pub struct MessagingServer {
     /// Message processing pipeline
     pub message_tx: channel::Sender<MessageEnvelope>,
     pub message_rx: channel::Receiver<MessageEnvelope>,
-    /// Performance counters using lock-free DashMap
+    /// Performance counters using lock-free `DashMap`
     pub performance_counters: Arc<DashMap<&'static str, AtomicU64>>,
     /// Security reputation tracking per connection
     pub connection_reputations: DashMap<Vec<u8>, Arc<ConnectionReputation>>,
@@ -118,8 +125,15 @@ pub struct MessagingServer {
 }
 
 impl MessagingServer {
-    /// Create a new MessagingServer with real QUIC configuration
-    pub async fn new(addr: SocketAddr, config: MessagingServerConfig) -> crate::Result<Self> {
+    /// Create a new `MessagingServer` with real QUIC configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Server configuration is invalid
+    /// - Unable to bind to the specified address
+    /// - QUIC configuration setup fails
+    pub fn new(addr: SocketAddr, config: MessagingServerConfig) -> crate::Result<Self> {
         // Create message processing channel
         let (message_tx, message_rx) = channel::unbounded();
 
@@ -155,11 +169,19 @@ impl MessagingServer {
     }
 
     /// Get all connections subscribed to a topic (lock-free read)
+    #[must_use]
     pub fn get_topic_subscribers(&self, topic: &str) -> Vec<Vec<u8>> {
         self.topic_subscriptions.get_subscribers(topic)
     }
 
     /// Send a message to specific topic subscribers (lock-free operation)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Message serialization fails
+    /// - No subscribers are available for the topic
+    /// - Network transmission fails
     pub async fn send_to_topic(
         &self,
         topic: String,
@@ -177,6 +199,13 @@ impl MessagingServer {
     }
 
     /// Send a message to topic subscribers using specific distribution strategy
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Invalid distribution strategy
+    /// - Message processing fails
+    /// - Topic validation fails
     pub async fn send_to_topic_with_strategy(
         &self,
         topic: String,
@@ -195,6 +224,14 @@ impl MessagingServer {
     }
 
     /// Send a message with full control over options (priority, distribution strategy)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Message creation or serialization fails
+    /// - Topic validation fails
+    /// - Distribution strategy is invalid
+    /// - Message delivery fails
     pub async fn send_to_topic_with_options(
         &self,
         topic: String,
@@ -252,12 +289,27 @@ impl MessagingServer {
     }
 
     /// Send a broadcast message to all connections (lock-free operation)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Message broadcast fails
+    /// - No active connections available
+    /// - Network transmission errors
     pub async fn broadcast(&self, payload: Vec<u8>, requires_ack: bool) -> crate::Result<()> {
         self.broadcast_with_priority(payload, requires_ack, MessagePriority::Normal)
             .await
     }
 
     /// Send a broadcast message with specific priority
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Message processing fails
+    /// - Broadcast delivery fails
+    /// - Connection errors occur
+    /// - Priority queue operations fail
     pub async fn broadcast_with_priority(
         &self,
         payload: Vec<u8>,
@@ -332,6 +384,7 @@ impl MessagingServer {
     }
 
     /// Get connection state
+    #[must_use]
     pub fn get_connection_state(
         &self,
         conn_id: &[u8],
@@ -342,6 +395,7 @@ impl MessagingServer {
     }
 
     /// Check if connection is banned
+    #[must_use]
     pub fn is_connection_banned(&self, conn_id: &[u8]) -> bool {
         if let Some(ban) = self.security_bans.get(conn_id) {
             !ban.is_expired()
@@ -355,8 +409,7 @@ impl MessagingServer {
         let events_count = self
             .connection_reputations
             .get(&conn_id)
-            .map(|rep| rep.total_security_events.load(Ordering::Relaxed))
-            .unwrap_or(0);
+            .map_or(0, |rep| rep.total_security_events.load(Ordering::Relaxed));
 
         let ban_level = events_count / 10 + 1; // Escalating ban levels
         let ban = SecurityBan::new(reason, duration_ms, ban_level, events_count);

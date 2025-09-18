@@ -17,10 +17,12 @@ pub struct CertificateAuthorityResponse {
 }
 
 impl CertificateAuthorityResponse {
+    #[must_use]
     pub fn authority(&self) -> Option<&CertificateAuthority> {
         self.authority.as_ref()
     }
 
+    #[must_use]
     pub fn was_successful(&self) -> bool {
         self.success
     }
@@ -45,18 +47,21 @@ pub struct CertificateValidationResponse {
 }
 
 impl CertificateValidationResponse {
+    #[must_use]
     pub fn has_warnings(&self) -> bool {
         self.issues
             .iter()
             .any(|i| matches!(i.severity, IssueSeverity::Warning))
     }
 
+    #[must_use]
     pub fn has_errors(&self) -> bool {
         self.issues
             .iter()
             .any(|i| matches!(i.severity, IssueSeverity::Error))
     }
 
+    #[must_use]
     pub fn error_summary(&self) -> String {
         self.issues
             .iter()
@@ -66,6 +71,7 @@ impl CertificateValidationResponse {
             .join("; ")
     }
 
+    #[must_use]
     pub fn detailed_report(&self) -> String {
         format!(
             "Certificate Validation Report\n\

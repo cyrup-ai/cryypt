@@ -48,7 +48,7 @@ impl QuicSend {
         let (tx, rx) = oneshot::channel();
 
         tokio::spawn(async move {
-            let result = write_all_internal(&send_copy, &data).await;
+            let result = write_all_internal(&send_copy, &data);
             let _ = tx.send(result);
         });
 
@@ -78,7 +78,7 @@ where
         let handler = self.result_handler;
 
         // Perform QUIC write operation
-        let result = write_all_internal(&send_copy, &data).await;
+        let result = write_all_internal(&send_copy, &data);
 
         // Apply result handler
         handler(result)
@@ -232,7 +232,7 @@ pub(crate) async fn open_bi_stream_internal(
     }
 }
 
-async fn write_all_internal(
+fn write_all_internal(
     send: &QuicSend,
     data: &[u8],
 ) -> crate::Result<()> {

@@ -216,8 +216,6 @@ pub use cryypt_hashing::on_result as hash_on_result;
     docsrs,
     doc(cfg(any(feature = "sha256", feature = "sha3", feature = "blake2b")))
 )]
-// Removed on_chunk re-export as it's no longer available
-
 // === Compression Re-exports ===
 #[cfg(any(feature = "zstd", feature = "gzip", feature = "bzip2", feature = "zip"))]
 #[cfg_attr(

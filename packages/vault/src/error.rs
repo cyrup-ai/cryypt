@@ -56,6 +56,10 @@ pub enum VaultError {
     InvalidKey(String),
     #[error("Key rotation error: {0}")]
     KeyRotation(String),
+    #[error("Authentication failed: {0}")]
+    AuthenticationFailed(String),
+    #[error("Internal error: {0}")]
+    Internal(String),
     #[error("Other error: {0}")]
     Other(String),
 }

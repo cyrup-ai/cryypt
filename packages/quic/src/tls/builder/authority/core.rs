@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::tls::errors::TlsError;
 
-/// Convert a HashMap of distinguished name components to a string representation
+/// Convert a `HashMap` of distinguished name components to a string representation
 pub(super) fn dn_hashmap_to_string(dn_map: &std::collections::HashMap<String, String>) -> String {
     if dn_map.is_empty() {
         return "Unknown".to_string();
@@ -19,7 +19,7 @@ pub(super) fn dn_hashmap_to_string(dn_map: &std::collections::HashMap<String, St
 
     dn_map
         .iter()
-        .map(|(key, value)| format!("{}={}", key, value))
+        .map(|(key, value)| format!("{key}={value}"))
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -28,7 +28,7 @@ pub(super) fn dn_hashmap_to_string(dn_map: &std::collections::HashMap<String, St
 pub(super) fn serial_to_string(serial: &[u8]) -> String {
     serial
         .iter()
-        .map(|b| format!("{:02x}", b))
+        .map(|b| format!("{b:02x}"))
         .collect::<Vec<_>>()
         .join(":")
 }
@@ -66,12 +66,20 @@ pub enum CaSource {
 
 impl CertificateAuthority {
     /// Check if the certificate authority is currently valid
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         let now = SystemTime::now();
         now >= self.metadata.valid_from && now <= self.metadata.valid_until
     }
 
     /// Get duration until expiry
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Certificate authority has already expired
+    /// - System time calculation fails
+    /// - Certificate validity period is invalid
     pub fn expires_in(&self) -> Result<Duration, TlsError> {
         let now = SystemTime::now();
         self.metadata.valid_until.duration_since(now).map_err(|_| {
@@ -136,6 +144,7 @@ pub struct AuthorityBuilder {
 }
 
 impl AuthorityBuilder {
+    #[must_use]
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -143,11 +152,13 @@ impl AuthorityBuilder {
     }
 
     /// Work with filesystem-based certificate authority
+    #[must_use]
     pub fn path<P: AsRef<Path>>(self, path: P) -> super::filesystem::AuthorityFilesystemBuilder {
         super::filesystem::AuthorityFilesystemBuilder::new(self.name, path.as_ref().to_path_buf())
     }
 
     /// Work with keychain-based certificate authority (macOS/Windows)
+    #[must_use]
     pub fn keychain(self) -> super::keychain::AuthorityKeychainBuilder {
         super::keychain::AuthorityKeychainBuilder::new(self.name)
     }

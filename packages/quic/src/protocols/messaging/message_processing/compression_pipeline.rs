@@ -9,6 +9,13 @@ use cryypt_compression::Compress;
 use futures::StreamExt;
 
 /// Streaming compression pipeline using cryypt compression API with QUIC stream integration
+/// 
+/// # Errors
+/// 
+/// Returns an error if:
+/// - Compression initialization fails
+/// - Streaming compression fails
+/// - Data validation fails
 pub async fn compress_payload_stream(
     data: Vec<u8>,
     algorithm: CompressionAlgorithm,
@@ -24,7 +31,7 @@ pub async fn compress_payload_stream(
 
             // Use cryypt streaming compression API with QUIC-optimized chunks
             let stream = Compress::zstd()
-                .with_level(level as i32)
+                .with_level(i32::from(level))
                 .on_chunk(|result| match result {
                     Ok(chunk) => {
                         tracing::debug!("Processing Zstd compressed chunk: {} bytes", chunk.len());
@@ -76,6 +83,13 @@ pub async fn compress_payload_stream(
 }
 
 /// Streaming decompression pipeline using cryypt compression API
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Decompression operation fails
+/// - Corrupted or invalid compressed data
+/// - Unsupported compression algorithm
 pub async fn decompress_payload_stream(
     data: Vec<u8>,
     metadata: &CompressionMetadata,

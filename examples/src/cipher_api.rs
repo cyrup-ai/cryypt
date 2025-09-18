@@ -10,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .aes()
         .with_key(key.clone())
         .on_result(|result| match result {
-            Ok(bytes) => bytes.into(),
+            Ok(bytes) => bytes,
             Err(e) => {
                 log::error!("Encryption failed: {}", e);
                 panic!("Critical encryption failure")
@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "Processing encrypted chunk: {} bytes",
                     encrypted_chunk.len()
                 );
-                encrypted_chunk.into()
+                encrypted_chunk
             }
             Err(e) => {
                 log::error!("Chunk encryption failed: {}", e);

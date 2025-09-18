@@ -97,6 +97,15 @@ impl RequestProcessor {
     }
 
     /// Process raw JSON-RPC data and return response
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - JSON parsing fails due to invalid syntax
+    /// - Method dispatch fails or method not found
+    /// - Method execution returns an error
+    /// - Response serialization fails
+    /// - Buffer pool operations fail
     pub async fn process_raw_data(
         &self,
         mut data: Vec<u8>,
@@ -118,12 +127,13 @@ impl RequestProcessor {
         let response = self.process_parsed_value(parsed_value, connection_id.clone()).await?;
         
         // Serialize response back to JSON
-        let response_data = self.serialize_response(response).await?;
+        let response_data = Self::serialize_response(response)?;
         
         // Return buffer to pool
         self.buffer_pool.release(buffers);
         
         // Update statistics
+        #[allow(clippy::cast_precision_loss)]
         let processing_time = start_time.elapsed().as_micros() as f64;
         self.update_stats(processing_time, false).await;
         
@@ -186,7 +196,7 @@ impl RequestProcessor {
     ) -> Result<Response> {
         // Validate request if enabled
         if self.config.validate_requests {
-            self.validate_request(&request)?;
+            Self::validate_request(&request)?;
         }
 
         // Handle notifications (no response required)
@@ -277,7 +287,6 @@ impl RequestProcessor {
                     // Check if this was a notification (which doesn't return a response)
                     if e.to_string().contains("Notification processed") {
                         // Skip notifications - they don't generate responses
-                        continue;
                     } else {
                         // This is a real error, create error response
                         responses.push(Response::error(
@@ -305,7 +314,7 @@ impl RequestProcessor {
     }
 
     /// Validate a JSON-RPC request
-    fn validate_request(&self, request: &Request) -> Result<()> {
+    fn validate_request(request: &Request) -> Result<()> {
         // Check JSON-RPC version
         if request.jsonrpc != "2.0" {
             return Err(RpcError::invalid_request(
@@ -321,7 +330,7 @@ impl RequestProcessor {
         }
 
         // Check for reserved method names (starting with "rpc.")
-        if request.method.starts_with("rpc.") && !self.is_allowed_rpc_method(&request.method) {
+        if request.method.starts_with("rpc.") && !Self::is_allowed_rpc_method(&request.method) {
             return Err(RpcError::method_not_found(format!(
                 "Reserved method '{}' not implemented",
                 request.method
@@ -332,12 +341,12 @@ impl RequestProcessor {
     }
 
     /// Check if an "rpc." method is allowed
-    fn is_allowed_rpc_method(&self, method: &str) -> bool {
+    fn is_allowed_rpc_method(method: &str) -> bool {
         matches!(method, "rpc.discover" | "rpc.ping" | "rpc.echo")
     }
 
     /// Serialize response to JSON bytes
-    async fn serialize_response(&self, response: RpcResponse) -> Result<Vec<u8>> {
+    fn serialize_response(response: RpcResponse) -> Result<Vec<u8>> {
         let json_value = match response {
             RpcResponse::Single(response) => {
                 serde_json::to_value(response)
@@ -374,6 +383,7 @@ impl RequestProcessor {
         }
         
         // Update rolling average processing time
+        #[allow(clippy::cast_precision_loss)]
         let total = stats.total_requests as f64;
         stats.avg_processing_time_us = 
             ((stats.avg_processing_time_us * (total - 1.0)) + processing_time_us) / total;
@@ -414,6 +424,7 @@ impl RequestProcessor {
     }
 
     /// Get processor configuration
+    #[must_use]
     pub fn get_config(&self) -> &ProcessorConfig {
         &self.config
     }
@@ -438,11 +449,11 @@ mod tests {
     use serde_json::json;
     use simd_json::OwnedValue;
 
-    async fn create_test_processor() -> RequestProcessor {
+    fn create_test_processor() -> RequestProcessor {
         let registry = Arc::new(RpcMethodRegistry::new());
         
         // Register a test method
-        registry.register("test_method".to_string(), |_ctx, params| async move {
+        registry.register("test_method", |_ctx, params| async move {
             match params {
                 Some(params) => Ok(simd_json::OwnedValue::try_from(params)?),
                 None => Ok(OwnedValue::from("test_result")),
@@ -457,7 +468,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_single_request_processing() {
-        let processor = create_test_processor().await;
+        let processor = create_test_processor();
         
         let request_json = json!({
             "jsonrpc": "2.0",
@@ -480,7 +491,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_request_processing() {
-        let processor = create_test_processor().await;
+        let processor = create_test_processor();
         
         let batch_json = json!([
             {
@@ -511,7 +522,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_notification_processing() {
-        let processor = create_test_processor().await;
+        let processor = create_test_processor();
         
         let notification_json = json!({
             "jsonrpc": "2.0",
@@ -528,7 +539,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_invalid_json() {
-        let processor = create_test_processor().await;
+        let processor = create_test_processor();
         
         let invalid_data = b"invalid json".to_vec();
         let result = processor.process_raw_data(invalid_data, None).await;
@@ -538,7 +549,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_method_not_found() {
-        let processor = create_test_processor().await;
+        let processor = create_test_processor();
         
         let request_json = json!({
             "jsonrpc": "2.0",
@@ -559,8 +570,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_size_limit() {
-        let mut config = ProcessorConfig::default();
-        config.max_batch_size = 2;
+        let config = ProcessorConfig {
+            max_batch_size: 2,
+            ..Default::default()
+        };
         
         let registry = Arc::new(RpcMethodRegistry::new());
         let buffer_pool = Arc::new(BufferPool::default());
@@ -580,7 +593,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_statistics_tracking() {
-        let processor = create_test_processor().await;
+        let processor = create_test_processor();
         
         let request_json = json!({
             "jsonrpc": "2.0",
