@@ -1,7 +1,7 @@
 # CRYYPT
 
 <div align="center">
-  <img src="assets/cryypt.png" alt="Cryypt Logo" width="200"/>
+  <img src="assets/cryypt.png" alt="Cryypt Logo" width="250"/>
 </div>
 
 A comprehensive cryptography library for Rust, providing immutable builders for encryption, hashing, compression, and key management.
