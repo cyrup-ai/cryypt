@@ -35,13 +35,14 @@ clippy.all = "warn"
 clippy.pedantic = "warn"
 
 [workspace.lints.rust]
-warnings = "allow"
-private_bounds = "allow"
-private_interfaces = "allow"
-dead_code = "allow"
-unused_imports = "allow"
-unused_variables = "allow"
-elided_lifetimes_in_paths = "allow"
+# Removed blanket allow annotations - these must be addressed properly
+# warnings = "allow"
+# private_bounds = "allow"
+# private_interfaces = "allow"
+# dead_code = "allow"
+# unused_imports = "allow"
+# unused_variables = "allow"
+# elided_lifetimes_in_paths = "allow"
 
 # Use stable versions only - remove git patches that cause version conflicts
 [patch.crates-io]

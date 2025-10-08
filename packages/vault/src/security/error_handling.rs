@@ -340,7 +340,7 @@ mod tests {
 
     #[test]
     fn test_sanitize_error_message_minimal() {
-        let error = io::Error::new(io::ErrorKind::Other, "Complex internal error with details");
+        let error = io::Error::other("Complex internal error with details");
         let sanitized = sanitize_error_message(&error, ErrorSanitizationLevel::Minimal);
         assert_eq!(sanitized, "Operation failed");
     }

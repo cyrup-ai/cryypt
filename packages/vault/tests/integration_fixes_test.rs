@@ -8,7 +8,7 @@ use cryypt_vault::{Vault, VaultConfig, VaultValue};
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_namespace_functionality_fix() {
     // Create a temporary directory for the test vault
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -21,7 +21,7 @@ async fn test_namespace_functionality_fix() {
     };
     
     // Create and unlock vault
-    let vault = Vault::new(config).await.expect("Failed to create vault");
+    let vault = Vault::with_fortress_encryption_async(config).await.expect("Failed to create vault");
     let passphrase = "test_passphrase_123";
     
     // Unlock the vault
@@ -33,10 +33,10 @@ async fn test_namespace_functionality_fix() {
     // Test namespace functionality
     let namespace = "test_namespace";
     let key = "test_key";
-    let value = VaultValue::from_string("test_value".to_string());
+    let value = "test_value";
     
     // Put value with namespace - this should now work correctly with the fix
-    vault.put_with_namespace(namespace, key, value.clone()).await
+    vault.put_with_namespace(namespace, key, value).await
         .expect("Failed to get put request")
         .await
         .expect("Failed to put value with namespace");
@@ -66,7 +66,7 @@ async fn test_namespace_functionality_fix() {
     println!("✅ Namespace functionality test passed!");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_passphrase_change_functionality_fix() {
     // Create a temporary directory for the test vault
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -79,7 +79,7 @@ async fn test_passphrase_change_functionality_fix() {
     };
     
     // Create and unlock vault
-    let vault = Vault::new(config).await.expect("Failed to create vault");
+    let vault = Vault::with_fortress_encryption_async(config).await.expect("Failed to create vault");
     let old_passphrase = "old_passphrase_123";
     let new_passphrase = "new_passphrase_456";
     
@@ -91,9 +91,9 @@ async fn test_passphrase_change_functionality_fix() {
     
     // Store a test value
     let key = "test_key";
-    let value = VaultValue::from_string("test_value".to_string());
+    let value = "test_value";
     
-    vault.put(key, &value).await
+    vault.put(key, value).await
         .expect("Failed to get put request")
         .await
         .expect("Failed to put test value");
