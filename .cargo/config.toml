@@ -1,0 +1,9 @@
+[build]
+rustflags = [
+    "-A", "warnings",
+    "-A", "private_bounds", 
+    "-A", "private_interfaces",
+    "-A", "dead_code",
+    "-A", "unused_imports",
+    "-A", "unused_variables"
+]

@@ -1,0 +1,18 @@
+[package]
+name = "async_task"
+version = "0.1.0"
+edition = "2021"
+description = "Async task coordination without async_trait - proper async patterns for Rust"
+license = "MIT"
+
+[lints]
+workspace = true
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+pin-project-lite = "0.2"
+thiserror = "2.0.15"
+
+[dev-dependencies]
+tokio-test = "0.4"

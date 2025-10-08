@@ -1,0 +1,103 @@
+[package]
+name = "cryypt"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+description = "Unified cryptography library with encryption, hashing, compression, and key management"
+
+[features]
+default = []  # No defaults - explicit choice required
+
+# === Core Infrastructure ===
+key = ["dep:cryypt_key"]
+base64 = ["key"]  # Required for key operations that use base64
+hex = ["key"]     # Required for key operations that use hex
+
+# === Encryption Algorithms ===
+aes = ["dep:cryypt_cipher", "key"]
+chacha20 = ["dep:cryypt_cipher", "key"]
+
+# === Hash Algorithms ===
+sha256 = ["dep:cryypt_hashing"]
+sha3 = ["dep:cryypt_hashing"]
+sha3-384 = ["dep:cryypt_hashing"]
+sha3-512 = ["dep:cryypt_hashing"]
+blake2b = ["dep:cryypt_hashing"]
+
+# === Compression Algorithms ===
+zstd = ["dep:cryypt_compression"]
+gzip = ["dep:cryypt_compression"]
+bzip2 = ["dep:cryypt_compression"]
+zip = ["dep:cryypt_compression"]
+
+# === Key Storage Backends ===
+file-store = ["key"]
+keychain-store = ["key"]
+
+# === Input/Output Formats ===
+# Note: These enable additional input methods beyond default byte arrays
+text-input = []        # with_text() methods
+base64-input = []      # with_data_base64(), with_ciphertext_base64() methods
+hex-input = []         # with_data_hex(), with_ciphertext_hex() methods
+file-input = []        # with_file(), with_ciphertext_file() methods
+
+# === Combination Features ===
+# Cipher + Compression (enables with_compression() on cipher builders)
+cipher-compression = ["zstd"]  # Default to zstd for compression
+cipher-gzip = ["gzip"]
+cipher-bzip2 = ["bzip2"]
+cipher-zip = ["zip"]
+
+# Multi-pass encryption (enables second_pass() methods)
+multi-pass = []
+
+# === Higher Level Features ===
+jwt = ["dep:cryypt_jwt"]
+pqcrypto = ["dep:cryypt_pqcrypto"]
+quic = ["dep:cryypt_quic"]
+vault = ["dep:cryypt_vault"]
+
+# === Post-quantum Algorithms ===
+kyber = ["pqcrypto"]
+dilithium = ["pqcrypto"]
+falcon = ["pqcrypto"]
+sphincs = ["pqcrypto"]
+
+# === Convenience Feature Groups ===
+encryption = ["aes", "chacha20"]
+hashing = ["sha256", "sha3", "blake2b"]
+compression = ["zstd", "gzip"]
+key-stores = ["file-store", "keychain-store"]
+all-inputs = ["text-input", "base64-input", "hex-input", "file-input"]
+
+# Complete feature set
+full = [
+    "encryption", "hashing", "compression",
+    "key-stores", "all-inputs", "cipher-compression",
+    "multi-pass", "jwt", "pqcrypto", "vault"
+]
+
+[dependencies]
+# Optional dependencies controlled by features
+cryypt_cipher = { path = "../cipher", optional = true }
+cryypt_hashing = { path = "../hashing", optional = true }
+cryypt_key = { path = "../key", optional = true }
+cryypt_compression = { path = "../compression", optional = true }
+cryypt_jwt = { path = "../jwt", optional = true }
+cryypt_pqcrypto = { path = "../pqcrypto", optional = true }
+cryypt_quic = { path = "../quic", optional = true }
+cryypt_vault = { path = "../vault", optional = true }
+cryypt_common = { version = "0.1.0", path = "../common" }
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", version = "0.3.0", features = ["all"] }
+
+[dev-dependencies]
+tokio = { version = "1.47.1", features = ["full"] }
+tempfile = "3.20.0"
+
+[lints]
+workspace = true

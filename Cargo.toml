@@ -1,0 +1,64 @@
+[workspace]
+resolver = "3"
+members = [
+    "packages/async_task",    # Async task coordination
+    "packages/cipher",        # Symmetric encryption
+    "packages/common",        # Common infrastructure
+    "packages/compression",   # Data compression
+    "packages/cryypt",        # Main unified crate
+    "packages/vault",         # Secure storage
+    "examples",               # Examples
+    "packages/hashing",       # Hash functions
+    "packages/jwt",           # JSON Web Tokens
+    "packages/key",           # Key management
+    "packages/map_macro",     # Ergonomic map/set macros
+    "packages/pqcrypto",      # Post-quantum cryptography
+    "packages/quic",          # QUIC protocol crypto
+    "workspace-hack",         # Workspace hack (stays at root)
+]
+
+exclude = ["tmp", "docs", "forks", "target"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Cyrup AI <dev@cyrup.ai>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/cyrup-ai/crypt"
+keywords = ["encryption", "cryptography", "postquant", "cipher", "security"]
+categories = ["cryptography", "authentication"]
+rust-version = "1.88"
+
+
+[workspace.lints]
+clippy.all = "warn"
+clippy.pedantic = "warn"
+
+[workspace.lints.rust]
+warnings = "allow"
+private_bounds = "allow"
+private_interfaces = "allow"
+dead_code = "allow"
+unused_imports = "allow"
+unused_variables = "allow"
+elided_lifetimes_in_paths = "allow"
+
+# Use stable versions only - remove git patches that cause version conflicts
+[patch.crates-io]
+# Force async-graphql to use git master with requires_scopes field support
+async-graphql = { git = "https://github.com/async-graphql/async-graphql", branch = "master" }
+async-graphql-derive = { git = "https://github.com/async-graphql/async-graphql", branch = "master" }
+async-graphql-parser = { git = "https://github.com/async-graphql/async-graphql", branch = "master" }
+async-graphql-value = { git = "https://github.com/async-graphql/async-graphql", branch = "master" }
+# rsa = { git = "https://github.com/RustCrypto/RSA", branch = "master" }
+# ecdsa = { git = "https://github.com/RustCrypto/signatures", branch = "master" }
+# p256 = { git = "https://github.com/RustCrypto/elliptic-curves", branch = "master" }
+# p384 = { git = "https://github.com/RustCrypto/elliptic-curves", branch = "master" }
+# primefield = { git = "https://github.com/RustCrypto/elliptic-curves", branch = "master" }
+# elliptic-curve = { git = "https://github.com/RustCrypto/traits", branch = "master" }
+# hmac = { git = "https://github.com/RustCrypto/MACs", branch = "master" }
+# sha2 = { git = "https://github.com/RustCrypto/hashes", branch = "master" }
+
+# Force latest stable digest version for API compatibility
+[workspace.dependencies.digest]
+version = "0.10.7"
