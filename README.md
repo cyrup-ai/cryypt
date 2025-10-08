@@ -1,4 +1,4 @@
-# Cryypt
+# CRYYPT
 
 <div align="center">
   <img src="assets/cryypt.png" alt="Cryypt Logo" width="200"/>
