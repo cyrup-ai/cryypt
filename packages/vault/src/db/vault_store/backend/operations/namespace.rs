@@ -239,7 +239,9 @@ impl LocalVaultProvider {
         // Check if vault is unlocked
         self.check_unlocked().await?;
 
-        let query = "SELECT DISTINCT namespace FROM vault_entries WHERE namespace IS NOT NULL ORDER BY namespace";
+        // Get all entries and extract unique namespace values in Rust
+        // Note: 'namespace' is a reserved keyword in SurrealDB, so we use backticks to escape it
+        let query = "SELECT `namespace` FROM vault_entries WHERE `namespace` IS NOT NULL";
         let db = self.dao.db();
 
         let mut result = db
@@ -251,16 +253,22 @@ impl LocalVaultProvider {
 
         #[derive(serde::Deserialize)]
         struct NamespaceResult {
-            namespace: String,
+            namespace: Option<String>,
         }
 
         let namespace_entries: Vec<NamespaceResult> = result.take(0).map_err(|e| {
             crate::error::VaultError::Provider(format!("Failed to get namespaces: {e}"))
         })?;
 
-        Ok(namespace_entries
+        // Extract unique namespaces (filter out None values) and sort
+        let mut namespaces: Vec<String> = namespace_entries
             .into_iter()
-            .map(|entry| entry.namespace)
-            .collect())
+            .filter_map(|entry| entry.namespace)
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        namespaces.sort();
+
+        Ok(namespaces)
     }
 }

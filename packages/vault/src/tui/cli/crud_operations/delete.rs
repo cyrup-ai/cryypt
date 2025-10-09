@@ -38,13 +38,13 @@ pub async fn handle_delete(
 
     // Use namespace-aware delete operation if namespace is provided
     let delete_result = if let Some(ns) = namespace {
-        vault.delete_from_namespace(ns, key).await
+        vault.delete_from_namespace(ns, key).await?.await
     } else {
-        vault.delete(key).await
+        vault.delete(key).await?.await
     };
 
     match delete_result {
-        Ok(_) => {
+        Ok(()) => {
             let log_msg = if let Some(ns) = namespace {
                 format!("Deleted key: {key} from namespace: {ns}")
             } else {

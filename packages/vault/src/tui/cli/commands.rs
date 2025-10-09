@@ -42,6 +42,41 @@ pub struct Cli {
 
 #[derive(Clone, Subcommand)]
 pub enum Commands {
+    /// Create a new encrypted vault with PQCrypto protection
+    ///
+    /// This command initializes a new vault at the specified path (or default XDG location)
+    /// with Argon2id-based encryption and PQCrypto keypair generation. The vault is created as
+    /// a SurrealDB database directory (.db) and is immediately ready for use.
+    ///
+    /// Default path: $XDG_CONFIG_HOME/cryypt/cryypt.db (or ~/.config/cryypt/cryypt.db)
+    ///
+    /// The command will:
+    /// 1. Generate or reuse PQCrypto keypair in system keychain
+    /// 2. Create all parent directories safely
+    /// 3. Initialize an encrypted vault database (.db directory)
+    /// 4. Persist the vault to disk
+    ///
+    /// After creation, use the vault immediately:
+    ///   vault --vault-path <path> put mykey "myvalue" --passphrase <pass>
+    ///   vault --vault-path <path> login --passphrase <pass>
+    ///
+    /// Optional: Encrypt vault contents into a portable .vault armor:
+    ///   vault --vault-path <path> lock
+    ///
+    /// Example usage:
+    ///   vault new
+    ///   vault new --vault-path /my/vault
+    ///   vault new --passphrase "my-secret-pass"
+    New {
+        /// Path where the vault will be created (default: $XDG_CONFIG_HOME/cryypt/cryypt.vault)
+        #[arg(long)]
+        vault_path: Option<PathBuf>,
+        
+        /// Passphrase for the vault (will prompt if not provided)
+        #[arg(long)]
+        passphrase: Option<String>,
+    },
+
     /// Save vault data to disk
     Save {},
 

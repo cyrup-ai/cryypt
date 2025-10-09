@@ -41,13 +41,13 @@ pub async fn handle_put(
 
     // Use namespace-aware put operation if namespace is provided
     let put_result = if let Some(ns) = namespace {
-        vault.put_with_namespace(ns, key, value).await
+        vault.put_with_namespace(ns, key, value).await?.await
     } else {
-        vault.put(key, value).await
+        vault.put(key, value).await?.await
     };
 
     match put_result {
-        Ok(_) => {
+        Ok(()) => {
             let log_msg = if let Some(ns) = namespace {
                 format!("Stored value for key: {key} in namespace: {ns}")
             } else {

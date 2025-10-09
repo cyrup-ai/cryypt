@@ -4,6 +4,7 @@ use crate::core::Vault;
 use crate::logging::log_security_event;
 use dialoguer::{Password, theme::ColorfulTheme};
 use serde_json::json;
+use std::io::IsTerminal;
 
 pub async fn handle_change_passphrase(
     vault: &Vault,
@@ -23,17 +24,57 @@ pub async fn handle_change_passphrase(
 
     let old_pass = match old_passphrase {
         Some(pass) => pass,
-        None => Password::with_theme(&ColorfulTheme::default())
-            .with_prompt("Enter current passphrase")
-            .interact()?,
+        None => {
+            // Check if we're in a non-interactive environment
+            if use_json || !std::io::stdin().is_terminal() {
+                if use_json {
+                    println!(
+                        "{}",
+                        json!({
+                            "success": false,
+                            "operation": "change_passphrase",
+                            "error": "Old passphrase required in non-interactive mode. Provide via command line arguments."
+                        })
+                    );
+                } else {
+                    eprintln!("Error: Old passphrase required in non-interactive mode.");
+                    eprintln!("Usage: vault change-passphrase --old-passphrase <OLD> --new-passphrase <NEW>");
+                }
+                return Err("Passphrase required in non-interactive mode".into());
+            }
+            
+            Password::with_theme(&ColorfulTheme::default())
+                .with_prompt("Enter current passphrase")
+                .interact()?
+        }
     };
 
     let new_pass = match new_passphrase {
         Some(pass) => pass,
-        None => Password::with_theme(&ColorfulTheme::default())
-            .with_prompt("Enter new passphrase")
-            .with_confirmation("Confirm new passphrase", "Passphrases don't match")
-            .interact()?,
+        None => {
+            // Check if we're in a non-interactive environment
+            if use_json || !std::io::stdin().is_terminal() {
+                if use_json {
+                    println!(
+                        "{}",
+                        json!({
+                            "success": false,
+                            "operation": "change_passphrase",
+                            "error": "New passphrase required in non-interactive mode. Provide via command line arguments."
+                        })
+                    );
+                } else {
+                    eprintln!("Error: New passphrase required in non-interactive mode.");
+                    eprintln!("Usage: vault change-passphrase --old-passphrase <OLD> --new-passphrase <NEW>");
+                }
+                return Err("Passphrase required in non-interactive mode".into());
+            }
+            
+            Password::with_theme(&ColorfulTheme::default())
+                .with_prompt("Enter new passphrase")
+                .with_confirmation("Confirm new passphrase", "Passphrases don't match")
+                .interact()?
+        }
     };
 
     if !use_json {
@@ -48,7 +89,29 @@ pub async fn handle_change_passphrase(
             true,
         );
         match vault.unlock(&old_pass).await {
-            Ok(_) => {
+            Ok(req) => {
+                // Complete the unlock operation by awaiting the request
+                if let Err(e) = req.await {
+                    log_security_event(
+                        "CLI_UNLOCK",
+                        &format!("Failed to complete unlock for passphrase change: {e}"),
+                        false,
+                    );
+
+                    if use_json {
+                        println!(
+                            "{}",
+                            json!({
+                                "success": false,
+                                "operation": "change_passphrase",
+                                "error": format!("Failed to complete unlock: {e}")
+                            })
+                        );
+                        return Ok(());
+                    } else {
+                        return Err(Box::new(e));
+                    }
+                }
                 log_security_event("CLI_UNLOCK", "Vault unlocked for passphrase change", true);
             }
             Err(e) => {

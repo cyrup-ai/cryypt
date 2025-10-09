@@ -16,12 +16,16 @@ impl LocalVaultProvider {
         // Check if vault is unlocked
         self.check_unlocked().await?;
 
+        // Compile regex pattern for matching
+        let regex = regex::Regex::new(pattern)
+            .map_err(|e| VaultError::Provider(format!("Invalid regex pattern: {e}")))?;
+
         // Special case for ".*" pattern to list all entries (used by CLI list command)
         // Filter out system records (salt, passphrase hash, etc.)
         let (query, use_pattern) = if pattern == ".*" {
             ("SELECT id, value, metadata FROM vault_entries", false)
         } else {
-            // Use SurrealDB string::contains function for substring matching, filter out system records
+            // Use regex matching for pattern searches
             ("SELECT id, value, metadata FROM vault_entries", true)
         };
         let db_pattern = pattern.to_string();
@@ -96,13 +100,10 @@ impl LocalVaultProvider {
                 continue;
             }
 
-            // Apply pattern filtering for pattern searches
-            if use_pattern {
-                if pattern == ".*" {
-                    // Accept all entries for list-all operation
-                } else if !key.contains(pattern) {
-                    continue; // Skip entries that don't match pattern
-                }
+            // Apply pattern filtering for pattern searches using regex
+            if use_pattern && !regex.is_match(&key) {
+                log::debug!("FIND: Key '{}' does not match pattern '{}'", key, pattern);
+                continue; // Skip entries that don't match pattern
             }
 
             // Decode base64 string back to encrypted bytes

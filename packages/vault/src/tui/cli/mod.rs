@@ -6,6 +6,7 @@ pub mod commands;
 pub mod crud_operations;
 pub mod data_ops;
 pub mod key_ops;
+pub mod new_vault;
 pub mod passphrase_operations;
 pub mod query_operations;
 pub mod run_command;
@@ -31,6 +32,20 @@ pub async fn process_command(
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match command {
+        Commands::New {
+            vault_path,
+            passphrase,
+        } => {
+            // Prefer command-specific vault_path over global
+            let final_vault_path = vault_path.or(global_vault_path);
+            new_vault::handle_new_command(
+                final_vault_path.as_deref(),
+                passphrase.as_deref(),
+                use_json,
+            )
+            .await
+        }
+
         Commands::Save {} => vault_ops::handle_save(vault, passphrase_option, use_json).await,
 
         Commands::Put {
@@ -109,7 +124,7 @@ pub async fn process_command(
             expires_in,
         } => {
             let vault_path = global_vault_path.as_deref();
-            auth_operations::handle_enhanced_login(
+            auth_operations::handle_login(
                 vault,
                 vault_path,
                 passphrase.as_deref(),
@@ -123,7 +138,7 @@ pub async fn process_command(
             let vault_path = vault_path
                 .or(global_vault_path)
                 .unwrap_or_else(|| PathBuf::from("vault"));
-            auth_operations::handle_enhanced_logout(vault, Some(&vault_path), use_json).await
+            auth_operations::handle_logout(vault, Some(&vault_path), use_json).await
         }
 
         Commands::Run {

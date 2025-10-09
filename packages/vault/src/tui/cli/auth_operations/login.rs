@@ -12,12 +12,21 @@ use crate::tui::cli::commands;
 use crate::tui::cli::vault_detection::{VaultState, detect_vault_state};
 use dialoguer::{Password, theme::ColorfulTheme};
 use serde_json::json;
+use std::io::IsTerminal;
 use std::path::Path;
 
-/// Handle vault login and JWT token generation
+/// Handle vault login with auto-detection and JWT token generation
+///
+/// This function performs a complete login workflow:
+/// 1. Auto-detects vault state (.vault vs .db)
+/// 2. Unlocks .vault file automatically if needed (converts .vault → .db)
+/// 3. Unlocks in-memory vault with passphrase
+/// 4. Generates JWT token with specified expiration
+/// 5. Provides clear success/error messages
 ///
 /// # Arguments
 /// * `vault` - The vault instance to authenticate against
+/// * `vault_path` - Optional path to vault file (defaults to "vault")
 /// * `passphrase_option` - Optional passphrase from command line
 /// * `expires_in_hours` - JWT token expiration time in hours
 /// * `use_json` - Whether to output in JSON format
@@ -26,34 +35,75 @@ use std::path::Path;
 /// JWT token string for subsequent vault operations
 ///
 /// # Security
+/// - Auto-unlocks .vault files using PQCrypto
 /// - Validates passphrase by attempting to unlock vault
 /// - Generates JWT token with specified expiration
 /// - Logs authentication events for security auditing
-/// - Returns token that user must save for future operations
 pub async fn handle_login(
     vault: &Vault,
+    vault_path: Option<&Path>,
     passphrase_option: Option<&str>,
     expires_in_hours: u64,
     use_json: bool,
-) -> VaultResult<()> {
-    // Get passphrase from user input or command line
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Step 1: Auto-detect vault state (.vault vs .db)
+    let vault_state = detect_vault_state(vault_path.unwrap_or(Path::new("vault")))?;
+
+    // Step 2: Unlock .vault file if needed (PQCrypto armor removal)
+    match vault_state {
+        VaultState::Locked {
+            vault_file,
+            db_file: _,
+        } => {
+            if use_json {
+                println!(
+                    "{}",
+                    json!({
+                        "operation": "unlock",
+                        "message": "Vault is locked, unlocking automatically",
+                        "file": vault_file.display().to_string()
+                    })
+                );
+            } else {
+                println!("🔓 Vault is locked, unlocking automatically...");
+            }
+
+            // Call unlock command to convert .vault → .db
+            commands::handle_unlock_command(&vault_file, None, "pq_armor", 1, use_json).await?;
+        }
+        VaultState::Unlocked { .. } => {
+            if use_json {
+                println!(
+                    "{}",
+                    json!({
+                        "operation": "unlock",
+                        "message": "Vault already unlocked",
+                        "status": "skipped"
+                    })
+                );
+            } else {
+                println!("🔓 Vault already unlocked");
+            }
+        }
+    }
+
+    // Step 3: Get passphrase from user input or command line
     let passphrase = match passphrase_option {
         Some(pass) => pass.to_string(),
         None => {
-            if use_json {
-                return Err(VaultError::InvalidInput(
-                    "Passphrase required in JSON mode. Use --passphrase option.".to_string(),
-                ));
+            // Check if we're in a non-interactive environment
+            if use_json || !std::io::stdin().is_terminal() {
+                return Err("Passphrase required in non-interactive mode. Use --passphrase option or CYSEC_PASSPHRASE environment variable.".into());
             }
 
             Password::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter vault passphrase")
                 .interact()
-                .map_err(|e| VaultError::Io(std::io::Error::other(e)))?
+                .map_err(|e| format!("Failed to read passphrase: {}", e))?
         }
     };
 
-    // Attempt to unlock vault with provided passphrase
+    // Step 4: Unlock in-memory vault with passphrase
     match vault.unlock(&passphrase).await {
         Ok(unlock_request) => {
             // Wait for unlock to complete
@@ -65,7 +115,7 @@ pub async fn handle_login(
                         true,
                     );
 
-                    // Generate JWT token using vault's public API
+                    // Step 5: Generate JWT token
                     match vault.create_jwt_token(expires_in_hours).await {
                         Ok(jwt_token) => {
                             log_security_event(
@@ -132,6 +182,7 @@ pub async fn handle_login(
                             } else {
                                 println!("❌ Error: {}", error_msg);
                             }
+                            return Err(error_msg.into());
                         }
                     }
                 }
@@ -151,6 +202,7 @@ pub async fn handle_login(
                     } else {
                         println!("❌ Error: {}", error_msg);
                     }
+                    return Err(error_msg.into());
                 }
             }
         }
@@ -171,21 +223,9 @@ pub async fn handle_login(
                 println!("❌ {}", error_msg);
                 println!("Please check your passphrase and try again.");
             }
+            return Err(error_msg.into());
         }
     }
 
     Ok(())
-}
-
-/// Enhanced login handler (alias for handle_login for compatibility)
-pub async fn handle_enhanced_login(
-    vault: &Vault,
-    _vault_path: Option<&std::path::Path>,
-    passphrase_option: Option<&str>,
-    expires_in_hours: u64,
-    use_json: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    handle_login(vault, passphrase_option, expires_in_hours, use_json)
-        .await
-        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }

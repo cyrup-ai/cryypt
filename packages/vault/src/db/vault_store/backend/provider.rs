@@ -282,7 +282,7 @@ impl VaultOperation for LocalVaultProvider {
         // value is already owned
 
         tokio::spawn(async move {
-            let result = provider_clone.put_if_absent_impl(key, value).await;
+            let result = provider_clone.put_if_absent_impl(key, value, None).await;
             let _ = tx.send(result);
         });
 
@@ -295,7 +295,7 @@ impl VaultOperation for LocalVaultProvider {
         // entries is already owned
 
         tokio::spawn(async move {
-            let result = provider_clone.put_all_impl(entries).await;
+            let result = provider_clone.put_all_impl(entries, None).await;
             let _ = tx.send(result);
         });
 
