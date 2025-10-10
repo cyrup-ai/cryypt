@@ -141,37 +141,15 @@ impl LocalVaultProvider {
         data: &[u8],
         passphrase: &str,
     ) -> VaultResult<Vec<u8>> {
-        // Derive encryption key from the specified passphrase
+        // Derive encryption key from the specified passphrase (unchanged)
         use crate::operation::Passphrase;
         let passphrase_secret = Passphrase::new(passphrase.to_string().into());
         let key = self.derive_encryption_key(&passphrase_secret).await?;
 
         log::trace!("Re-encrypting {} bytes with new passphrase", data.len());
 
-        // Perform AES encryption with the passphrase-derived key
-        let encrypted_data = cryypt_cipher::Cryypt::cipher()
-            .aes()
-            .with_key(key.clone())
-            .on_result(|result| match result {
-                Ok(data) => data,
-                Err(error) => {
-                    log::error!("passphrase encryption failed: {}", error);
-                    Vec::new()
-                }
-            })
-            .encrypt(data.to_vec())
-            .await;
-
-        // Validate encryption success
-        if encrypted_data.is_empty() {
-            let detailed_error = format!(
-                "Passphrase encryption failed - input size: {} bytes, key size: {} bytes",
-                data.len(),
-                key.len()
-            );
-            log::error!("Re-encryption encrypt failed: {}", detailed_error);
-            return Err(VaultError::Encryption(detailed_error));
-        }
+        // Use service for encryption
+        let encrypted_data = self.encryption_service.encrypt(data, &key).await?;
 
         log::trace!(
             "Re-encryption completed successfully, output: {} bytes",

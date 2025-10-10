@@ -103,6 +103,7 @@ pub struct LocalVaultProvider {
     pub(crate) encryption_key: Arc<Mutex<Option<Vec<u8>>>>,
     pub(crate) jwt_key: Arc<Mutex<Option<Vec<u8>>>>,
     pub(crate) jwt_handler: Arc<JwtHandler>,
+    pub(crate) encryption_service: crate::services::EncryptionService,
 }
 
 impl LocalVaultProvider {
@@ -157,6 +158,7 @@ impl LocalVaultProvider {
             encryption_key: Arc::new(Mutex::new(None)),
             jwt_key: Arc::new(Mutex::new(None)),
             jwt_handler: Arc::new(JwtHandler::new(vault_id)),
+            encryption_service: crate::services::EncryptionService::new(),
         };
 
         // Initialize the database schema
@@ -169,22 +171,6 @@ impl LocalVaultProvider {
             log::warn!("Failed to cleanup expired JWT sessions: {}", e);
             e
         })?;
-
-        // Try to restore JWT session state (but keep vault locked until passphrase provided)
-        if let Ok(Some((jwt_token, jwt_key))) = provider.restore_jwt_session().await {
-            provider
-                .populate_session_state(jwt_token, jwt_key)
-                .await
-                .map_err(|e| {
-                    log::warn!("Failed to populate session state from restored JWT: {}", e);
-                    e
-                })?;
-            log::info!(
-                "Successfully restored JWT session state from secure storage (vault remains locked)"
-            );
-        } else {
-            log::debug!("No valid JWT session found to restore");
-        }
 
         Ok(provider)
     }

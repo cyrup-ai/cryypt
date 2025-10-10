@@ -94,15 +94,26 @@ run "Rotate PQ keys (setup)" \
   "$VAULT_BIN" --json rotate-keys --namespace pq_armor --force
 
 # 1) NEW - default XDG path and custom path
+# vault new creates .vault (armored) - must unlock before use
 DEFAULT_BASE="${XDG_CONFIG_HOME}/cryypt/cryypt"
 run "vault new (default XDG path)" \
   "$VAULT_BIN" new --passphrase "passA"
+require_file "${DEFAULT_BASE}.vault"
+
+# Unlock to use it
+run "unlock default vault" \
+  "$VAULT_BIN" unlock --vault-path "$DEFAULT_BASE" --keychain-namespace pq_armor
 require_dir "${DEFAULT_BASE}.db"
 
 CUSTOM_BASE="${WORKDIR}/myvault"
 run_json "vault new (custom path, JSON)" \
   "$VAULT_BIN" --json new --vault-path "$CUSTOM_BASE" --passphrase "passB"
 [[ "$(json_get "$JSON_OUT" success)" == "true" ]] || fail "new custom JSON success!=true"
+require_file "${CUSTOM_BASE}.vault"
+
+# Unlock to use it
+run "unlock custom vault" \
+  "$VAULT_BIN" unlock --vault-path "$CUSTOM_BASE" --keychain-namespace pq_armor
 require_dir "${CUSTOM_BASE}.db"
 
 # 2) CRUD with and without namespace
@@ -162,26 +173,47 @@ fi
 run "logout" \
   "$VAULT_BIN" --vault-path "$CUSTOM_BASE" logout
 
-# 7) LOCK/UNLOCK (PQ armor) on FILE-BASED vault (separate path)
+# 7) LOCK/UNLOCK (PQ armor) - create proper vault for armor testing
 FILE_BASE="${WORKDIR}/filevault"
-DB_FILE="${FILE_BASE}.db"
-echo "plain db content" > "$DB_FILE"
-run "lock (file-based)" \
-  "$VAULT_BIN" --json lock --vault-path "$FILE_BASE" --keychain-namespace pq_armor
-require_file "${FILE_BASE}.vault"; [[ ! -f "$DB_FILE" ]] || fail ".db not removed after lock"
-run "unlock (file-based)" \
-  "$VAULT_BIN" --json unlock --vault-path "$FILE_BASE" --keychain-namespace pq_armor
-require_file "$DB_FILE"; [[ ! -f "${FILE_BASE}.vault" ]] || fail ".vault not removed after unlock"
-grep -q "plain db content" "$DB_FILE" || fail "file content mismatch after unlock"
+run "create vault for armor test" \
+  "$VAULT_BIN" new --vault-path "$FILE_BASE" --passphrase "armorpass"
+require_dir "${FILE_BASE}.db"
 
-# 8) ROTATE-KEYS (re-armor validation)
-# Create another armor and rotate
-run "lock again (file-based)" \
+# Add test data to vault
+run "add data to armor vault" \
+  "$VAULT_BIN" --vault-path "$FILE_BASE" --passphrase "armorpass" put armor_test "armor_value"
+
+# Test LOCK (keychain-based PQCrypto armor)
+run "lock (keychain-based)" \
+  "$VAULT_BIN" --json lock --vault-path "$FILE_BASE" --keychain-namespace pq_armor
+require_file "${FILE_BASE}.vault"
+[[ ! -d "${FILE_BASE}.db" ]] || fail ".db directory not removed after lock"
+
+# Test UNLOCK (keychain-based PQCrypto unarmor)
+run "unlock (keychain-based)" \
+  "$VAULT_BIN" --json unlock --vault-path "$FILE_BASE" --keychain-namespace pq_armor
+require_dir "${FILE_BASE}.db"
+[[ ! -f "${FILE_BASE}.vault" ]] || fail ".vault not removed after unlock"
+
+# Verify data integrity after unlock
+run "verify data integrity after unlock" \
+  "$VAULT_BIN" --vault-path "$FILE_BASE" --passphrase "armorpass" get armor_test | grep -q "armor_value"
+
+# 8) ROTATE-KEYS (re-armor validation with new key version)
+run "lock again for rotation test" \
   "$VAULT_BIN" lock --vault-path "$FILE_BASE" --keychain-namespace pq_armor
-run "rotate-keys (re-encrypt)" \
+require_file "${FILE_BASE}.vault"
+
+run "rotate-keys (generate new key version)" \
   "$VAULT_BIN" --json rotate-keys --namespace pq_armor --force
-# After rotation, ensure unlock still works
+
+# After rotation, unlock with new key version (auto-detected)
 run "unlock after rotation" \
   "$VAULT_BIN" unlock --vault-path "$FILE_BASE" --keychain-namespace pq_armor
+require_dir "${FILE_BASE}.db"
+
+# Verify data still intact after key rotation
+run "verify data integrity after rotation" \
+  "$VAULT_BIN" --vault-path "$FILE_BASE" --passphrase "armorpass" get armor_test | grep -q "armor_value"
 
 pass "All CLI E2E tests passed"

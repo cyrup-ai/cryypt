@@ -4,6 +4,7 @@ pub mod bzip2;
 mod chunk_macro;
 pub mod compression_result;
 pub mod error;
+pub mod fs_utils;
 pub mod gzip;
 mod result_macro;
 pub mod zip;

@@ -75,21 +75,23 @@ impl LocalVaultProvider {
                 log::debug!("CHECK_UNLOCKED: Attempting JWT validation...");
 
                 // Use direct async JWT validation with timeout to prevent deadlocks
+                use crate::auth::JwtHandler;
+
+                let vault_id = self.config.vault_path.to_string_lossy().to_string();
+                let jwt_handler = JwtHandler::new(vault_id);
+
                 match tokio::time::timeout(
                     Duration::from_secs(5),
-                    Jwt::builder()
-                        .with_algorithm("HS256")
-                        .with_secret(&jwt_key)
-                        .verify(token),
+                    jwt_handler.is_jwt_valid(&token, &jwt_key),
                 )
                 .await
                 {
-                    Ok(Ok(_)) => {
+                    Ok(result) if result => {
                         log::debug!("CHECK_UNLOCKED: JWT validation successful");
                         Ok(())
                     }
-                    Ok(Err(e)) => {
-                        log::error!("CHECK_UNLOCKED: JWT validation failed: {}", e);
+                    Ok(_) => {
+                        log::error!("CHECK_UNLOCKED: JWT validation failed");
                         // Authentication failed - trigger emergency lockdown
                         if let Err(lockdown_error) = self.emergency_lockdown().await {
                             log::error!("Emergency lockdown failed: {:?}", lockdown_error);

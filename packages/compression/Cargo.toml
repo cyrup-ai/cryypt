@@ -49,6 +49,7 @@ keyring = "3.6.3"
 flate2 = "1.1.2"
 zstd = "0.13.3"
 zip = { version = "4.2.0", default-features = false, features = ["aes-crypto", "bzip2", "deflate64", "deflate", "time", "zstd"] }
+walkdir = "2.5"
 rand_core = "0.9.3"
 quiche = "0.24.4"
 pqcrypto = "0.18.1"

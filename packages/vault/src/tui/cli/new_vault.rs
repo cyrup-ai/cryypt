@@ -393,10 +393,40 @@ pub async fn handle_new_command(
         error_msg
     })?;
 
-    // Step 7: Output success message
+    // Step 7: Apply PQCrypto armor immediately (.db → .vault)
+    if !use_json {
+        println!("🔐 Applying PQCrypto armor...");
+    }
+
+    use crate::services::{KeychainStorage, PQCryptoArmorService};
+    let key_storage = KeychainStorage::default_app();
+    let armor_service = PQCryptoArmorService::new(key_storage, SecurityLevel::Level3);
+    let vault_file = base_path.with_extension("vault");
+
+    armor_service
+        .armor(&db_file, &vault_file, "pq_armor", 1)
+        .await
+        .map_err(|e| {
+            let error_msg = format!("Failed to apply PQCrypto armor: {}", e);
+            if use_json {
+                println!(
+                    "{}",
+                    json!({
+                        "success": false,
+                        "operation": "new",
+                        "error": error_msg
+                    })
+                );
+            } else {
+                eprintln!("❌ {}", error_msg);
+            }
+            error_msg
+        })?;
+
+    // Step 8: Output success message
     log_security_event(
         "VAULT_NEW",
-        &format!("New vault created successfully at: {}", db_file.display()),
+        &format!("New vault created successfully at: {}", vault_file.display()),
         true,
     );
 
@@ -406,8 +436,8 @@ pub async fn handle_new_command(
             json!({
                 "success": true,
                 "operation": "new",
-                "vault_path": db_file.display().to_string(),
-                "message": "Vault created successfully",
+                "vault_path": vault_file.display().to_string(),
+                "message": "Vault created and armored with PQCrypto",
                 "next_steps": {
                     "login": format!("vault --vault-path {} login --passphrase <pass>", base_path.display()),
                     "usage": format!("vault --vault-path {} put mykey \"myvalue\" --passphrase <pass>", base_path.display())
@@ -416,9 +446,9 @@ pub async fn handle_new_command(
         );
     } else {
         println!();
-        println!("✅ Vault created successfully!");
+        println!("✅ Vault created and secured with PQCrypto armor!");
         println!();
-        println!("📍 Location: {}", db_file.display());
+        println!("📍 Location: {}", vault_file.display());
         println!();
         println!("📋 Next steps:");
         println!("   1. Login to generate JWT token:");
@@ -434,11 +464,9 @@ pub async fn handle_new_command(
             base_path.display()
         );
         println!();
-        println!("🔐 Your vault is encrypted with Argon2id key derivation");
-        println!("🔑 PQCrypto keys are available in system keychain for file-level encryption");
-        println!();
-        println!("💡 To encrypt the vault file with PQCrypto armor:");
-        println!("      vault --vault-path {} lock", base_path.display());
+        println!("🔐 Value encryption: Argon2id key derivation + AES-256-GCM");
+        println!("🛡️  File armor: ML-KEM-768 (post-quantum) + AES-256-GCM");
+        println!("🔑 Keys stored securely in system keychain");
     }
 
     Ok(())

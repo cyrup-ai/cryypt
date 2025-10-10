@@ -252,122 +252,7 @@ pub enum Commands {
     },
 }
 
-// SUBTASK5: .vault file format handling constants and functions
-const VAULT_ARMOR_MAGIC: &[u8] = b"CRYYPT\x01\x02";
-
-/// Create .vault file format with hybrid PQCrypto structure
-fn create_armor_file_format(
-    kyber_algorithm: SecurityLevel,
-    kyber_ciphertext: &[u8],
-    encrypted_data: &[u8],
-) -> Result<Vec<u8>, String> {
-    let mut armor_data = Vec::new();
-
-    // Magic header
-    armor_data.extend_from_slice(VAULT_ARMOR_MAGIC);
-
-    // Algorithm identifier
-    let algorithm_byte = match kyber_algorithm {
-        SecurityLevel::Level1 => 0x01, // MlKem512
-        SecurityLevel::Level3 => 0x02, // MlKem768
-        SecurityLevel::Level5 => 0x03, // MlKem1024
-    };
-    armor_data.push(algorithm_byte);
-
-    // Ciphertext length (little endian)
-    let ciphertext_len = kyber_ciphertext.len() as u32;
-    armor_data.extend_from_slice(&ciphertext_len.to_le_bytes());
-
-    // Kyber ciphertext
-    armor_data.extend_from_slice(kyber_ciphertext);
-
-    // AES encrypted data
-    armor_data.extend_from_slice(encrypted_data);
-
-    Ok(armor_data)
-}
-
-/// Parse .vault file format and extract components
-fn parse_armor_file_format(armor_data: &[u8]) -> Result<(SecurityLevel, Vec<u8>, Vec<u8>), String> {
-    if armor_data.len() < VAULT_ARMOR_MAGIC.len() + 5 {
-        return Err("Invalid .vault file: too short".to_string());
-    }
-
-    // Validate magic header
-    if &armor_data[..VAULT_ARMOR_MAGIC.len()] != VAULT_ARMOR_MAGIC {
-        return Err("Invalid .vault file: bad magic header".to_string());
-    }
-
-    let mut offset = VAULT_ARMOR_MAGIC.len();
-
-    // Parse algorithm
-    let algorithm_byte = armor_data[offset];
-    let security_level = match algorithm_byte {
-        0x01 => SecurityLevel::Level1,
-        0x02 => SecurityLevel::Level3,
-        0x03 => SecurityLevel::Level5,
-        _ => {
-            return Err(
-                format!("Unsupported Kyber algorithm: 0x{:02x}", algorithm_byte).to_string(),
-            );
-        }
-    };
-    offset += 1;
-
-    // Parse ciphertext length
-    let ciphertext_len = u32::from_le_bytes([
-        armor_data[offset],
-        armor_data[offset + 1],
-        armor_data[offset + 2],
-        armor_data[offset + 3],
-    ]) as usize;
-    offset += 4;
-
-    if offset + ciphertext_len > armor_data.len() {
-        return Err("Invalid .vault file: ciphertext length exceeds file size".to_string());
-    }
-
-    // Extract Kyber ciphertext
-    let kyber_ciphertext = armor_data[offset..offset + ciphertext_len].to_vec();
-    offset += ciphertext_len;
-
-    // Extract AES encrypted data (remaining bytes)
-    let encrypted_data = armor_data[offset..].to_vec();
-
-    Ok((security_level, kyber_ciphertext, encrypted_data))
-}
-
 // SUBTASK4: PQCrypto key management functions
-
-/// Load PQCrypto public key from external file (for lock operation)
-async fn load_pq_public_key_from_file(key_path: &std::path::Path) -> Result<Vec<u8>, String> {
-    let key_data = tokio::fs::read(key_path).await.map_err(|e| e.to_string())?;
-
-    // For ML-KEM-768 (Level3): public key is first 1184 bytes of combined keypair
-    if key_data.len() >= 1184 {
-        Ok(key_data[..1184].to_vec())
-    } else {
-        Err("Invalid PQCrypto keypair: too short for public key extraction".to_string())
-    }
-}
-
-/// Load PQCrypto private key from external file (for unlock operation)  
-async fn load_pq_private_key_from_file(key_path: &std::path::Path) -> Result<Vec<u8>, String> {
-    let key_data = tokio::fs::read(key_path).await.map_err(|e| e.to_string())?;
-
-    // For ML-KEM-768 (Level3): private key is last portion of combined keypair
-    // Debug: check actual key size
-    if key_data.len() >= 1184 {
-        // Extract private key portion (everything after the public key)
-        Ok(key_data[1184..].to_vec())
-    } else {
-        Err(format!(
-            "Invalid PQCrypto keypair: got {} bytes, need at least 1184 for key extraction",
-            key_data.len()
-        )
-        .to_string())
-    }
-}
 
 /// Load PQCrypto key from OS keychain  
 pub async fn load_pq_key_from_keychain(namespace: &str, version: u32) -> Result<Vec<u8>, String> {
@@ -512,57 +397,22 @@ pub async fn handle_lock_command(
         return Err("Vault already armored".to_string());
     }
 
-    // 2. Load or retrieve PQCrypto public key
-    let public_key = match pq_public_key {
-        Some(key_file) => load_pq_public_key_from_file(key_file).await?,
-        None => {
-            let combined_key = load_pq_key_from_keychain(keychain_namespace, key_version).await?;
-            // Extract public key portion (first 1184 bytes for ML-KEM-768)
-            if combined_key.len() >= 1184 {
-                combined_key[..1184].to_vec()
-            } else {
-                return Err("Invalid PQCrypto keypair from keychain: too short".to_string());
-            }
-        }
+    // Determine storage source
+    use crate::services::key_storage::{KeyStorageSource, create_key_storage};
+    use crate::services::PQCryptoArmorService;
+
+    let storage_source = if let Some(key_file) = pq_public_key {
+        KeyStorageSource::File(key_file.to_path_buf())
+    } else {
+        KeyStorageSource::Keychain("vault".to_string())
     };
 
-    // 3. Read vault database file
-    let vault_file_bytes = tokio::fs::read(&db_path).await.map_err(|e| e.to_string())?;
+    let key_storage = create_key_storage(storage_source);
+    let armor_service = PQCryptoArmorService::new(key_storage, SecurityLevel::Level3);
 
-    // 4. Generate random symmetric key using Kyber KEM
-    let (ciphertext, shared_secret) = PqCryptoMasterBuilder::new()
-        .kyber()
-        .with_security_level(SecurityLevel::Level3)
-        .encapsulate_hybrid(public_key)
-        .await
-        .map_err(|e| format!("Kyber encapsulation failed: {}", e))?;
-
-    // 5. Extract AES key from shared secret
-    let aes_key = shared_secret;
-
-    // 6. Encrypt vault file with AES-256-GCM
-    let encrypted_data = Cipher::aes()
-        .with_key(aes_key)
-        .on_result(|result| result.unwrap_or_default())
-        .encrypt(vault_file_bytes)
-        .await;
-
-    // 7. Create .vault file with hybrid format
-    let armor_data = create_armor_file_format(
-        SecurityLevel::Level3,
-        &ciphertext, // Kyber ciphertext for decapsulation
-        encrypted_data.as_ref(),
-    )?;
-
-    // 8. Atomic file operations
-    let temp_path = vault_path.with_extension("vault.tmp");
-    tokio::fs::write(&temp_path, armor_data)
-        .await
-        .map_err(|e| e.to_string())?;
-    tokio::fs::rename(&temp_path, &vault_path)
-        .await
-        .map_err(|e| e.to_string())?;
-    tokio::fs::remove_file(&db_path)
+    // Single unified path for all armor operations
+    armor_service
+        .armor(&db_path, &vault_path, &validated_namespace, validated_key_version)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -603,57 +453,22 @@ pub async fn handle_unlock_command(
         return Err(format!("Vault already unlocked: {}", db_path.display()).to_string());
     }
 
-    // 2. Load or retrieve PQCrypto private key
-    let private_key = match pq_private_key {
-        Some(key_file) => load_pq_private_key_from_file(key_file).await?,
-        None => {
-            let combined_key = load_pq_key_from_keychain(keychain_namespace, key_version).await?;
-            // Extract private key portion (everything after public key)
-            if combined_key.len() >= 1184 {
-                combined_key[1184..].to_vec()
-            } else {
-                return Err(format!(
-                    "Invalid PQCrypto keypair from keychain: got {} bytes, need at least 1184",
-                    combined_key.len()
-                )
-                .to_string());
-            }
-        }
+    // Determine storage source
+    use crate::services::key_storage::{KeyStorageSource, create_key_storage};
+    use crate::services::PQCryptoArmorService;
+
+    let storage_source = if let Some(key_file) = pq_private_key {
+        KeyStorageSource::File(key_file.to_path_buf())
+    } else {
+        KeyStorageSource::Keychain("vault".to_string())
     };
 
-    // 3. Parse .vault file format
-    let armor_data = tokio::fs::read(&vault_path)
-        .await
-        .map_err(|e| e.to_string())?;
-    let (kyber_algorithm, kyber_ciphertext, encrypted_data) = parse_armor_file_format(&armor_data)?;
+    let key_storage = create_key_storage(storage_source);
+    let armor_service = PQCryptoArmorService::new(key_storage, SecurityLevel::Level3);
 
-    // 4. Decapsulate symmetric key using Kyber KEM
-    let shared_secret = PqCryptoMasterBuilder::new()
-        .kyber()
-        .with_security_level(kyber_algorithm)
-        .decapsulate_hybrid(private_key, kyber_ciphertext)
-        .await
-        .map_err(|e| format!("Kyber decapsulation failed: {}", e))?;
-
-    // 5. Extract AES key from shared secret
-    let aes_key = shared_secret;
-
-    // 6. Decrypt vault file with AES-256-GCM
-    let decrypted_data = Cipher::aes()
-        .with_key(aes_key)
-        .on_result(|result| result.unwrap_or_default())
-        .decrypt(encrypted_data)
-        .await;
-
-    // 7. Atomic file operations
-    let temp_path = db_path.with_extension("db.tmp");
-    tokio::fs::write(&temp_path, decrypted_data)
-        .await
-        .map_err(|e| e.to_string())?;
-    tokio::fs::rename(&temp_path, &db_path)
-        .await
-        .map_err(|e| e.to_string())?;
-    tokio::fs::remove_file(&vault_path)
+    // Single unified path for all unarmor operations
+    armor_service
+        .unarmor(&vault_path, &db_path, keychain_namespace, key_version)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -806,23 +621,6 @@ pub async fn discover_vault_files(
 mod tests {
     use super::*;
     use tempfile::tempdir;
-
-    #[tokio::test]
-    async fn test_armor_file_format_roundtrip() {
-        // Test .vault format creation and parsing
-        let test_data = b"test vault database content";
-        let ciphertext = b"kyber_ciphertext_example";
-
-        let armor_data =
-            create_armor_file_format(SecurityLevel::Level3, ciphertext, test_data).unwrap();
-
-        let (algorithm, extracted_ct, extracted_data) =
-            parse_armor_file_format(&armor_data).unwrap();
-
-        assert_eq!(algorithm, SecurityLevel::Level3);
-        assert_eq!(extracted_ct, ciphertext);
-        assert_eq!(extracted_data, test_data);
-    }
 
     #[tokio::test]
     async fn test_cli_lock_unlock_cycle() {

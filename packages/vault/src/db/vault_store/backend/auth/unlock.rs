@@ -3,7 +3,6 @@
 use super::super::super::LocalVaultProvider;
 use crate::error::{VaultError, VaultResult};
 use crate::operation::Passphrase;
-use cryypt_jwt::JwtMasterBuilder;
 
 impl LocalVaultProvider {
     /// Unlock vault with passphrase verification and session creation
@@ -110,22 +109,15 @@ impl LocalVaultProvider {
 
         // Step 6: Generate secure JWT session token with passphrase-derived key
         log::debug!("Creating JWT session token with passphrase-derived key...");
-        let session_claims = serde_json::json!({
-            "session": "vault_unlocked",
-            "vault_path": self.config.vault_path.to_string_lossy(),
-            "iat": chrono::Utc::now().timestamp(),
-            "exp": chrono::Utc::now().timestamp() + 3600,
-            "nbf": chrono::Utc::now().timestamp()
-        });
+        
+        use crate::auth::JwtHandler;
 
-        let session_token = JwtMasterBuilder
-            .with_algorithm("HS256")
-            .with_secret(&jwt_key)
-            .sign(session_claims)
-            .await
-            .map_err(|e| {
-                VaultError::Crypto(format!("JWT session token generation failed: {}", e))
-            })?;
+        // Use JwtHandler service (correct API)
+        let vault_id = self.config.vault_path.to_string_lossy().to_string();
+        let jwt_handler = JwtHandler::new(vault_id);
+        let session_token = jwt_handler
+            .create_jwt_token(&encryption_key, Some(24))  // 24 hour default
+            .await?;
         log::debug!("Successfully created JWT session token with passphrase-derived key");
 
         // Step 8: Store passphrase hash for future verification (after successful validation)

@@ -7,10 +7,7 @@ use crate::error::{VaultError, VaultResult};
 use crate::operation::Passphrase;
 use cryypt_cipher::Cryypt;
 use cryypt_key::api::{MasterKeyBuilder, MasterKeyProvider};
-use cryypt_pqcrypto::api::KyberSecurityLevel as SecurityLevel;
 use secrecy::ExposeSecret;
-
-const VAULT_ARMOR_MAGIC: &[u8] = b"CRYYPT\x01\x02";
 
 impl LocalVaultProvider {
     /// Derive encryption key from passphrase using cryypt_key
@@ -77,23 +74,8 @@ impl LocalVaultProvider {
             encryption_key.len()
         );
 
-        // Use AES encryption with cryypt_cipher - proper error handling
-        let encrypted_data = Cryypt::cipher()
-            .aes()
-            .with_key(encryption_key.clone())
-            .encrypt(data.to_vec())
-            .await;
-
-        // Check for encryption failure (empty result indicates error per API documentation)
-        if encrypted_data.is_empty() {
-            let detailed_error = format!(
-                "AES encryption failed - input size: {} bytes, key size: {} bytes",
-                data.len(),
-                encryption_key.len()
-            );
-            log::error!("Crypto operation failed: {}", detailed_error);
-            return Err(VaultError::Encryption(detailed_error));
-        }
+        // Use service - single path for all encryption
+        let encrypted_data = self.encryption_service.encrypt(data, encryption_key).await?;
 
         log::trace!(
             "Encryption completed successfully, output: {} bytes",
@@ -124,23 +106,8 @@ impl LocalVaultProvider {
             return Err(VaultError::Decryption(error_msg));
         }
 
-        // Use AES decryption with cryypt_cipher - proper error handling
-        let decrypted_data = Cryypt::cipher()
-            .aes()
-            .with_key(encryption_key.clone())
-            .decrypt(encrypted_data.to_vec())
-            .await;
-
-        // Check for decryption failure (empty result indicates error per API documentation)
-        if decrypted_data.is_empty() {
-            let detailed_error = format!(
-                "AES decryption failed - input size: {} bytes, key size: {} bytes, possible causes: corrupted data, wrong key, or invalid format",
-                encrypted_data.len(),
-                encryption_key.len()
-            );
-            log::error!("Crypto operation failed: {}", detailed_error);
-            return Err(VaultError::Decryption(detailed_error));
-        }
+        // Use service
+        let decrypted_data = self.encryption_service.decrypt(encrypted_data, encryption_key).await?;
 
         log::trace!(
             "Decryption completed successfully, output: {} bytes",
@@ -245,94 +212,4 @@ impl LocalVaultProvider {
         }
     }
 
-    /// Create .vault file format with hybrid PQCrypto structure
-    pub(crate) fn create_armor_file_format(
-        kyber_algorithm: SecurityLevel,
-        kyber_ciphertext: &[u8],
-        encrypted_data: &[u8],
-    ) -> VaultResult<Vec<u8>> {
-        let mut armor_data = Vec::new();
-
-        // Magic header
-        armor_data.extend_from_slice(VAULT_ARMOR_MAGIC);
-
-        // Algorithm identifier
-        let algorithm_byte = match kyber_algorithm {
-            SecurityLevel::Level1 => 0x01, // MlKem512
-            SecurityLevel::Level3 => 0x02, // MlKem768
-            SecurityLevel::Level5 => 0x03, // MlKem1024
-        };
-        armor_data.push(algorithm_byte);
-
-        // Ciphertext length (little endian)
-        let ciphertext_len = kyber_ciphertext.len() as u32;
-        armor_data.extend_from_slice(&ciphertext_len.to_le_bytes());
-
-        // Kyber ciphertext
-        armor_data.extend_from_slice(kyber_ciphertext);
-
-        // AES encrypted data
-        armor_data.extend_from_slice(encrypted_data);
-
-        Ok(armor_data)
-    }
-
-    /// Parse .vault file format and extract components
-    pub(crate) fn parse_armor_file_format(
-        armor_data: &[u8],
-    ) -> VaultResult<(SecurityLevel, Vec<u8>, Vec<u8>)> {
-        if armor_data.len() < VAULT_ARMOR_MAGIC.len() + 5 {
-            return Err(VaultError::Crypto(
-                "Invalid .vault file: too short".to_string(),
-            ));
-        }
-
-        // Validate magic header
-        if &armor_data[..VAULT_ARMOR_MAGIC.len()] != VAULT_ARMOR_MAGIC {
-            return Err(VaultError::Crypto(
-                "Invalid .vault file: bad magic header".to_string(),
-            ));
-        }
-
-        let mut offset = VAULT_ARMOR_MAGIC.len();
-
-        // Parse algorithm
-        let algorithm_byte = armor_data[offset];
-        let security_level = match algorithm_byte {
-            0x01 => SecurityLevel::Level1,
-            0x02 => SecurityLevel::Level3,
-            0x03 => SecurityLevel::Level5,
-            _ => {
-                return Err(VaultError::Crypto(format!(
-                    "Unsupported Kyber algorithm: 0x{:02x}",
-                    algorithm_byte
-                )));
-            }
-        };
-        offset += 1;
-
-        // Parse ciphertext length
-        let ciphertext_len = u32::from_le_bytes([
-            armor_data[offset],
-            armor_data[offset + 1],
-            armor_data[offset + 2],
-            armor_data[offset + 3],
-        ]) as usize;
-        offset += 4;
-
-        if offset + ciphertext_len > armor_data.len() {
-            return Err(VaultError::Crypto(
-                "Invalid .vault file: ciphertext length exceeds file size".to_string(),
-            ));
-        }
-
-        // Extract Kyber ciphertext
-        let kyber_ciphertext = armor_data[offset..offset + ciphertext_len].to_vec();
-        offset += ciphertext_len;
-
-        // Extract AES encrypted data (remaining bytes)
-        let encrypted_data = armor_data[offset..].to_vec();
-
-        Ok((security_level, kyber_ciphertext, encrypted_data))
-    }
 }

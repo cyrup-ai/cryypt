@@ -63,6 +63,8 @@ where
     global_access_counter: AtomicU64,
     /// Encryption key for real-time encrypt/decrypt operations
     encryption_key: Arc<tokio::sync::Mutex<Option<Vec<u8>>>>,
+    /// Encryption service for value encryption
+    encryption_service: crate::services::EncryptionService,
 }
 
 // Implementation modules are now separated into:

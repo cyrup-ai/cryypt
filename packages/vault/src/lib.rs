@@ -7,6 +7,7 @@ pub mod error;
 pub mod logging;
 pub mod operation;
 pub mod security;
+pub mod services;
 pub mod tui;
 
 // TUI-specific modules

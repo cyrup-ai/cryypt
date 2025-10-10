@@ -42,23 +42,20 @@ impl VaultOperation for LocalVaultProvider {
                         // Validate the restored JWT token using the restored key
                         let validation_result = tokio::task::block_in_place(|| {
                             tokio::runtime::Handle::current().block_on(async {
-                                let result = Jwt::builder()
-                                    .with_algorithm("HS256")
-                                    .with_secret(jwt_key)
-                                    .verify(jwt_token)
-                                    .await;
+                                use crate::auth::JwtHandler;
 
-                                match &result {
-                                    Ok(_) => log::debug!(
-                                        "AUTH_CHECK: JWT validation successful with restored key"
-                                    ),
-                                    Err(e) => log::debug!(
-                                        "AUTH_CHECK: JWT validation failed with restored key: {}",
-                                        e
-                                    ),
+                                let vault_id = self.config.vault_path.to_string_lossy().to_string();
+                                let jwt_handler = JwtHandler::new(vault_id);
+
+                                let result = jwt_handler.is_jwt_valid(jwt_token, jwt_key).await;
+
+                                if result {
+                                    log::debug!("AUTH_CHECK: JWT validation successful with restored key");
+                                } else {
+                                    log::debug!("AUTH_CHECK: JWT validation failed with restored key");
                                 }
 
-                                result.is_ok()
+                                result
                             })
                         });
 
@@ -81,26 +78,6 @@ impl VaultOperation for LocalVaultProvider {
             }
         } else {
             log::debug!("AUTH_CHECK: Could not acquire session token lock");
-        }
-
-        // Priority 2: Extract JWT from environment (legacy/manual method)
-        if let Some(jwt_token) = crate::auth::extract_jwt_from_env() {
-            // Use vault-specific fixed secret (independent of master key)
-            if let Ok(fixed_jwt_secret) = self.get_vault_jwt_secret() {
-                // Validate using cryypt_jwt independent API
-                let validation_result = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        Jwt::builder()
-                            .with_algorithm("HS256")
-                            .with_secret(&fixed_jwt_secret)
-                            .verify(jwt_token)
-                            .await
-                            .is_ok()
-                    })
-                });
-
-                return validation_result;
-            }
         }
 
         false // No JWT = not authenticated
@@ -477,32 +454,20 @@ impl LocalVaultProvider {
 
     /// Create JWT token using vault-specific secret (for login operations)
     pub async fn create_vault_jwt_token(&self, expires_in_hours: u64) -> VaultResult<String> {
-        // Get vault-specific JWT secret
-        let jwt_secret = self.get_vault_jwt_secret()?;
+        use crate::auth::JwtHandler;
 
-        // Create JWT claims
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|_| VaultError::Internal("System time error".to_string()))?
-            .as_secs() as i64;
+        // Get vault ID
+        let vault_id = self.config.vault_path.to_string_lossy().to_string();
 
-        let claims = crate::auth::VaultJwtClaims {
-            sub: "vault_user".to_string(),
-            exp: now + (expires_in_hours as i64 * 3600),
-            iat: now,
-            vault_id: self.jwt_handler.vault_id().to_string(),
-            session_id: uuid::Uuid::new_v4().to_string(),
-        };
+        // Get master key from session
+        let key_guard = self.encryption_key.lock().await;
+        let master_key = key_guard
+            .as_ref()
+            .ok_or_else(|| VaultError::VaultLocked)?;
 
-        // Create JWT token using vault secret
-        let token = Jwt::builder()
-            .with_algorithm("HS256")
-            .with_secret(&jwt_secret)
-            .sign(claims)
-            .await
-            .map_err(|e| VaultError::AuthenticationFailed(format!("JWT creation failed: {}", e)))?;
-
-        Ok(token)
+        // Use JwtHandler service
+        let jwt_handler = JwtHandler::new(vault_id);
+        jwt_handler.create_jwt_token(master_key, Some(expires_in_hours)).await
     }
 
     /// Emergency lockdown function - Enhanced security system
@@ -600,133 +565,33 @@ impl LocalVaultProvider {
                 .map_err(|e| VaultError::Provider(format!("Failed to generate PQ keys: {}", e)))?;
         }
 
-        // Load keys from keychain
-        let key_data = load_pq_key_from_keychain(&config.pq_namespace, 1)
+        // Use armor service for the actual operation
+        use crate::services::{KeychainStorage, PQCryptoArmorService};
+        let key_storage = KeychainStorage::new("vault");
+        let armor_service = PQCryptoArmorService::new(key_storage, SecurityLevel::Level3);
+
+        let db_path = &self.config.vault_path;
+        let vault_path = db_path.with_extension("vault");
+
+        armor_service
+            .armor(db_path, &vault_path, &config.pq_namespace, 1)
             .await
-            .map_err(|e| VaultError::Provider(format!("Failed to load PQ keys: {}", e)))?;
-
-        // Extract public key portion (first 1184 bytes for ML-KEM-768)
-        let public_key = if key_data.len() >= 1184 {
-            key_data[..1184].to_vec()
-        } else {
-            return Err(VaultError::Provider(
-                "Invalid PQCrypto keypair: too short".into(),
-            ));
-        };
-
-        // Read vault file data
-        let vault_data = std::fs::read(&self.config.vault_path)
-            .map_err(|e| VaultError::Provider(format!("Failed to read vault file: {}", e)))?;
-
-        // Generate random symmetric key using Kyber KEM
-        let (ciphertext, shared_secret) = PqCryptoMasterBuilder::new()
-            .kyber()
-            .with_security_level(SecurityLevel::Level3)
-            .encapsulate_hybrid(public_key)
-            .await
-            .map_err(|e| VaultError::Provider(format!("Kyber encapsulation failed: {}", e)))?;
-
-        // Encrypt vault file with AES-256-GCM
-        let encrypted_data = Cipher::aes()
-            .with_key(shared_secret)
-            .on_result(|result| result.unwrap_or_default())
-            .encrypt(vault_data)
-            .await;
-
-        // Create .vault file with hybrid format
-        let armor_data = Self::create_armor_file_format(
-            SecurityLevel::Level3,
-            &ciphertext,
-            encrypted_data.as_ref(),
-        )?;
-
-        // Atomic file operations
-        let vault_path = self.config.vault_path.with_extension("vault");
-        let temp_path = vault_path.with_extension("vault.tmp");
-
-        std::fs::write(&temp_path, armor_data)
-            .map_err(|e| VaultError::Provider(format!("Failed to write armored vault: {}", e)))?;
-
-        std::fs::rename(&temp_path, &vault_path)
-            .map_err(|e| VaultError::Provider(format!("Failed to rename armored vault: {}", e)))?;
-
-        std::fs::remove_file(&self.config.vault_path).map_err(|e| {
-            VaultError::Provider(format!("Failed to remove original vault file: {}", e))
-        })?;
-
-        log_security_event(
-            "PQCRYPTO_ARMOR",
-            "PQCrypto file armor applied using keychain keys",
-            true,
-        );
-
-        Ok(())
     }
 
     /// Remove PQCrypto file armor (unlock operation: .vault → .db)  
     pub async fn remove_pqcrypto_armor(&self) -> VaultResult<()> {
         let config = self.config.keychain_config.clone();
+
+        // Use armor service for the actual operation
+        use crate::services::{KeychainStorage, PQCryptoArmorService};
+        let key_storage = KeychainStorage::new("vault");
+        let armor_service = PQCryptoArmorService::new(key_storage, SecurityLevel::Level3);
+
         let vault_path = self.config.vault_path.with_extension("vault");
+        let db_path = &self.config.vault_path;
 
-        // Load keys from keychain
-        let key_data = load_pq_key_from_keychain(&config.pq_namespace, 1)
+        armor_service
+            .unarmor(&vault_path, db_path, &config.pq_namespace, 1)
             .await
-            .map_err(|e| VaultError::Provider(format!("Failed to load PQ keys: {}", e)))?;
-
-        // Extract private key portion (everything after public key)
-        let private_key = if key_data.len() >= 1184 {
-            key_data[1184..].to_vec()
-        } else {
-            return Err(VaultError::Provider(format!(
-                "Invalid PQCrypto keypair: got {} bytes, need at least 1184",
-                key_data.len()
-            )));
-        };
-
-        // Read armored vault file data
-        let armor_data = std::fs::read(&vault_path).map_err(|e| {
-            VaultError::Provider(format!("Failed to read armored vault file: {}", e))
-        })?;
-
-        // Parse .vault file format
-        let (kyber_algorithm, kyber_ciphertext, encrypted_data) =
-            Self::parse_armor_file_format(&armor_data)?;
-
-        // Decapsulate symmetric key using Kyber KEM
-        let shared_secret = PqCryptoMasterBuilder::new()
-            .kyber()
-            .with_security_level(kyber_algorithm)
-            .decapsulate_hybrid(private_key, kyber_ciphertext)
-            .await
-            .map_err(|e| VaultError::Provider(format!("Kyber decapsulation failed: {}", e)))?;
-
-        // Decrypt vault file with AES-256-GCM
-        let decrypted_data = Cipher::aes()
-            .with_key(shared_secret)
-            .on_result(|result| result.unwrap_or_default())
-            .decrypt(encrypted_data)
-            .await;
-
-        // Atomic file operations
-        let temp_path = self.config.vault_path.with_extension("db.tmp");
-
-        std::fs::write(&temp_path, decrypted_data)
-            .map_err(|e| VaultError::Provider(format!("Failed to write decrypted vault: {}", e)))?;
-
-        std::fs::rename(&temp_path, &self.config.vault_path).map_err(|e| {
-            VaultError::Provider(format!("Failed to rename decrypted vault: {}", e))
-        })?;
-
-        std::fs::remove_file(&vault_path).map_err(|e| {
-            VaultError::Provider(format!("Failed to remove armored vault file: {}", e))
-        })?;
-
-        log_security_event(
-            "PQCRYPTO_ARMOR",
-            "PQCrypto file armor removed using keychain keys",
-            true,
-        );
-
-        Ok(())
     }
 }

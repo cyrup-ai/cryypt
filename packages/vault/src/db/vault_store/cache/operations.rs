@@ -34,6 +34,7 @@ where
             running: Arc::new(AtomicBool::new(true)),
             global_access_counter: AtomicU64::new(0),
             encryption_key: Arc::new(tokio::sync::Mutex::new(None)),
+            encryption_service: crate::services::EncryptionService::new(),
         }
     }
 
@@ -93,39 +94,8 @@ where
         let key_guard = self.encryption_key.lock().await;
         let encryption_key = key_guard.as_ref().ok_or_else(|| VaultError::VaultLocked)?;
 
-        // Use AES encryption with proper on_chunk error handling via BadChunk pattern
-        let mut encrypted_stream = Cryypt::cipher()
-            .aes()
-            .with_key(encryption_key.clone())
-            .on_chunk(|chunk| match chunk {
-                Ok(data) => data,
-                Err(e) => {
-                    tracing::error!("Cache encryption chunk failed: {}", e);
-                    cryypt_common::BadChunk::from_error(e).into()
-                }
-            })
-            .encrypt(data.to_vec());
-
-        // Collect stream into final encrypted data
-        let mut encrypted_data = Vec::new();
-        while let Some(chunk) = encrypted_stream.next().await {
-            encrypted_data.extend_from_slice(&chunk);
-        }
-
-        // Check for BadChunk error markers in the result
-        if encrypted_data.starts_with(b"ERROR: ") {
-            let error_msg = String::from_utf8_lossy(&encrypted_data);
-            return Err(VaultError::Encryption(error_msg.to_string()));
-        }
-
-        // Additional validation for edge cases
-        if encrypted_data.is_empty() {
-            return Err(VaultError::Encryption(
-                "AES encryption produced no output - unexpected behavior".to_string(),
-            ));
-        }
-
-        Ok(BASE64_STANDARD.encode(encrypted_data))
+        // Use service with Base64 encoding
+        self.encryption_service.encrypt_to_string(data, encryption_key).await
     }
 
     /// Decrypt data using AES with session key - zero allocation
@@ -136,35 +106,8 @@ where
         let key_guard = self.encryption_key.lock().await;
         let encryption_key = key_guard.as_ref().ok_or_else(|| VaultError::VaultLocked)?;
 
-        // Decode base64
-        let encrypted_bytes = BASE64_STANDARD
-            .decode(encrypted_b64)
-            .map_err(|_| VaultError::Decryption("Invalid base64".to_string()))?;
-
-        // Use AES decryption with proper on_chunk error handling via BadChunk pattern
-        let mut decrypted_stream = Cryypt::cipher()
-            .aes()
-            .with_key(encryption_key.clone())
-            .on_chunk(|chunk| match chunk {
-                Ok(data) => data,
-                Err(e) => {
-                    tracing::error!("Cache decryption chunk failed: {}", e);
-                    cryypt_common::BadChunk::from_error(e).into()
-                }
-            })
-            .decrypt(encrypted_bytes);
-
-        // Collect stream into final decrypted data
-        let mut decrypted_data = Vec::new();
-        while let Some(chunk) = decrypted_stream.next().await {
-            decrypted_data.extend_from_slice(&chunk);
-        }
-
-        // Check for BadChunk error markers in the result
-        if decrypted_data.starts_with(b"ERROR: ") {
-            let error_msg = String::from_utf8_lossy(&decrypted_data);
-            return Err(VaultError::Decryption(error_msg.to_string()));
-        }
+        // Use service
+        let decrypted_data = self.encryption_service.decrypt_from_string(encrypted_b64, encryption_key).await?;
 
         Ok(Zeroizing::new(decrypted_data))
     }

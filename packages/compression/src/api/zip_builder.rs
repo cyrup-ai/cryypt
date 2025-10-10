@@ -89,6 +89,113 @@ impl ZipBuilder<NoFiles> {
             chunk_handler: self.chunk_handler,
         }
     }
+
+    /// Compress a file or directory from filesystem path
+    ///
+    /// # Arguments
+    /// * `path` - Path to file or directory to compress
+    ///
+    /// # Returns
+    /// Compressed zip archive bytes
+    ///
+    /// # Behavior
+    /// - Single file: Compresses file with its name as the entry
+    /// - Directory: Recursively compresses all files, preserving directory structure
+    /// - Follows symlinks
+    /// - Includes hidden files
+    ///
+    /// # Errors
+    /// Returns empty Vec on error if no result_handler is set
+    /// Calls result_handler with Result<CompressionResult> if set
+    pub async fn compress_path<P: AsRef<std::path::Path>>(self, path: P) -> Vec<u8> {
+        let path_ref = path.as_ref();
+
+        let result = async move {
+            // Collect files from filesystem path
+            let files = crate::fs_utils::collect_files_from_path(path_ref).await?;
+            let files_count = files.len();
+            let total_size: usize = files.values().map(Vec::len).sum();
+
+            // Compress using existing logic
+            let compressed = zip_compress(files).await?;
+
+            Ok(CompressionResult::with_original_size(
+                compressed,
+                CompressionAlgorithm::Zip {
+                    level: Some(6),
+                    files_count,
+                },
+                total_size,
+            ))
+        }
+        .await;
+
+        if let Some(handler) = self.result_handler {
+            (*handler)(result)
+        } else {
+            match result {
+                Ok(compression_result) => compression_result.to_vec(),
+                Err(_) => Vec::new(),
+            }
+        }
+    }
+
+    /// Decompress zip archive to filesystem path
+    ///
+    /// # Arguments
+    /// * `data` - Compressed zip archive bytes
+    /// * `path` - Output path (will be file or directory depending on archive contents)
+    ///
+    /// # Returns
+    /// Empty Vec<u8> on success (operation writes to filesystem)
+    ///
+    /// # Behavior
+    /// - Single file in archive: Writes to path as a file
+    /// - Multiple files: Creates path as directory with all files
+    /// - Creates parent directories as needed
+    /// - Atomic operations using temporary files
+    ///
+    /// # Errors
+    /// Returns empty Vec on error if no result_handler is set
+    /// Calls result_handler with Result<CompressionResult> if set
+    pub async fn decompress_to_path<T: Into<Vec<u8>>, P: AsRef<std::path::Path>>(
+        self,
+        data: T,
+        path: P,
+    ) -> Vec<u8> {
+        let data = data.into();
+        let path_ref = path.as_ref().to_path_buf();
+        let original_size = data.len();
+
+        let result = async move {
+            // Decompress to HashMap
+            let files = zip_decompress(data).await?;
+            let files_count = files.len();
+
+            // Write to filesystem
+            crate::fs_utils::write_files_to_path(files, &path_ref).await?;
+
+            // Return empty result since this is a filesystem operation
+            Ok(CompressionResult::with_original_size(
+                Vec::new(),
+                CompressionAlgorithm::Zip {
+                    level: None,
+                    files_count,
+                },
+                original_size,
+            ))
+        }
+        .await;
+
+        if let Some(handler) = self.result_handler {
+            (*handler)(result)
+        } else {
+            match result {
+                Ok(_) => Vec::new(), // Success - filesystem operation
+                Err(_) => Vec::new(),
+            }
+        }
+    }
 }
 
 impl ZipBuilder<HasFiles> {
