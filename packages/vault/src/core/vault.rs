@@ -461,11 +461,6 @@ impl Vault {
                 *session_token_guard = None;
                 drop(session_token_guard);
 
-                // Clear JWT key
-                let mut jwt_key_guard = local_provider.jwt_key.lock().await;
-                *jwt_key_guard = None;
-                drop(jwt_key_guard);
-
                 Ok(())
             } else {
                 Err(VaultError::UnsupportedOperation(
@@ -477,5 +472,61 @@ impl Vault {
                 "No provider configured".to_string(),
             ))
         }
+    }
+
+    /// Store vault configuration (RSA key path and public key)
+    ///
+    /// # Arguments
+    /// * `rsa_key_path` - Absolute path to RSA private key file
+    /// * `rsa_public_key_spki` - RSA public key in SPKI DER format
+    pub async fn store_vault_config(
+        &self,
+        rsa_key_path: &str,
+        rsa_public_key_spki: &[u8],
+    ) -> VaultResult<()> {
+        let providers = self.providers.lock().await;
+        let provider = providers
+            .first()
+            .ok_or_else(|| VaultError::Configuration("No provider configured".to_string()))?;
+
+        let provider_any = provider.as_ref() as &dyn std::any::Any;
+        let local_provider = provider_any
+            .downcast_ref::<crate::db::vault_store::LocalVaultProvider>()
+            .ok_or_else(|| VaultError::Configuration("Provider is not LocalVaultProvider".to_string()))?;
+
+        local_provider.store_vault_config(rsa_key_path, rsa_public_key_spki).await
+    }
+
+    /// Load vault configuration from database
+    pub async fn load_vault_config(&self) -> VaultResult<Option<crate::db::vault_store::backend::operations::VaultConfigRecord>> {
+        let providers = self.providers.lock().await;
+        let provider = providers
+            .first()
+            .ok_or_else(|| VaultError::Configuration("No provider configured".to_string()))?;
+
+        let provider_any = provider.as_ref() as &dyn std::any::Any;
+        let local_provider = provider_any
+            .downcast_ref::<crate::db::vault_store::LocalVaultProvider>()
+            .ok_or_else(|| VaultError::Configuration("Provider is not LocalVaultProvider".to_string()))?;
+
+        local_provider.load_vault_config().await
+    }
+
+    /// Get vault configuration
+    ///
+    /// # Returns
+    /// Clone of the VaultConfig
+    pub async fn config(&self) -> VaultResult<crate::config::VaultConfig> {
+        let providers = self.providers.lock().await;
+        let provider = providers
+            .first()
+            .ok_or_else(|| VaultError::Configuration("No provider configured".to_string()))?;
+
+        let provider_any = provider.as_ref() as &dyn std::any::Any;
+        let local_provider = provider_any
+            .downcast_ref::<crate::db::vault_store::LocalVaultProvider>()
+            .ok_or_else(|| VaultError::Configuration("Provider is not LocalVaultProvider".to_string()))?;
+
+        Ok(local_provider.config.clone())
     }
 }

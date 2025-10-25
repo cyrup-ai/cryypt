@@ -29,6 +29,7 @@ pub async fn process_command(
     command: Commands,
     global_vault_path: Option<PathBuf>,
     passphrase_option: Option<&str>,
+    rsa_key_path: Option<PathBuf>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match command {
@@ -41,6 +42,7 @@ pub async fn process_command(
             new_vault::handle_new_command(
                 final_vault_path.as_deref(),
                 passphrase.as_deref(),
+                rsa_key_path,
                 use_json,
             )
             .await
@@ -128,6 +130,7 @@ pub async fn process_command(
                 vault,
                 vault_path,
                 passphrase.as_deref(),
+                rsa_key_path,
                 expires_in,
                 use_json,
             )
@@ -213,21 +216,30 @@ pub async fn process_command(
                 .or(global_vault_path)
                 .unwrap_or_else(|| PathBuf::from("vault.db"));
 
-            // Auto-detect latest key version
-            let key_version = commands::detect_current_key_version(&keychain_namespace)
-                .await
-                .map_err(|e| {
-                    format!(
-                        "No PQCrypto keys found for namespace '{}': {}",
-                        keychain_namespace, e
-                    )
-                })?;
+            // Smart key_id determination:
+            // - If .vault file exists, read and reuse existing key_id
+            // - If .vault doesn't exist, generate new UUID-based key_id
+            let vault_file = vault_path.with_extension("vault");
+            let key_id = if vault_file.exists() {
+                // Reuse existing key from .vault file
+                use crate::services::armor::read_key_id_from_vault_file;
+                read_key_id_from_vault_file(&vault_file)
+                    .await
+                    .map_err(|e| {
+                        format!(
+                            "Failed to read key ID from {}: {}",
+                            vault_file.display(), e
+                        )
+                    })?
+            } else {
+                // Generate new UUID-based key_id for fresh vault
+                commands::generate_unique_key_id(&keychain_namespace)
+            };
 
             commands::handle_lock_command(
                 &vault_path,
                 pq_public_key.as_deref(),
-                &keychain_namespace,
-                key_version,
+                &key_id,
                 use_json,
             )
             .await
@@ -237,102 +249,54 @@ pub async fn process_command(
         Commands::Unlock {
             vault_path,
             pq_private_key,
-            keychain_namespace,
         } => {
             // Use command-specific path or fall back to global path
             let vault_path = vault_path
                 .or(global_vault_path)
                 .unwrap_or_else(|| PathBuf::from("vault.db"));
 
-            // Auto-detect latest key version
-            let key_version = commands::detect_current_key_version(&keychain_namespace)
+            // Read key ID from .vault file header
+            use crate::services::armor::read_key_id_from_vault_file;
+            let vault_file_path = vault_path.with_extension("vault");
+            let key_id = read_key_id_from_vault_file(&vault_file_path)
                 .await
                 .map_err(|e| {
                     format!(
-                        "No PQCrypto keys found for namespace '{}': {}",
-                        keychain_namespace, e
+                        "Failed to read key ID from {}: {}",
+                        vault_file_path.display(), e
                     )
                 })?;
 
             commands::handle_unlock_command(
                 &vault_path,
                 pq_private_key.as_deref(),
-                &keychain_namespace,
-                key_version,
+                &key_id,
                 use_json,
             )
             .await
             .map_err(|e| e.into())
         }
 
-        Commands::RotateKeys { namespace, force } => {
-            // Detect current version from keychain
-            let current_version = commands::detect_current_key_version(&namespace)
-                .await
-                .unwrap_or(0u32); // Default to 0 if no keys exist, so new_version becomes 1
-
-            // Discover vault files for re-encryption
-            let vault_paths = match commands::discover_vault_files(&namespace, None).await {
-                Ok(paths) => {
-                    if paths.is_empty() {
-                        log::warn!(
-                            "No vaults found for key rotation in namespace '{}'",
-                            namespace
-                        );
-                        if use_json {
-                            println!(
-                                "{}",
-                                serde_json::json!({
-                                    "success": false,
-                                    "operation": "rotate_keys",
-                                    "error": "No vaults found for re-encryption",
-                                    "suggestion": "Ensure vaults exist and are accessible"
-                                })
-                            );
-                        } else {
-                            eprintln!("⚠️  No vaults found for key rotation");
-                            eprintln!(
-                                "   Suggestion: Ensure vaults exist in current directory or ~/.cryypt/"
-                            );
-                        }
-                    }
-                    paths
-                }
-                Err(e) => {
-                    log::error!("Failed to discover vaults: {}", e);
-                    if use_json {
-                        println!(
-                            "{}",
-                            serde_json::json!({
-                                "success": false,
-                                "operation": "rotate_keys",
-                                "error": format!("Vault discovery failed: {}", e)
-                            })
-                        );
-                    } else {
-                        eprintln!("❌ Failed to discover vaults: {}", e);
-                    }
-                    return Err(e.into());
-                }
-            };
-
-            match commands::rotate_pq_keys(&namespace, current_version, vault_paths).await {
-                Ok(new_version) => {
+        Commands::RotateKeys { vault_path, namespace, force } => {
+            // RotateKeys now requires explicit vault path
+            match commands::rotate_pq_keys(&vault_path, &namespace).await {
+                Ok(()) => {
                     if use_json {
                         println!(
                             "{}",
                             serde_json::json!({
                                 "success": true,
                                 "operation": "rotate_keys",
+                                "vault_path": vault_path.display().to_string(),
                                 "namespace": namespace,
-                                "old_version": current_version,
-                                "new_version": new_version
+                                "message": "Key rotated successfully, old key deleted from keychain"
                             })
                         );
                     } else {
-                        println!("✅ PQCrypto keys rotated successfully");
+                        println!("✅ PQCrypto key rotated successfully");
+                        println!("   Vault: {}", vault_path.display());
                         println!("   Namespace: {}", namespace);
-                        println!("   New version: {}", new_version);
+                        println!("   🗑️  Old key deleted from keychain");
                     }
                     Ok(())
                 }

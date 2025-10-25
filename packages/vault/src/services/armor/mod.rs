@@ -13,17 +13,21 @@
 //!
 //! The .vault file format:
 //! ```text
-//! +------------------+
-//! | Magic (8 bytes)  |  "CRYYPT\x01\x02"
-//! +------------------+
-//! | Algorithm (1)    |  0x01=Level1, 0x02=Level3, 0x03=Level5
-//! +------------------+
-//! | CT Length (4)    |  u32 little-endian
-//! +------------------+
-//! | Kyber CT (var)   |  KEM ciphertext
-//! +------------------+
-//! | AES Data (var)   |  Encrypted vault file
-//! +------------------+
+//! +--------------------+
+//! | Magic (7 bytes)    |  "CRYYPT\x01"
+//! +--------------------+
+//! | Algorithm (1)      |  0x01=Level1, 0x02=Level3, 0x03=Level5
+//! +--------------------+
+//! | Key ID Length (4)  |  u32 little-endian
+//! +--------------------+
+//! | Key ID (variable)  |  UTF-8 string (e.g., "pq_armor:v3:pq_keypair")
+//! +--------------------+
+//! | CT Length (4)      |  u32 little-endian
+//! +--------------------+
+//! | Kyber CT (var)     |  KEM ciphertext
+//! +--------------------+
+//! | AES Data (var)     |  Encrypted vault file
+//! +--------------------+
 //! ```
 //!
 //! ## Security
@@ -41,7 +45,7 @@ use cryypt_pqcrypto::api::{KyberSecurityLevel as SecurityLevel, PqCryptoMasterBu
 use std::path::Path;
 
 /// Magic header for .vault file format
-const VAULT_ARMOR_MAGIC: &[u8] = b"CRYYPT\x01\x02";
+const VAULT_ARMOR_MAGIC: &[u8] = b"CRYYPT\x01";
 
 /// ML-KEM-768 public key size (bytes)
 const PUBLIC_KEY_SIZE_768: usize = 1184;
@@ -66,8 +70,7 @@ const PUBLIC_KEY_SIZE_768: usize = 1184;
 /// armor_service.armor(
 ///     Path::new("vault.db"),
 ///     Path::new("vault.vault"),
-///     "pq_armor",
-///     1
+///     "pq_armor:v1:pq_keypair"
 /// ).await?;
 /// ```
 #[derive(Clone)]
@@ -94,8 +97,7 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
     /// # Arguments
     /// * `db_path` - Path to unarmored vault database file
     /// * `vault_path` - Path for armored .vault output file
-    /// * `namespace` - Key namespace (e.g., "pq_armor")
-    /// * `version` - Key version number
+    /// * `key_id` - Full keychain key identifier (e.g., "pq_armor:v1:pq_keypair")
     ///
     /// # Process
     /// 1. Retrieve PQCrypto public key from storage
@@ -115,8 +117,7 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         &self,
         db_path: &Path,
         vault_path: &Path,
-        namespace: &str,
-        version: u32,
+        key_id: &str,
     ) -> VaultResult<()> {
         log_security_event(
             "ARMOR_START",
@@ -125,7 +126,7 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         );
 
         // Step 1: Retrieve PQCrypto keypair from storage
-        let keypair = self.key_storage.retrieve(namespace, version).await?;
+        let keypair = self.key_storage.retrieve(key_id).await?;
 
         // Extract public key (first 1184 bytes for ML-KEM-768)
         let public_key = if keypair.len() >= PUBLIC_KEY_SIZE_768 {
@@ -178,20 +179,26 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         // Step 4: Encrypt vault file with AES-256-GCM
         let encrypted_data = Cipher::aes()
             .with_key(shared_secret)
-            .on_result(|result| result.unwrap_or_default())
+            .on_result(|result| match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("AES encryption failed: {}", e);
+                    Vec::new()
+                }
+            })
             .encrypt(vault_data)
             .await;
 
         if encrypted_data.is_empty() {
             return Err(VaultError::Encryption(
-                "AES encryption failed - empty result".to_string(),
+                "AES encryption failed - check logs for details".to_string(),
             ));
         }
 
         log::debug!("AES encryption: {} bytes encrypted", encrypted_data.len());
 
-        // Step 5: Create .vault file format
-        let armor_data = Self::create_armor_format(self.security_level, &ciphertext, &encrypted_data)?;
+        // Step 5: Create .vault file format with embedded key ID
+        let armor_data = Self::create_armor_format(self.security_level, &ciphertext, &encrypted_data, key_id)?;
 
         log::debug!(
             "Created armor format: {} total bytes",
@@ -257,8 +264,7 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
     /// # Arguments
     /// * `vault_path` - Path to armored .vault file
     /// * `db_path` - Path for unarmored .db output file
-    /// * `namespace` - Key namespace (e.g., "pq_armor")
-    /// * `version` - Key version number
+    /// * `key_id` - Full keychain key identifier (e.g., "pq_armor:v1:pq_keypair")
     ///
     /// # Process
     /// 1. Retrieve PQCrypto private key from storage
@@ -277,8 +283,7 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         &self,
         vault_path: &Path,
         db_path: &Path,
-        namespace: &str,
-        version: u32,
+        key_id: &str,
     ) -> VaultResult<()> {
         log_security_event(
             "UNARMOR_START",
@@ -287,7 +292,7 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         );
 
         // Step 1: Retrieve PQCrypto keypair from storage
-        let keypair = self.key_storage.retrieve(namespace, version).await?;
+        let keypair = self.key_storage.retrieve(key_id).await?;
 
         // Extract private key (everything after public key)
         let private_key = if keypair.len() >= PUBLIC_KEY_SIZE_768 {
@@ -311,15 +316,25 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
 
         log::debug!("Read {} bytes from {}", armor_data.len(), vault_path.display());
 
-        let (security_level, kyber_ciphertext, encrypted_data) =
+        let (security_level, kyber_ciphertext, encrypted_data, file_key_id) =
             Self::parse_armor_format(&armor_data)?;
 
         log::debug!(
-            "Parsed armor: {:?}, {} byte ciphertext, {} bytes encrypted data",
+            "Parsed armor: {:?}, key_id '{}', {} byte ciphertext, {} bytes encrypted data",
             security_level,
+            file_key_id,
             kyber_ciphertext.len(),
             encrypted_data.len()
         );
+
+        // Verify that the key_id in the file matches the key_id we're using
+        if file_key_id != key_id {
+            log::warn!(
+                "Key ID mismatch: file contains '{}' but trying to decrypt with '{}'",
+                file_key_id,
+                key_id
+            );
+        }
 
         // Step 3: Decapsulate symmetric key using Kyber KEM
         let shared_secret = PqCryptoMasterBuilder::new()
@@ -334,13 +349,19 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         // Step 4: Decrypt vault file with AES-256-GCM
         let decrypted_data = Cipher::aes()
             .with_key(shared_secret)
-            .on_result(|result| result.unwrap_or_default())
+            .on_result(|result| match result {
+                Ok(data) => data,
+                Err(e) => {
+                    log::error!("AES decryption failed: {}", e);
+                    Vec::new()
+                }
+            })
             .decrypt(encrypted_data)
             .await;
 
         if decrypted_data.is_empty() {
             return Err(VaultError::Decryption(
-                "AES decryption failed - empty result".to_string(),
+                "AES decryption failed - check logs for details".to_string(),
             ));
         }
 
@@ -393,6 +414,7 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         kyber_algorithm: SecurityLevel,
         kyber_ciphertext: &[u8],
         encrypted_data: &[u8],
+        key_id: &str,
     ) -> VaultResult<Vec<u8>> {
         let mut armor_data = Vec::new();
 
@@ -406,6 +428,12 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
             SecurityLevel::Level5 => 0x03, // MlKem1024
         };
         armor_data.push(algorithm_byte);
+
+        // Key ID length and string
+        let key_id_bytes = key_id.as_bytes();
+        let key_id_len = key_id_bytes.len() as u32;
+        armor_data.extend_from_slice(&key_id_len.to_le_bytes());
+        armor_data.extend_from_slice(key_id_bytes);
 
         // Ciphertext length (little endian)
         let ciphertext_len = kyber_ciphertext.len() as u32;
@@ -423,8 +451,9 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
     /// Parse .vault file format and extract components
     fn parse_armor_format(
         armor_data: &[u8],
-    ) -> VaultResult<(SecurityLevel, Vec<u8>, Vec<u8>)> {
-        if armor_data.len() < VAULT_ARMOR_MAGIC.len() + 5 {
+    ) -> VaultResult<(SecurityLevel, Vec<u8>, Vec<u8>, String)> {
+        // Minimum: 7 (magic) + 1 (algorithm) + 4 (key_id_len) + 4 (ct length) = 16 bytes
+        if armor_data.len() < VAULT_ARMOR_MAGIC.len() + 1 + 4 + 4 {
             return Err(VaultError::Crypto(
                 "Invalid .vault file: too short".to_string(),
             ));
@@ -433,7 +462,7 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         // Validate magic header
         if &armor_data[..VAULT_ARMOR_MAGIC.len()] != VAULT_ARMOR_MAGIC {
             return Err(VaultError::Crypto(
-                "Invalid .vault file: bad magic header".to_string(),
+                "Invalid .vault file: incorrect magic header".to_string(),
             ));
         }
 
@@ -454,7 +483,33 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         };
         offset += 1;
 
+        // Parse key ID length
+        let key_id_len = u32::from_le_bytes([
+            armor_data[offset],
+            armor_data[offset + 1],
+            armor_data[offset + 2],
+            armor_data[offset + 3],
+        ]) as usize;
+        offset += 4;
+
+        // Extract key ID string
+        if offset + key_id_len > armor_data.len() {
+            return Err(VaultError::Crypto(
+                "Invalid .vault file: key ID length exceeds file size".to_string(),
+            ));
+        }
+        let key_id_bytes = &armor_data[offset..offset + key_id_len];
+        let key_id = String::from_utf8(key_id_bytes.to_vec()).map_err(|e| {
+            VaultError::Crypto(format!("Invalid key ID encoding: {}", e))
+        })?;
+        offset += key_id_len;
+
         // Parse ciphertext length
+        if offset + 4 > armor_data.len() {
+            return Err(VaultError::Crypto(
+                "Invalid .vault file: missing ciphertext length".to_string(),
+            ));
+        }
         let ciphertext_len = u32::from_le_bytes([
             armor_data[offset],
             armor_data[offset + 1],
@@ -476,6 +531,78 @@ impl<S: KeyStorage> PQCryptoArmorService<S> {
         // Extract AES encrypted data (remaining bytes)
         let encrypted_data = armor_data[offset..].to_vec();
 
-        Ok((security_level, kyber_ciphertext, encrypted_data))
+        Ok((security_level, kyber_ciphertext, encrypted_data, key_id))
     }
+}
+
+/// Read key ID from .vault file header without loading entire file
+///
+/// This is a standalone function that peeks at the file header to extract the keychain
+/// key identifier, allowing unlock operations to know which key to retrieve before
+/// attempting decryption.
+///
+/// # Arguments
+/// * `vault_path` - Path to .vault file
+///
+/// # Returns
+/// The key ID string embedded in the file (e.g., "pq_armor:v1:pq_keypair")
+///
+/// # Errors
+/// Returns error if:
+/// - File cannot be read
+/// - File format is invalid
+/// - File is too short to contain key ID
+/// - Key ID is not valid UTF-8
+pub async fn read_key_id_from_vault_file(vault_path: &Path) -> VaultResult<String> {
+    use tokio::io::AsyncReadExt;
+
+    let mut file = tokio::fs::File::open(vault_path).await.map_err(|e| {
+        VaultError::Provider(format!(
+            "Failed to open .vault file {}: {}",
+            vault_path.display(),
+            e
+        ))
+    })?;
+
+    // Read header: magic (7) + algorithm (1) + key_id_len (4) = 12 bytes
+    let initial_header_size = VAULT_ARMOR_MAGIC.len() + 1 + 4;
+    let mut header = vec![0u8; initial_header_size];
+    file.read_exact(&mut header).await.map_err(|e| {
+        VaultError::Crypto(format!(
+            "Failed to read .vault file header: {} (file may be corrupted or too short)",
+            e
+        ))
+    })?;
+
+    // Validate magic bytes
+    if &header[..VAULT_ARMOR_MAGIC.len()] != VAULT_ARMOR_MAGIC {
+        return Err(VaultError::Crypto(
+            "Invalid .vault file: incorrect magic header".to_string(),
+        ));
+    }
+
+    // Extract key ID length from bytes after magic + algorithm
+    let key_id_len_offset = VAULT_ARMOR_MAGIC.len() + 1;
+    let key_id_len = u32::from_le_bytes([
+        header[key_id_len_offset],
+        header[key_id_len_offset + 1],
+        header[key_id_len_offset + 2],
+        header[key_id_len_offset + 3],
+    ]) as usize;
+
+    // Read the key ID string
+    let mut key_id_bytes = vec![0u8; key_id_len];
+    file.read_exact(&mut key_id_bytes).await.map_err(|e| {
+        VaultError::Crypto(format!(
+            "Failed to read key ID from .vault file: {}",
+            e
+        ))
+    })?;
+
+    // Convert to string
+    let key_id = String::from_utf8(key_id_bytes).map_err(|e| {
+        VaultError::Crypto(format!("Invalid key ID encoding: {}", e))
+    })?;
+
+    Ok(key_id)
 }

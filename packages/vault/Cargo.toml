@@ -37,7 +37,7 @@ serde_json = "1.0.145"
 thiserror = "2.0.16"
 zeroize = "1.8.1"
 base64 = "0.22.1"
-uuid = "1.18.1"
+uuid = { version = "1.18.1", features = ["v4", "serde"] }
 chrono = "0.4.41"
 tracing = "0.1.41"
 rand = "0.9.2"
@@ -71,6 +71,10 @@ rpassword = "7.4.0"
 rand_core = { version = "0.9", features = ["os_rng"] }
 getrandom = "0.3.3"
 sha2 = "0.10.8"
+hkdf = "0.12.4"
+
+# RSA key format conversion (PKCS1 ↔ PKCS8/SPKI)
+rsa = { version = "0.10.0-rc.4", features = ["sha2"] }
 
 [dev-dependencies]
 tempfile = "3.21.0"

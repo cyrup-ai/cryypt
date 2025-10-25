@@ -4,6 +4,7 @@
 
 use crate::error::{VaultError, VaultResult};
 use cryypt_cipher::cipher::api::Cipher;
+use base64::{Engine, engine::general_purpose::STANDARD};
 
 #[derive(Debug, Clone)]
 pub struct EncryptionService;
@@ -50,12 +51,12 @@ impl EncryptionService {
     /// Encrypt to Base64 string (for database storage)
     pub async fn encrypt_to_string(&self, data: &[u8], key: &[u8]) -> VaultResult<String> {
         let encrypted = self.encrypt(data, key).await?;
-        Ok(base64::encode(&encrypted))
+        Ok(STANDARD.encode(&encrypted))
     }
 
     /// Decrypt from Base64 string
     pub async fn decrypt_from_string(&self, data: &str, key: &[u8]) -> VaultResult<Vec<u8>> {
-        let encrypted = base64::decode(data)
+        let encrypted = STANDARD.decode(data)
             .map_err(|e| VaultError::Decryption(format!("Base64 decode: {}", e)))?;
         self.decrypt(&encrypted, key).await
     }

@@ -9,73 +9,36 @@ use super::super::super::{LocalVaultProvider, VaultEntry};
 use crate::error::{VaultError, VaultResult};
 
 impl LocalVaultProvider {
-    /// Re-encrypt all vault entries with a new passphrase
+    /// Update vault passphrase without re-encrypting data
     ///
-    /// This operation performs a complete key rotation by:
-    /// 1. Decrypting all entries with the old passphrase
-    /// 2. Re-encrypting them with the new passphrase  
-    /// 3. Updating the database with new encrypted values
+    /// This operation updates the passphrase hash used for authentication:
+    /// 1. Verifies the old passphrase
+    /// 2. Stores hash of the new passphrase
+    ///
+    /// NOTE: Vault data remains encrypted with RSA-derived keys, which don't change
+    /// when the passphrase changes. The passphrase is only used for authentication,
+    /// not for deriving encryption keys (encryption keys are derived from RSA key material).
     ///
     /// Security considerations:
-    /// - Uses secure memory handling for decrypted data
-    /// - Validates encryption/decryption at each step
-    /// - Provides detailed error messages for debugging
+    /// - Validates old passphrase before allowing change
+    /// - Uses Argon2id for secure passphrase hashing
+    /// - No re-encryption needed as encryption keys are RSA-derived, not passphrase-derived
     pub async fn re_encrypt_with_new_passphrase(
         &self,
         old_passphrase: &str,
         new_passphrase: &str,
     ) -> VaultResult<()> {
-        let db = self.dao.db();
+        use crate::operation::Passphrase;
 
-        // Get all vault entries for re-encryption
-        let entries: Vec<VaultEntry> = db
-            .select("vault_entries")
-            .await
-            .map_err(|e| VaultError::Provider(format!("Failed to get entries: {e}")))?;
+        // Verify old passphrase first
+        let old_pass = Passphrase::new(old_passphrase.to_string().into());
+        self.verify_passphrase(&old_pass).await?;
 
-        // Re-encrypt each entry with the new passphrase
-        for entry in entries {
-            // Decode the current encrypted value from base64
-            let encrypted_bytes =
-                base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &entry.value)
-                    .map_err(|_| VaultError::Provider("Invalid base64 in entry".to_string()))?;
+        // Store new passphrase hash
+        let new_pass = Passphrase::new(new_passphrase.to_string().into());
+        self.store_passphrase_hash(&new_pass).await?;
 
-            // Decrypt using the old passphrase
-            let decrypted_bytes = self
-                .decrypt_data_with_passphrase(&encrypted_bytes, old_passphrase)
-                .await?;
-
-            // Re-encrypt using the new passphrase
-            let re_encrypted_bytes = self
-                .encrypt_data_with_passphrase(&decrypted_bytes, new_passphrase)
-                .await?;
-
-            // Encode to base64 for database storage
-            let value_b64 = base64::Engine::encode(
-                &base64::engine::general_purpose::STANDARD,
-                re_encrypted_bytes,
-            );
-
-            // Update entry in database with new encrypted value using natural keys
-            use super::super::key_utils;
-            let record_id = entry
-                .id
-                .as_ref()
-                .ok_or_else(|| VaultError::InvalidInput("Entry missing record ID".to_string()))?;
-            let _key_owned = key_utils::extract_key_from_record_id(&record_id.to_string())?;
-            let query = format!("UPDATE {} SET value = $value", record_id);
-            let mut result = db
-                .query(query)
-                .bind(("value", value_b64))
-                .await
-                .map_err(|e| VaultError::Provider(format!("Failed to update entry: {e}")))?
-                .check()
-                .map_err(|e| VaultError::Provider(format!("DB check failed: {e}")))?;
-
-            let _: Option<()> = result
-                .take(0)
-                .map_err(|e| VaultError::Provider(format!("DB result take failed: {e}")))?;
-        }
+        log::info!("Passphrase updated successfully (encryption keys unchanged)");
 
         Ok(())
     }

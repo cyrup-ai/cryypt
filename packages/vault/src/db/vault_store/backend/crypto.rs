@@ -8,6 +8,14 @@ use crate::operation::Passphrase;
 use cryypt_cipher::Cryypt;
 use cryypt_key::api::{MasterKeyBuilder, MasterKeyProvider};
 use secrecy::ExposeSecret;
+use tokio::fs;
+use std::convert::TryInto;
+use cryypt_key::api::RsaKeyBuilder;
+use rsa::{RsaPrivateKey, RsaPublicKey};
+use rsa::pkcs1::DecodeRsaPrivateKey;
+use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
+use hkdf::Hkdf;
+use sha2::Sha256;
 
 impl LocalVaultProvider {
     /// Derive encryption key from passphrase using cryypt_key
@@ -34,32 +42,36 @@ impl LocalVaultProvider {
         Ok(output_key)
     }
 
-    /// Derive JWT signing key from passphrase using cryypt_key with different context
-    pub(crate) async fn derive_jwt_key(&self, passphrase: &Passphrase) -> VaultResult<Vec<u8>> {
-        log::trace!("Starting JWT key derivation with passphrase context...");
+    /// Derive encryption key from RSA private key material using HKDF-SHA256
+    ///
+    /// This provides deterministic key derivation: same RSA key → same encryption key
+    /// 
+    /// # Arguments
+    /// * `private_key_pkcs1` - RSA private key in PKCS1 DER format (from RsaKeyManager)
+    ///
+    /// # Returns
+    /// 32-byte AES-256 encryption key derived from RSA key material
+    pub(crate) async fn derive_encryption_key_from_rsa(
+        &self,
+        private_key_pkcs1: &[u8],
+    ) -> VaultResult<Vec<u8>> {
+        log::trace!("Starting RSA-based key derivation...");
 
-        // Create JWT-specific input by combining passphrase with context
-        let jwt_context = "JWT_SIGNING_CONTEXT";
-        let combined_input = format!("{}:{}", passphrase.expose_secret(), jwt_context);
+        // Use RSA key bytes directly as input key material (IKM) for HKDF
+        // No need to parse the key structure - the DER bytes have sufficient entropy
+        let hk = Hkdf::<Sha256>::new(None, private_key_pkcs1);
+        
+        let mut encryption_key = vec![0u8; 32]; // 32 bytes = 256 bits for AES-256-GCM
+        hk.expand(b"cryypt-vault-aes-key-v1", &mut encryption_key)
+            .map_err(|e| VaultError::KeyDerivation(format!("HKDF expansion failed: {}", e)))?;
 
-        // Use cryypt_key PassphraseMasterKey for secure JWT key derivation
-        let master_key = MasterKeyBuilder::from_passphrase(&combined_input);
-        let key_bytes = master_key
-            .resolve()
-            .map_err(|e| VaultError::KeyDerivation(format!("JWT key derivation failed: {e}")))?;
+        log::trace!("Successfully derived 32-byte encryption key from RSA material");
 
-        log::trace!(
-            "Successfully derived {} byte JWT signing key",
-            key_bytes.len()
-        );
+        // Store derived key in memory for session
+        let mut key_guard = self.encryption_key.lock().await;
+        *key_guard = Some(encryption_key.clone());
 
-        let jwt_output_key = key_bytes.to_vec();
-
-        // Store derived JWT key in memory for session
-        let mut jwt_key_guard = self.jwt_key.lock().await;
-        *jwt_key_guard = Some(jwt_output_key.clone());
-
-        Ok(jwt_output_key)
+        Ok(encryption_key)
     }
 
     /// Encrypt data using AES with session key

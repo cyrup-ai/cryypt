@@ -25,8 +25,7 @@ pub trait KeyStorage: Send + Sync {
     /// Store a PQCrypto keypair
     ///
     /// # Arguments
-    /// * `namespace` - Logical grouping for keys (e.g., "pq_armor")
-    /// * `version` - Key version number for rotation support
+    /// * `key_id` - Full key identifier (e.g., "pq_armor:v1:pq_keypair")
     /// * `keypair` - Combined public + private key bytes
     ///
     /// # Key Format
@@ -34,13 +33,12 @@ pub trait KeyStorage: Send + Sync {
     ///
     /// # Errors
     /// Returns error if storage operation fails
-    async fn store(&self, namespace: &str, version: u32, keypair: &[u8]) -> VaultResult<()>;
+    fn store(&self, key_id: &str, keypair: &[u8]) -> impl std::future::Future<Output = VaultResult<()>> + Send;
 
     /// Retrieve a PQCrypto keypair
     ///
     /// # Arguments
-    /// * `namespace` - Logical grouping for keys
-    /// * `version` - Key version number
+    /// * `key_id` - Full key identifier (e.g., "pq_armor:v1:pq_keypair")
     ///
     /// # Returns
     /// Combined public + private key bytes
@@ -48,36 +46,27 @@ pub trait KeyStorage: Send + Sync {
     /// # Errors
     /// Returns ItemNotFound if key doesn't exist
     /// Returns error if retrieval operation fails
-    async fn retrieve(&self, namespace: &str, version: u32) -> VaultResult<Vec<u8>>;
+    fn retrieve(&self, key_id: &str) -> impl std::future::Future<Output = VaultResult<Vec<u8>>> + Send;
 
     /// Check if a key exists
     ///
     /// # Arguments
-    /// * `namespace` - Logical grouping for keys
-    /// * `version` - Key version number
+    /// * `key_id` - Full key identifier
     ///
     /// # Returns
     /// true if key exists, false otherwise
-    async fn exists(&self, namespace: &str, version: u32) -> bool {
-        self.retrieve(namespace, version).await.is_ok()
+    fn exists(&self, key_id: &str) -> impl std::future::Future<Output = bool> + Send {
+        async move {
+            self.retrieve(key_id).await.is_ok()
+        }
     }
 
     /// Delete a key from storage
     ///
     /// # Arguments
-    /// * `namespace` - Logical grouping for keys
-    /// * `version` - Key version number
+    /// * `key_id` - Full key identifier
     ///
     /// # Errors
     /// Returns error if deletion fails
-    async fn delete(&self, namespace: &str, version: u32) -> VaultResult<()>;
-
-    /// List all versions for a namespace
-    ///
-    /// # Arguments
-    /// * `namespace` - Logical grouping for keys
-    ///
-    /// # Returns
-    /// Vector of version numbers, sorted ascending
-    async fn list_versions(&self, namespace: &str) -> VaultResult<Vec<u32>>;
+    fn delete(&self, key_id: &str) -> impl std::future::Future<Output = VaultResult<()>> + Send;
 }

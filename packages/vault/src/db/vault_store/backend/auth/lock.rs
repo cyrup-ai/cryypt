@@ -29,14 +29,6 @@ impl LocalVaultProvider {
         }
         *key_guard = None;
 
-        // Securely clear JWT signing key from memory
-        let mut jwt_key_guard = self.jwt_key.lock().await;
-        if let Some(ref mut jwt_key) = jwt_key_guard.as_mut() {
-            // Explicitly zero out the JWT key bytes before dropping
-            jwt_key.fill(0);
-        }
-        *jwt_key_guard = None;
-
         Ok(())
     }
 }

@@ -19,31 +19,24 @@ pub enum KeyStorageBackend {
 }
 
 impl KeyStorage for KeyStorageBackend {
-    async fn store(&self, namespace: &str, version: u32, keypair: &[u8]) -> VaultResult<()> {
+    async fn store(&self, key_id: &str, keypair: &[u8]) -> VaultResult<()> {
         match self {
-            KeyStorageBackend::Keychain(storage) => storage.store(namespace, version, keypair).await,
-            KeyStorageBackend::File(storage) => storage.store(namespace, version, keypair).await,
+            KeyStorageBackend::Keychain(storage) => storage.store(key_id, keypair).await,
+            KeyStorageBackend::File(storage) => storage.store(key_id, keypair).await,
         }
     }
 
-    async fn retrieve(&self, namespace: &str, version: u32) -> VaultResult<Vec<u8>> {
+    async fn retrieve(&self, key_id: &str) -> VaultResult<Vec<u8>> {
         match self {
-            KeyStorageBackend::Keychain(storage) => storage.retrieve(namespace, version).await,
-            KeyStorageBackend::File(storage) => storage.retrieve(namespace, version).await,
+            KeyStorageBackend::Keychain(storage) => storage.retrieve(key_id).await,
+            KeyStorageBackend::File(storage) => storage.retrieve(key_id).await,
         }
     }
 
-    async fn delete(&self, namespace: &str, version: u32) -> VaultResult<()> {
+    async fn delete(&self, key_id: &str) -> VaultResult<()> {
         match self {
-            KeyStorageBackend::Keychain(storage) => storage.delete(namespace, version).await,
-            KeyStorageBackend::File(storage) => storage.delete(namespace, version).await,
-        }
-    }
-
-    async fn list_versions(&self, namespace: &str) -> VaultResult<Vec<u32>> {
-        match self {
-            KeyStorageBackend::Keychain(storage) => storage.list_versions(namespace).await,
-            KeyStorageBackend::File(storage) => storage.list_versions(namespace).await,
+            KeyStorageBackend::Keychain(storage) => storage.delete(key_id).await,
+            KeyStorageBackend::File(storage) => storage.delete(key_id).await,
         }
     }
 }

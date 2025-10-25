@@ -14,15 +14,17 @@ impl FileStorage {
         Self { base_dir: base_dir.into() }
     }
 
-    fn key_path(&self, namespace: &str, version: u32) -> PathBuf {
-        self.base_dir.join(format!("{}_v{}.key", namespace, version))
+    fn key_path(&self, key_id: &str) -> PathBuf {
+        // Sanitize key_id for filesystem (replace : with _)
+        let safe_name = key_id.replace(':', "_");
+        self.base_dir.join(format!("{}.key", safe_name))
     }
 }
 
 impl KeyStorage for FileStorage {
-    async fn store(&self, namespace: &str, version: u32, keypair: &[u8]) -> VaultResult<()> {
-        let path = self.key_path(namespace, version);
-        
+    async fn store(&self, key_id: &str, keypair: &[u8]) -> VaultResult<()> {
+        let path = self.key_path(key_id);
+
         if let Some(parent) = path.parent() {
             tokio::fs::create_dir_all(parent).await
                 .map_err(|e| VaultError::Provider(format!("Failed to create key dir: {}", e)))?;
@@ -35,9 +37,9 @@ impl KeyStorage for FileStorage {
         Ok(())
     }
 
-    async fn retrieve(&self, namespace: &str, version: u32) -> VaultResult<Vec<u8>> {
-        let path = self.key_path(namespace, version);
-        
+    async fn retrieve(&self, key_id: &str) -> VaultResult<Vec<u8>> {
+        let path = self.key_path(key_id);
+
         tokio::fs::read(&path).await.map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
                 VaultError::ItemNotFound
@@ -47,33 +49,9 @@ impl KeyStorage for FileStorage {
         })
     }
 
-    async fn delete(&self, namespace: &str, version: u32) -> VaultResult<()> {
-        let path = self.key_path(namespace, version);
+    async fn delete(&self, key_id: &str) -> VaultResult<()> {
+        let path = self.key_path(key_id);
         tokio::fs::remove_file(&path).await
             .map_err(|e| VaultError::Provider(format!("Failed to delete key: {}", e)))
-    }
-
-    async fn list_versions(&self, namespace: &str) -> VaultResult<Vec<u32>> {
-        let mut versions = Vec::new();
-        let mut entries = tokio::fs::read_dir(&self.base_dir).await
-            .map_err(|e| VaultError::Provider(format!("Failed to read dir: {}", e)))?;
-
-        let prefix = format!("{}_v", namespace);
-        while let Some(entry) = entries.next_entry().await
-            .map_err(|e| VaultError::Provider(format!("Failed to read entry: {}", e)))? {
-            
-            if let Some(name) = entry.file_name().to_str() {
-                if name.starts_with(&prefix) && name.ends_with(".key") {
-                    if let Some(v) = name.strip_prefix(&prefix)
-                        .and_then(|s| s.strip_suffix(".key"))
-                        .and_then(|s| s.parse::<u32>().ok()) {
-                        versions.push(v);
-                    }
-                }
-            }
-        }
-
-        versions.sort_unstable();
-        Ok(versions)
     }
 }

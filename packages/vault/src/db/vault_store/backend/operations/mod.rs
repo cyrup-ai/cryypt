@@ -17,8 +17,12 @@ pub mod advanced;
 pub mod backup;
 pub mod basic;
 pub mod cleanup;
+pub mod config;
 pub mod namespace;
 pub mod reencryption;
 pub mod search;
 pub mod session;
 pub mod ttl;
+
+// Re-export VaultConfigRecord for public use
+pub use config::VaultConfigRecord;

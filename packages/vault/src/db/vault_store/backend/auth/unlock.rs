@@ -1,6 +1,7 @@
 //! Vault unlocking operations with passphrase verification and session creation
 
 use super::super::super::LocalVaultProvider;
+use crate::auth::key_converter::{pkcs1_to_pkcs8, pkcs1_public_to_spki};
 use crate::error::{VaultError, VaultResult};
 use crate::operation::Passphrase;
 
@@ -9,19 +10,28 @@ impl LocalVaultProvider {
     pub(crate) async fn unlock_impl(&self, passphrase: Passphrase) -> VaultResult<()> {
         // Check if we already have a valid JWT session that just needs the encryption key
         if self.has_valid_jwt_session().await {
-            log::debug!("Found existing JWT session, attempting to derive encryption key");
-            // Try to derive encryption key and unlock
-            if (self.derive_encryption_key(&passphrase).await).is_ok() {
-                if let Ok(mut locked_guard) = self.locked.lock() {
-                    *locked_guard = false;
-                    log::info!("Vault unlocked using existing JWT session + passphrase");
-                    return Ok(());
+            log::debug!("Found existing JWT session, verifying passphrase before fast unlock");
+
+            // SECURITY CRITICAL: Verify passphrase BEFORE fast unlock
+            // Even with a valid JWT session, the passphrase must match the current hash
+            // This prevents old passphrases from working after change-passphrase
+            self.verify_passphrase(&passphrase).await?;
+
+            log::debug!("Passphrase verified, attempting fast unlock with RSA-derived key");
+
+            // Load RSA keys to ensure consistent key derivation method
+            if let Ok((private_pkcs1, _)) = self.rsa_key_manager.load_or_create(&passphrase).await {
+                // Derive encryption key from RSA material (same method as full unlock)
+                if (self.derive_encryption_key_from_rsa(&private_pkcs1).await).is_ok() {
+                    if let Ok(mut locked_guard) = self.locked.lock() {
+                        *locked_guard = false;
+                        log::info!("Vault unlocked using existing JWT session + RSA-derived key");
+                        return Ok(());
+                    }
                 }
-            } else {
-                log::warn!(
-                    "Failed to derive encryption key from passphrase, proceeding with full unlock"
-                );
             }
+
+            log::warn!("Fast unlock path failed, proceeding with full unlock");
         }
 
         // Ensure vault is currently locked before proceeding with full unlock
@@ -39,11 +49,20 @@ impl LocalVaultProvider {
         // Step 1: Verify passphrase against stored hash if exists
         self.verify_passphrase(&passphrase).await?;
 
-        // Step 2: Derive encryption key from passphrase using secure key derivation
-        log::debug!("Deriving encryption key from passphrase...");
-        let encryption_key = self.derive_encryption_key(&passphrase).await?;
+        // Step 2: Load RSA keypair for JWT signing (or generate if first time)
+        log::debug!("Loading RSA keypair for JWT authentication...");
+        let (private_pkcs1, public_pkcs1) = self.rsa_key_manager
+            .load_or_create(&passphrase)
+            .await
+            .map_err(|e| VaultError::Crypto(format!("RSA key loading failed: {}", e)))?;
+        log::debug!("RSA keypair loaded successfully");
 
-        // Step 3: Validate that key derivation was successful
+        // Step 3: Derive encryption key from RSA key material using HKDF
+        log::debug!("Deriving encryption key from RSA material...");
+        let encryption_key = self.derive_encryption_key_from_rsa(&private_pkcs1).await?;
+        log::debug!("Successfully derived encryption key from RSA material");
+
+        // Step 4: Validate that key derivation was successful
         if encryption_key.is_empty() {
             return Err(VaultError::KeyDerivation(
                 "Key derivation failed - empty key".to_string(),
@@ -99,43 +118,38 @@ impl LocalVaultProvider {
 
         log::debug!("Encryption/decryption test passed successfully");
 
-        // Step 5: Derive secure JWT signing key from passphrase
-        log::debug!("Deriving JWT signing key from passphrase...");
-        let jwt_key = self.derive_jwt_key(&passphrase).await?;
-        log::debug!(
-            "Successfully derived {} byte JWT signing key",
-            jwt_key.len()
-        );
+        // Step 5: Convert RSA keys to JWT-compatible formats (PKCS8/SPKI)
+        log::debug!("Converting RSA keys to PKCS8/SPKI formats for JWT...");
+        let private_pkcs8 = pkcs1_to_pkcs8(&private_pkcs1)?;
+        let public_spki = pkcs1_public_to_spki(&public_pkcs1)?;
+        log::debug!("Key format conversion completed");
 
-        // Step 6: Generate secure JWT session token with passphrase-derived key
-        log::debug!("Creating JWT session token with passphrase-derived key...");
-        
-        use crate::auth::JwtHandler;
-
-        // Use JwtHandler service (correct API)
+        // Step 6: Create JWT handler with RSA keys and generate token
         let vault_id = self.config.vault_path.to_string_lossy().to_string();
-        let jwt_handler = JwtHandler::new(vault_id);
-        let session_token = jwt_handler
-            .create_jwt_token(&encryption_key, Some(24))  // 24 hour default
-            .await?;
-        log::debug!("Successfully created JWT session token with passphrase-derived key");
+        let jwt_handler = crate::auth::JwtHandler::new(vault_id, private_pkcs8, public_spki);
 
-        // Step 8: Store passphrase hash for future verification (after successful validation)
+        let session_token = jwt_handler
+            .create_jwt_token(Some(24)) // 24-hour expiration
+            .await
+            .map_err(|e| VaultError::AuthenticationFailed(format!("JWT creation failed: {}", e)))?;
+
+        log::debug!("Created JWT session token with 24-hour expiration");
+
+        // Step 7: Store passphrase hash for future verification (after successful validation)
         self.store_passphrase_hash(&passphrase).await?;
 
-        // Step 9: Persist JWT session to secure storage for cross-process access
-        // Store the passphrase-derived JWT key for proper session validation
+        // Step 8: Persist JWT session token (RSA keys stay in filesystem)
         if let Err(e) = self
-            .persist_jwt_session(session_token.clone(), jwt_key.clone())
+            .persist_jwt_session(session_token.clone())
             .await
         {
             // Log error but don't fail unlock - session persistence is not critical
             log::warn!("Failed to persist JWT session to storage: {}", e);
         } else {
-            log::debug!("JWT session with passphrase-derived key persisted successfully");
+            log::debug!("JWT session persisted successfully");
         }
 
-        // Step 10: Atomically update all session state
+        // Step 9: Atomically update all session state
         {
             // Store the passphrase securely in memory (using SecretString from secrecy crate)
             let mut passphrase_guard = self.passphrase.lock().await;
@@ -151,11 +165,6 @@ impl LocalVaultProvider {
             let mut key_guard = self.encryption_key.lock().await;
             *key_guard = Some(encryption_key);
             drop(key_guard);
-
-            // Store the JWT signing key for session validation
-            let mut jwt_key_guard = self.jwt_key.lock().await;
-            *jwt_key_guard = Some(jwt_key);
-            drop(jwt_key_guard);
 
             // Finally, unlock the vault
             if let Ok(mut locked_guard) = self.locked.lock() {

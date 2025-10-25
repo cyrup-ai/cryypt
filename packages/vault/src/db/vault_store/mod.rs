@@ -2,7 +2,7 @@
 //!
 //! Contains the main store traits, types, and error handling for vault storage operations.
 
-use crate::auth::JwtHandler;
+use crate::auth::{JwtHandler, RsaKeyManager};
 use crate::config::VaultConfig;
 use crate::db::dao::{Error as DaoError, SurrealDbDao, TableType};
 use crate::error::{VaultError, VaultResult};
@@ -101,7 +101,7 @@ pub struct LocalVaultProvider {
     pub(crate) passphrase: Arc<Mutex<Option<Passphrase>>>,
     pub(crate) session_token: Arc<Mutex<Option<String>>>,
     pub(crate) encryption_key: Arc<Mutex<Option<Vec<u8>>>>,
-    pub(crate) jwt_key: Arc<Mutex<Option<Vec<u8>>>>,
+    pub(crate) rsa_key_manager: RsaKeyManager,
     pub(crate) jwt_handler: Arc<JwtHandler>,
     pub(crate) encryption_service: crate::services::EncryptionService,
 }
@@ -148,6 +148,9 @@ impl LocalVaultProvider {
             base64::engine::general_purpose::STANDARD.encode(&hash[..16]) // Use first 16 bytes as vault ID
         };
 
+        // Initialize RSA key manager
+        let rsa_key_manager = RsaKeyManager::new(RsaKeyManager::default_path());
+
         // Initialize the vault provider
         let provider = Self {
             dao: SurrealDbDao::new(db, "vault_entries", TableType::Document),
@@ -156,8 +159,14 @@ impl LocalVaultProvider {
             passphrase: Arc::new(Mutex::new(None)),
             session_token: Arc::new(Mutex::new(None)),
             encryption_key: Arc::new(Mutex::new(None)),
-            jwt_key: Arc::new(Mutex::new(None)),
-            jwt_handler: Arc::new(JwtHandler::new(vault_id)),
+            rsa_key_manager,
+            jwt_handler: Arc::new({
+                // Initialize with dummy keys - will be loaded from filesystem on demand
+                // This allows the handler to exist before unlock
+                let dummy_private = vec![0u8; 32];
+                let dummy_public = vec![0u8; 32];
+                JwtHandler::new(vault_id.clone(), dummy_private, dummy_public)
+            }),
             encryption_service: crate::services::EncryptionService::new(),
         };
 

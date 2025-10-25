@@ -16,8 +16,6 @@ pub struct JwtSessionRecord {
     pub vault_path_hash: String,
     /// JWT token (Base64 encoded for storage)
     pub session_token_encrypted: String,
-    /// JWT signing key (Base64 encoded for storage)
-    pub jwt_key_encrypted: String,
     /// Encryption salt used for key derivation (Base64 encoded)
     pub encryption_salt: String,
     /// When the session was created
@@ -33,15 +31,13 @@ impl LocalVaultProvider {
     pub(crate) async fn persist_jwt_session(
         &self,
         session_token: String,
-        jwt_key: Vec<u8>,
     ) -> VaultResult<()> {
         log::debug!("PERSIST_SESSION: Starting JWT session persistence");
 
-        // For session persistence, we'll store the JWT and key directly (base64 encoded)
+        // For session persistence, we'll store the JWT token directly (base64 encoded)
         // The SurrealDB database file itself provides the security boundary
         // This avoids the circular dependency of encrypting with the encryption key
         let token_b64 = BASE64_STANDARD.encode(session_token.as_bytes());
-        let jwt_key_b64 = BASE64_STANDARD.encode(&jwt_key);
 
         // We don't store the encryption key in the session - it will be re-derived from passphrase
         // when needed. The session only persists the JWT authentication state.
@@ -63,7 +59,6 @@ impl LocalVaultProvider {
             "UPSERT {} SET 
                 vault_path_hash = $vault_path_hash,
                 session_token_encrypted = $session_token_encrypted,
-                jwt_key_encrypted = $jwt_key_encrypted,
                 encryption_salt = $encryption_salt,
                 created_at = $created_at,
                 expires_at = $expires_at,
@@ -76,7 +71,6 @@ impl LocalVaultProvider {
             .query(&upsert_query)
             .bind(("vault_path_hash", vault_path_hash.clone()))
             .bind(("session_token_encrypted", token_b64))
-            .bind(("jwt_key_encrypted", jwt_key_b64))
             .bind(("encryption_salt", salt_b64))
             .bind(("created_at", surrealdb::value::Datetime::from(now)))
             .bind(("expires_at", surrealdb::value::Datetime::from(expires_at)))
@@ -97,7 +91,7 @@ impl LocalVaultProvider {
     }
 
     /// Restore JWT session from SurrealDB if valid and unexpired
-    pub(crate) async fn restore_jwt_session(&self) -> VaultResult<Option<(String, Vec<u8>)>> {
+    pub(crate) async fn restore_jwt_session(&self) -> VaultResult<Option<String>> {
         log::debug!("RESTORE_SESSION: Attempting JWT session restoration");
 
         let vault_path_hash = self.create_vault_path_hash();
@@ -147,10 +141,6 @@ impl LocalVaultProvider {
                     .decode(&record.session_token_encrypted)
                     .map_err(|_| VaultError::Crypto("Invalid token format".to_string()))?;
 
-                let jwt_key = BASE64_STANDARD
-                    .decode(&record.jwt_key_encrypted)
-                    .map_err(|_| VaultError::Crypto("Invalid key format".to_string()))?;
-
                 let jwt_token = String::from_utf8(token_bytes)
                     .map_err(|_| VaultError::Crypto("Invalid JWT token encoding".to_string()))?;
 
@@ -161,7 +151,7 @@ impl LocalVaultProvider {
                     "RESTORE_SESSION: Successfully restored JWT session for vault hash: {}",
                     vault_path_hash
                 );
-                Ok(Some((jwt_token, jwt_key)))
+                Ok(Some(jwt_token))
             }
             None => {
                 log::debug!("RESTORE_SESSION: No existing session found");
@@ -249,7 +239,6 @@ impl LocalVaultProvider {
     pub(crate) async fn populate_session_state(
         &self,
         jwt_token: String,
-        jwt_key: Vec<u8>,
     ) -> VaultResult<()> {
         log::debug!("POPULATE_SESSION: Restoring in-memory JWT session state");
 
@@ -257,11 +246,6 @@ impl LocalVaultProvider {
         let mut token_guard = self.session_token.lock().await;
         *token_guard = Some(jwt_token);
         drop(token_guard);
-
-        // Store the JWT signing key
-        let mut jwt_key_guard = self.jwt_key.lock().await;
-        *jwt_key_guard = Some(jwt_key);
-        drop(jwt_key_guard);
 
         // Note: We do NOT unlock the vault here because we don't have the encryption key
         // The vault will remain locked until a passphrase is provided to derive the encryption key
@@ -280,9 +264,9 @@ impl LocalVaultProvider {
         passphrase: &crate::operation::Passphrase,
     ) -> VaultResult<bool> {
         // First try to restore JWT session
-        if let Some((jwt_token, jwt_key)) = self.restore_jwt_session().await? {
+        if let Some(jwt_token) = self.restore_jwt_session().await? {
             // Populate JWT session state
-            self.populate_session_state(jwt_token, jwt_key).await?;
+            self.populate_session_state(jwt_token).await?;
 
             // Derive encryption key from passphrase
             let _encryption_key = self.derive_encryption_key(passphrase).await?;
@@ -303,10 +287,8 @@ impl LocalVaultProvider {
     pub(crate) async fn has_valid_jwt_session(&self) -> bool {
         // Quick check for in-memory JWT session state
         let token_guard = self.session_token.lock().await;
-        let jwt_key_guard = self.jwt_key.lock().await;
-        let has_jwt_state = token_guard.is_some() && jwt_key_guard.is_some();
+        let has_jwt_state = token_guard.is_some();
         drop(token_guard);
-        drop(jwt_key_guard);
         has_jwt_state
     }
 

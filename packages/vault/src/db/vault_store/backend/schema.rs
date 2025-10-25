@@ -26,13 +26,25 @@ impl LocalVaultProvider {
         .await
         .map_err(|e| DaoError::Database(e.to_string()))?;
 
+        // Define vault_config table for RSA key configuration
+        db.query(
+            "
+            DEFINE TABLE IF NOT EXISTS vault_config SCHEMAFULL;
+            DEFINE FIELD rsa_key_path ON TABLE vault_config TYPE string;
+            DEFINE FIELD rsa_public_key_spki ON TABLE vault_config TYPE string;
+            DEFINE FIELD created_at ON TABLE vault_config TYPE datetime;
+            DEFINE FIELD updated_at ON TABLE vault_config TYPE datetime;
+            ",
+        )
+        .await
+        .map_err(|e| DaoError::Database(e.to_string()))?;
+
         // Define JWT sessions table for secure session persistence
         db.query(
             "
             DEFINE TABLE IF NOT EXISTS jwt_sessions SCHEMAFULL;
             DEFINE FIELD vault_path_hash ON TABLE jwt_sessions TYPE string;
             DEFINE FIELD session_token_encrypted ON TABLE jwt_sessions TYPE string;
-            DEFINE FIELD jwt_key_encrypted ON TABLE jwt_sessions TYPE string;
             DEFINE FIELD encryption_salt ON TABLE jwt_sessions TYPE string;
             DEFINE FIELD created_at ON TABLE jwt_sessions TYPE datetime;
             DEFINE FIELD expires_at ON TABLE jwt_sessions TYPE datetime;

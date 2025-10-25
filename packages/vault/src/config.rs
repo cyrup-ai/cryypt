@@ -18,6 +18,9 @@ pub struct VaultConfig {
     /// Keychain configuration for PQCrypto keys
     #[serde(default)]
     pub keychain_config: KeychainConfig,
+    /// Path to RSA private key for JWT signing (None = use default ~/.ssh/cryypt.rsa)
+    #[serde(default)]
+    pub rsa_key_path: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -98,6 +101,7 @@ impl Default for VaultConfig {
             argon2_parallelism: default_parallelism(),
             ttl_cleanup_interval_seconds: default_ttl_cleanup_interval(),
             keychain_config: KeychainConfig::default(),
+            rsa_key_path: None,
         }
     }
 }

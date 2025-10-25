@@ -78,11 +78,11 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         // Attempt to restore existing JWT session if available
         // This enables cross-command session persistence without re-authentication
-        if let Ok(Some((jwt_token, jwt_key))) = provider.restore_jwt_session().await {
+        if let Ok(Some(jwt_token)) = provider.restore_jwt_session().await {
             log::info!("CLI_INIT: Found existing JWT session, restoring session state");
 
             // Populate in-memory JWT session state
-            if let Err(e) = provider.populate_session_state(jwt_token, jwt_key).await {
+            if let Err(e) = provider.populate_session_state(jwt_token).await {
                 log::warn!("CLI_INIT: Failed to populate session state: {}", e);
                 // Continue without session - user will need to authenticate
             } else {
@@ -118,6 +118,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
             command,
             global_vault_path,
             cli.passphrase.as_deref(),
+            cli.rsa_key_path,
             cli.json,
         )
         .await;

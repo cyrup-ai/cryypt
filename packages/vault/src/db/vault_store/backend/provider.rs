@@ -29,70 +29,88 @@ impl VaultOperation for LocalVaultProvider {
 
     // Check if user is authenticated (JWT-based)
     fn is_authenticated(&self) -> bool {
-        // Priority 1: Check for restored JWT session in memory (from session persistence)
+        // Check for JWT session token in memory
         if let Ok(token_guard) = self.session_token.try_lock() {
             if let Some(ref jwt_token) = *token_guard {
-                log::info!("AUTH_CHECK: Found restored JWT token in memory");
-                // Also check if we have the JWT signing key
-                if let Ok(jwt_key_guard) = self.jwt_key.try_lock() {
-                    if let Some(ref jwt_key) = *jwt_key_guard {
-                        log::debug!(
-                            "AUTH_CHECK: Found restored JWT key in memory, validating token"
+                log::debug!("AUTH_CHECK: Found JWT token in memory, validating...");
+
+                // Load RSA keys from filesystem for validation
+                use crate::auth::RsaKeyManager;
+                let rsa_manager = RsaKeyManager::new(RsaKeyManager::default_path());
+
+                // Attempt to load existing RSA keys (no passphrase needed for public key)
+                let keys_result = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        rsa_manager.load().await
+                    })
+                });
+
+                match keys_result {
+                    Ok((private_pkcs1, public_pkcs1)) => {
+                        // Convert public key to SPKI for verification
+                        use crate::auth::key_converter::{pkcs1_to_pkcs8, pkcs1_public_to_spki};
+
+                        let private_pkcs8 = match pkcs1_to_pkcs8(&private_pkcs1) {
+                            Ok(key) => key,
+                            Err(e) => {
+                                log::warn!("AUTH_CHECK: Private key conversion failed: {}", e);
+                                return false;
+                            }
+                        };
+
+                        let public_spki = match pkcs1_public_to_spki(&public_pkcs1) {
+                            Ok(key) => key,
+                            Err(e) => {
+                                log::warn!("AUTH_CHECK: Public key conversion failed: {}", e);
+                                return false;
+                            }
+                        };
+
+                        // Create JWT handler with loaded keys
+                        let vault_id = self.config.vault_path.to_string_lossy().to_string();
+                        let jwt_handler = crate::auth::JwtHandler::new(
+                            vault_id,
+                            private_pkcs8,
+                            public_spki,
                         );
-                        // Validate the restored JWT token using the restored key
-                        let validation_result = tokio::task::block_in_place(|| {
+
+                        // Validate token
+                        let is_valid = tokio::task::block_in_place(|| {
                             tokio::runtime::Handle::current().block_on(async {
-                                use crate::auth::JwtHandler;
-
-                                let vault_id = self.config.vault_path.to_string_lossy().to_string();
-                                let jwt_handler = JwtHandler::new(vault_id);
-
-                                let result = jwt_handler.is_jwt_valid(jwt_token, jwt_key).await;
-
-                                if result {
-                                    log::debug!("AUTH_CHECK: JWT validation successful with restored key");
-                                } else {
-                                    log::debug!("AUTH_CHECK: JWT validation failed with restored key");
-                                }
-
-                                result
+                                jwt_handler.is_jwt_valid(jwt_token).await
                             })
                         });
 
-                        if validation_result {
-                            log::debug!(
-                                "AUTH_CHECK: Authentication successful with restored session"
-                            );
+                        if is_valid {
+                            log::debug!("AUTH_CHECK: JWT validation successful");
                             return true;
                         } else {
-                            log::debug!("AUTH_CHECK: Authentication failed with restored session");
+                            log::debug!("AUTH_CHECK: JWT validation failed");
                         }
-                    } else {
-                        log::debug!("AUTH_CHECK: No restored JWT key found in memory");
                     }
-                } else {
-                    log::debug!("AUTH_CHECK: Could not acquire JWT key lock");
+                    Err(e) => {
+                        log::warn!("AUTH_CHECK: Failed to load RSA keys: {}", e);
+                    }
                 }
             } else {
-                log::debug!("AUTH_CHECK: No restored JWT token found in memory");
+                log::debug!("AUTH_CHECK: No JWT token found in memory");
             }
         } else {
             log::debug!("AUTH_CHECK: Could not acquire session token lock");
         }
 
-        false // No JWT = not authenticated
+        false
     }
 
-    // Check if vault file is PQCrypto armored
+    // Check if vault is locked in memory
     fn is_locked(&self) -> bool {
-        let vault_path = &self.config.vault_path;
-        let armored_path = vault_path.with_extension("vault");
-        let unarmored_path = vault_path.with_extension("db");
-
-        // Vault is locked if:
-        // 1. Armored file (.vault) exists, OR
-        // 2. Neither file exists (new vault)
-        armored_path.exists() || (!armored_path.exists() && !unarmored_path.exists())
+        // Check in-memory locked state (synchronous check to avoid async runtime conflicts)
+        if let Ok(guard) = self.locked.try_lock() {
+            *guard
+        } else {
+            // If we can't acquire the lock, assume locked for safety
+            true
+        }
     }
 
     // Check if master key is available for encryption
@@ -439,35 +457,24 @@ impl VaultOperation for LocalVaultProvider {
 }
 
 impl LocalVaultProvider {
-    /// Get vault-specific JWT secret (independent of master key)
-    /// This ensures JWT authentication works even when vault is locked
-    fn get_vault_jwt_secret(&self) -> VaultResult<Vec<u8>> {
-        // Use vault ID + fixed salt for deterministic but independent secret
-        let jwt_context = format!("jwt_auth_vault_{}", self.jwt_handler.vault_id());
-
-        let master_key_provider = MasterKeyBuilder::from_passphrase(&jwt_context);
-        master_key_provider
-            .resolve()
-            .map(|key| key.to_vec())
-            .map_err(|e| VaultError::Internal(format!("Vault JWT secret derivation failed: {}", e)))
-    }
-
-    /// Create JWT token using vault-specific secret (for login operations)
+    /// Create JWT token using RSA keys (for login operations)
     pub async fn create_vault_jwt_token(&self, expires_in_hours: u64) -> VaultResult<String> {
-        use crate::auth::JwtHandler;
+        use crate::auth::{JwtHandler, RsaKeyManager};
+        use crate::auth::key_converter::{pkcs1_to_pkcs8, pkcs1_public_to_spki};
 
-        // Get vault ID
+        // Load RSA keys from filesystem
+        let rsa_manager = RsaKeyManager::new(RsaKeyManager::default_path());
+        let (private_pkcs1, public_pkcs1) = rsa_manager.load().await?;
+
+        // Convert to JWT formats
+        let private_pkcs8 = pkcs1_to_pkcs8(&private_pkcs1)?;
+        let public_spki = pkcs1_public_to_spki(&public_pkcs1)?;
+
+        // Create token
         let vault_id = self.config.vault_path.to_string_lossy().to_string();
+        let jwt_handler = JwtHandler::new(vault_id, private_pkcs8, public_spki);
 
-        // Get master key from session
-        let key_guard = self.encryption_key.lock().await;
-        let master_key = key_guard
-            .as_ref()
-            .ok_or_else(|| VaultError::VaultLocked)?;
-
-        // Use JwtHandler service
-        let jwt_handler = JwtHandler::new(vault_id);
-        jwt_handler.create_jwt_token(master_key, Some(expires_in_hours)).await
+        jwt_handler.create_jwt_token(Some(expires_in_hours)).await
     }
 
     /// Emergency lockdown function - Enhanced security system
@@ -555,12 +562,34 @@ impl LocalVaultProvider {
     /// Apply PQCrypto file armor (lock operation: .db → .vault)
     pub async fn apply_pqcrypto_armor(&self) -> VaultResult<()> {
         let config = self.config.keychain_config.clone();
+        let db_path = &self.config.vault_path;
+        let vault_path = db_path.with_extension("vault");
+
+        // Smart key_id determination:
+        // - If .vault exists, read and reuse existing key_id
+        // - If .vault doesn't exist, generate new UUID-based key_id
+        let key_id = if vault_path.exists() {
+            use crate::services::armor::read_key_id_from_vault_file;
+            read_key_id_from_vault_file(&vault_path)
+                .await
+                .map_err(|e| {
+                    VaultError::Provider(format!(
+                        "Failed to read key ID from {}: {}",
+                        vault_path.display(),
+                        e
+                    ))
+                })?
+        } else {
+            // Generate new UUID-based key_id for fresh vault
+            use crate::tui::cli::commands::generate_unique_key_id;
+            generate_unique_key_id(&config.pq_namespace)
+        };
 
         // Auto-generate keys if they don't exist and auto_generate is enabled
         if config.auto_generate
-            && let Err(_) = load_pq_key_from_keychain(&config.pq_namespace, 1).await
+            && let Err(_) = load_pq_key_from_keychain(&key_id).await
         {
-            generate_pq_keypair(&config.pq_namespace, 1, SecurityLevel::Level3)
+            generate_pq_keypair(&key_id, SecurityLevel::Level3)
                 .await
                 .map_err(|e| VaultError::Provider(format!("Failed to generate PQ keys: {}", e)))?;
         }
@@ -570,28 +599,35 @@ impl LocalVaultProvider {
         let key_storage = KeychainStorage::new("vault");
         let armor_service = PQCryptoArmorService::new(key_storage, SecurityLevel::Level3);
 
-        let db_path = &self.config.vault_path;
-        let vault_path = db_path.with_extension("vault");
-
         armor_service
-            .armor(db_path, &vault_path, &config.pq_namespace, 1)
+            .armor(db_path, &vault_path, &key_id)
             .await
     }
 
     /// Remove PQCrypto file armor (unlock operation: .vault → .db)  
     pub async fn remove_pqcrypto_armor(&self) -> VaultResult<()> {
-        let config = self.config.keychain_config.clone();
+        let vault_path = self.config.vault_path.with_extension("vault");
+        let db_path = &self.config.vault_path;
+
+        // Read key_id from .vault file header
+        use crate::services::armor::read_key_id_from_vault_file;
+        let key_id = read_key_id_from_vault_file(&vault_path)
+            .await
+            .map_err(|e| {
+                VaultError::Provider(format!(
+                    "Failed to read key ID from {}: {}",
+                    vault_path.display(),
+                    e
+                ))
+            })?;
 
         // Use armor service for the actual operation
         use crate::services::{KeychainStorage, PQCryptoArmorService};
         let key_storage = KeychainStorage::new("vault");
         let armor_service = PQCryptoArmorService::new(key_storage, SecurityLevel::Level3);
 
-        let vault_path = self.config.vault_path.with_extension("vault");
-        let db_path = &self.config.vault_path;
-
         armor_service
-            .unarmor(&vault_path, db_path, &config.pq_namespace, 1)
+            .unarmor(&vault_path, db_path, &key_id)
             .await
     }
 }

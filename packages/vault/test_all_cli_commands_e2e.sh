@@ -89,10 +89,6 @@ PY
   JSON_OUT="$LAST_JSON"
 }
 
-# Generate PQCrypto keys in keychain
-run "Rotate PQ keys (setup)" \
-  "$VAULT_BIN" --json rotate-keys --namespace pq_armor --force
-
 # 1) NEW - default XDG path and custom path
 # vault new creates .vault (armored) - must unlock before use
 DEFAULT_BASE="${XDG_CONFIG_HOME}/cryypt/cryypt"
@@ -102,7 +98,7 @@ require_file "${DEFAULT_BASE}.vault"
 
 # Unlock to use it
 run "unlock default vault" \
-  "$VAULT_BIN" unlock --vault-path "$DEFAULT_BASE" --keychain-namespace pq_armor
+  "$VAULT_BIN" unlock --vault-path "$DEFAULT_BASE"
 require_dir "${DEFAULT_BASE}.db"
 
 CUSTOM_BASE="${WORKDIR}/myvault"
@@ -113,7 +109,7 @@ require_file "${CUSTOM_BASE}.vault"
 
 # Unlock to use it
 run "unlock custom vault" \
-  "$VAULT_BIN" unlock --vault-path "$CUSTOM_BASE" --keychain-namespace pq_armor
+  "$VAULT_BIN" unlock --vault-path "$CUSTOM_BASE"
 require_dir "${CUSTOM_BASE}.db"
 
 # 2) CRUD with and without namespace
@@ -144,12 +140,14 @@ set +e; "$VAULT_BIN" --vault-path "$CUSTOM_BASE" --passphrase "passB" get beta >
 # 4) LOGIN prior to CHANGE PASSPHRASE (required for authenticated operation)
 run_json "login before change-passphrase (JSON)" \
   "$VAULT_BIN" --json --vault-path "$CUSTOM_BASE" login --passphrase "passB" --expires-in 1
-JWT_TOKEN_CP="$(json_get "$JSON_OUT" token || true)"
+JWT_TOKEN_CP="$(json_get "$JSON_OUT" jwt_token || true)"
 [[ -n "${JWT_TOKEN_CP:-}" ]] && export VAULT_JWT="$JWT_TOKEN_CP"
 
 # 5) CHANGE PASSPHRASE
 run "change-passphrase" \
   "$VAULT_BIN" --vault-path "$CUSTOM_BASE" change-passphrase --old-passphrase "passB" --new-passphrase "passC"
+# Unset JWT token to force passphrase authentication for next test
+unset VAULT_JWT
 # Old should fail; we expect an error and do not fail script here, just assert it fails
 set +e; "$VAULT_BIN" --vault-path "$CUSTOM_BASE" --passphrase "passB" get --namespace ns1 beta >/dev/null 2>&1; [[ $? -ne 0 ]] || fail "old passphrase unexpectedly worked"; set -e
 run "get with new passphrase" \
@@ -158,7 +156,7 @@ run "get with new passphrase" \
 # 5) LOGIN (JWT) and RUN
 run_json "login (JSON)" \
   "$VAULT_BIN" --json --vault-path "$CUSTOM_BASE" login --passphrase "passC" --expires-in 1
-JWT_TOKEN="$(json_get "$JSON_OUT" token || true)"
+JWT_TOKEN="$(json_get "$JSON_OUT" jwt_token || true)"
 [[ -n "${JWT_TOKEN:-}" ]] || info "JWT not present in JSON; continuing with passphrase for ops"
 # If token present, test VAULT_JWT and --jwt paths
 if [[ -n "${JWT_TOKEN:-}" ]]; then
@@ -177,6 +175,11 @@ run "logout" \
 FILE_BASE="${WORKDIR}/filevault"
 run "create vault for armor test" \
   "$VAULT_BIN" new --vault-path "$FILE_BASE" --passphrase "armorpass"
+require_file "${FILE_BASE}.vault"
+
+# Unlock to get .db for data operations
+run "unlock armor test vault" \
+  "$VAULT_BIN" unlock --vault-path "$FILE_BASE"
 require_dir "${FILE_BASE}.db"
 
 # Add test data to vault
@@ -191,7 +194,7 @@ require_file "${FILE_BASE}.vault"
 
 # Test UNLOCK (keychain-based PQCrypto unarmor)
 run "unlock (keychain-based)" \
-  "$VAULT_BIN" --json unlock --vault-path "$FILE_BASE" --keychain-namespace pq_armor
+  "$VAULT_BIN" --json unlock --vault-path "$FILE_BASE"
 require_dir "${FILE_BASE}.db"
 [[ ! -f "${FILE_BASE}.vault" ]] || fail ".vault not removed after unlock"
 
@@ -199,17 +202,17 @@ require_dir "${FILE_BASE}.db"
 run "verify data integrity after unlock" \
   "$VAULT_BIN" --vault-path "$FILE_BASE" --passphrase "armorpass" get armor_test | grep -q "armor_value"
 
-# 8) ROTATE-KEYS (re-armor validation with new key version)
+# 8) ROTATE-KEYS (re-armor validation with new UUID-based key)
 run "lock again for rotation test" \
   "$VAULT_BIN" lock --vault-path "$FILE_BASE" --keychain-namespace pq_armor
 require_file "${FILE_BASE}.vault"
 
-run "rotate-keys (generate new key version)" \
-  "$VAULT_BIN" --json rotate-keys --namespace pq_armor --force
+run "rotate-keys (generate new UUID-based key, delete old)" \
+  "$VAULT_BIN" --json rotate-keys --vault-path "$FILE_BASE" --namespace pq_armor --force
 
-# After rotation, unlock with new key version (auto-detected)
+# After rotation, unlock with new key (auto-detected from .vault header)
 run "unlock after rotation" \
-  "$VAULT_BIN" unlock --vault-path "$FILE_BASE" --keychain-namespace pq_armor
+  "$VAULT_BIN" unlock --vault-path "$FILE_BASE"
 require_dir "${FILE_BASE}.db"
 
 # Verify data still intact after key rotation

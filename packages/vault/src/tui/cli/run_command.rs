@@ -205,12 +205,12 @@ pub async fn handle_enhanced_run(
         .ok_or("JWT token required for vault run operations")?;
 
     // 2. Validate JWT token (emergency lockdown on failure)
-    let (jwt_handler, master_key) = vault
+    let (jwt_handler, _master_key) = vault
         .get_jwt_operations()
         .await
         .map_err(|e| format!("Failed to get JWT operations: {}", e))?;
 
-    if !jwt_handler.is_jwt_valid(&token, &master_key).await {
+    if !jwt_handler.is_jwt_valid(&token).await {
         log_security_event(
             "CLI_RUN",
             "JWT validation failed - emergency lockdown",

@@ -78,22 +78,34 @@ impl LocalVaultProvider {
         old_passphrase: Passphrase,
         new_passphrase: Passphrase,
     ) -> VaultResult<()> {
-        // Verify old passphrase matches current one
-        let mut passphrase_guard = self.passphrase.lock().await;
+        // Update passphrase hash in database (also verifies old passphrase)
+        self.re_encrypt_with_new_passphrase(
+            old_passphrase.expose_secret(),
+            new_passphrase.expose_secret(),
+        )
+        .await?;
 
-        match passphrase_guard.as_ref() {
-            Some(current_passphrase) => {
-                if current_passphrase.expose_secret() != old_passphrase.expose_secret() {
-                    return Err(VaultError::InvalidPassphrase);
-                }
-            }
-            None => {
-                return Err(VaultError::VaultLocked);
-            }
+        // Update in-memory passphrase if it exists
+        let mut passphrase_guard = self.passphrase.lock().await;
+        if passphrase_guard.is_some() {
+            *passphrase_guard = Some(new_passphrase.clone());
+        }
+        drop(passphrase_guard);
+
+        // Invalidate JWT session to force re-authentication with new passphrase
+        // This prevents old JWT tokens from being used after passphrase change
+        let mut token_guard = self.session_token.lock().await;
+        *token_guard = None;
+        drop(token_guard);
+
+        // Delete persisted JWT session from database
+        let vault_path_hash = self.create_vault_path_hash();
+        if let Err(e) = self.delete_jwt_session(&vault_path_hash).await {
+            log::warn!("Failed to delete persisted JWT session: {}", e);
+            // Continue anyway - session will expire naturally
         }
 
-        // Update to new passphrase
-        *passphrase_guard = Some(new_passphrase);
+        log::info!("Passphrase changed and JWT session invalidated");
 
         Ok(())
     }

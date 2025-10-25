@@ -36,6 +36,10 @@ pub struct Cli {
     #[arg(long)]
     pub jwt: Option<String>,
 
+    /// Path to RSA private key for JWT signing (default: ~/.ssh/cryypt.rsa)
+    #[arg(long = "rsa-key", short = 'k', global = true)]
+    pub rsa_key_path: Option<PathBuf>,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -236,13 +240,13 @@ pub enum Commands {
         /// Path to PQCrypto private key file (optional - falls back to keychain)
         #[arg(long)]
         pq_private_key: Option<PathBuf>,
-        /// Keychain namespace for PQCrypto keys (default: "pq_armor")
-        #[arg(long, default_value = "pq_armor")]
-        keychain_namespace: String,
     },
 
     /// Rotate PQCrypto keys for enhanced security
     RotateKeys {
+        /// Vault path for re-encryption (required)
+        #[arg(long)]
+        vault_path: PathBuf,
         /// Namespace for key rotation (defaults to pq_armor)
         #[arg(long, default_value = "pq_armor")]
         namespace: String,
@@ -255,29 +259,68 @@ pub enum Commands {
 // SUBTASK4: PQCrypto key management functions
 
 /// Load PQCrypto key from OS keychain  
-pub async fn load_pq_key_from_keychain(namespace: &str, version: u32) -> Result<Vec<u8>, String> {
+pub async fn load_pq_key_from_keychain(key_id: &str) -> Result<Vec<u8>, String> {
     let keychain_store = KeychainStore::for_app("vault");
 
-    let full_key_id = format!("{}:v{}:pq_keypair", namespace, version);
-
+    // Use KeyRetriever with dummy namespace/version since we pass full key_id
     let key_data = KeyRetriever::new()
         .with_store(keychain_store)
-        .with_namespace(namespace)
-        .version(version)
-        .retrieve(full_key_id)
+        .with_namespace("_") // Dummy, overridden by key_id parameter
+        .version(1)          // Dummy, overridden by key_id parameter
+        .retrieve(key_id)
         .await;
 
     if key_data.is_empty() {
-        return Err("PQCrypto keypair not found in keychain".to_string());
+        return Err(format!("PQCrypto keypair '{}' not found in keychain", key_id));
     }
 
     Ok(key_data)
 }
 
+/// Generate unique PQCrypto key ID with UUID v4
+///
+/// # Arguments
+/// * `namespace` - Keychain namespace (e.g., "pq_armor")
+///
+/// # Returns
+/// Unique key ID in format "{namespace}:{uuid}:pq_keypair"
+///
+/// # Performance
+/// - Zero allocations beyond the returned String
+/// - Inline for hot path optimization
+#[inline]
+pub fn generate_unique_key_id(namespace: &str) -> String {
+    use uuid::Uuid;
+    let uuid = Uuid::new_v4();
+    // Pre-allocate exact capacity to avoid reallocation
+    let mut key_id = String::with_capacity(namespace.len() + 37 + 11); // namespace + ":" + uuid + ":pq_keypair"
+    key_id.push_str(namespace);
+    key_id.push(':');
+    key_id.push_str(&uuid.to_string());
+    key_id.push_str(":pq_keypair");
+    key_id
+}
+
+/// Parse key ID to extract namespace component
+///
+/// # Arguments
+/// * `key_id` - Full key ID (e.g., "pq_armor:uuid:pq_keypair")
+///
+/// # Returns
+/// Some(namespace) if format is valid, None otherwise
+///
+/// # Performance
+/// - Zero allocations if namespace is not needed
+/// - Returns owned String to avoid lifetime issues
+#[inline]
+pub fn parse_key_id_namespace(key_id: &str) -> Option<String> {
+    // Fast path: find first colon
+    key_id.find(':').map(|pos| key_id[..pos].to_string())
+}
+
 /// Generate and store new PQCrypto keypair
 pub async fn generate_pq_keypair(
-    namespace: &str,
-    version: u32,
+    key_id: &str,
     security_level: SecurityLevel,
 ) -> Result<(), String> {
     // Generate Kyber keypair
@@ -298,7 +341,7 @@ pub async fn generate_pq_keypair(
     use cryypt_key::{KeyId, SimpleKeyId, traits::KeyImport};
 
     let keychain_store = KeychainStore::for_app("vault");
-    let key_id = SimpleKeyId::new(format!("{}:v{}:pq_keypair", namespace, version));
+    let simple_key_id = SimpleKeyId::new(key_id);
 
     use std::sync::{Arc, Mutex};
 
@@ -306,7 +349,7 @@ pub async fn generate_pq_keypair(
     let error_state_clone = Arc::clone(&error_state);
 
     keychain_store
-        .store(&key_id, &keypair)
+        .store(&simple_key_id, &keypair)
         .on_result(move |result| match result {
             Ok(()) => (),
             Err(e) => {
@@ -336,34 +379,20 @@ pub async fn generate_pq_keypair(
 pub async fn handle_lock_command(
     vault_path: &std::path::Path,
     pq_public_key: Option<&std::path::Path>,
-    keychain_namespace: &str,
-    key_version: u32,
+    key_id: &str,
     use_json: bool,
 ) -> Result<(), String> {
     // 1. Security validation of all inputs
-    let validated_namespace = match validate_keychain_namespace(keychain_namespace) {
-        Ok(namespace) => namespace,
-        Err(e) => {
-            let error_msg = format!("Namespace validation failed: {}", e);
-            audit_security_violation(
-                "Invalid keychain namespace",
-                SecuritySeverity::Medium,
-                &error_msg,
-            )
-            .await;
-            return Err(format!("Invalid keychain namespace: {}", e));
-        }
-    };
-
-    let validated_key_version = match validate_key_version(key_version) {
-        Ok(version) => version,
-        Err(e) => {
-            let error_msg = format!("Key version validation failed: {}", e);
-            audit_security_violation("Invalid key version", SecuritySeverity::Medium, &error_msg)
-                .await;
-            return Err(format!("Invalid key version: {}", e));
-        }
-    };
+    if key_id.is_empty() {
+        let error_msg = "Key ID cannot be empty";
+        audit_security_violation(
+            "Invalid key ID",
+            SecuritySeverity::Medium,
+            error_msg,
+        )
+        .await;
+        return Err(error_msg.to_string());
+    }
 
     // 2. Validate and canonicalize paths
     let db_path = match validate_vault_path(&vault_path.with_extension("db"), "db") {
@@ -412,7 +441,7 @@ pub async fn handle_lock_command(
 
     // Single unified path for all armor operations
     armor_service
-        .armor(&db_path, &vault_path, &validated_namespace, validated_key_version)
+        .armor(&db_path, &vault_path, key_id)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -437,8 +466,7 @@ pub async fn handle_lock_command(
 pub async fn handle_unlock_command(
     vault_path: &std::path::Path,
     pq_private_key: Option<&std::path::Path>,
-    keychain_namespace: &str,
-    key_version: u32,
+    key_id: &str,
     use_json: bool,
 ) -> Result<(), String> {
     // 1. Validate input file exists and has .vault extension
@@ -468,7 +496,7 @@ pub async fn handle_unlock_command(
 
     // Single unified path for all unarmor operations
     armor_service
-        .unarmor(&vault_path, &db_path, keychain_namespace, key_version)
+        .unarmor(&vault_path, &db_path, key_id)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -488,69 +516,71 @@ pub async fn handle_unlock_command(
     Ok(())
 }
 
-/// Rotate PQCrypto keys with version increment
+/// Rotate PQCrypto keys with automatic UUID generation and cleanup
+///
+/// This function performs complete key rotation:
+/// 1. Reads old key_id from .vault file header
+/// 2. Generates new UUID-based key_id
+/// 3. Unarmors vault with old key
+/// 4. Armors vault with new key
+/// 5. Deletes old key from keychain
 pub async fn rotate_pq_keys(
+    vault_path: &std::path::Path,
     namespace: &str,
-    current_version: u32,
-    vault_paths: Vec<std::path::PathBuf>,
-) -> Result<u32, String> {
-    let new_version = current_version + 1;
+) -> Result<(), String> {
+    use crate::services::armor::read_key_id_from_vault_file;
+    
+    // Step 1: Read old key_id from .vault file header
+    let vault_file = vault_path.with_extension("vault");
+    if !vault_file.exists() {
+        return Err(format!(
+            "Vault file does not exist: {}",
+            vault_file.display()
+        ));
+    }
 
-    // Generate new keypair with incremented version
-    generate_pq_keypair(namespace, new_version, SecurityLevel::Level3)
+    let old_key_id = read_key_id_from_vault_file(&vault_file)
         .await
-        .map_err(|e| e.to_string())?;
-
-    // Re-encrypt all existing vaults with new keys
-    for vault_path in vault_paths {
-        if vault_path.with_extension("vault").exists() {
-            // Decrypt with old keys
-            handle_unlock_command(
-                &vault_path,
-                None, // Use keychain
-                namespace,
-                current_version,
-                false,
+        .map_err(|e| {
+            format!(
+                "Failed to read key ID from {}: {}",
+                vault_file.display(),
+                e
             )
-            .await
-            .map_err(|e| e.to_string())?;
+        })?;
 
-            // Re-encrypt with new keys
-            handle_lock_command(
-                &vault_path,
-                None, // Use keychain
-                namespace,
-                new_version,
-                false,
-            )
-            .await
-            .map_err(|e| e.to_string())?;
-        }
-    }
+    log::info!("Rotating key from: {}", old_key_id);
 
-    Ok(new_version)
-}
+    // Step 2: Generate new UUID-based key_id
+    let new_key_id = generate_unique_key_id(namespace);
+    log::info!("Rotating key to: {}", new_key_id);
 
-/// Detect the highest version number for keys in a namespace
-pub async fn detect_current_key_version(namespace: &str) -> Result<u32, String> {
-    // Start from version 1 and increment until no key found
-    let mut version = 1;
-    loop {
-        match load_pq_key_from_keychain(namespace, version).await {
-            Ok(_) => version += 1,
-            Err(_) => {
-                if version == 1 {
-                    return Err("No keys found in keychain for namespace".to_string());
-                }
-                return Ok(version - 1);
-            }
-        }
+    // Step 3: Generate new keypair in keychain
+    generate_pq_keypair(&new_key_id, SecurityLevel::Level3)
+        .await
+        .map_err(|e| format!("Failed to generate new keypair: {}", e))?;
 
-        // Safety check to prevent infinite loops
-        if version > 1000000 {
-            return Err("Version detection exceeded reasonable limit".to_string());
-        }
-    }
+    // Step 4: Unarmor with old key (.vault → .db)
+    handle_unlock_command(vault_path, None, &old_key_id, false)
+        .await
+        .map_err(|e| format!("Failed to unlock with old key: {}", e))?;
+
+    // Step 5: Re-armor with new key (.db → .vault)
+    handle_lock_command(vault_path, None, &new_key_id, false)
+        .await
+        .map_err(|e| format!("Failed to lock with new key: {}", e))?;
+
+    // Step 6: Delete old key from keychain
+    use crate::services::{KeychainStorage, key_storage::KeyStorage};
+    let keychain = KeychainStorage::default_app();
+    keychain
+        .delete(&old_key_id)
+        .await
+        .map_err(|e| format!("Failed to delete old key from keychain: {}", e))?;
+
+    log::info!("Key rotation complete. Old key deleted: {}", old_key_id);
+
+    Ok(())
 }
 
 use crate::tui::cli::vault_detection::{VaultState, detect_vault_state};
@@ -656,11 +686,11 @@ mod tests {
             .unwrap();
 
         // Test lock command with file-based public key (bypasses keychain)
+        let test_key_id = "test_namespace:12345678-1234-1234-1234-123456789abc:pq_keypair";
         handle_lock_command(
             &vault_path,
             Some(&public_key_file), // Use public key file for encryption
-            "test_namespace",
-            1,
+            test_key_id,
             false,
         )
         .await
@@ -674,8 +704,7 @@ mod tests {
         handle_unlock_command(
             &vault_path,
             Some(&private_key_file), // Use private key file for decryption
-            "test_namespace",
-            1,
+            test_key_id,
             false,
         )
         .await

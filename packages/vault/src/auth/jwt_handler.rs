@@ -28,41 +28,42 @@ pub struct VaultJwtClaims {
 #[derive(Debug)]
 pub struct JwtHandler {
     vault_id: String,
+    private_key_pkcs8: Vec<u8>,  // PKCS8 DER format for RS256 signing
+    public_key_spki: Vec<u8>,    // SPKI DER format for RS256 verification
 }
 
 impl JwtHandler {
-    /// Create new JWT handler for a specific vault
-    pub fn new(vault_id: String) -> Self {
-        Self { vault_id }
+    /// Create new JWT handler with RSA keys for RS256 signing
+    pub fn new(vault_id: String, private_key_pkcs8: Vec<u8>, public_key_spki: Vec<u8>) -> Self {
+        Self {
+            vault_id,
+            private_key_pkcs8,
+            public_key_spki,
+        }
     }
-
+    
     /// Get the vault ID for this handler
     pub fn vault_id(&self) -> &str {
         &self.vault_id
     }
 
-    /// Create JWT token for authenticated user
+    /// Create JWT token using RS256 asymmetric signing
     ///
     /// # Arguments
-    /// * `master_key` - The vault master key used for JWT secret derivation
     /// * `session_duration_hours` - Token expiration time in hours (default: 1)
     ///
     /// # Returns
-    /// JWT token string that user must provide for subsequent operations
+    /// JWT token string signed with RSA private key
     ///
     /// # Security
-    /// - Derives unique JWT secret from master key using Argon2
-    /// - Creates token with 1-hour expiration
-    /// - Includes vault_id and session_id claims for access control
+    /// - Uses RS256 (RSA-SHA256) asymmetric algorithm
+    /// - Private key never leaves this handler
+    /// - Token includes standard claims: sub, exp, iat, vault_id, session_id
     pub async fn create_jwt_token(
         &self,
-        master_key: &[u8],
         session_duration_hours: Option<u64>,
     ) -> VaultResult<String> {
         let duration_hours = session_duration_hours.unwrap_or(1);
-
-        // Derive JWT signing secret from master key
-        let jwt_secret = self.derive_jwt_secret(master_key)?;
 
         // Create JWT claims
         let now = SystemTime::now()
@@ -72,66 +73,106 @@ impl JwtHandler {
 
         let claims = VaultJwtClaims {
             sub: "vault_user".to_string(),
-            exp: now + (duration_hours as i64 * 3600), // Expiration
+            exp: now + (duration_hours as i64 * 3600),
             iat: now,
             vault_id: self.vault_id.clone(),
             session_id: uuid::Uuid::new_v4().to_string(),
         };
 
-        // Create JWT builder with HS256 algorithm
-        let jwt_builder = Jwt::builder()
-            .with_algorithm("HS256")
-            .with_secret(&jwt_secret);
+        // Sign JWT with RS256 using RSA private key via builder pattern
+        use cryypt_jwt::api::algorithm_builders::rs256_builder::RsJwtBuilder;
 
-        // Sign JWT token
-        let token = jwt_builder
-            .sign(claims)
-            .await
-            .map_err(|e| VaultError::AuthenticationFailed(format!("JWT creation failed: {}", e)))?;
+        let token_bytes = RsJwtBuilder::new()
+            .with_private_key(&self.private_key_pkcs8)
+            .with_claims(claims)
+            .on_result(|result| {
+                result.unwrap_or_else(|e| {
+                    log::error!("JWT signing failed: {}", e);
+                    Vec::new()
+                })
+            })
+            .sign()
+            .await;
+
+        // Validate token bytes are not empty
+        if token_bytes.is_empty() {
+            return Err(VaultError::AuthenticationFailed(
+                "JWT signing returned empty token".to_string(),
+            ));
+        }
+
+        // Convert bytes to string
+        let token = String::from_utf8(token_bytes)
+            .map_err(|e| VaultError::AuthenticationFailed(format!("Invalid JWT token encoding: {}", e)))?;
 
         Ok(token)
     }
 
-    /// Validate JWT token and extract claims
+    /// Validate JWT token using RS256 asymmetric verification
     ///
     /// # Arguments
     /// * `token` - JWT token string provided by user
-    /// * `master_key` - The vault master key for JWT secret derivation
     ///
     /// # Returns
     /// Validated JWT claims if token is valid and unexpired
     ///
     /// # Security
-    /// - Validates JWT signature using derived secret
+    /// - Verifies signature using RSA public key
     /// - Validates expiration timestamp (strict - no grace period)
     /// - Validates vault_id claim matches current vault
-    /// - Uses cryypt_jwt validation which includes all standard claim checks
-    pub async fn validate_jwt_token(
-        &self,
-        token: &str,
-        master_key: &[u8],
-    ) -> VaultResult<VaultJwtClaims> {
-        // Derive JWT signing secret from master key
-        let jwt_secret = self.derive_jwt_secret(master_key)?;
+    pub async fn validate_jwt_token(&self, token: &str) -> VaultResult<VaultJwtClaims> {
+        // Verify JWT token with RS256 using RSA public key via manual verification
+        use cryypt_jwt::api::algorithms::rsa::verify_rs256;
 
-        // Create JWT builder for validation
-        let jwt_builder = Jwt::builder()
-            .with_algorithm("HS256")
-            .with_secret(&jwt_secret);
+        // Split token into parts
+        let parts: Vec<&str> = token.split('.').collect();
+        if parts.len() != 3 {
+            return Err(VaultError::AuthenticationFailed(
+                "Malformed JWT token".to_string(),
+            ));
+        }
 
-        // Validate JWT token (includes signature and standard claims validation)
-        let claims_value = jwt_builder.verify(token).await.map_err(|e| match e {
-            JwtError::TokenExpired => VaultError::AuthenticationFailed(
-                "JWT token expired. Please login again.".to_string(),
-            ),
-            JwtError::InvalidSignature => {
-                VaultError::AuthenticationFailed("Invalid JWT signature".to_string())
+        let signature_input = format!("{}.{}", parts[0], parts[1]);
+        let signature_b64 = parts[2];
+
+        // Decode signature
+        use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+        let signature = URL_SAFE_NO_PAD
+            .decode(signature_b64)
+            .map_err(|e| VaultError::AuthenticationFailed(format!("Invalid signature encoding: {}", e)))?;
+
+        // Verify signature
+        let is_valid = verify_rs256(&signature_input, &signature, &self.public_key_spki)
+            .map_err(|e| VaultError::AuthenticationFailed(format!("Signature verification failed: {}", e)))?;
+
+        if !is_valid {
+            return Err(VaultError::AuthenticationFailed(
+                "Invalid JWT signature".to_string(),
+            ));
+        }
+
+        // Decode claims from payload
+        let payload_b64 = parts[1];
+        let payload_bytes = URL_SAFE_NO_PAD
+            .decode(payload_b64)
+            .map_err(|e| VaultError::AuthenticationFailed(format!("Invalid payload encoding: {}", e)))?;
+
+        let claims_value: serde_json::Value = serde_json::from_slice(&payload_bytes)
+            .map_err(|e| VaultError::AuthenticationFailed(format!("Invalid claims format: {}", e)))?;
+
+        // Check expiration
+        if let Some(exp) = claims_value.get("exp").and_then(|v| v.as_i64()) {
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|_| VaultError::Internal("System time error".to_string()))?
+                .as_secs() as i64;
+
+            if exp <= now {
+                return Err(VaultError::AuthenticationFailed(
+                    "JWT token expired. Please login again.".to_string(),
+                ));
             }
-            JwtError::InvalidToken(msg) => {
-                VaultError::AuthenticationFailed(format!("Invalid JWT token: {}", msg))
-            }
-            _ => VaultError::AuthenticationFailed(format!("JWT validation failed: {}", e)),
-        })?;
+        }
 
         // Parse claims into our structure
         let claims: VaultJwtClaims = serde_json::from_value(claims_value).map_err(|e| {
@@ -145,43 +186,11 @@ impl JwtHandler {
     }
 
     /// Check if JWT token is valid for current vault context
-    ///
-    /// # Arguments
-    /// * `token` - JWT token string provided by user
-    /// * `master_key` - The vault master key for JWT secret derivation
-    ///
-    /// # Returns
-    /// true if token is valid and unexpired, false otherwise
-    pub async fn is_jwt_valid(&self, token: &str, master_key: &[u8]) -> bool {
-        self.validate_jwt_token(token, master_key).await.is_ok()
+    pub async fn is_jwt_valid(&self, token: &str) -> bool {
+        self.validate_jwt_token(token).await.is_ok()
     }
 
-    /// Derive JWT signing secret from master key using cryypt_key
-    ///
-    /// # Arguments
-    /// * `master_key` - The vault master key
-    ///
-    /// # Returns
-    /// 32-byte JWT signing secret derived deterministically from master key
-    ///
-    /// # Security
-    /// - Uses cryypt_key with vault-specific context for key derivation
-    /// - Generates consistent secret for same master key and vault
-    /// - 32-byte output suitable for HS256 algorithm
-    fn derive_jwt_secret(&self, master_key: &[u8]) -> VaultResult<Vec<u8>> {
-        // Create vault-specific context for deterministic derivation
-        use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-        let jwt_context = format!("jwt_auth_context_{}", self.vault_id);
-        let combined_input = format!("{}:{}", BASE64_STANDARD.encode(master_key), jwt_context);
 
-        // Use cryypt_key PassphraseMasterKey for secure JWT secret derivation
-        let master_key_provider = MasterKeyBuilder::from_passphrase(&combined_input);
-        let jwt_secret_bytes = master_key_provider
-            .resolve()
-            .map_err(|e| VaultError::Internal(format!("JWT secret derivation failed: {}", e)))?;
-
-        Ok(jwt_secret_bytes.to_vec())
-    }
 
     /// Validate vault-specific JWT claims
     ///
@@ -240,19 +249,34 @@ pub fn extract_jwt_from_env() -> Option<String> {
 mod tests {
     use super::*;
 
+    /// Helper function to generate test RSA keys for JWT testing
+    fn generate_test_rsa_keys() -> (Vec<u8>, Vec<u8>) {
+        use rsa::RsaPrivateKey;
+        use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
+        
+        let mut rng = rand::rng();
+        let private_key = RsaPrivateKey::new(&mut rng, 2048).unwrap();
+        let public_key = rsa::RsaPublicKey::from(&private_key);
+        
+        let private_pkcs8 = private_key.to_pkcs8_der().unwrap().as_bytes().to_vec();
+        let public_spki = public_key.to_public_key_der().unwrap().as_bytes().to_vec();
+        
+        (private_pkcs8, public_spki)
+    }
+
     #[tokio::test]
     async fn test_jwt_creation_and_validation() {
         let vault_id = "test_vault_123".to_string();
-        let handler = JwtHandler::new(vault_id);
-        let master_key = b"test_master_key_12345678901234567890";
+        let (private_pkcs8, public_spki) = generate_test_rsa_keys();
+        let handler = JwtHandler::new(vault_id, private_pkcs8, public_spki);
 
         // Create JWT token
-        let token = handler.create_jwt_token(master_key, Some(1)).await.unwrap();
+        let token = handler.create_jwt_token(Some(1)).await.unwrap();
         assert!(!token.is_empty());
 
         // Validate JWT token
         let claims = handler
-            .validate_jwt_token(&token, master_key)
+            .validate_jwt_token(&token)
             .await
             .unwrap();
         assert_eq!(claims.sub, "vault_user");
@@ -263,34 +287,37 @@ mod tests {
     #[tokio::test]
     async fn test_jwt_expiration() {
         let vault_id = "test_vault_exp".to_string();
-        let handler = JwtHandler::new(vault_id);
-        let master_key = b"test_master_key_12345678901234567890";
+        let (private_pkcs8, public_spki) = generate_test_rsa_keys();
+        let handler = JwtHandler::new(vault_id, private_pkcs8, public_spki);
 
         // Create JWT token with 0 hour expiration (immediately expired)
-        let token = handler.create_jwt_token(master_key, Some(0)).await.unwrap();
+        let token = handler.create_jwt_token(Some(0)).await.unwrap();
 
         // Should fail validation due to expiration
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        let result = handler.validate_jwt_token(&token, master_key).await;
+        let result = handler.validate_jwt_token(&token).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("expired"));
     }
 
     #[tokio::test]
     async fn test_vault_id_validation() {
-        let handler1 = JwtHandler::new("vault_1".to_string());
-        let handler2 = JwtHandler::new("vault_2".to_string());
-        let master_key = b"test_master_key_12345678901234567890";
+        // Generate two different RSA keypairs - one for each vault
+        let (private_pkcs8_1, public_spki_1) = generate_test_rsa_keys();
+        let (private_pkcs8_2, public_spki_2) = generate_test_rsa_keys();
+        
+        let handler1 = JwtHandler::new("vault_1".to_string(), private_pkcs8_1, public_spki_1);
+        let handler2 = JwtHandler::new("vault_2".to_string(), private_pkcs8_2, public_spki_2);
 
         // Create token with vault_1
         let token = handler1
-            .create_jwt_token(master_key, Some(1))
+            .create_jwt_token(Some(1))
             .await
             .unwrap();
 
-        // Should fail validation with vault_2 (different vault_id)
-        // This fails at signature verification because different vault_ids generate different JWT secrets
-        let result = handler2.validate_jwt_token(&token, master_key).await;
+        // Should fail validation with vault_2 (different vault_id and different RSA keys)
+        // This fails at signature verification because different RSA keys = different signatures
+        let result = handler2.validate_jwt_token(&token).await;
         assert!(result.is_err());
 
         let error_msg = result.unwrap_err().to_string();
@@ -304,15 +331,20 @@ mod tests {
     #[tokio::test]
     async fn test_invalid_signature() {
         let vault_id = "test_vault_sig".to_string();
-        let handler = JwtHandler::new(vault_id);
-        let master_key = b"test_master_key_12345678901234567890";
-        let wrong_key = b"wrong_master_key_1234567890123456789";
+        
+        // Generate correct keys for signing
+        let (correct_private_pkcs8, correct_public_spki) = generate_test_rsa_keys();
+        let handler_sign = JwtHandler::new(vault_id.clone(), correct_private_pkcs8, correct_public_spki);
+        
+        // Generate wrong keys for verification
+        let (wrong_private_pkcs8, wrong_public_spki) = generate_test_rsa_keys();
+        let handler_verify = JwtHandler::new(vault_id, wrong_private_pkcs8, wrong_public_spki);
 
         // Create token with correct key
-        let token = handler.create_jwt_token(master_key, Some(1)).await.unwrap();
+        let token = handler_sign.create_jwt_token(Some(1)).await.unwrap();
 
         // Should fail validation with wrong key
-        let result = handler.validate_jwt_token(&token, wrong_key).await;
+        let result = handler_verify.validate_jwt_token(&token).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("signature"));
     }

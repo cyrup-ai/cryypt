@@ -68,27 +68,26 @@ fn get_default_vault_path() -> Result<PathBuf, String> {
 /// # Errors
 /// Returns error if keypair generation or keychain storage fails
 async fn ensure_pqcrypto_keypair(
-    namespace: &str,
-    version: u32,
+    key_id: &str,
     use_json: bool,
 ) -> Result<(), String> {
     // Try to load existing keypair from keychain
-    match commands::load_pq_key_from_keychain(namespace, version).await {
+    match commands::load_pq_key_from_keychain(key_id).await {
         Ok(_) => {
             // Keypair already exists, reuse it
             log_security_event(
                 "VAULT_NEW",
                 &format!(
-                    "Using existing PQCrypto keypair from keychain: {}:v{}",
-                    namespace, version
+                    "Using existing PQCrypto keypair from keychain: {}",
+                    key_id
                 ),
                 true,
             );
 
             if !use_json {
                 println!(
-                    "🔑 Using existing PQCrypto keypair from keychain ({}:v{})",
-                    namespace, version
+                    "🔑 Using existing PQCrypto keypair from keychain ({})",
+                    key_id
                 );
             }
 
@@ -100,13 +99,13 @@ async fn ensure_pqcrypto_keypair(
                 println!("🔐 Generating new PQCrypto keypair...");
             }
 
-            commands::generate_pq_keypair(namespace, version, SecurityLevel::Level3).await?;
+            commands::generate_pq_keypair(key_id, SecurityLevel::Level3).await?;
 
             log_security_event(
                 "VAULT_NEW",
                 &format!(
-                    "Generated new PQCrypto keypair and stored in keychain: {}:v{}",
-                    namespace, version
+                    "Generated new PQCrypto keypair and stored in keychain: {}",
+                    key_id
                 ),
                 true,
             );
@@ -127,12 +126,14 @@ async fn ensure_pqcrypto_keypair(
 /// 4. Collects passphrase (interactive or from CLI)
 /// 5. Ensures PQCrypto keypair exists in keychain
 /// 6. Creates and initializes vault database (.db directory)
-/// 7. Unlocks vault with passphrase to initialize encryption
-/// 8. Locks vault to persist to disk
+/// 7. Generates RSA keys for JWT authentication
+/// 8. Unlocks vault with passphrase to initialize encryption
+/// 9. Locks vault to persist to disk
 ///
 /// # Arguments
 /// * `vault_path_option` - Optional custom vault path
 /// * `passphrase_option` - Optional passphrase from command line
+/// * `rsa_key_path_option` - Optional RSA key path (default: ~/.ssh/cryypt.rsa)
 /// * `use_json` - Whether to output JSON format
 ///
 /// # Returns
@@ -148,6 +149,7 @@ async fn ensure_pqcrypto_keypair(
 pub async fn handle_new_command(
     vault_path_option: Option<&Path>,
     passphrase_option: Option<&str>,
+    rsa_key_path_option: Option<PathBuf>,
     use_json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Determine vault path
@@ -297,8 +299,9 @@ pub async fn handle_new_command(
         }
     };
 
-    // Step 5: Ensure PQCrypto keypair exists in keychain
-    ensure_pqcrypto_keypair("pq_armor", 1, use_json).await?;
+    // Step 5: Generate unique UUID-based PQCrypto key_id for this vault
+    let key_id = commands::generate_unique_key_id("pq_armor");
+    ensure_pqcrypto_keypair(&key_id, use_json).await?;
 
     // Step 6: Create and initialize temporary .db file
     if !use_json {
@@ -393,6 +396,67 @@ pub async fn handle_new_command(
         error_msg
     })?;
 
+    // Step 6.5: Generate and store RSA key configuration for JWT authentication
+    if !use_json {
+        println!("🔑 Setting up RSA key for JWT authentication...");
+    }
+
+    use crate::auth::RsaKeyManager;
+    use crate::operation::Passphrase;
+
+    // Determine RSA key path (custom or default)
+    let rsa_key_path = rsa_key_path_option.unwrap_or_else(RsaKeyManager::default_path);
+
+    // Generate RSA key pair
+    let rsa_manager = RsaKeyManager::new(rsa_key_path.clone());
+    let passphrase_wrapper = Passphrase::from(passphrase.clone());
+    let (private_pkcs8, public_spki) = rsa_manager
+        .generate_for_jwt(&passphrase_wrapper)
+        .await
+        .map_err(|e| {
+            let error_msg = format!("Failed to generate RSA key: {}", e);
+            if use_json {
+                println!(
+                    "{}",
+                    json!({
+                        "success": false,
+                        "operation": "new",
+                        "error": error_msg
+                    })
+                );
+            }
+            error_msg
+        })?;
+
+    // Store RSA key configuration in database
+    vault
+        .store_vault_config(&rsa_key_path.to_string_lossy(), &public_spki)
+        .await
+        .map_err(|e| {
+            let error_msg = format!("Failed to store RSA key config: {}", e);
+            if use_json {
+                println!(
+                    "{}",
+                    json!({
+                        "success": false,
+                        "operation": "new",
+                        "error": error_msg
+                    })
+                );
+            }
+            error_msg
+        })?;
+
+    log_security_event(
+        "VAULT_NEW",
+        &format!("RSA key generated and stored: {}", rsa_key_path.display()),
+        true,
+    );
+
+    if !use_json {
+        println!("✅ RSA key generated at: {}", rsa_key_path.display());
+    }
+
     // Step 7: Apply PQCrypto armor immediately (.db → .vault)
     if !use_json {
         println!("🔐 Applying PQCrypto armor...");
@@ -403,8 +467,9 @@ pub async fn handle_new_command(
     let armor_service = PQCryptoArmorService::new(key_storage, SecurityLevel::Level3);
     let vault_file = base_path.with_extension("vault");
 
+    // Reuse the same key_id generated earlier
     armor_service
-        .armor(&db_file, &vault_file, "pq_armor", 1)
+        .armor(&db_file, &vault_file, &key_id)
         .await
         .map_err(|e| {
             let error_msg = format!("Failed to apply PQCrypto armor: {}", e);

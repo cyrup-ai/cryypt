@@ -26,8 +26,13 @@ pub(crate) fn sign_rs256(message: &str, private_key: &[u8]) -> Result<Vec<u8>, J
 
 /// Verify RSA-SHA256 (RS256) signature
 /// Zero-allocation blazing-fast RSA verification
+///
+/// # Errors
+/// Returns `Err` if:
+/// - Public key cannot be decoded from SPKI DER format
+/// - Signature format is invalid or verification fails
 #[inline]
-pub(crate) fn verify_rs256(
+pub fn verify_rs256(
     message: &str,
     signature: &[u8],
     public_key: &[u8],
