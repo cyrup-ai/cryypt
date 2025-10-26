@@ -45,18 +45,17 @@ pub async fn handle_logout(
             json!({
                 "success": true,
                 "operation": "logout",
-                "message": "To logout, unset the VAULT_JWT environment variable",
-                "instructions": "unset VAULT_JWT"
+                "message": "JWT session invalidated on server. Stop using the token.",
+                "instructions": "Run 'vault login' to generate a new JWT token when needed"
             })
         );
     } else {
         println!("🔓 Vault Logout");
         println!();
-        println!("To logout and clear your JWT session:");
-        println!("   unset VAULT_JWT");
+        println!("✅ JWT session invalidated on server.");
         println!();
-        println!("Or restart your terminal session.");
-        println!("✅ Logout instructions provided.");
+        println!("Your current JWT token is no longer valid.");
+        println!("Run 'vault login' to generate a new token when needed.");
     }
 
     Ok(())

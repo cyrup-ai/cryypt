@@ -7,7 +7,7 @@ use dialoguer::{Password, theme::ColorfulTheme};
 /// Ensures the vault is accessible using JWT authentication or passphrase fallback
 ///
 /// # Security Model
-/// 1. First priority: JWT token authentication (via VAULT_JWT env var or --jwt flag)
+/// 1. First priority: JWT token authentication (via --jwt flag)
 /// 2. Fallback: Passphrase authentication (for initial setup or when JWT expires)
 ///
 /// # Arguments
@@ -80,7 +80,7 @@ pub async fn ensure_unlocked(
             "Failed to authenticate in JSON mode - no passphrase provided and no valid JWT token",
             false,
         );
-        return Err("Authentication failed. Provide a valid JWT token via VAULT_JWT environment variable or --jwt flag, or use --passphrase option for passphrase authentication".into());
+        return Err("Authentication failed. Provide a valid JWT token via --jwt flag, or use --passphrase option for passphrase authentication".into());
     } else {
         // Only prompt interactively in normal mode
         println!("🔐 Vault is locked. Authentication required.");

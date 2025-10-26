@@ -15,7 +15,7 @@ pub use tui::aws_interface;
 pub use tui::pass_interface;
 
 // Re-export the public API
-pub use auth::{JwtHandler, VaultJwtClaims, extract_jwt_from_env};
+pub use auth::{JwtHandler, VaultJwtClaims};
 pub use config::VaultConfig;
 pub use core::{Vault, VaultValue};
 pub use db::LocalVaultProvider;

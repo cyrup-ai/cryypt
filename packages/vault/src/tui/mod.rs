@@ -100,15 +100,6 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // Use match option pattern to run TUI mode by default
     if let Some(command) = cli.command.clone() {
-        // Set up JWT token in environment if provided via --jwt flag
-        if let Some(jwt_token) = &cli.jwt {
-            // SAFETY: Setting environment variables is safe in this context
-            // as we're setting a value provided by the user via command line
-            unsafe {
-                std::env::set_var("VAULT_JWT", jwt_token);
-            }
-        }
-
         // Check if we need to save before executing the command
         let should_save = cli.save || matches!(command, Commands::Save {});
 

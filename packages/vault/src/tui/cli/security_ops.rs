@@ -15,7 +15,7 @@ pub async fn handle_change_passphrase(
     if !vault.is_authenticated().await {
         if !use_json {
             eprintln!(
-                "Authentication required. Set VAULT_JWT environment variable with valid JWT token."
+                "Authentication required. Use --jwt flag with valid JWT token."
             );
         }
         return Err("Authentication failed: No valid JWT token provided".into());

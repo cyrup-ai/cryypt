@@ -2,7 +2,7 @@
 
 use super::tokenization::{SecureString, TokenizationEngine};
 use super::vault_ops::ensure_unlocked;
-use crate::auth::jwt_handler::{JwtHandler, extract_jwt_from_env};
+use crate::auth::jwt_handler::JwtHandler;
 use crate::core::Vault;
 use crate::logging::log_security_event;
 use serde_json::json;
@@ -199,10 +199,9 @@ pub async fn handle_enhanced_run(
         return handle_run_error("No command specified", use_json).await;
     }
 
-    // 1. Extract JWT token from environment or parameter
+    // 1. JWT token must be provided explicitly via --jwt flag
     let token = jwt_token
-        .or_else(extract_jwt_from_env)
-        .ok_or("JWT token required for vault run operations")?;
+        .ok_or("JWT token required for vault run operations. Use --jwt <token> flag")?;
 
     // 2. Validate JWT token (emergency lockdown on failure)
     let (jwt_handler, _master_key) = vault

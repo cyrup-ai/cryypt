@@ -158,11 +158,8 @@ run_json "login (JSON)" \
   "$VAULT_BIN" --json --vault-path "$CUSTOM_BASE" login --passphrase "passC" --expires-in 1
 JWT_TOKEN="$(json_get "$JSON_OUT" jwt_token || true)"
 [[ -n "${JWT_TOKEN:-}" ]] || info "JWT not present in JSON; continuing with passphrase for ops"
-# If token present, test VAULT_JWT and --jwt paths
+# If token present, test --jwt flag
 if [[ -n "${JWT_TOKEN:-}" ]]; then
-  export VAULT_JWT="$JWT_TOKEN"
-  run "run with VAULT_JWT env" \
-    "$VAULT_BIN" --vault-path "$CUSTOM_BASE" run printf "ok"
   run "run with --jwt flag" \
     "$VAULT_BIN" --vault-path "$CUSTOM_BASE" --jwt "$JWT_TOKEN" run printf "ok"
 fi

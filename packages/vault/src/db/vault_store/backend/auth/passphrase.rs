@@ -9,15 +9,16 @@ use secrecy::ExposeSecret;
 impl LocalVaultProvider {
     /// Verify passphrase against stored hash
     pub(crate) async fn verify_passphrase(&self, passphrase: &Passphrase) -> VaultResult<()> {
-        log::debug!("Verifying passphrase against stored hash...");
+        log::debug!("VERIFY_PASSPHRASE: Starting passphrase verification...");
 
-        // Try to retrieve stored passphrase hash using consistent query pattern
-        let query = "SELECT * FROM vault_entries WHERE key = $key LIMIT 1";
+        // Try to retrieve stored passphrase hash using direct record ID (consistent with salt retrieval)
+        let record_id = "vault_entries:__vault_passphrase_hash__";
+        let query = format!("SELECT * FROM {}", record_id);
         let db = self.dao.db();
 
+        log::debug!("VERIFY_PASSPHRASE: Executing query: {}", query);
         let mut result = db
-            .query(query)
-            .bind(("key", "__vault_passphrase_hash__"))
+            .query(&query)
             .await
             .map_err(|e| VaultError::Provider(format!("DB query failed: {e}")))?
             .check()
@@ -28,9 +29,11 @@ impl LocalVaultProvider {
             .take(0)
             .map_err(|e| VaultError::Provider(format!("DB result take failed: {e}")))?;
 
+        log::debug!("VERIFY_PASSPHRASE: Query result: {}", if hash_entry.is_some() { "FOUND" } else { "NOT FOUND" });
+
         match hash_entry {
             Some(entry) => {
-                log::debug!("Found existing passphrase hash in database");
+                log::debug!("VERIFY_PASSPHRASE: Found existing passphrase hash in database");
 
                 // Decode stored hash
                 let stored_hash = BASE64_STANDARD.decode(entry.value).map_err(|_| {
@@ -64,9 +67,39 @@ impl LocalVaultProvider {
                 }
             }
             None => {
-                // No stored hash means this is the first time unlocking
-                // Allow the unlock to proceed, hash will be stored
-                log::info!("No existing passphrase hash found - this appears to be a new vault");
+                // No stored hash - need to determine if this is first unlock or missing hash
+                log::warn!("VERIFY_PASSPHRASE: No passphrase hash found in database");
+                
+                // Check if vault has any data entries to distinguish between:
+                // 1. Truly new vault (first unlock) - OK to proceed
+                // 2. Existing vault with missing hash (security issue) - REJECT
+                let count_query = "SELECT count() FROM vault_entries WHERE key != $hash_key GROUP ALL";
+                let mut count_result = db
+                    .query(count_query)
+                    .bind(("hash_key", "__vault_passphrase_hash__"))
+                    .await
+                    .map_err(|e| VaultError::Provider(format!("Failed to count vault entries: {e}")))?;
+                
+                #[derive(serde::Deserialize)]
+                struct CountResult {
+                    count: i64,
+                }
+                
+                let count_vec: Vec<CountResult> = count_result
+                    .take(0)
+                    .map_err(|e| VaultError::Provider(format!("Failed to get count result: {e}")))?;
+                
+                let entry_count = count_vec.first().map(|c| c.count).unwrap_or(0);
+                
+                if entry_count > 0 {
+                    // Vault has entries but no hash - this is a security violation
+                    // Hash should have been stored on first unlock
+                    log::error!("VERIFY_PASSPHRASE: Vault has {} entries but no passphrase hash - REJECTING", entry_count);
+                    return Err(VaultError::InvalidPassphrase);
+                }
+                
+                // Empty vault - this is legitimately the first unlock
+                log::info!("VERIFY_PASSPHRASE: Empty vault, no hash found - accepting as first unlock");
                 Ok(())
             }
         }
@@ -99,13 +132,24 @@ impl LocalVaultProvider {
         drop(token_guard);
 
         // Delete persisted JWT session from database
+        // SECURITY: This MUST succeed - if JWT deletion fails, passphrase change must fail
         let vault_path_hash = self.create_vault_path_hash();
-        if let Err(e) = self.delete_jwt_session(&vault_path_hash).await {
-            log::warn!("Failed to delete persisted JWT session: {}", e);
-            // Continue anyway - session will expire naturally
+        self.delete_jwt_session(&vault_path_hash).await?;
+        log::debug!("JWT session successfully deleted from database");
+
+        // Lock the vault to force full re-authentication with new passphrase
+        // This ensures the next operation will verify the new passphrase
+        if let Ok(mut locked_guard) = self.locked.lock() {
+            *locked_guard = true;
+            log::debug!("Vault locked after passphrase change");
         }
 
-        log::info!("Passphrase changed and JWT session invalidated");
+        // Clear encryption key from memory
+        let mut key_guard = self.encryption_key.lock().await;
+        *key_guard = None;
+        drop(key_guard);
+
+        log::info!("Passphrase changed, JWT session deleted, and vault locked");
 
         Ok(())
     }

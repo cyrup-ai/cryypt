@@ -32,7 +32,7 @@ pub struct Cli {
     #[arg(long)]
     pub passphrase: Option<String>,
 
-    /// JWT token for session authentication (can also be provided via VAULT_JWT environment variable)
+    /// JWT token for session authentication
     #[arg(long)]
     pub jwt: Option<String>,
 
@@ -166,7 +166,7 @@ pub enum Commands {
         /// Namespace to load keys from (optional - loads all if not specified)
         #[arg(long)]
         namespace: Option<String>,
-        /// JWT token for authentication (can also use VAULT_JWT env var)
+        /// JWT token for authentication
         #[arg(long)]
         jwt: Option<String>,
     },

@@ -232,18 +232,8 @@ impl JwtHandler {
     }
 }
 
-/// Extract JWT token from environment variable or command line context
-///
-/// # Returns
-/// JWT token string if available from VAULT_JWT environment variable
-///
-/// # Usage
-/// Users can provide JWT token via:
-/// - `export VAULT_JWT="<token>"` environment variable
-/// - `--jwt <token>` command line flag (handled by CLI parser)
-pub fn extract_jwt_from_env() -> Option<String> {
-    std::env::var("VAULT_JWT").ok()
-}
+// REMOVED: extract_jwt_from_env() - VAULT_JWT environment variable support is unauthorized
+// JWT tokens must be provided explicitly via --jwt command-line flag
 
 #[cfg(test)]
 mod tests {

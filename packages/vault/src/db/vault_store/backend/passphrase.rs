@@ -5,7 +5,7 @@
 use super::super::{LocalVaultProvider, VaultEntry};
 use crate::error::{VaultError, VaultResult};
 use crate::operation::Passphrase;
-use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use secrecy::ExposeSecret;
 
 impl LocalVaultProvider {
@@ -46,22 +46,20 @@ impl LocalVaultProvider {
         // Store the passphrase hash in the database using SurrealDB UPSERT
         let hash_b64 = BASE64_STANDARD.encode(passphrase_hash);
 
-        // Use UPSERT to handle existing records
-        use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD as BASE64_URL};
-        let key_encoded = BASE64_URL.encode("__vault_passphrase_hash__".as_bytes());
-        let record_id = format!("vault_entries:{}", key_encoded);
+        // Use direct record ID (no encoding) like other system entries (__vault_salt__)
+        let record_id = "vault_entries:__vault_passphrase_hash__";
         let db = self.dao.db();
 
-        // Use UPSERT with consistent record ID format
+        // Use UPSERT with consistent record ID format - match salt storage pattern
+        // Record ID already specifies the key, so we don't need to set 'key' field
         let upsert_query = format!(
-            "UPSERT {} SET key = $key, value = $value, created_at = $created_at, updated_at = $updated_at",
+            "UPSERT {} SET value = $value, created_at = $created_at, updated_at = $updated_at",
             record_id
         );
 
         let now = chrono::Utc::now();
         let mut result = db
             .query(upsert_query)
-            .bind(("key", "__vault_passphrase_hash__"))
             .bind(("value", hash_b64))
             .bind(("created_at", surrealdb::value::Datetime::from(now)))
             .bind(("updated_at", surrealdb::value::Datetime::from(now)))
